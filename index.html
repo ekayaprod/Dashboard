@@ -33,8 +33,299 @@
             border-radius: 0.375rem; border: 1px solid var(--border-color); margin-bottom: 0.5rem;
             font-family: inherit; background-color: var(--info-bg);
         }
+        .input-base::placeholder { color: var(--subtle-text); opacity: 0.8; }
         .input-base:focus, .sidebar-input:focus, .sidebar-textarea:focus {
             outline: 2px solid var(--primary-color); outline-offset: -1px; background-color: white;
+        }
+        .sidebar-textarea { resize: vertical; min-height: 50px; }
+        .button-base {
+            padding: 0.35rem 0.6rem; font-size: 0.8rem; border: 1px solid var(--border-color);
+            border-radius: 0.375rem; cursor: pointer; background-color: #fff; transition: all 0.2s;
+            font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem;
+        }
+        .button-base:hover { background-color: #f8fafc; }
+        .button-base:disabled { background-color: #f1f5f9; color: var(--subtle-text); cursor: not-allowed; border-color: var(--border-color);}
+        .button-primary { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .button-primary:hover { background-color: #2563eb; }
+        .button-danger { background-color: var(--danger-color); color: white; border-color: var(--danger-color); }
+        .button-danger:hover { background-color: #dc2626; }
+        .button-success { background-color: var(--success-color); color: white; border-color: var(--success-color); }
+        .icon-btn { padding: 0.35rem; }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        .form-group { margin-bottom: 0.75rem; }
+        .form-group label { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; display: block; }
+        .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+        .section-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+        .section-header { font-size: 1rem; font-weight: 600; color: var(--text-color); margin: 0; }
+        .divider { border-top: 1px solid var(--border-color); margin: 1rem 0; }
+        
+        .shortcuts-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+        .url-links-container a, .shortcut-item a { color: var(--primary-color); text-decoration: none; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        .url-links-container a:hover, .shortcut-item a:hover { text-decoration: underline; }
+        #url-editor { margin-top: 0.5rem; }
+        .label-group { display: flex; justify-content: space-between; align-items: center; }
+        .label-group .button-base { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+        
+        .delete-btn {
+            background: none; border: none; padding: 0; margin: 0;
+            cursor: pointer; color: var(--subtle-text); font-size: 1.2rem; line-height: 1;
+            padding: 0 0.3rem; border-radius: 50%; transition: background-color 0.2s, color 0.2s;
+        }
+        .delete-btn:hover { background-color: #fee2e2; color: var(--danger-color); }
+        .shortcut-item { 
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem;
+            background-color: var(--info-bg); border-radius: 0.375rem; border: 1px solid var(--border-color);
+        }
+        .drag-handle { cursor: grab; color: var(--subtle-text); padding-right: 0.25rem; }
+        .drag-handle:active { cursor: grabbing; }
+        .shortcut-item.dragging { opacity: 0.4; }
+
+        .notepad-wrapper { display: flex; flex-direction: column; flex-grow: 1; min-height: 200px; }
+        .notepad-header { position: relative; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.75rem; }
+        .notepad-header .sidebar-input { margin-bottom: 0; flex-grow: 1; }
+        .notepad-editor { width: 100%; flex-grow: 1; border: 1px solid var(--border-color); border-radius: 0.375rem; resize: none; padding: 0.5rem; font-size: 0.875rem; line-height: 1.6; box-sizing: border-box; font-family: inherit; }
+        .notepad-editor:focus { outline: none; border-color: var(--primary-color); }
+        #save-indicator { position: absolute; right: 0.75rem; top: -1.2rem; font-size: 0.75rem; color: var(--success-color); opacity: 0; transition: opacity 0.3s, top 0.3s; }
+
+        .hidden { display: none; }
+        
+        .actions-menu-wrapper { position: relative; }
+        .actions-menu {
+            position: absolute; top: 100%; right: 0;
+            background-color: var(--panel-bg); border: 1px solid var(--border-color);
+            border-radius: 0.375rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            z-index: 100; width: 150px; padding: 0.25rem 0; margin-top: 0.25rem;
+        }
+        .actions-menu-item { display: block; padding: 0.5rem 0.75rem; color: var(--text-color); text-decoration: none; font-size: 0.875rem; }
+        .actions-menu-item:hover { background-color: var(--bg-color); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(100,116,139,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
+        .modal-content { background: var(--panel-bg); padding: 1.5rem; border-radius: 0.75rem; max-width: 400px; width: 90%; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+        .modal-content h3 { margin-top: 0; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #111827; --panel-bg: #1f2937; --border-color: #374151;
+                --text-color: #f9fafb; --subtle-text: #9ca3af; --primary-color: #60a5fa;
+                --info-bg: #111827;
+            }
+            .button-base { background-color: #374151; border-color: #4b5563; }
+            .button-base:hover { background-color: #4b5563; }
+            .input-base, .sidebar-input, .sidebar-textarea { background-color: #374151; border-color: #4b5563; color: var(--text-color); }
+            .input-base:focus, .sidebar-input:focus, .sidebar-textarea:focus { background-color: #1f2937; }
+            .actions-menu { border-color: #4b5563; }
+            .actions-menu-item:hover { background-color: #374151; }
+        }
+    </style>
+</head>
+<body>
+    <!-- LLM-NOTE: This file is designed for the Microsoft Edge Sidebar. -->
+    <!-- All layout and UX decisions must prioritize vertical space and a narrow viewport. -->
+    <!-- Avoid horizontal scrolling and wide elements. -->
+    <div class="app-container">
+        <div class="panel">
+            <div class="main-content">
+                <div id="shortcuts-container" class="shortcuts-container"></div>
+                <div class="divider"></div>
+
+                <div class="section-header-wrapper">
+                    <h3 class="section-header">Applications</h3>
+                    <div class="actions-menu-wrapper">
+                        <button id="actions-btn" class="button-base">Actions</button>
+                        <div id="actions-menu" class="actions-menu hidden">
+                            <a href="#" id="add-shortcut-btn-menu" class="actions-menu-item">+ Shortcut</a>
+                            <a href="#" id="add-new-app-btn-menu" class="actions-menu-item">+ App</a>
+                            <a href="#" id="import-csv-btn-menu" class="actions-menu-item">Import</a>
+                            <a href="#" id="export-csv-btn-menu" class="actions-menu-item">Export</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="app-select">Select Application</label>
+                    <select id="app-select" class="sidebar-input"></select>
+                </div>
+                <div id="app-details-form" class="hidden">
+                    <div class="form-group">
+                        <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
+                    </div>
+                    <div class="form-group">
+                        <div class="label-group">
+                            <label for="edit-app-urls">URLs (one per line)</label>
+                            <button id="toggle-url-editor-btn" class="button-base">Edit</button>
+                        </div>
+                        <div class="url-links-container" id="url-links-container"></div>
+                        <div id="url-editor" class="hidden">
+                           <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="label-group">
+                             <label for="edit-app-escalation">Notes</label>
+                             <div class="button-group">
+                                <button id="save-changes-btn" class="button-base button-primary" style="padding: 0.3rem 0.8rem;">Save</button>
+                                <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
+                             </div>
+                        </div>
+                        <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="notepad-wrapper">
+                    <div id="notepad-header" class="notepad-header">
+                        <div id="save-indicator">Saved ✓</div>
+                        <select id="note-select" class="sidebar-input"></select>
+                        <button id="new-note-btn" class="button-base icon-btn" title="New Note">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                        </button>
+                        <button id="rename-note-btn" class="button-base icon-btn" title="Rename Note">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/></svg>
+                        </button>
+                        <button id="delete-note-btn" class="button-base icon-btn" title="Delete Current Note">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                        </button>
+                    </div>
+                    <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing..."></textarea>
+                </div>
+            </div>
+            <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+
+    <script>
+    {
+        // --- SCRIPT OVERVIEW ---
+        // LLM-NOTE: This script follows a simple, single-file architecture for portability.
+        // Its primary target is the Microsoft Edge Sidebar, so UI/UX choices prioritize vertical space.
+        // Key sections: State Management, Rendering Functions, Core Logic/Event Listeners, Initialization.
+        const APP_VERSION = '1.5.1'; // Version bump for UI layout changes
+        const DEBUG_MODE = true; // Set to false for production
+
+        // --- LOGGER ---
+        const logger = {
+            info: (context, data) => console.log(`[${APP_VERSION}][${context}]`, data),
+            error: (context, error, data = null) => {
+                console.error(`[${APP_VERSION}][ERROR][${context}]`, error);
+                if (data) console.error('[ERROR_DATA]', data);
+            },
+            debug: (context, data) => DEBUG_MODE && console.log(`[${APP_VERSION}][DEBUG][${context}]`, data)
+        };
+        logger.info('INIT', `Dashboard starting up.`);
+
+        // --- STATE MANAGEMENT ---
+        const loadData = (key, defaultValue = []) => {
+            const rawData = localStorage.getItem(key);
+            if (!rawData) {
+                logger.debug('LOAD_DATA', `No data found for key: ${key}`);
+                return defaultValue;
+            }
+            try {
+                const parsed = JSON.parse(rawData);
+                logger.debug('LOAD_DATA', `Loaded ${Array.isArray(parsed) ? parsed.length : 'N/A'} items for ${key}`);
+                return parsed;
+            } catch (error) {
+                logger.error('LOAD_DATA', error, { key, rawData });
+                const backupKey = `${key}_corrupted_${Date.now()}`;
+                localStorage.setItem(backupKey, rawData);
+                localStorage.removeItem(key);
+                logger.info('RECOVERY', `Corrupted data for "${key}" backed up to "${backupKey}" and cleared.`);
+                showModal('Data Corruption', `<p>Your saved data for ${key.replace(/_/g, ' ')} was corrupted and has been cleared. A backup of the corrupted data was saved.</p>`, [{label: 'OK'}]);
+                return defaultValue;
+            }
+        };
+
+        let appData = loadData('dashboard_app_data');
+        let notesData = loadData('dashboard_notepad_state');
+        let shortcutsData = loadData('dashboard_shortcuts_data');
+        let activeNoteId = null;
+        let initialAppData = null;
+        let draggedItemId = null;
+
+        const saveShortcutsData = () => localStorage.setItem('dashboard_shortcuts_data', JSON.stringify(shortcutsData));
+        const saveAppData = () => localStorage.setItem('dashboard_app_data', JSON.stringify(appData));
+        const saveNotesData = () => localStorage.setItem('dashboard_notepad_state', JSON.stringify(notesData));
+        
+        // --- UTILITIES & VALIDATORS ---
+        const debounce = (func, delay) => {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func(...args), delay);
+            };
+        };
+
+        const validators = {
+            appName: (name) => name && name.trim().length > 0 && name.trim().length <= 100,
+            noteTitle: (title) => title && title.trim().length > 0 && title.trim().length <= 50,
+            shortcutName: (name) => name && name.trim().length > 0 && name.trim().length <= 50,
+            isSafeUrl: (url) => {
+                const trimmed = url.trim();
+                return trimmed.startsWith('http:') || trimmed.startsWith('https:') || trimmed.startsWith('mailto:') || trimmed.startsWith('//') || /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(trimmed);
+            }
+        };
+        
+        const escapeHTML = (str) => {
+            const p = document.createElement('p');
+            p.textContent = str;
+            return p.innerHTML;
+        };
+        
+        const parseCsvRow = (row) => {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < row.length; i++) {
+                const char = row[i];
+                if (char === '"' && (i === 0 || row[i-1] !== '\\')) { // Handle escaped quotes later if needed
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result.map(val => val.replace(/^"|"$/g, '')); // Remove surrounding quotes
+        };
+
+
+        // --- DOM ELEMENTS CACHE ---
+        const D = new Proxy({}, { get: (_, id) => document.getElementById(id) });
+        
+        // --- MODAL LOGIC ---
+        // LLM-NOTE: A custom modal is used instead of native alert()/confirm() for better UX in the sidebar.
+        const showModal = (title, contentHtml, actions) => {
+            D['modal-content'].innerHTML = `<h3>${escapeHTML(title)}</h3><div class="modal-body">${contentHtml}</div><div class="modal-actions"></div>`;
+            const actionsContainer = D['modal-content'].querySelector('.modal-actions');
+            actions.forEach(action => {
+                const btn = document.createElement('button');
+                btn.className = `button-base ${action.class || ''}`; btn.textContent = action.label;
+                btn.onclick = () => { 
+                    const result = action.callback ? action.callback() : true;
+                    if (result !== false) { // Allow callback to prevent closing
+                        hideModal();
+                    }
+                };
+                actionsContainer.appendChild(btn);
+            });
+            D['modal-overlay'].style.display = 'flex';
+        };
+        const hideModal = () => { D['modal-overlay'].style.display = 'none'; };
+
+        // --- RENDERING FUNCTIONS ---
+        const renderShortcuts = () => {
+            const shortcutsContainer = D['shortcuts-container'];
+            shortcutsContainer.innerHTML = '';
+            if (shortcutsData.length === 0) { 
+                shortcutsContainer.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem            outline: 2px solid var(--primary-color); outline-offset: -1px; background-color: white;
         }
         .sidebar-textarea { resize: vertical; min-height: 50px; }
         .button-base {
@@ -764,4 +1055,5 @@
     </script>
 </body>
 </html>
+
 
