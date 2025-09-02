@@ -11,6 +11,7 @@
             --bg-color: #f4f7fa; --panel-bg: #ffffff; --border-color: #e2e8f0;
             --text-color: #1e293b; --subtle-text: #64748b; --primary-color: #3b82f6;
             --danger-color: #ef4444; --success-color: #22c55e; --info-bg: #f8fafc;
+            --danger-hover-bg: #fee2e2;
             --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
         html, body { height: 100%; margin: 0; overflow: hidden; font-size: 14px; }
@@ -72,7 +73,7 @@
             cursor: pointer; color: var(--subtle-text); font-size: 1.2rem; line-height: 1;
             padding: 0 0.3rem; border-radius: 50%; transition: background-color 0.2s, color 0.2s;
         }
-        .delete-btn:hover { background-color: #fee2e2; color: var(--danger-color); }
+        .delete-btn:hover { background-color: var(--danger-hover-bg); color: var(--danger-color); }
         .shortcut-item { 
             display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem;
             background-color: var(--info-bg); border-radius: 0.375rem; border: 1px solid var(--border-color);
@@ -109,7 +110,7 @@
             :root {
                 --bg-color: #111827; --panel-bg: #1f2937; --border-color: #374151;
                 --text-color: #f9fafb; --subtle-text: #9ca3af; --primary-color: #60a5fa;
-                --info-bg: #111827;
+                --info-bg: #111827; --danger-hover-bg: #4b1d1d;
             }
             .button-base { background-color: #374151; border-color: #4b5563; }
             .button-base:hover { background-color: #4b5563; }
@@ -123,7 +124,6 @@
 <body>
     <!-- LLM-NOTE: This file is designed for the Microsoft Edge Sidebar. -->
     <!-- All layout and UX decisions must prioritize vertical space and a narrow viewport. -->
-    <!-- Avoid horizontal scrolling and wide elements. -->
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
@@ -184,7 +184,7 @@
                         <button id="rename-note-btn" class="button-base icon-btn" title="Rename Note">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/></svg>
                         </button>
-                        <button id="delete-note-btn" class="button-base icon-btn" title="Delete Current Note">
+                        <button id="delete-note-btn" class="button-base icon-btn button-danger" title="Delete Current Note">
                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                         </button>
                     </div>
@@ -202,11 +202,10 @@
     <script>
     {
         // --- SCRIPT OVERVIEW ---
-        // LLM-NOTE: This script follows a simple, single-file architecture for portability.
-        // Its primary target is the Microsoft Edge Sidebar, so UI/UX choices prioritize vertical space.
-        // Key sections: State Management, Rendering Functions, Core Logic/Event Listeners, Initialization.
-        const APP_VERSION = '1.5.1'; // Version bump for UI layout changes
-        const DEBUG_MODE = true; // Set to false for production
+        // LLM-NOTE: This script is for a single-file, local-only dashboard in the Edge Sidebar.
+        // All UI/UX choices must prioritize vertical space and a narrow viewport.
+        const APP_VERSION = '1.6.0'; // Version bump for critical bug fixes
+        const DEBUG_MODE = true; 
 
         // --- LOGGER ---
         const logger = {
@@ -223,20 +222,16 @@
         const loadData = (key, defaultValue = []) => {
             const rawData = localStorage.getItem(key);
             if (!rawData) {
-                logger.debug('LOAD_DATA', `No data found for key: ${key}`);
                 return defaultValue;
             }
             try {
-                const parsed = JSON.parse(rawData);
-                logger.debug('LOAD_DATA', `Loaded ${Array.isArray(parsed) ? parsed.length : 'N/A'} items for ${key}`);
-                return parsed;
+                return JSON.parse(rawData);
             } catch (error) {
                 logger.error('LOAD_DATA', error, { key, rawData });
                 const backupKey = `${key}_corrupted_${Date.now()}`;
                 localStorage.setItem(backupKey, rawData);
                 localStorage.removeItem(key);
-                logger.info('RECOVERY', `Corrupted data for "${key}" backed up to "${backupKey}" and cleared.`);
-                showModal('Data Corruption', `<p>Your saved data for ${key.replace(/_/g, ' ')} was corrupted and has been cleared. A backup of the corrupted data was saved.</p>`, [{label: 'OK'}]);
+                showModal('Data Corruption', `<p>Your saved data for ${key.replace(/_/g, ' ')} was corrupted. A backup was saved.</p>`, [{label: 'OK'}]);
                 return defaultValue;
             }
         };
@@ -247,7 +242,9 @@
         let activeNoteId = null;
         let initialAppData = null;
         let draggedItemId = null;
+        let previouslyFocusedElement = null;
 
+        const sortAppData = () => appData.sort((a, b) => a.name.localeCompare(b.name));
         const saveShortcutsData = () => localStorage.setItem('dashboard_shortcuts_data', JSON.stringify(shortcutsData));
         const saveAppData = () => localStorage.setItem('dashboard_app_data', JSON.stringify(appData));
         const saveNotesData = () => localStorage.setItem('dashboard_notepad_state', JSON.stringify(notesData));
@@ -277,32 +274,51 @@
             return p.innerHTML;
         };
         
+        const toCsvField = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+        
         const parseCsvRow = (row) => {
+            const regex = /(?:^|,)(\"(?:[^\"]+|\"\")*\"|[^,]*)/g;
+            let matches;
             const result = [];
-            let current = '';
-            let inQuotes = false;
-            for (let i = 0; i < row.length; i++) {
-                const char = row[i];
-                if (char === '"' && (i === 0 || row[i-1] !== '\\')) { // Handle escaped quotes later if needed
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
+            while ((matches = regex.exec(row))) {
+                let value = matches[1] || '';
+                if (value.startsWith('"') && value.endsWith('"')) {
+                    value = value.slice(1, -1).replace(/""/g, '"');
                 }
+                result.push(value);
             }
-            result.push(current.trim());
-            return result.map(val => val.replace(/^"|"$/g, '')); // Remove surrounding quotes
+            return result;
         };
-
 
         // --- DOM ELEMENTS CACHE ---
         const D = new Proxy({}, { get: (_, id) => document.getElementById(id) });
         
-        // --- MODAL LOGIC ---
-        // LLM-NOTE: A custom modal is used instead of native alert()/confirm() for better UX in the sidebar.
+        // --- MODAL LOGIC (ACCESSIBILITY ENHANCED) ---
+        const handleModalFocus = (e) => {
+            if (e.key !== 'Tab') return;
+            const focusableElements = Array.from(D['modal-content'].querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            ));
+            if (focusableElements.length === 0) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (e.shiftKey) { // Shift + Tab
+                if (document.activeElement === firstElement) {
+                    lastElement.focus();
+                    e.preventDefault();
+                }
+            } else { // Tab
+                if (document.activeElement === lastElement) {
+                    firstElement.focus();
+                    e.preventDefault();
+                }
+            }
+        };
+
         const showModal = (title, contentHtml, actions) => {
+            previouslyFocusedElement = document.activeElement;
             D['modal-content'].innerHTML = `<h3>${escapeHTML(title)}</h3><div class="modal-body">${contentHtml}</div><div class="modal-actions"></div>`;
             const actionsContainer = D['modal-content'].querySelector('.modal-actions');
             actions.forEach(action => {
@@ -310,319 +326,30 @@
                 btn.className = `button-base ${action.class || ''}`; btn.textContent = action.label;
                 btn.onclick = () => { 
                     const result = action.callback ? action.callback() : true;
-                    if (result !== false) { // Allow callback to prevent closing
+                    if (result !== false) {
                         hideModal();
                     }
                 };
                 actionsContainer.appendChild(btn);
             });
             D['modal-overlay'].style.display = 'flex';
+            document.addEventListener('keydown', handleModalFocus);
+            const firstInput = D['modal-content'].querySelector('input, button');
+            if(firstInput) firstInput.focus();
         };
-        const hideModal = () => { D['modal-overlay'].style.display = 'none'; };
+
+        const hideModal = () => { 
+            D['modal-overlay'].style.display = 'none'; 
+            document.removeEventListener('keydown', handleModalFocus);
+            if (previouslyFocusedElement) previouslyFocusedElement.focus();
+        };
 
         // --- RENDERING FUNCTIONS ---
         const renderShortcuts = () => {
             const shortcutsContainer = D['shortcuts-container'];
             shortcutsContainer.innerHTML = '';
             if (shortcutsData.length === 0) { 
-                shortcutsContainer.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem            outline: 2px solid var(--primary-color); outline-offset: -1px; background-color: white;
-        }
-        .sidebar-textarea { resize: vertical; min-height: 50px; }
-        .button-base {
-            padding: 0.35rem 0.6rem; font-size: 0.8rem; border: 1px solid var(--border-color);
-            border-radius: 0.375rem; cursor: pointer; background-color: #fff; transition: all 0.2s;
-            font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem;
-        }
-        .button-base:hover { background-color: #f8fafc; }
-        .button-base:disabled { background-color: #f1f5f9; color: var(--subtle-text); cursor: not-allowed; border-color: var(--border-color);}
-        .button-primary { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
-        .button-primary:hover { background-color: #2563eb; }
-        .button-danger { background-color: var(--danger-color); color: white; border-color: var(--danger-color); }
-        .button-danger:hover { background-color: #dc2626; }
-        .button-success { background-color: var(--success-color); color: white; border-color: var(--success-color); }
-
-        .form-group { margin-bottom: 0.75rem; }
-        .form-group label { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; display: block; }
-        .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-        /* LLM-NOTE: This wrapper aligns the section title and the actions menu. */
-        .section-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-        .section-header { font-size: 1rem; font-weight: 600; color: var(--text-color); margin: 0; }
-        .divider { border-top: 1px solid var(--border-color); margin: 1rem 0; }
-
-        .url-links-container, .shortcuts-container { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem; padding: 0.5rem; background-color: var(--info-bg); border-radius: 0.375rem; }
-        .url-links-container a, .shortcut-item a { color: var(--primary-color); text-decoration: none; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
-        .url-links-container a:hover, .shortcut-item a:hover { text-decoration: underline; }
-        #url-editor { margin-top: 0.5rem; }
-        .label-group { display: flex; justify-content: space-between; align-items: center; }
-        .label-group .button-base { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
-        
-        .delete-btn {
-            /* LLM-NOTE: Styled as a button for accessibility, but visually looks like an icon. */
-            background: none; border: none; padding: 0; margin: 0;
-            cursor: pointer; color: var(--subtle-text); font-size: 1.2rem; line-height: 1;
-            padding: 0 0.3rem; border-radius: 50%; transition: background-color 0.2s, color 0.2s;
-        }
-        .delete-btn:hover { background-color: #fee2e2; color: var(--danger-color); }
-        .shortcut-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0; }
-        .drag-handle { cursor: grab; color: var(--subtle-text); padding-right: 0.25rem; }
-        .drag-handle:active { cursor: grabbing; }
-        .shortcut-item.dragging { opacity: 0.4; }
-
-        .notepad-wrapper {
-            display: flex; flex-direction: column;
-            flex-grow: 1; 
-            min-height: 200px; /* Ensures it has a minimum size even if other content is large. */
-        }
-        .notepad-header { position: relative; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border-color); background-color: var(--info-bg); }
-        .notepad-header .sidebar-input { margin-bottom: 0; flex-grow: 1; }
-        .notepad-editor { width: 100%; flex-grow: 1; border: none; resize: none; padding: 0.5rem; font-size: 0.875rem; line-height: 1.6; box-sizing: border-box; font-family: inherit; }
-        .notepad-editor:focus { outline: none; }
-        #save-indicator { position: absolute; right: 0.75rem; top: -1.2rem; font-size: 0.75rem; color: var(--success-color); opacity: 0; transition: opacity 0.3s, top 0.3s; }
-
-        .hidden { display: none; }
-        
-        .actions-menu-wrapper { position: relative; }
-        .actions-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 0.375rem;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            z-index: 100;
-            width: 150px;
-            padding: 0.25rem 0;
-            margin-top: 0.25rem;
-        }
-        .actions-menu-item { display: block; padding: 0.5rem 0.75rem; color: var(--text-color); text-decoration: none; font-size: 0.875rem; }
-        .actions-menu-item:hover { background-color: var(--bg-color); }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(100,116,139,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
-        .modal-content { background: var(--panel-bg); padding: 1.5rem; border-radius: 0.75rem; max-width: 400px; width: 90%; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
-        .modal-content h3 { margin-top: 0; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #111827;
-                --panel-bg: #1f2937;
-                --border-color: #374151;
-                --text-color: #f9fafb;
-                --subtle-text: #9ca3af;
-                --primary-color: #60a5fa;
-                --info-bg: #111827;
-            }
-            .button-base { background-color: #374151; border-color: #4b5563; }
-            .button-base:hover { background-color: #4b5563; }
-            .input-base, .sidebar-input, .sidebar-textarea { background-color: #374151; border-color: #4b5563; color: var(--text-color); }
-            .input-base:focus, .sidebar-input:focus, .sidebar-textarea:focus { background-color: #1f2937; }
-            .actions-menu { border-color: #4b5563; }
-            .actions-menu-item:hover { background-color: #374151; }
-        }
-    </style>
-</head>
-<body>
-    <!-- LLM-NOTE: This file is designed for the Microsoft Edge Sidebar. -->
-    <!-- All layout and UX decisions must prioritize vertical space and a narrow viewport. -->
-    <!-- Avoid horizontal scrolling and wide elements. -->
-    <div class="app-container">
-        <div class="panel">
-            <div class="main-content">
-                <div id="shortcuts-container" class="shortcuts-container"></div>
-                <div class="divider"></div>
-
-                <div class="section-header-wrapper">
-                    <h3 class="section-header">Applications</h3>
-                    <div class="actions-menu-wrapper">
-                        <button id="actions-btn" class="button-base">Actions</button>
-                        <div id="actions-menu" class="actions-menu hidden">
-                            <a href="#" id="add-shortcut-btn-menu" class="actions-menu-item">+ Shortcut</a>
-                            <a href="#" id="add-new-app-btn-menu" class="actions-menu-item">+ App</a>
-                            <a href="#" id="import-csv-btn-menu" class="actions-menu-item">Import</a>
-                            <a href="#" id="export-csv-btn-menu" class="actions-menu-item">Export</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="app-select">Select Application</label>
-                    <select id="app-select" class="sidebar-input"></select>
-                </div>
-                <div id="app-details-form" class="hidden">
-                    <div class="form-group">
-                        <label for="edit-app-name">Official Name / Other Name</label>
-                        <input type="text" id="edit-app-name" class="sidebar-input">
-                    </div>
-                    <div class="form-group">
-                        <div class="label-group">
-                            <label for="edit-app-urls">URLs (one per line)</label>
-                            <button id="toggle-url-editor-btn" class="button-base">Edit</button>
-                        </div>
-                        <div class="url-links-container" id="url-links-container"></div>
-                        <div id="url-editor" class="hidden">
-                           <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-app-escalation">Notes</label>
-                        <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
-                    </div>
-                    <div class="button-group">
-                        <button id="save-changes-btn" class="button-base button-primary" style="padding: 0.3rem 0.8rem;">Save Changes</button>
-                        <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
-                    </div>
-                </div>
-
-                <div class="divider"></div>
-
-                <h3 class="section-header">Notepad</h3>
-                <div class="notepad-wrapper">
-                    <div id="notepad-header" class="notepad-header">
-                        <div id="save-indicator">Saved ✓</div>
-                        <select id="note-select" class="sidebar-input"></select>
-                        <button id="new-note-btn" class="button-base" title="New Note">+</button>
-                        <button id="rename-note-btn" class="button-base" title="Rename Note">Rename</button>
-                        <button id="delete-note-btn" class="button-base button-danger" title="Delete Current Note">&times;</button>
-                    </div>
-                    <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing..."></textarea>
-                </div>
-            </div>
-            <input type="file" id="csv-file-input" accept=".csv" class="hidden">
-        </div>
-    </div>
-
-    <div id="modal-overlay" class="modal-overlay">
-        <div id="modal-content" class="modal-content"></div>
-    </div>
-
-    <script>
-    {
-        // --- SCRIPT OVERVIEW ---
-        // LLM-NOTE: This script follows a simple, single-file architecture for portability.
-        // Its primary target is the Microsoft Edge Sidebar, so UI/UX choices prioritize vertical space.
-        // Key sections: State Management, Rendering Functions, Core Logic/Event Listeners, Initialization.
-        const APP_VERSION = '1.4.1'; // Version bump for dark mode modal fix
-        const DEBUG_MODE = true; // Set to false for production
-
-        // --- LOGGER ---
-        const logger = {
-            info: (context, data) => console.log(`[${APP_VERSION}][${context}]`, data),
-            error: (context, error, data = null) => {
-                console.error(`[${APP_VERSION}][ERROR][${context}]`, error);
-                if (data) console.error('[ERROR_DATA]', data);
-            },
-            debug: (context, data) => DEBUG_MODE && console.log(`[${APP_VERSION}][DEBUG][${context}]`, data)
-        };
-        logger.info('INIT', `Dashboard starting up.`);
-
-        // --- STATE MANAGEMENT ---
-        const loadData = (key, defaultValue = []) => {
-            const rawData = localStorage.getItem(key);
-            if (!rawData) {
-                logger.debug('LOAD_DATA', `No data found for key: ${key}`);
-                return defaultValue;
-            }
-            try {
-                const parsed = JSON.parse(rawData);
-                logger.debug('LOAD_DATA', `Loaded ${Array.isArray(parsed) ? parsed.length : 'N/A'} items for ${key}`);
-                return parsed;
-            } catch (error) {
-                logger.error('LOAD_DATA', error, { key, rawData });
-                const backupKey = `${key}_corrupted_${Date.now()}`;
-                localStorage.setItem(backupKey, rawData);
-                localStorage.removeItem(key);
-                logger.info('RECOVERY', `Corrupted data for "${key}" backed up to "${backupKey}" and cleared.`);
-                showModal('Data Corruption', `<p>Your saved data for ${key.replace(/_/g, ' ')} was corrupted and has been cleared. A backup of the corrupted data was saved.</p>`, [{label: 'OK'}]);
-                return defaultValue;
-            }
-        };
-
-        let appData = loadData('dashboard_app_data');
-        let notesData = loadData('dashboard_notepad_state');
-        let shortcutsData = loadData('dashboard_shortcuts_data');
-        let activeNoteId = null;
-        let initialAppData = null;
-        let draggedItemId = null;
-
-        const saveShortcutsData = () => localStorage.setItem('dashboard_shortcuts_data', JSON.stringify(shortcutsData));
-        const saveAppData = () => localStorage.setItem('dashboard_app_data', JSON.stringify(appData));
-        const saveNotesData = () => localStorage.setItem('dashboard_notepad_state', JSON.stringify(notesData));
-        
-        // --- UTILITIES & VALIDATORS ---
-        const debounce = (func, delay) => {
-            let timeout;
-            return (...args) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func(...args), delay);
-            };
-        };
-
-        const validators = {
-            appName: (name) => name && name.trim().length > 0 && name.trim().length <= 100,
-            noteTitle: (title) => title && title.trim().length > 0 && title.trim().length <= 50,
-            shortcutName: (name) => name && name.trim().length > 0 && name.trim().length <= 50,
-            isSafeUrl: (url) => {
-                const trimmed = url.trim();
-                return trimmed.startsWith('http:') || trimmed.startsWith('https:') || trimmed.startsWith('mailto:') || trimmed.startsWith('//') || /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(trimmed);
-            }
-        };
-        
-        const escapeHTML = (str) => {
-            const p = document.createElement('p');
-            p.textContent = str;
-            return p.innerHTML;
-        };
-        
-        const parseCsvRow = (row) => {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            for (let i = 0; i < row.length; i++) {
-                const char = row[i];
-                if (char === '"' && (i === 0 || row[i-1] !== '\\')) { // Handle escaped quotes later if needed
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            result.push(current.trim());
-            return result.map(val => val.replace(/^"|"$/g, '')); // Remove surrounding quotes
-        };
-
-
-        // --- DOM ELEMENTS CACHE ---
-        const D = new Proxy({}, { get: (_, id) => document.getElementById(id) });
-        
-        // --- MODAL LOGIC ---
-        // LLM-NOTE: A custom modal is used instead of native alert()/confirm() because native dialogs
-        // are often blocked or have poor UX in embedded environments like the Edge Sidebar.
-        const showModal = (title, contentHtml, actions) => {
-            D['modal-content'].innerHTML = `<h3>${escapeHTML(title)}</h3><div class="modal-body">${contentHtml}</div><div class="modal-actions"></div>`;
-            const actionsContainer = D['modal-content'].querySelector('.modal-actions');
-            actions.forEach(action => {
-                const btn = document.createElement('button');
-                btn.className = `button-base ${action.class || ''}`; btn.textContent = action.label;
-                btn.onclick = () => { 
-                    const result = action.callback ? action.callback() : true;
-                    if (result !== false) { // Allow callback to prevent closing
-                        hideModal();
-                    }
-                };
-                actionsContainer.appendChild(btn);
-            });
-            D['modal-overlay'].style.display = 'flex';
-        };
-        const hideModal = () => { D['modal-overlay'].style.display = 'none'; };
-
-        // --- RENDERING FUNCTIONS ---
-        const renderShortcuts = () => {
-            const shortcutsContainer = D['shortcuts-container'];
-            shortcutsContainer.innerHTML = '';
-            if (shortcutsData.length === 0) { 
-                shortcutsContainer.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem;">No shortcuts. Add one from the 'Actions' menu.</span>`; 
+                shortcutsContainer.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add one from the 'Actions' menu.</span>`; 
                 return; 
             }
             shortcutsData.forEach((shortcut) => {
@@ -633,10 +360,7 @@
 
                 const handle = document.createElement('span');
                 handle.className = 'drag-handle';
-                handle.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 10 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4 14C4 15.1 3.1 16 2 16C0.9 16 0 15.1 0 14C0 12.9 0.9 12 2 12C3.1 12 4 12.9 4 14ZM2 6C0.9 6 0 6.9 0 8C0 9.1 0.9 10 2 10C3.1 10 4 9.1 4 8C4 6.9 3.1 6 2 6ZM0 2C0 3.1 0.9 4 2 4C3.1 4 4 3.1 4 2C4 0.9 3.1 0 2 0C0.9 0 0 0.9 0 2ZM8 4C9.1 4 10 3.1 10 2C10 0.9 9.1 0 8 0C6.9 0 6 0.9 6 2C6 3.1 6.9 4 8 4ZM6 8C6 9.1 6.9 10 8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8ZM8 12C6.9 12 6 12.9 6 14C6 15.1 6.9 16 8 16C9.1 16 10 15.1 10 14C10 12.9 9.1 12 8 12Z"/>
-                    </svg>`;
+                handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 10 16" fill="currentColor"><path d="M4 14C4 15.1 3.1 16 2 16C0.9 16 0 15.1 0 14C0 12.9 0.9 12 2 12C3.1 12 4 12.9 4 14ZM2 6C0.9 6 0 6.9 0 8C0 9.1 0.9 10 2 10C3.1 10 4 9.1 4 8C4 6.9 3.1 6 2 6ZM0 2C0 3.1 0.9 4 2 4C3.1 4 4 3.1 4 2C4 0.9 3.1 0 2 0C0.9 0 0 0.9 0 2ZM8 4C9.1 4 10 3.1 10 2C10 0.9 9.1 0 8 0C6.9 0 6 0.9 6 2C6 3.1 6.9 4 8 4ZM6 8C6 9.1 6.9 10 8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8ZM8 12C6.9 12 6 12.9 6 14C6 15.1 6.9 16 8 16C9.1 16 10 15.1 10 14C10 12.9 9.1 12 8 12Z"/></svg>`;
 
                 const a = document.createElement('a');
                 a.href = validators.isSafeUrl(shortcut.url) ? shortcut.url : '#';
@@ -662,7 +386,7 @@
             const appSelect = D['app-select'];
             const selectedValue = appSelect.value;
             appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-            appData.sort((a, b) => a.name.localeCompare(b.name)).forEach(app => {
+            appData.forEach(app => { // Data is now pre-sorted
                 const option = new Option(app.name, app.id);
                 appSelect.add(option);
             });
@@ -725,8 +449,7 @@
 
         D['app-select'].addEventListener('change', () => {
             const selectedId = D['app-select'].value;
-            const appDetailsForm = D['app-details-form'];
-            appDetailsForm.classList.toggle('hidden', selectedId === '');
+            D['app-details-form'].classList.toggle('hidden', selectedId === '');
             D['url-editor'].classList.add('hidden');
             D['toggle-url-editor-btn'].textContent = 'Edit';
             if (selectedId !== '') {
@@ -769,11 +492,11 @@
                 appData.push(newApp);
                 newSelectedId = newApp.id;
             }
+            sortAppData();
             saveAppData(); 
             renderAppData();
-            const appSelect = D['app-select'];
-            appSelect.value = newSelectedId; 
-            appSelect.dispatchEvent(new Event('change'));
+            D['app-select'].value = newSelectedId; 
+            D['app-select'].dispatchEvent(new Event('change'));
             
             const btn = e.target;
             btn.disabled = true;
@@ -781,8 +504,8 @@
             btn.textContent = 'Saved ✓';
             setTimeout(() => {
                 btn.classList.remove('button-success');
-                btn.textContent = 'Save Changes';
-                checkFormDirty(); // Re-check state after timeout
+                btn.textContent = 'Save';
+                checkFormDirty();
             }, 2000);
         });
 
@@ -823,6 +546,7 @@
                     };
                 });
                 appData.push(...newApps);
+                sortAppData();
                 saveAppData();
                 renderAppData();
             } catch (error) { 
@@ -848,7 +572,10 @@
         }, 1000);
 
         D['notepad-header'].addEventListener('click', (e) => {
-            const targetId = e.target.id;
+            const button = e.target.closest('button');
+            if (!button) return;
+            const targetId = button.id;
+
             if (targetId === 'new-note-btn') {
                 const newId = Date.now();
                 notesData.push({ id: newId, title: `Note ${notesData.length + 1}`, content: '' });
@@ -886,10 +613,10 @@
                                 note.title = newTitle; 
                                 saveNotesData(); 
                                 renderNotesData();
-                                return true; // Allow modal to close
+                                return true;
                             } else {
                                 showModal('Validation Error', '<p>Note title must be between 1 and 50 characters.</p>', [{label: 'OK'}]);
-                                return false; // Prevent modal from closing
+                                return false;
                             }
                         }
                     }
@@ -1016,7 +743,7 @@
                 D['edit-app-name'].value = ''; 
                 D['edit-app-urls'].value = ''; 
                 D['edit-app-escalation'].value = '';
-                initialAppData = {name: '', urls: '', escalation: ''}; 
+                initialAppData = {id: null, name: '', urls: '', escalation: ''}; 
                 renderUrlLinks('');
                 D['app-details-form'].classList.remove('hidden'); 
                 D['edit-app-name'].focus(); 
@@ -1029,10 +756,8 @@
                     return; 
                 }
                 const headers = "officialName/otherKnownName,urls,notes";
-                const csv = appData.map(a => 
-                    [a.name, a.urls, a.escalation].map(f => `"${(f || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`).join(',')
-                ).join('\r\n');
-                const blob = new Blob([headers + '\r\n' + csv], { type: 'text/csv;charset=utf-8;' });
+                const csvContent = appData.map(a => [a.name, a.urls, a.escalation].map(toCsvField).join(',')).join('\r\n');
+                const blob = new Blob([headers + '\r\n' + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 link.download = `dashboard-export-${new Date().toISOString().slice(0,10)}.csv`;
@@ -1048,6 +773,7 @@
         });
         
         // --- INITIALIZATION ---
+        sortAppData();
         renderShortcuts();
         renderAppData();
         renderNotesData();
