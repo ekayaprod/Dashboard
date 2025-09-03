@@ -54,17 +54,24 @@
         .save-btn { padding: 0.3rem 0.8rem; }
 
         .form-group { margin-bottom: 0.75rem; }
+        .form-group:last-child { margin-bottom: 0; }
         .form-group label { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; display: block; }
         .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
         .section-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
         .section-header { font-size: 1rem; font-weight: 600; color: var(--text-color); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .divider { border-top: 1px solid var(--border-color); margin: 1rem 0; }
         
-        #app-details-form {
+        .app-section-box {
             background-color: var(--info-bg);
             border: 1px solid var(--border-color);
             border-radius: 0.375rem;
             padding: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .empty-state-message {
+            text-align: center; padding: 1rem; font-size: 0.875rem; color: var(--subtle-text);
+            background-color: var(--info-bg); border-radius: 0.375rem;
         }
 
         .shortcuts-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
@@ -83,8 +90,19 @@
         .copy-btn:hover { background-color: #e0e7ff; color: var(--primary-color); }
         .copy-btn { font-size: 1rem; }
         .shortcut-item { 
-            display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem;
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem;
             background-color: var(--info-bg); border-radius: 0.375rem; border: 1px solid var(--border-color);
+        }
+        .shortcut-item a {
+            color: var(--primary-color);
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+        }
+        .shortcut-item a:hover {
+            text-decoration: underline;
         }
         .drag-handle { cursor: grab; color: var(--subtle-text); padding-right: 0.25rem; font-size: 1.2rem; }
         .drag-handle:active { cursor: grabbing; }
@@ -95,7 +113,6 @@
         .notepad-header .sidebar-input { margin-bottom: 0; flex-grow: 1; }
         .notepad-editor { width: 100%; flex-grow: 1; border: 1px solid var(--border-color); border-radius: 0.375rem; resize: none; padding: 0.5rem; font-size: 0.875rem; line-height: 1.6; box-sizing: border-box; font-family: inherit; }
         .notepad-editor:focus { outline: none; border-color: var(--primary-color); }
-        #save-indicator { position: absolute; right: 0.75rem; top: -1.2rem; font-size: 0.75rem; color: var(--success-color); opacity: 0; transition: opacity 0.3s, top 0.3s; }
 
         .hidden { display: none; }
         
@@ -123,6 +140,14 @@
         .toast.show { opacity: 1; bottom: 1.5rem; }
         .toast button { background: none; border: 1px solid #64748b; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; }
         .toast button:hover { background-color: #475569; }
+
+        #autosave-indicator {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            text-align: center; font-size: 0.75rem; padding: 0.25rem;
+            background-color: var(--panel-bg); color: var(--subtle-text);
+            border-top: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
 
         @media (prefers-color-scheme: dark) {
             :root {
@@ -160,34 +185,42 @@
                         </div>
                     </div>
                 </div>
-                 <div class="form-group">
+                 <div class="form-group" id="app-select-group">
                     <label for="app-select">Select Application</label>
                     <select id="app-select" class="sidebar-input"></select>
                 </div>
-                <div id="app-details-form" class="hidden">
+                <div id="app-empty-state" class="empty-state-message hidden">
+                    No applications yet. Click 'Actions' &gt; '+ App' to add one!
+                </div>
+
+                <div id="app-details-container" class="hidden">
+                    <div id="app-details-header" class="label-group" style="margin-bottom: 0.75rem;">
+                        <h4 id="app-details-title" class="section-header" style="margin: 0;"></h4>
+                        <div class="button-group">
+                            <button id="toggle-details-editor-btn" class="button-base icon-btn" title="Edit Details">✎</button>
+                            <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
+                            <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
+                        </div>
+                    </div>
                     <div id="app-editor-fields">
-                        <div class="form-group hidden" id="edit-app-name-wrapper">
-                            <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
-                        </div>
-                        <div class="form-group">
-                            <div class="label-group">
+                        <div class="app-section-box">
+                            <div class="form-group hidden" id="edit-app-name-wrapper">
+                                <label for="edit-app-name">App Name</label>
+                                <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
+                            </div>
+                            <div class="form-group">
                                 <label for="edit-app-urls">URLs (one per line)</label>
-                                <button id="toggle-details-editor-btn" class="button-base icon-btn" title="Edit Details">✎</button>
-                            </div>
-                            <div class="url-links-container" id="url-links-container"></div>
-                            <div id="url-editor" class="hidden">
-                               <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
+                                <div class="url-links-container" id="url-links-container"></div>
+                                <div id="url-editor" class="hidden">
+                                   <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <div class="label-group">
-                                 <label for="edit-app-escalation">Notes</label>
-                                 <div class="button-group">
-                                    <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
-                                    <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
-                                 </div>
+                        <div class="app-section-box">
+                            <div class="form-group">
+                                <label for="edit-app-escalation">Notes</label>
+                                <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                             </div>
-                            <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                         </div>
                     </div>
                 </div>
@@ -196,7 +229,6 @@
 
                 <div class="notepad-wrapper">
                     <div id="notepad-header" class="notepad-header">
-                        <div id="save-indicator">Saved ✓</div>
                         <select id="note-select" class="sidebar-input"></select>
                         <button id="new-note-btn" class="button-base icon-btn" title="New Note">+</button>
                         <button id="rename-note-btn" class="button-base icon-btn" title="Rename Note">✎</button>
@@ -206,6 +238,7 @@
                 </div>
             </div>
             <div id="toast" class="toast"></div>
+            <div id="autosave-indicator"></div>
             <input type="file" id="restore-file-input" accept=".json" class="hidden">
         </div>
     </div>
@@ -219,16 +252,18 @@
         // --- SCRIPT OVERVIEW ---
         // LLM-NOTE: This script is for a single-file, local-only dashboard in the Edge Sidebar.
         // It uses a unified state model for atomic saves and robust JSON-based backup/restore.
-        const APP_VERSION = '2.5.0'; // Robustness update
+        const APP_VERSION = '2.8.0'; // UX Feedback Update
 
         // --- DOM ELEMENT CACHE (SAFE ACCESS) ---
         const DOMElements = {
             shortcutsContainer: document.getElementById('shortcuts-container'),
             appSelect: document.getElementById('app-select'),
+            appSelectGroup: document.getElementById('app-select-group'),
+            appEmptyState: document.getElementById('app-empty-state'),
             modalOverlay: document.getElementById('modal-overlay'),
             modalContent: document.getElementById('modal-content'),
-            appDetailsForm: document.getElementById('app-details-form'),
-            appSectionHeader: document.getElementById('app-section-header'),
+            appDetailsContainer: document.getElementById('app-details-container'),
+            appDetailsTitle: document.getElementById('app-details-title'),
             editAppNameWrapper: document.getElementById('edit-app-name-wrapper'),
             urlEditor: document.getElementById('url-editor'),
             toggleDetailsEditorBtn: document.getElementById('toggle-details-editor-btn'),
@@ -244,7 +279,8 @@
             noteSelect: document.getElementById('note-select'),
             notepadEditor: document.getElementById('notepad-editor'),
             toast: document.getElementById('toast'),
-            urlLinksContainer: document.getElementById('url-links-container')
+            urlLinksContainer: document.getElementById('url-links-container'),
+            autosaveIndicator: document.getElementById('autosave-indicator')
         };
         
         // --- STATE MANAGEMENT (UNIFIED MODEL) ---
@@ -253,7 +289,8 @@
         let activeNoteId = null;
         let initialAppData = null;
         let draggedItemId = null;
-        let undoTimers = {}; // FIXED: Manages multiple undo actions
+        let undoTimers = {};
+        let saveIndicatorTimeout;
 
         function loadState() {
             const rawState = localStorage.getItem('dashboard_state');
@@ -273,12 +310,34 @@
             }
             return { ...defaultState };
         }
+
+        const updateAutosaveIndicator = (status) => {
+            const indicator = DOMElements.autosaveIndicator;
+            clearTimeout(saveIndicatorTimeout);
+            if (status === 'saving') {
+                indicator.textContent = 'Saving...';
+                indicator.style.color = 'var(--primary-color)';
+            } else if (status === 'saved') {
+                indicator.textContent = 'All changes saved ✓';
+                indicator.style.color = 'var(--success-color)';
+                saveIndicatorTimeout = setTimeout(() => {
+                    indicator.style.color = 'var(--subtle-text)';
+                }, 2000);
+            } else if (status === 'error') {
+                indicator.textContent = 'Error saving data!';
+                indicator.style.color = 'var(--danger-color)';
+            }
+        };
+
         const saveState = () => {
+            updateAutosaveIndicator('saving');
             try {
                 const stateWithVersion = { ...state, version: APP_VERSION, timestamp: Date.now() };
                 localStorage.setItem('dashboard_state', JSON.stringify(stateWithVersion));
+                updateAutosaveIndicator('saved');
             } catch(e) {
                 console.error("Failed to save state:", e);
+                updateAutosaveIndicator('error');
                 showToast("Error saving data");
             }
         };
@@ -323,7 +382,6 @@
         };
         const hideModal = () => { DOMElements.modalOverlay.style.display = 'none'; };
         
-        // FIXED: Handles multiple concurrent undos
         const showToast = (message, undoKey = null, undoCallback = null) => {
             const toast = DOMElements.toast;
             if (undoKey && undoTimers[undoKey]) clearTimeout(undoTimers[undoKey]);
@@ -367,9 +425,17 @@
         const renderAppData = () => {
             const appSelect = DOMElements.appSelect;
             const selectedValue = appSelect.value;
-            appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-            state.apps.sort((a,b) => a.name.localeCompare(b.name)).forEach(app => appSelect.add(new Option(app.name, app.id)));
-            if (selectedValue) appSelect.value = selectedValue;
+
+            if (state.apps.length === 0) {
+                DOMElements.appSelectGroup.classList.add('hidden');
+                DOMElements.appEmptyState.classList.remove('hidden');
+            } else {
+                DOMElements.appSelectGroup.classList.remove('hidden');
+                DOMElements.appEmptyState.classList.add('hidden');
+                appSelect.innerHTML = '<option value="">-- Select an App --</option>';
+                state.apps.sort((a,b) => a.name.localeCompare(b.name)).forEach(app => appSelect.add(new Option(app.name, app.id)));
+                if (selectedValue) appSelect.value = selectedValue;
+            }
         };
         const createShortcutElement = (shortcut) => {
             const div = document.createElement('div');
@@ -379,7 +445,6 @@
             div.innerHTML = `
                 <span class="drag-handle">☰</span>
                 <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${shortcut.name}</a>
-                <button class="copy-btn" data-url="${shortcut.url}" title="Copy URL">📋</button>
                 <button class="delete-btn" data-id="${shortcut.id}" title="Delete">&times;</button>
             `;
             return div;
@@ -399,7 +464,6 @@
             }
             
             const activeNote = state.notes.find(n => n.id == activeNoteId);
-            // FIXED: Disable editor if no notes exist
             if (activeNote) {
                 DOMElements.notepadEditor.value = activeNote.content;
                 DOMElements.notepadEditor.disabled = false;
@@ -441,13 +505,13 @@
 
         DOMElements.appSelect.addEventListener('change', () => {
             const selectedId = DOMElements.appSelect.value;
-            DOMElements.appDetailsForm.classList.toggle('hidden', !selectedId);
+            DOMElements.appDetailsContainer.classList.toggle('hidden', !selectedId);
             
             if (selectedId) {
                 const app = state.apps.find(a => a.id == selectedId);
                 if (app) {
                     initialAppData = {...app};
-                    DOMElements.appSectionHeader.textContent = `App: ${app.name}`;
+                    DOMElements.appDetailsTitle.textContent = app.name;
                     DOMElements.editAppName.value = app.name;
                     DOMElements.editAppUrls.value = app.urls;
                     DOMElements.editAppEscalation.value = app.escalation;
@@ -457,7 +521,6 @@
                     DOMElements.toggleDetailsEditorBtn.textContent = '✎';
                 }
             } else {
-                DOMElements.appSectionHeader.textContent = 'Applications';
                 initialAppData = null;
                 renderUrlLinks('');
             }
@@ -479,7 +542,6 @@
             if (!validators.notEmpty(name) || !validators.maxLength(name, 100)) return showToast('App name must be 1-100 characters');
             if (!validators.notEmpty(urls) && !validators.notEmpty(escalation)) return showToast('App must have at least one URL or a note.');
             
-            // FIXED: Prevent duplicate app names
             if (state.apps.some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedId)) {
                 return showToast('An app with this name already exists.');
             }
@@ -488,7 +550,6 @@
             if (appIndex > -1) {
                 state.apps[appIndex] = { ...state.apps[appIndex], name, urls, escalation };
             } else {
-                // FIXED: Use crypto.randomUUID for new app IDs
                 const newApp = { id: crypto.randomUUID(), name, urls, escalation };
                 state.apps.push(newApp);
                 DOMElements.appSelect.value = newApp.id;
@@ -522,7 +583,7 @@
                 itemCopy = { ...state.apps[itemIndex] };
                 name = itemCopy.name;
                 state.apps.splice(itemIndex, 1);
-                DOMElements.appDetailsForm.classList.add('hidden');
+                DOMElements.appDetailsContainer.classList.add('hidden');
                 DOMElements.appSelect.value = '';
             } else if (itemType === 'shortcut') {
                 itemIndex = state.shortcuts.findIndex(s => s.id == itemId);
@@ -586,7 +647,7 @@
 
         // --- EVENT DELEGATION ---
         DOMElements.shortcutsContainer.addEventListener('click', (e) => {
-            const target = e.target.closest('.copy-btn, .delete-btn');
+            const target = e.target.closest('.delete-btn');
             if(!target) return;
             handleDelete('shortcut', target.dataset.id);
         });
@@ -619,7 +680,6 @@
                         const name = document.getElementById('shortcut-name').value;
                         const url = document.getElementById('shortcut-url').value;
                         if(validators.notEmpty(name) && validators.maxLength(name, 50) && validators.url(url)) {
-                            // FIXED: Use crypto.randomUUID for new shortcut IDs
                             state.shortcuts.push({id: crypto.randomUUID(), name, url});
                             saveState();
                             renderShortcuts();
@@ -632,7 +692,8 @@
             }
             if (id === 'add-new-app-btn-menu') {
                 DOMElements.appSelect.value = '';
-                DOMElements.appDetailsForm.classList.remove('hidden');
+                DOMElements.appDetailsContainer.classList.remove('hidden');
+                DOMElements.appDetailsTitle.textContent = 'New Application';
                 DOMElements.editAppNameWrapper.classList.remove('hidden');
                 DOMElements.urlEditor.classList.remove('hidden');
                 DOMElements.toggleDetailsEditorBtn.textContent = '▲';
@@ -687,7 +748,6 @@
              if(!button) return;
              const id = button.id;
              if(id === 'new-note-btn') {
-                 // FIXED: Use crypto.randomUUID for new note IDs
                  const newId = crypto.randomUUID();
                  state.notes.unshift({id: newId, title: `Note ${state.notes.length + 1}`, content:''});
                  activeNoteId = newId;
@@ -736,11 +796,11 @@
         // --- INITIALIZATION ---
         const init = () => {
             if (state.notes.length === 0) {
-                // FIXED: Use crypto.randomUUID for initial note
                 state.notes.push({ id: crypto.randomUUID(), title: 'Note 1', content: '' });
                 saveState();
             }
             renderAll();
+            updateAutosaveIndicator('saved');
         };
 
         init();
