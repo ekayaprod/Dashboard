@@ -6,7 +6,6 @@
     <title>Support Call Dashboard</title>
     <style>
         /* LLM-NOTE: CSS is optimized for a single-column, narrow viewport (Edge Sidebar). */
-        /* Key principles: flexbox for vertical stretching, no fixed widths, and responsive units. */
         :root {
             --bg-color: #f4f7fa; --panel-bg: #ffffff; --border-color: #e2e8f0;
             --text-color: #1e293b; --subtle-text: #64748b; --primary-color: #3b82f6;
@@ -23,7 +22,7 @@
         .panel {
             background-color: var(--panel-bg); border-radius: 0.5rem; border: 1px solid var(--border-color);
             box-shadow: 0 2px 4px -1px rgba(0,0,0,0.06); display: flex; flex-direction: column;
-            overflow: hidden; width: 100%;
+            overflow: hidden; width: 100%; position: relative;
         }
         .main-content {
             padding: 0.75rem; overflow-y: auto; flex-grow: 1;
@@ -58,22 +57,31 @@
         .form-group label { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; display: block; }
         .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
         .section-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-        .section-header { font-size: 1rem; font-weight: 600; color: var(--text-color); margin: 0; }
+        .section-header { font-size: 1rem; font-weight: 600; color: var(--text-color); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .divider { border-top: 1px solid var(--border-color); margin: 1rem 0; }
         
+        #app-details-form {
+            background-color: var(--info-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+        }
+
         .shortcuts-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-        .url-links-container a, .shortcut-item a { color: var(--primary-color); text-decoration: none; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
-        .url-links-container a:hover, .shortcut-item a:hover { text-decoration: underline; }
-        #url-editor { margin-top: 0.5rem; }
+        .url-link-item { display: flex; align-items: center; gap: 0.5rem; }
+        .url-link-item a { color: var(--primary-color); text-decoration: none; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        .url-link-item a:hover { text-decoration: underline; }
         .label-group { display: flex; justify-content: space-between; align-items: center; }
         .label-group .button-base { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
         
-        .delete-btn {
+        .delete-btn, .copy-btn {
             background: none; border: none; padding: 0; margin: 0;
             cursor: pointer; color: var(--subtle-text); font-size: 1.2rem; line-height: 1;
             padding: 0 0.3rem; border-radius: 50%; transition: background-color 0.2s, color 0.2s;
         }
         .delete-btn:hover { background-color: var(--danger-hover-bg); color: var(--danger-color); }
+        .copy-btn:hover { background-color: #e0e7ff; color: var(--primary-color); }
+        .copy-btn { font-size: 1rem; }
         .shortcut-item { 
             display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem;
             background-color: var(--info-bg); border-radius: 0.375rem; border: 1px solid var(--border-color);
@@ -105,6 +113,16 @@
         .modal-content { background: var(--panel-bg); padding: 1.5rem; border-radius: 0.75rem; max-width: 400px; width: 90%; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
         .modal-content h3 { margin-top: 0; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
+        
+        .toast {
+            position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
+            background-color: #334155; color: white; padding: 0.75rem 1rem; border-radius: 0.5rem;
+            display: flex; align-items: center; gap: 1rem; z-index: 3000;
+            opacity: 0; transition: opacity 0.3s, bottom 0.3s;
+        }
+        .toast.show { opacity: 1; bottom: 1.5rem; }
+        .toast button { background: none; border: 1px solid #64748b; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; }
+        .toast button:hover { background-color: #475569; }
 
         @media (prefers-color-scheme: dark) {
             :root {
@@ -131,7 +149,7 @@
                 <div class="divider"></div>
 
                 <div class="section-header-wrapper">
-                    <h3 class="section-header">Applications</h3>
+                    <h3 id="app-section-header" class="section-header">Applications</h3>
                     <div class="actions-menu-wrapper">
                         <button id="actions-btn" class="button-base">Actions</button>
                         <div id="actions-menu" class="actions-menu hidden">
@@ -142,33 +160,35 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                 <div class="form-group">
                     <label for="app-select">Select Application</label>
                     <select id="app-select" class="sidebar-input"></select>
                 </div>
                 <div id="app-details-form" class="hidden">
-                    <div class="form-group">
-                        <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
-                    </div>
-                    <div class="form-group">
-                        <div class="label-group">
-                            <label for="edit-app-urls">URLs (one per line)</label>
-                            <button id="toggle-url-editor-btn" class="button-base">Edit</button>
+                    <div id="app-editor-fields">
+                        <div class="form-group hidden" id="edit-app-name-wrapper">
+                            <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
                         </div>
-                        <div class="url-links-container" id="url-links-container"></div>
-                        <div id="url-editor" class="hidden">
-                           <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
+                        <div class="form-group">
+                            <div class="label-group">
+                                <label for="edit-app-urls">URLs (one per line)</label>
+                                <button id="toggle-details-editor-btn" class="button-base icon-btn" title="Edit Details">✎</button>
+                            </div>
+                            <div class="url-links-container" id="url-links-container"></div>
+                            <div id="url-editor" class="hidden">
+                               <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="label-group">
-                             <label for="edit-app-escalation">Notes</label>
-                             <div class="button-group">
-                                <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
-                                <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
-                             </div>
+                        <div class="form-group">
+                            <div class="label-group">
+                                 <label for="edit-app-escalation">Notes</label>
+                                 <div class="button-group">
+                                    <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
+                                    <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
+                                 </div>
+                            </div>
+                            <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                         </div>
-                        <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                     </div>
                 </div>
 
@@ -185,6 +205,7 @@
                     <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing..."></textarea>
                 </div>
             </div>
+            <div id="toast" class="toast"></div>
             <input type="file" id="restore-file-input" accept=".json" class="hidden">
         </div>
     </div>
@@ -198,48 +219,69 @@
         // --- SCRIPT OVERVIEW ---
         // LLM-NOTE: This script is for a single-file, local-only dashboard in the Edge Sidebar.
         // It uses a unified state model for atomic saves and robust JSON-based backup/restore.
-        const APP_VERSION = '1.9.1'; // Removed migration code.
+        const APP_VERSION = '2.5.0'; // Robustness update
 
-        // --- DOM ELEMENT CACHE ---
-        const D = new Proxy({}, { get: (_, id) => document.getElementById(id) });
-        const C = { // Cached containers for frequent use
-            shortcuts: D['shortcuts-container'],
-            appSelect: D['app-select'],
-            modalOverlay: D['modal-overlay'],
-            modalContent: D['modal-content'],
-        };
-
-        // --- STATE MANAGEMENT (UNIFIED MODEL) ---
-        const defaultState = {
-            version: APP_VERSION,
-            apps: [],
-            notes: [],
-            shortcuts: []
-        };
-
-        const loadState = () => {
-            const rawState = localStorage.getItem('dashboard_state');
-            if (rawState) {
-                try {
-                    return { ...defaultState, ...JSON.parse(rawState) };
-                } catch (error) {
-                    console.error('[LOAD_STATE]', error, rawState);
-                    const backupKey = `dashboard_state_corrupted_${Date.now()}`;
-                    localStorage.setItem(backupKey, rawState);
-                    localStorage.removeItem('dashboard_state');
-                    showModal('Data Corruption', `<p>Your saved data was corrupted. A backup was saved.</p>`, [{label: 'OK'}]);
-                }
-            }
-            return defaultState;
+        // --- DOM ELEMENT CACHE (SAFE ACCESS) ---
+        const DOMElements = {
+            shortcutsContainer: document.getElementById('shortcuts-container'),
+            appSelect: document.getElementById('app-select'),
+            modalOverlay: document.getElementById('modal-overlay'),
+            modalContent: document.getElementById('modal-content'),
+            appDetailsForm: document.getElementById('app-details-form'),
+            appSectionHeader: document.getElementById('app-section-header'),
+            editAppNameWrapper: document.getElementById('edit-app-name-wrapper'),
+            urlEditor: document.getElementById('url-editor'),
+            toggleDetailsEditorBtn: document.getElementById('toggle-details-editor-btn'),
+            editAppName: document.getElementById('edit-app-name'),
+            editAppUrls: document.getElementById('edit-app-urls'),
+            editAppEscalation: document.getElementById('edit-app-escalation'),
+            saveChangesBtn: document.getElementById('save-changes-btn'),
+            deleteAppBtn: document.getElementById('delete-app-btn'),
+            actionsBtn: document.getElementById('actions-btn'),
+            actionsMenu: document.getElementById('actions-menu'),
+            restoreFileInput: document.getElementById('restore-file-input'),
+            notepadHeader: document.getElementById('notepad-header'),
+            noteSelect: document.getElementById('note-select'),
+            notepadEditor: document.getElementById('notepad-editor'),
+            toast: document.getElementById('toast'),
+            urlLinksContainer: document.getElementById('url-links-container')
         };
         
+        // --- STATE MANAGEMENT (UNIFIED MODEL) ---
+        const defaultState = { apps: [], notes: [], shortcuts: [] };
         let state = loadState();
         let activeNoteId = null;
         let initialAppData = null;
         let draggedItemId = null;
-        let previouslyFocusedElement = null;
+        let undoTimers = {}; // FIXED: Manages multiple undo actions
 
-        const saveState = () => localStorage.setItem('dashboard_state', JSON.stringify(state));
+        function loadState() {
+            const rawState = localStorage.getItem('dashboard_state');
+            if(rawState) {
+                try {
+                    const parsed = JSON.parse(rawState);
+                    return {
+                        apps: Array.isArray(parsed.apps) ? parsed.apps : [],
+                        notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+                        shortcuts: Array.isArray(parsed.shortcuts) ? parsed.shortcuts : [],
+                        version: parsed.version || APP_VERSION
+                    };
+                } catch(e) { 
+                    console.error("Failed to load state", e);
+                    localStorage.setItem('dashboard_state_corrupted_' + Date.now(), rawState);
+                }
+            }
+            return { ...defaultState };
+        }
+        const saveState = () => {
+            try {
+                const stateWithVersion = { ...state, version: APP_VERSION, timestamp: Date.now() };
+                localStorage.setItem('dashboard_state', JSON.stringify(stateWithVersion));
+            } catch(e) {
+                console.error("Failed to save state:", e);
+                showToast("Error saving data");
+            }
+        };
         
         // --- UTILITIES & VALIDATORS ---
         const debounce = (func, delay) => {
@@ -249,388 +291,455 @@
                 timeout = setTimeout(() => func(...args), delay);
             };
         };
-
         const validators = {
-            appName: (name) => name && name.trim().length > 0 && name.trim().length <= 100,
-            noteTitle: (title) => title && title.trim().length > 0 && title.trim().length <= 50,
-            shortcutName: (name) => name && name.trim().length > 0 && name.trim().length <= 50,
-            isSafeUrl: (url) => {
-                const trimmed = url.trim();
-                return trimmed.startsWith('http:') || trimmed.startsWith('https:') || trimmed.startsWith('mailto:') || trimmed.startsWith('//') || /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(trimmed);
-            }
+            url: (value) => {
+                if (!validators.notEmpty(value)) return false;
+                let urlToTest = value.trim();
+                if (!urlToTest.match(/^(\w+?:\/\/)/)) urlToTest = 'https://' + urlToTest;
+                try {
+                    const parsedUrl = new URL(urlToTest);
+                    return parsedUrl.hostname.includes('.') || parsedUrl.hostname === 'localhost';
+                } catch { return false; }
+            },
+            notEmpty: (value) => value && value.trim().length > 0,
+            maxLength: (value, max) => value.length <= max,
         };
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard')).catch(err => console.error('Failed to copy:', err));
+        }
 
-        // --- MODAL LOGIC ---
+        // --- MODAL & TOAST NOTIFICATION LOGIC ---
         const showModal = (title, contentHtml, actions) => {
-            previouslyFocusedElement = document.activeElement;
-            C.modalContent.innerHTML = `<h3>${title}</h3><div class="modal-body">${contentHtml}</div><div class="modal-actions"></div>`;
-            const actionsContainer = C.modalContent.querySelector('.modal-actions');
+            DOMElements.modalContent.innerHTML = `<h3>${title}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
+            const actionsContainer = DOMElements.modalContent.querySelector('.modal-actions');
             actions.forEach(action => {
                 const btn = document.createElement('button');
-                btn.className = `button-base ${action.class || ''}`; btn.textContent = action.label;
-                btn.onclick = () => { if (action.callback ? action.callback() !== false : true) hideModal(); };
+                btn.className = `button-base ${action.class || ''}`;
+                btn.textContent = action.label;
+                btn.onclick = () => { if (!action.callback || action.callback() !== false) hideModal(); };
                 actionsContainer.appendChild(btn);
             });
-            C.modalOverlay.style.display = 'flex';
-            const firstInput = C.modalContent.querySelector('input, button');
-            if(firstInput) firstInput.focus();
+            DOMElements.modalOverlay.style.display = 'flex';
         };
+        const hideModal = () => { DOMElements.modalOverlay.style.display = 'none'; };
+        
+        // FIXED: Handles multiple concurrent undos
+        const showToast = (message, undoKey = null, undoCallback = null) => {
+            const toast = DOMElements.toast;
+            if (undoKey && undoTimers[undoKey]) clearTimeout(undoTimers[undoKey]);
 
-        const hideModal = () => { 
-            C.modalOverlay.style.display = 'none'; 
-            if (previouslyFocusedElement) previouslyFocusedElement.focus();
-        };
-
-        // --- EFFICIENT RENDERING FUNCTIONS ---
-        const renderShortcuts = () => {
-             if (state.shortcuts.length === 0) { 
-                C.shortcuts.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add one from the 'Actions' menu.</span>`; 
-                return; 
+            toast.innerHTML = `<span>${message}</span>`;
+            if (undoKey && undoCallback) {
+                const undoButton = document.createElement('button');
+                undoButton.textContent = 'Undo';
+                undoButton.onclick = () => {
+                    undoCallback();
+                    toast.classList.remove('show');
+                    clearTimeout(undoTimers[undoKey]);
+                    delete undoTimers[undoKey];
+                };
+                toast.appendChild(undoButton);
+                undoTimers[undoKey] = setTimeout(() => {
+                    toast.classList.remove('show');
+                    saveState();
+                    delete undoTimers[undoKey];
+                }, 7000);
+            } else {
+                 setTimeout(() => toast.classList.remove('show'), 3000);
             }
-            C.shortcuts.innerHTML = '';
-            state.shortcuts.forEach(shortcut => C.shortcuts.appendChild(createShortcutElement(shortcut)));
+            toast.classList.add('show');
         };
-        
-        const renderAppData = () => {
-            const selectedValue = C.appSelect.value;
-            const fragment = document.createDocumentFragment();
-            state.apps.forEach(app => fragment.appendChild(new Option(app.name, app.id)));
-            C.appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-            C.appSelect.appendChild(fragment);
-            if (selectedValue) C.appSelect.value = selectedValue;
-            else D['app-details-form'].classList.add('hidden');
-        };
-        
-        const createShortcutElement = (shortcut) => {
-            const itemDiv = document.createElement('div'); 
-            itemDiv.className = 'shortcut-item';
-            itemDiv.draggable = true;
-            itemDiv.dataset.id = shortcut.id;
-            
-            const handle = document.createElement('span');
-            handle.className = 'drag-handle';
-            handle.textContent = '☰';
-            
-            const a = document.createElement('a');
-            a.href = validators.isSafeUrl(shortcut.url) ? shortcut.url : '#';
-            a.textContent = shortcut.name;
-            a.title = shortcut.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
 
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn delete-shortcut-btn';
-            deleteBtn.innerHTML = '&times;'; deleteBtn.dataset.id = shortcut.id; deleteBtn.title = 'Delete Shortcut';
-            
-            itemDiv.appendChild(handle);
-            itemDiv.appendChild(a);
-            itemDiv.appendChild(deleteBtn);
-            return itemDiv;
+        // --- RENDERING FUNCTIONS ---
+        const renderShortcuts = () => {
+            const container = DOMElements.shortcutsContainer;
+            container.innerHTML = '';
+            if (state.shortcuts.length === 0) {
+                 container.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add from 'Actions'.</span>`; 
+            } else {
+                state.shortcuts.forEach(shortcut => {
+                    const element = createShortcutElement(shortcut);
+                    addDragAndDropListeners(element);
+                    container.appendChild(element);
+                });
+            }
         };
-        
-        const renderNotesData = () => {
-            const noteSelect = D['note-select'];
-            const selectedValue = noteSelect.value;
+        const renderAppData = () => {
+            const appSelect = DOMElements.appSelect;
+            const selectedValue = appSelect.value;
+            appSelect.innerHTML = '<option value="">-- Select an App --</option>';
+            state.apps.sort((a,b) => a.name.localeCompare(b.name)).forEach(app => appSelect.add(new Option(app.name, app.id)));
+            if (selectedValue) appSelect.value = selectedValue;
+        };
+        const createShortcutElement = (shortcut) => {
+            const div = document.createElement('div');
+            div.className = 'shortcut-item';
+            div.draggable = true;
+            div.dataset.id = shortcut.id;
+            div.innerHTML = `
+                <span class="drag-handle">☰</span>
+                <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${shortcut.name}</a>
+                <button class="copy-btn" data-url="${shortcut.url}" title="Copy URL">📋</button>
+                <button class="delete-btn" data-id="${shortcut.id}" title="Delete">&times;</button>
+            `;
+            return div;
+        };
+        const renderNotesData = () => { 
+            const noteSelect = DOMElements.noteSelect;
             noteSelect.innerHTML = '';
             state.notes.forEach(note => noteSelect.add(new Option(note.title, note.id)));
-
-            if (selectedValue) noteSelect.value = selectedValue;
-            else if(activeNoteId) noteSelect.value = activeNoteId;
             
-            activeNoteId = Number(noteSelect.value) || (state.notes[0]?.id || null);
-
-            const activeNote = state.notes.find(n => n.id === activeNoteId);
-            D['notepad-editor'].value = activeNote ? activeNote.content : '';
-            D['delete-note-btn'].disabled = state.notes.length <= 1;
-            D['rename-note-btn'].disabled = !activeNote;
+            if (activeNoteId && state.notes.some(n => n.id == activeNoteId)) {
+                 noteSelect.value = activeNoteId;
+            } else if (state.notes.length > 0) {
+                activeNoteId = state.notes[0].id;
+                noteSelect.value = activeNoteId;
+            } else {
+                activeNoteId = null;
+            }
+            
+            const activeNote = state.notes.find(n => n.id == activeNoteId);
+            // FIXED: Disable editor if no notes exist
+            if (activeNote) {
+                DOMElements.notepadEditor.value = activeNote.content;
+                DOMElements.notepadEditor.disabled = false;
+            } else {
+                DOMElements.notepadEditor.value = '';
+                DOMElements.notepadEditor.disabled = true;
+            }
+            DOMElements.notepadHeader.querySelector('#delete-note-btn').disabled = state.notes.length === 0;
+            DOMElements.notepadHeader.querySelector('#rename-note-btn').disabled = state.notes.length === 0;
         };
-        
-        const renderUrlLinks = (urlString) => {
-            const urlContainer = D['url-links-container'];
-            urlContainer.innerHTML = '';
-            if (!urlString) return;
-            const urls = urlString.split('\n').map(u => u.trim()).filter(Boolean);
-            if (urls.length === 0) return;
-            urls.forEach(url => {
-                const a = document.createElement('a');
-                a.href = validators.isSafeUrl(url) ? url : '#';
-                a.textContent = url; a.title = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
-                urlContainer.appendChild(a);
-            });
+        const renderUrlLinks = (urlString) => { 
+            const container = DOMElements.urlLinksContainer;
+            container.innerHTML = '';
+            if(urlString) {
+                urlString.split('\n').filter(url => url.trim()).forEach(url => {
+                     const div = document.createElement('div');
+                     div.className = 'url-link-item';
+                     div.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a><button class="copy-btn" data-url="${url}" title="Copy URL">📋</button>`;
+                     container.appendChild(div);
+                });
+            }
         };
-        
-        const renderAll = () => {
-            renderShortcuts();
-            renderAppData();
-            renderNotesData();
-        };
+        const renderAll = () => { renderShortcuts(); renderAppData(); renderNotesData(); };
 
         // --- CORE LOGIC & EVENT LISTENERS ---
         const checkFormDirty = () => {
-            if (!initialAppData) return;
-            const isDirty = D['edit-app-name'].value.trim() !== initialAppData.name || D['edit-app-urls'].value.trim() !== initialAppData.urls || D['edit-app-escalation'].value.trim() !== initialAppData.escalation;
-            D['save-changes-btn'].disabled = !isDirty;
+            if (!initialAppData) return false;
+            const nameDirty = DOMElements.editAppName.value.trim() !== initialAppData.name;
+            const urlsDirty = DOMElements.editAppUrls.value.trim() !== initialAppData.urls;
+            const escalationDirty = DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
+            return nameDirty || urlsDirty || escalationDirty;
+        };
+        const updateSaveButtonState = () => {
+            if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
         };
 
-        ['edit-app-name', 'edit-app-urls', 'edit-app-escalation'].forEach(id => D[id].addEventListener('input', checkFormDirty));
+        [DOMElements.editAppName, DOMElements.editAppUrls, DOMElements.editAppEscalation].forEach(el => el.addEventListener('input', updateSaveButtonState));
+        DOMElements.editAppUrls.addEventListener('input', () => renderUrlLinks(DOMElements.editAppUrls.value));
 
-        D['app-select'].addEventListener('change', () => {
-            const selectedId = D['app-select'].value;
-            D['app-details-form'].classList.toggle('hidden', selectedId === '');
-            D['url-editor'].classList.add('hidden');
-            D['toggle-url-editor-btn'].textContent = 'Edit';
+        DOMElements.appSelect.addEventListener('change', () => {
+            const selectedId = DOMElements.appSelect.value;
+            DOMElements.appDetailsForm.classList.toggle('hidden', !selectedId);
+            
             if (selectedId) {
                 const app = state.apps.find(a => a.id == selectedId);
                 if (app) {
                     initialAppData = {...app};
-                    D['edit-app-name'].value = app.name;
-                    D['edit-app-urls'].value = app.urls;
-                    D['edit-app-escalation'].value = app.escalation;
+                    DOMElements.appSectionHeader.textContent = `App: ${app.name}`;
+                    DOMElements.editAppName.value = app.name;
+                    DOMElements.editAppUrls.value = app.urls;
+                    DOMElements.editAppEscalation.value = app.escalation;
                     renderUrlLinks(app.urls);
+                    DOMElements.editAppNameWrapper.classList.add('hidden');
+                    DOMElements.urlEditor.classList.add('hidden');
+                    DOMElements.toggleDetailsEditorBtn.textContent = '✎';
                 }
             } else {
+                DOMElements.appSectionHeader.textContent = 'Applications';
                 initialAppData = null;
                 renderUrlLinks('');
             }
-            D['save-changes-btn'].disabled = true;
+            updateSaveButtonState();
         });
 
-        D['save-changes-btn'].addEventListener('click', (e) => {
-            const name = D['edit-app-name'].value.trim(); 
-            if (!validators.appName(name)) {
-                showModal('Validation Error', '<p>App name must be between 1 and 100 characters.</p>', [{label: 'OK'}]);
-                return;
-            }
-            const selectedId = D['app-select'].value;
-            const updatedData = { name, urls: D['edit-app-urls'].value.trim(), escalation: D['edit-app-escalation'].value.trim() };
+        DOMElements.toggleDetailsEditorBtn.addEventListener('click', (e) => {
+            const isHidden = DOMElements.urlEditor.classList.toggle('hidden');
+            DOMElements.editAppNameWrapper.classList.toggle('hidden', isHidden);
+            e.target.textContent = isHidden ? '✎' : '▲';
+        });
+        
+        DOMElements.saveChangesBtn.addEventListener('click', () => {
+            const name = DOMElements.editAppName.value.trim();
+            const urls = DOMElements.editAppUrls.value.trim();
+            const escalation = DOMElements.editAppEscalation.value.trim();
+            const selectedId = DOMElements.appSelect.value;
+
+            if (!validators.notEmpty(name) || !validators.maxLength(name, 100)) return showToast('App name must be 1-100 characters');
+            if (!validators.notEmpty(urls) && !validators.notEmpty(escalation)) return showToast('App must have at least one URL or a note.');
             
-            let newSelectedId;
+            // FIXED: Prevent duplicate app names
+            if (state.apps.some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedId)) {
+                return showToast('An app with this name already exists.');
+            }
+
             const appIndex = state.apps.findIndex(a => a.id == selectedId);
-
             if (appIndex > -1) {
-                state.apps[appIndex] = { ...state.apps[appIndex], ...updatedData };
-                newSelectedId = selectedId;
+                state.apps[appIndex] = { ...state.apps[appIndex], name, urls, escalation };
             } else {
-                const newApp = { ...updatedData, id: Date.now() };
+                // FIXED: Use crypto.randomUUID for new app IDs
+                const newApp = { id: crypto.randomUUID(), name, urls, escalation };
                 state.apps.push(newApp);
-                newSelectedId = newApp.id;
+                DOMElements.appSelect.value = newApp.id;
             }
-            state.apps.sort((a,b) => a.name.localeCompare(b.name));
-            saveState(); renderAppData();
-            C.appSelect.value = newSelectedId; 
-            C.appSelect.dispatchEvent(new Event('change'));
-            
-            const btn = e.target;
-            btn.disabled = true; btn.classList.add('button-success'); btn.textContent = 'Saved ✓';
-            setTimeout(() => {
-                btn.classList.remove('button-success');
-                btn.textContent = 'Save';
-                checkFormDirty();
-            }, 2000);
+            saveState();
+            renderAppData();
+            DOMElements.appSelect.dispatchEvent(new Event('change'));
+            showToast('Changes saved');
         });
 
-        D['delete-app-btn'].addEventListener('click', () => {
-            const selectedId = D['app-select'].value;
-            if (!selectedId) return;
-            const app = state.apps.find(a => a.id == selectedId);
-            if (!app) return;
-            showModal('Delete Application', `<p>Sure you want to delete "<strong>${app.name}</strong>"?</p><p>This cannot be undone.</p>`, [
-                { label: 'Cancel' },
-                { label: 'Delete', class: 'button-danger', callback: () => {
-                    state.apps = state.apps.filter(a => a.id != selectedId);
-                    saveState(); renderAppData(); D['app-details-form'].classList.add('hidden');
-                }}
-            ]);
-        });
-        
-        const showSaveIndicator = () => {
-            const indicator = D['save-indicator'];
-            indicator.style.top = '0.25rem'; indicator.style.opacity = '1';
-            setTimeout(() => {
-                indicator.style.top = '-1.2rem';
-                indicator.style.opacity = '0';
-            }, 1500);
+        const handleDelete = (itemType, itemId) => { 
+            let itemIndex, itemCopy, name;
+            const undoKey = `${itemType}-${itemId}`;
+            const undo = () => {
+                if(itemType === 'app') state.apps.splice(itemIndex, 0, itemCopy);
+                if(itemType === 'shortcut') state.shortcuts.splice(itemIndex, 0, itemCopy);
+                if(itemType === 'note') {
+                    state.notes.splice(itemIndex, 0, itemCopy);
+                    activeNoteId = itemCopy.id;
+                }
+                saveState();
+                renderAll();
+                if(itemType === 'app') DOMElements.appSelect.value = itemCopy.id;
+                DOMElements.appSelect.dispatchEvent(new Event('change'));
+                showToast(`${name} restored.`);
+            };
+
+            if (itemType === 'app') {
+                itemIndex = state.apps.findIndex(a => a.id == itemId);
+                if(itemIndex === -1) return;
+                itemCopy = { ...state.apps[itemIndex] };
+                name = itemCopy.name;
+                state.apps.splice(itemIndex, 1);
+                DOMElements.appDetailsForm.classList.add('hidden');
+                DOMElements.appSelect.value = '';
+            } else if (itemType === 'shortcut') {
+                itemIndex = state.shortcuts.findIndex(s => s.id == itemId);
+                if(itemIndex === -1) return;
+                itemCopy = { ...state.shortcuts[itemIndex] };
+                name = itemCopy.name;
+                state.shortcuts.splice(itemIndex, 1);
+            } else if (itemType === 'note') {
+                itemIndex = state.notes.findIndex(n => n.id == itemId);
+                if(itemIndex === -1) return;
+                itemCopy = { ...state.notes[itemIndex] };
+                name = itemCopy.title;
+                state.notes.splice(itemIndex, 1);
+                activeNoteId = state.notes[0]?.id || null;
+            }
+            showToast(`${name} deleted`, undoKey, undo);
+            renderAll();
         };
-        const debouncedSave = debounce(() => { saveState(); showSaveIndicator(); }, 1000);
 
-        D['notepad-header'].addEventListener('click', (e) => {
-            const button = e.target.closest('button');
-            if (!button) return;
-            const targetId = button.id;
-
-            if (targetId === 'new-note-btn') {
-                const newId = Date.now();
-                state.notes.push({ id: newId, title: `Note ${state.notes.length + 1}`, content: '' });
-                activeNoteId = newId; saveState(); renderNotesData();
-            } else if (targetId === 'delete-note-btn') {
-                if (state.notes.length <= 1) return;
-                const note = state.notes.find(n => n.id === activeNoteId);
-                if (note) showModal('Delete Note', `<p>Delete "<strong>${note.title}</strong>"?</p>`, [
-                    { label: 'Cancel' }, 
-                    { label: 'Delete', class: 'button-danger', callback: () => {
-                        state.notes = state.notes.filter(n => n.id !== activeNoteId);
-                        activeNoteId = state.notes[0]?.id || null;
-                        saveState(); renderNotesData();
-                    }}
-                ]);
-            } else if (targetId === 'rename-note-btn') {
-                const note = state.notes.find(n => n.id === activeNoteId);
-                if (!note) return;
-                const content = `<div class="form-group"><label for="note-title-input">Note Title</label><input type="text" id="note-title-input" class="input-base" value="${note.title}"></div>`;
-                showModal('Rename Note', content, [ 
-                    { label: 'Cancel' }, 
-                    { label: 'Save', class: 'button-primary', callback: () => {
-                        const newTitle = document.getElementById('note-title-input').value.trim();
-                        if (validators.noteTitle(newTitle)) { 
-                            note.title = newTitle; 
-                            saveState(); renderNotesData(); return true;
-                        } else {
-                            showModal('Validation Error', '<p>Note title must be between 1 and 50 characters.</p>', [{label: 'OK'}]);
-                            return false;
-                        }
-                    }}
-                ]);
-            }
-        });
-
-        D['note-select'].addEventListener('change', () => {
-            activeNoteId = Number(D['note-select'].value);
-            renderNotesData();
+        DOMElements.deleteAppBtn.addEventListener('click', () => {
+             const selectedId = DOMElements.appSelect.value;
+             if(selectedId) {
+                const app = state.apps.find(a => a.id == selectedId);
+                if (app) {
+                    showModal('Delete Application', `<p>Are you sure you want to delete "${app.name}"?</p>`, [
+                        {label: 'Cancel'},
+                        {label: 'Delete', class: 'button-danger', callback: () => handleDelete('app', selectedId) }
+                    ]);
+                }
+             }
         });
         
-        D['notepad-editor'].addEventListener('input', () => {
-            const note = state.notes.find(n => n.id === activeNoteId);
-            if (note) { note.content = D['notepad-editor'].value; debouncedSave(); }
-        });
+        const addDragAndDropListeners = (element) => {
+            element.addEventListener('dragstart', (e) => {
+                draggedItemId = element.dataset.id;
+                setTimeout(() => element.classList.add('dragging'), 0);
+            });
+            element.addEventListener('dragend', () => element.classList.remove('dragging'));
+        };
 
-        D['toggle-url-editor-btn'].addEventListener('click', (e) => {
-            const isHidden = D['url-editor'].classList.toggle('hidden');
-            e.target.textContent = isHidden ? 'Edit' : 'Collapse';
-        });
-
-        D['edit-app-urls'].addEventListener('input', () => renderUrlLinks(D['edit-app-urls'].value));
-
-        // Drag and drop for shortcuts
-        C.shortcuts.addEventListener('dragstart', e => {
-            const item = e.target.closest('.shortcut-item');
-            if (item) { draggedItemId = item.dataset.id; setTimeout(() => item.classList.add('dragging'), 0); }
-        });
-        C.shortcuts.addEventListener('dragend', e => {
-            const item = e.target.closest('.shortcut-item');
-            if (draggedItemId && item) { item.classList.remove('dragging'); }
+        DOMElements.shortcutsContainer.addEventListener('dragover', (e) => e.preventDefault());
+        DOMElements.shortcutsContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const targetElement = e.target.closest('.shortcut-item');
+            if (!draggedItemId) return;
+            const shortcuts = state.shortcuts;
+            const draggedIndex = shortcuts.findIndex(s => s.id == draggedItemId);
+            if (draggedIndex > -1) {
+                const [draggedItem] = shortcuts.splice(draggedIndex, 1);
+                if (targetElement && targetElement.dataset.id !== draggedItemId) {
+                    const targetIndex = shortcuts.findIndex(s => s.id == targetElement.dataset.id);
+                    shortcuts.splice(targetIndex, 0, draggedItem);
+                } else {
+                    shortcuts.push(draggedItem);
+                }
+                saveState();
+                renderShortcuts();
+            }
             draggedItemId = null;
         });
-        C.shortcuts.addEventListener('dragover', e => e.preventDefault());
-        C.shortcuts.addEventListener('drop', e => {
-            e.preventDefault();
-            const droppedOnItem = e.target.closest('.shortcut-item');
-            if (droppedOnItem && draggedItemId) {
-                const droppedOnId = droppedOnItem.dataset.id;
-                const draggedIndex = state.shortcuts.findIndex(s => s.id == draggedItemId);
-                const droppedOnIndex = state.shortcuts.findIndex(s => s.id == droppedOnId);
-                if (draggedIndex > -1 && droppedOnIndex > -1 && draggedIndex !== droppedOnIndex) {
-                    const [movedItem] = state.shortcuts.splice(draggedIndex, 1);
-                    state.shortcuts.splice(droppedOnIndex, 0, movedItem);
-                    saveState(); renderShortcuts();
-                }
+
+        // --- EVENT DELEGATION ---
+        DOMElements.shortcutsContainer.addEventListener('click', (e) => {
+            const target = e.target.closest('.copy-btn, .delete-btn');
+            if(!target) return;
+            handleDelete('shortcut', target.dataset.id);
+        });
+        DOMElements.urlLinksContainer.addEventListener('click', (e) => {
+            const target = e.target.closest('.copy-btn');
+            if(target) copyToClipboard(target.dataset.url);
+        });
+
+        DOMElements.actionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            DOMElements.actionsMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.actions-menu-wrapper')) {
+                DOMElements.actionsMenu.classList.add('hidden');
             }
         });
         
-        C.shortcuts.addEventListener('click', (e) => {
-            const deleteButton = e.target.closest('.delete-shortcut-btn');
-            if (deleteButton) {
-                const shortcutId = deleteButton.dataset.id;
-                const shortcut = state.shortcuts.find(s => s.id == shortcutId);
-                if (shortcut) showModal('Delete Shortcut', `<p>Delete "<strong>${shortcut.name}</strong>"?</p>`, [ 
-                    { label: 'Cancel' }, 
-                    { label: 'Delete', class: 'button-danger', callback: () => {
-                        state.shortcuts = state.shortcuts.filter(s => s.id != shortcutId);
-                        saveState(); renderShortcuts();
-                    }}
-                ]);
-            }
-        });
-
-        D['actions-btn'].addEventListener('click', (e) => { e.stopPropagation(); D['actions-menu'].classList.toggle('hidden'); });
-        document.addEventListener('click', () => { D['actions-menu'].classList.add('hidden'); });
-
-        D['actions-menu'].addEventListener('click', (e) => {
+        DOMElements.actionsMenu.addEventListener('click', (e) => {
             const menuItem = e.target.closest('.actions-menu-item');
-            if (!menuItem) return;
+            if(!menuItem) return;
             e.preventDefault();
             const id = menuItem.id;
             if (id === 'add-shortcut-btn-menu') {
-                const content = `<div class="form-group"><label for="shortcut-name-input">Name</label><input id="shortcut-name-input" class="input-base"></div><div class="form-group"><label for="shortcut-url-input">URL</label><input id="shortcut-url-input" class="input-base"></div>`;
-                showModal('Add Shortcut', content, [ 
-                    { label: 'Cancel' }, 
-                    { label: 'Save', class: 'button-primary', callback: () => {
-                        const name = D['shortcut-name-input'].value.trim(); 
-                        const url = D['shortcut-url-input'].value.trim();
-                        if (validators.shortcutName(name) && url && validators.isSafeUrl(url)) { 
-                            state.shortcuts.push({ id: Date.now(), name, url }); 
-                            saveState(); renderShortcuts(); return true;
+                showModal('Add Shortcut', 
+                    `<input type="text" id="shortcut-name" placeholder="Name" class="sidebar-input">
+                     <input type="text" id="shortcut-url" placeholder="URL" class="sidebar-input">`,
+                    [{label: 'Cancel'}, {label: 'Add', class:'button-primary', callback: () => {
+                        const name = document.getElementById('shortcut-name').value;
+                        const url = document.getElementById('shortcut-url').value;
+                        if(validators.notEmpty(name) && validators.maxLength(name, 50) && validators.url(url)) {
+                            // FIXED: Use crypto.randomUUID for new shortcut IDs
+                            state.shortcuts.push({id: crypto.randomUUID(), name, url});
+                            saveState();
+                            renderShortcuts();
                         } else {
-                             showModal('Validation Error', `<p>Name must be 1-50 characters, and URL must be valid.</p>`, [{label: 'OK'}]);
-                             return false;
+                            showToast('Invalid name or URL');
+                            return false;
                         }
-                    }}
-                ]);
-            } else if (id === 'add-new-app-btn-menu') {
-                C.appSelect.value = ''; 
-                D['edit-app-name'].value = ''; 
-                D['edit-app-urls'].value = ''; 
-                D['edit-app-escalation'].value = '';
-                initialAppData = {id: null, name: '', urls: '', escalation: ''}; 
-                renderUrlLinks('');
-                D['app-details-form'].classList.remove('hidden'); 
-                D['edit-app-name'].focus(); 
-                D['save-changes-btn'].disabled = true;
-            } else if (id === 'backup-btn-menu') {
-                const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `dashboard-backup-${new Date().toISOString().slice(0,10)}.json`;
-                link.click();
-                URL.revokeObjectURL(link.href);
-            } else if (id === 'restore-btn-menu') {
-                D['restore-file-input'].click();
+                    }}]
+                );
+            }
+            if (id === 'add-new-app-btn-menu') {
+                DOMElements.appSelect.value = '';
+                DOMElements.appDetailsForm.classList.remove('hidden');
+                DOMElements.editAppNameWrapper.classList.remove('hidden');
+                DOMElements.urlEditor.classList.remove('hidden');
+                DOMElements.toggleDetailsEditorBtn.textContent = '▲';
+                DOMElements.editAppName.value = '';
+                DOMElements.editAppUrls.value = '';
+                DOMElements.editAppEscalation.value = '';
+                initialAppData = {id: null, name: '', urls: '', escalation: ''};
+                updateSaveButtonState();
+            }
+            if (id === 'backup-btn-menu') {
+                 const dataStr = JSON.stringify(state, null, 2);
+                 const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                 const link = document.createElement('a');
+                 link.href = URL.createObjectURL(dataBlob);
+                 link.download = `dashboard-backup-${new Date().toISOString().split('T')[0]}.json`;
+                 link.click();
+                 URL.revokeObjectURL(link.href);
+            }
+            if(id === 'restore-btn-menu') {
+                DOMElements.restoreFileInput.click();
             }
         });
-
-        D['restore-file-input'].addEventListener('change', (e) => {
+        
+        DOMElements.restoreFileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (!file) return;
+            if(!file) return;
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    const restoredState = JSON.parse(event.target.result);
-                    if (!restoredState.apps || !restoredState.notes || !restoredState.shortcuts) {
-                        throw new Error('Invalid backup file structure.');
-                    }
-                    showModal('Confirm Restore', '<p>This will overwrite all current data. A backup of the current state will be created first. Are you sure?</p>', [
-                        { label: 'Cancel' },
-                        { label: 'Restore', class: 'button-primary', callback: () => {
-                            D['backup-btn-menu'].click();
-                            state = { ...defaultState, ...restoredState };
-                            saveState(); renderAll();
-                        }}
-                    ]);
-                } catch (error) {
-                    console.error('RESTORE', error);
-                    showModal('Restore Error', '<p>Could not read or parse the backup file.</p>', [{label: 'OK'}]);
-                } finally { e.target.value = ''; }
+                    const restored = JSON.parse(event.target.result);
+                    if(Array.isArray(restored.apps) && Array.isArray(restored.notes) && Array.isArray(restored.shortcuts)) {
+                         showModal('Confirm Restore', `<p>Overwrite all data?</p>`, [
+                            {label: 'Cancel'},
+                            {label: 'Restore', class: 'button-danger', callback: () => {
+                                state = { ...defaultState, ...restored };
+                                saveState();
+                                renderAll();
+                                showToast('Data restored');
+                            }}
+                         ]);
+                    } else { throw new Error('Invalid backup file'); }
+                } catch(err) {
+                    showToast('Failed to restore backup');
+                }
             };
             reader.readAsText(file);
+            e.target.value = '';
         });
 
-        C.modalOverlay.addEventListener('click', (e) => { if (e.target === C.modalOverlay) hideModal(); });
-        
-        // --- INITIALIZATION ---
-        const init = () => {
-            // Setup initial state once
-            if (state.notes.length === 0) {
-                state.notes.push({ id: Date.now(), title: 'Note 1', content: '' });
+        DOMElements.notepadHeader.addEventListener('click', (e) => {
+             const button = e.target.closest('button');
+             if(!button) return;
+             const id = button.id;
+             if(id === 'new-note-btn') {
+                 // FIXED: Use crypto.randomUUID for new note IDs
+                 const newId = crypto.randomUUID();
+                 state.notes.unshift({id: newId, title: `Note ${state.notes.length + 1}`, content:''});
+                 activeNoteId = newId;
+                 saveState();
+                 renderNotesData();
+             } else if (id === 'rename-note-btn' && activeNoteId) {
+                const note = state.notes.find(n => n.id == activeNoteId);
+                if(note) {
+                    showModal('Rename Note', `<input id="rename-note-input" class="sidebar-input" value="${note.title}">`, [
+                        {label: 'Cancel'},
+                        {label: 'Save', class: 'button-primary', callback: () => {
+                            const newTitle = document.getElementById('rename-note-input').value;
+                            if(validators.notEmpty(newTitle) && validators.maxLength(newTitle, 50)) {
+                                note.title = newTitle;
+                                saveState();
+                                renderNotesData();
+                            } else {
+                                showToast('Invalid title');
+                                return false;
+                            }
+                        }}
+                    ]);
+                }
+             } else if (id === 'delete-note-btn' && activeNoteId) {
+                 handleDelete('note', activeNoteId);
+             }
+        });
+
+        DOMElements.noteSelect.addEventListener('change', (e) => {
+            activeNoteId = e.target.value;
+            renderNotesData();
+        });
+
+        DOMElements.notepadEditor.addEventListener('input', debounce(() => {
+            if (!activeNoteId) return;
+            const note = state.notes.find(n => n.id == activeNoteId);
+            if(note) {
+                note.content = DOMElements.notepadEditor.value;
                 saveState();
             }
-            state.apps.sort((a,b) => a.name.localeCompare(b.name));
+        }, 500));
+        
+        DOMElements.modalOverlay.addEventListener('click', (e) => { if(e.target === DOMElements.modalOverlay) hideModal() });
+        document.addEventListener('keydown', (e) => { if(e.key === 'Escape') hideModal() });
+
+        // --- INITIALIZATION ---
+        const init = () => {
+            if (state.notes.length === 0) {
+                // FIXED: Use crypto.randomUUID for initial note
+                state.notes.push({ id: crypto.randomUUID(), title: 'Note 1', content: '' });
+                saveState();
+            }
             renderAll();
         };
 
@@ -639,3 +748,4 @@
     </script>
 </body>
 </html>
+
