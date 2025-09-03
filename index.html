@@ -37,7 +37,7 @@
         .input-base:focus, .sidebar-input:focus, .sidebar-textarea:focus {
             outline: 2px solid var(--primary-color); outline-offset: -1px; background-color: white;
         }
-        .sidebar-textarea { resize: vertical; min-height: 50px; }
+        .sidebar-textarea { resize: vertical; min-height: 120px; }
         .button-base {
             padding: 0.35rem 0.6rem; font-size: 0.8rem; border: 1px solid var(--border-color);
             border-radius: 0.375rem; cursor: pointer; background-color: #fff; transition: all 0.2s;
@@ -216,11 +216,9 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="app-section-box">
-                            <div class="form-group">
-                                <label for="edit-app-escalation">Notes</label>
-                                <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
-                            </div>
+                        <div class="form-group">
+                            <label for="edit-app-escalation">Notes</label>
+                            <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                         </div>
                     </div>
                 </div>
@@ -252,7 +250,7 @@
         // --- SCRIPT OVERVIEW ---
         // LLM-NOTE: This script is for a single-file, local-only dashboard in the Edge Sidebar.
         // It uses a unified state model for atomic saves and robust JSON-based backup/restore.
-        const APP_VERSION = '2.8.0'; // UX Feedback Update
+        const APP_VERSION = '2.9.0'; // Final UI Polish
 
         // --- DOM ELEMENT CACHE (SAFE ACCESS) ---
         const DOMElements = {
