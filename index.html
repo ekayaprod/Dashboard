@@ -18,7 +18,7 @@
             font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-color);
             display: flex; flex-direction: column;
         }
-        .app-container { height: 100vh; display: flex; padding: 0.5rem; box-sizing: border-box; }
+        .app-container { height: 100vh; display: flex; padding: 0.4rem; box-sizing: border-box; }
         .panel {
             background-color: var(--panel-bg); border-radius: 0.5rem; border: 1px solid var(--border-color);
             box-shadow: 0 2px 4px -1px rgba(0,0,0,0.06); display: flex; flex-direction: column;
@@ -74,7 +74,7 @@
             background-color: var(--info-bg); border-radius: 0.375rem;
         }
 
-        .shortcuts-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+        .shortcuts-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
         .url-link-item { display: flex; align-items: center; gap: 0.5rem; }
         .url-link-item a { color: var(--primary-color); text-decoration: none; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
         .url-link-item a:hover { text-decoration: underline; }
@@ -84,13 +84,14 @@
         .delete-btn, .copy-btn {
             background: none; border: none; padding: 0; margin: 0;
             cursor: pointer; color: var(--subtle-text); font-size: 1.2rem; line-height: 1;
-            padding: 0 0.3rem; border-radius: 50%; transition: background-color 0.2s, color 0.2s;
+            padding: 0.25rem; border-radius: 50%; transition: background-color 0.2s, color 0.2s;
+            display: flex; align-items: center; justify-content: center;
         }
         .delete-btn:hover { background-color: var(--danger-hover-bg); color: var(--danger-color); }
         .copy-btn:hover { background-color: #e0e7ff; color: var(--primary-color); }
-        .copy-btn { font-size: 1rem; }
+        .copy-btn svg { width: 14px; height: 14px; }
         .shortcut-item { 
-            display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem;
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem;
             background-color: var(--info-bg); border-radius: 0.375rem; border: 1px solid var(--border-color);
         }
         .shortcut-item a {
@@ -101,10 +102,8 @@
             text-overflow: ellipsis;
             flex-grow: 1;
         }
-        .shortcut-item a:hover {
-            text-decoration: underline;
-        }
-        .drag-handle { cursor: grab; color: var(--subtle-text); padding-right: 0.25rem; font-size: 1.2rem; }
+        .shortcut-item a:hover { text-decoration: underline; }
+        .drag-handle { cursor: grab; color: var(--subtle-text); font-size: 1.1rem; padding-right: 0.25rem; }
         .drag-handle:active { cursor: grabbing; }
         .shortcut-item.dragging { opacity: 0.4; }
 
@@ -194,14 +193,6 @@
                 </div>
 
                 <div id="app-details-container" class="hidden">
-                    <div id="app-details-header" class="label-group" style="margin-bottom: 0.75rem;">
-                        <h4 id="app-details-title" class="section-header" style="margin: 0;"></h4>
-                        <div class="button-group">
-                            <button id="toggle-details-editor-btn" class="button-base icon-btn" title="Edit Details">✎</button>
-                            <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
-                            <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
-                        </div>
-                    </div>
                     <div id="app-editor-fields">
                         <div class="app-section-box">
                             <div class="form-group hidden" id="edit-app-name-wrapper">
@@ -209,7 +200,10 @@
                                 <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
                             </div>
                             <div class="form-group">
-                                <label for="edit-app-urls">URLs (one per line)</label>
+                                <div class="label-group">
+                                    <label for="edit-app-urls">URLs (one per line)</label>
+                                    <button id="toggle-details-editor-btn" class="button-base icon-btn" title="Edit Details">✎</button>
+                                </div>
                                 <div class="url-links-container" id="url-links-container"></div>
                                 <div id="url-editor" class="hidden">
                                    <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
@@ -217,7 +211,13 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="edit-app-escalation">Notes</label>
+                            <div class="label-group">
+                                <label for="edit-app-escalation">Notes</label>
+                                <div class="button-group">
+                                    <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
+                                    <button id="delete-app-btn" class="delete-btn" title="Delete Application">&times;</button>
+                                </div>
+                            </div>
                             <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                         </div>
                     </div>
@@ -250,7 +250,7 @@
         // --- SCRIPT OVERVIEW ---
         // LLM-NOTE: This script is for a single-file, local-only dashboard in the Edge Sidebar.
         // It uses a unified state model for atomic saves and robust JSON-based backup/restore.
-        const APP_VERSION = '2.9.0'; // Final UI Polish
+        const APP_VERSION = '3.0.0'; // Major UI Overhaul
 
         // --- DOM ELEMENT CACHE (SAFE ACCESS) ---
         const DOMElements = {
@@ -261,7 +261,6 @@
             modalOverlay: document.getElementById('modal-overlay'),
             modalContent: document.getElementById('modal-content'),
             appDetailsContainer: document.getElementById('app-details-container'),
-            appDetailsTitle: document.getElementById('app-details-title'),
             editAppNameWrapper: document.getElementById('edit-app-name-wrapper'),
             urlEditor: document.getElementById('url-editor'),
             toggleDetailsEditorBtn: document.getElementById('toggle-details-editor-btn'),
@@ -479,7 +478,10 @@
                 urlString.split('\n').filter(url => url.trim()).forEach(url => {
                      const div = document.createElement('div');
                      div.className = 'url-link-item';
-                     div.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a><button class="copy-btn" data-url="${url}" title="Copy URL">📋</button>`;
+                     div.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
+                     <button class="copy-btn" data-url="${url}" title="Copy URL">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                     </button>`;
                      container.appendChild(div);
                 });
             }
@@ -509,7 +511,6 @@
                 const app = state.apps.find(a => a.id == selectedId);
                 if (app) {
                     initialAppData = {...app};
-                    DOMElements.appDetailsTitle.textContent = app.name;
                     DOMElements.editAppName.value = app.name;
                     DOMElements.editAppUrls.value = app.urls;
                     DOMElements.editAppEscalation.value = app.escalation;
@@ -691,7 +692,6 @@
             if (id === 'add-new-app-btn-menu') {
                 DOMElements.appSelect.value = '';
                 DOMElements.appDetailsContainer.classList.remove('hidden');
-                DOMElements.appDetailsTitle.textContent = 'New Application';
                 DOMElements.editAppNameWrapper.classList.remove('hidden');
                 DOMElements.urlEditor.classList.remove('hidden');
                 DOMElements.toggleDetailsEditorBtn.textContent = '▲';
