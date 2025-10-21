@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Tasks</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .task-list { list-style: none; padding: 0; }
+        .task-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .task-item:last-child { border-bottom: none; }
+        .task-item input[type="checkbox"] { width: 1.2rem; height: 1.2rem; }
+        .task-item label { flex-grow: 1; }
+        .task-item.completed label { text-decoration: line-through; color: var(--subtle-text); }
+        .task-input-group { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -13,14 +22,216 @@
                 <div class="tabs-container">
                     <a href="dashboard.html" class="tab-link">Dashboard</a>
                     <a href="tasks.html" class="tab-link active">Tasks</a>
+                    <a href="assignment_tool.html" class="tab-link">Support Toolkit</a>
                 </div>
                 
-                <h1>Tasks Page</h1>
-                <p>Content for the tasks dashboard will go here.</p>
+                <h3 class="section-header">To-Do List</h3>
+                <div class="task-input-group">
+                    <input type="text" id="new-task-input" class="sidebar-input" placeholder="Add a new task...">
+                    <button id="add-task-btn" class="button-base button-primary">Add</button>
+                </div>
 
+                <ul id="task-list" class="task-list"></ul>
+                <div id="task-empty-state" class="empty-state-message hidden">All tasks complete!</div>
+
+                <div class="divider"></div>
+                <div class="button-group">
+                    <button id="backup-tasks-btn" class="button-base">Backup Tasks</button>
+                    <button id="restore-tasks-btn" class="button-base">Restore Tasks</button>
+                    <input type="file" id="restore-tasks-input" class="hidden" accept=".json">
+                </div>
             </div>
+            <div id="toast" class="toast"></div>
         </div>
     </div>
+    <script>
+    {
+        const APP_VERSION = '5.0.0'; 
+        const LOCAL_STORAGE_KEY = 'tasks_state_v5';
+
+        const DOMElements = {
+            newTaskInput: document.getElementById('new-task-input'),
+            addTaskBtn: document.getElementById('add-task-btn'),
+            taskList: document.getElementById('task-list'),
+            taskEmptyState: document.getElementById('task-empty-state'),
+            toast: document.getElementById('toast'),
+            backupBtn: document.getElementById('backup-tasks-btn'),
+            restoreBtn: document.getElementById('restore-tasks-btn'),
+            restoreInput: document.getElementById('restore-tasks-input'),
+        };
+        
+        let tasks = [];
+        let undoTimers = {};
+
+        function loadState() {
+            const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (rawState) {
+                try {
+                    const parsed = JSON.parse(rawState);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+            return [];
+        }
+
+        const saveState = () => {
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tasks));
+            } catch (e) {
+                console.error("Failed to save state:", e);
+                showToast("Error saving data");
+            }
+        };
+
+        const showToast = (message, undoKey = null, undoCallback = null) => {
+            const toast = DOMElements.toast;
+            if (undoKey && undoTimers[undoKey]) clearTimeout(undoTimers[undoKey]);
+            toast.innerHTML = `<span>${message}</span>`;
+            if (undoKey && undoCallback) {
+                const undoButton = document.createElement('button');
+                undoButton.textContent = 'Undo';
+                undoButton.onclick = () => {
+                    undoCallback();
+                    toast.classList.remove('show');
+                    clearTimeout(undoTimers[undoKey]);
+                    delete undoTimers[undoKey];
+                };
+                toast.appendChild(undoButton);
+                undoTimers[undoKey] = setTimeout(() => {
+                    toast.classList.remove('show');
+                    saveState();
+                    delete undoTimers[undoKey];
+                }, 5000);
+            } else {
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+            toast.classList.add('show');
+        };
+
+        const renderTasks = () => {
+            const list = DOMElements.taskList;
+            list.innerHTML = '';
+            DOMElements.taskEmptyState.classList.toggle('hidden', tasks.length > 0);
+
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = `task-item ${task.completed ? 'completed' : ''}`;
+                li.dataset.id = task.id;
+                li.innerHTML = `
+                    <input type="checkbox" ${task.completed ? 'checked' : ''}>
+                    <label>${task.text}</label>
+                    <button class="delete-btn icon-btn" title="Delete Task">&times;</button>
+                `;
+                list.appendChild(li);
+            });
+        };
+
+        const addTask = () => {
+            const text = DOMElements.newTaskInput.value.trim();
+            if (text) {
+                tasks.unshift({
+                    id: crypto.randomUUID(),
+                    text: text,
+                    completed: false
+                });
+                DOMElements.newTaskInput.value = '';
+                saveState();
+                renderTasks();
+            }
+        };
+
+        const deleteTask = (taskId) => {
+            const taskIndex = tasks.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) return;
+
+            const taskCopy = { ...tasks[taskIndex] };
+            tasks.splice(taskIndex, 1);
+            
+            const undo = () => {
+                tasks.splice(taskIndex, 0, taskCopy);
+                saveState();
+                renderTasks();
+                showToast("Task restored.");
+            };
+
+            showToast("Task deleted", `task-${taskId}`, undo);
+            renderTasks();
+        };
+
+        const toggleTask = (taskId) => {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                saveState();
+                renderTasks();
+            }
+        };
+
+        DOMElements.addTaskBtn.addEventListener('click', addTask);
+        DOMElements.newTaskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+
+        DOMElements.taskList.addEventListener('click', (e) => {
+            const target = e.target;
+            const li = target.closest('.task-item');
+            if (!li) return;
+            const taskId = li.dataset.id;
+
+            if (target.type === 'checkbox') {
+                toggleTask(taskId);
+            } else if (target.closest('.delete-btn')) {
+                deleteTask(taskId);
+            }
+        });
+
+        DOMElements.backupBtn.addEventListener('click', () => {
+            const dataStr = JSON.stringify(tasks, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tasks-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        
+        DOMElements.restoreBtn.addEventListener('click', () => DOMElements.restoreInput.click());
+
+        DOMElements.restoreInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const restoredTasks = JSON.parse(event.target.result);
+                    if (Array.isArray(restoredTasks)) {
+                        tasks = restoredTasks;
+                        saveState();
+                        renderTasks();
+                        showToast('Tasks restored successfully.');
+                    } else {
+                        showToast('Invalid backup file.');
+                    }
+                } catch (err) {
+                    showToast('Failed to read backup file.');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // Reset input
+        });
+
+        const init = () => {
+            tasks = loadState();
+            renderTasks();
+        };
+
+        init();
+    }
+    </script>
 </body>
 </html>
+
 
