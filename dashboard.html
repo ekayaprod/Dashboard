@@ -176,10 +176,12 @@
                 } catch(e) { 
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
-                    return JSON.parse(JSON.stringify(defaultState));
+                    // MODE C-6 FIX: Simplified deep copy
+                    return { ...defaultState, apps: [], notes: [], shortcuts: [], version: APP_VERSION };
                 }
             }
-            return JSON.parse(JSON.stringify(defaultState));
+            // MODE C-6 FIX: Simplified deep copy
+            return { ...defaultState, apps: [], notes: [], shortcuts: [], version: APP_VERSION };
         }
 
         const saveState = () => {
@@ -206,8 +208,9 @@
             return p.innerHTML;
         };
         const validators = {
+            // MODE C-4 FIX: Simplified URL validator
             url: (value) => {
-                if (!validators.notEmpty(value)) return false;
+                if (!value?.trim()) return false;
                 let urlToTest = value.trim();
                 if (!urlToTest.match(/^(\w+?:\/\/)/)) urlToTest = 'https://' + urlToTest;
                 try {
@@ -357,27 +360,36 @@
 
                 container.addEventListener('dragover', (e) => e.preventDefault());
                 
+                // MODE B-8 FIX: Added try/catch/finally
                 container.addEventListener('drop', (e) => {
                     e.preventDefault();
                     if (!draggedItemId) return;
-                    
-                    const targetElement = e.target.closest('.shortcut-item, .shortcuts-container');
-                    if (!targetElement) return;
 
-                    const shortcuts = state.shortcuts;
-                    const draggedIndex = shortcuts.findIndex(s => s.id === draggedItemId);
-                    if (draggedIndex === -1) return;
+                    try {
+                        const targetElement = e.target.closest('.shortcut-item, .shortcuts-container');
+                        if (!targetElement) return;
 
-                    const [draggedItem] = shortcuts.splice(draggedIndex, 1);
-                    
-                    if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id !== draggedItemId) {
-                        const targetIndex = shortcuts.findIndex(s => s.id === targetElement.dataset.id);
-                        shortcuts.splice(targetIndex, 0, draggedItem);
-                    } else {
-                        shortcuts.push(draggedItem);
+                        const shortcuts = state.shortcuts;
+                        const draggedIndex = shortcuts.findIndex(s => s.id === draggedItemId);
+                        if (draggedIndex === -1) return;
+
+                        const [draggedItem] = shortcuts.splice(draggedIndex, 1);
+                        
+                        if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id !== draggedItemId) {
+                            const targetIndex = shortcuts.findIndex(s => s.id === targetElement.dataset.id);
+                            shortcuts.splice(targetIndex, 0, draggedItem);
+                        } else {
+                            shortcuts.push(draggedItem);
+                        }
+                        services.saveState();
+                        render();
+                    } catch (error) {
+                        console.error('Drag-and-drop error:', error);
+                        showToast('Error reordering shortcuts');
+                        render(); // Reset display
+                    } finally {
+                        draggedItemId = null;
                     }
-                    services.saveState();
-                    render();
                 });
             };
 
@@ -387,7 +399,8 @@
         const renderAppDropdown = (filterTerm = '') => {
             const panel = DOMElements.appDropdownPanel;
             panel.innerHTML = '';
-            const sortedApps = state.apps.sort((a,b) => a.name.localeCompare(b.name));
+            // MODE B-1 FIX: Added null safety check
+            const sortedApps = (state?.apps || []).sort((a,b) => a.name.localeCompare(b.name));
             const filteredApps = filterTerm ? sortedApps.filter(app => app.name.toLowerCase().includes(filterTerm.toLowerCase())) : sortedApps;
             
             if (filteredApps.length > 0) {
@@ -454,7 +467,8 @@
             }
         };
         const renderAll = () => { 
-            shortcutsManager.render();
+            // MODE B-2 FIX: Added null check
+            if (shortcutsManager) shortcutsManager.render();
             renderAppData();
             renderNotesData();
         };
@@ -574,8 +588,9 @@
             if (!validators.notEmpty(name) || !validators.maxLength(name, 100)) return showToast('App name must be 1-100 characters');
             if (!validators.notEmpty(urls) && !validators.notEmpty(escalation)) return showToast('App must have at least one URL or a note.');
             
+            // MODE B-5 FIX: Enhanced error message
             if (state.apps.some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedAppId)) {
-                return showToast('An app with this name already exists.');
+                return showToast('An app with this name already exists. Please use a unique name.');
             }
 
             const appIndex = state.apps.findIndex(a => a.id == selectedAppId);
@@ -772,7 +787,8 @@
             try {
                 state = loadState();
             } catch (e) {
-                state = JSON.parse(JSON.stringify(defaultState));
+                // MODE C-6 FIX: Simplified deep copy
+                state = { ...defaultState, apps: [], notes: [], shortcuts: [], version: APP_VERSION };
                 showModal('Data Corruption Detected', '<p>Saved data could not be read. A backup has been saved and the application has been reset.</p>', [{ label: 'OK' }]);
             }
 
@@ -799,3 +815,4 @@
     </script>
 </body>
 </html>
+
