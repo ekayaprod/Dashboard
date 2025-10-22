@@ -80,10 +80,12 @@
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
                     // Show a modal error on the *next* tick to ensure DOM is ready
                     setTimeout(() => showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
-                    return JSON.parse(JSON.stringify(defaultState));
+                    // MODE C-6 FIX: Simplified deep copy
+                    return { ...defaultState, exampleList: [], version: APP_VERSION };
                 }
             }
-            return JSON.parse(JSON.stringify(defaultState));
+            // MODE C-6 FIX: Simplified deep copy
+            return { ...defaultState, exampleList: [], version: APP_VERSION };
         }
 
         const saveState = () => {
@@ -146,6 +148,8 @@
             // Add your rendering logic here
             // e.g., listContainer.innerHTML = state.exampleList.map(item => `...`).join('');
         };
+
+
 
         /**
          * Attaches all event listeners for the page.
