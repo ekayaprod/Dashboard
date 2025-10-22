@@ -3,6 +3,7 @@
     --text-color: #1e293b; --subtle-text: #64748b; --primary-color: #3b82f6;
     --danger-color: #ef4444; --success-color: #22c55e; --info-bg: #f8fafc;
     --danger-hover-bg: #fee2e2;
+    --primary-hover-bg-light: #e0e7ff;
     --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 html, body { height: 100%; margin: 0; overflow: hidden; font-size: 14px; }
@@ -43,8 +44,26 @@ body {
 .button-danger { background-color: var(--danger-color); color: white; border-color: var(--danger-color); }
 .button-danger:hover { background-color: #dc2626; }
 .button-success { background-color: var(--success-color); color: white; border-color: var(--success-color); }
-.icon-btn { padding: 0.4rem; font-size: 1rem; line-height: 1; }
-.icon-btn svg { width: 16px; height: 16px; }
+
+/* --- ENHANCEMENT 4: CONSOLIDATED ICON BUTTONS --- */
+.icon-btn {
+    /* Merged properties from delete-btn/copy-btn */
+    background: none;
+    border: none;
+    margin: 0;
+    border-radius: 50%; /* Circular */
+    line-height: 1;
+    color: var(--subtle-text);
+    /* Kept original padding */
+    padding: 0.4rem; 
+    font-size: 1rem; 
+    /* Added transition */
+    transition: all 0.2s;
+}
+.icon-btn:hover {
+    background-color: var(--info-bg);
+    color: var(--text-color);
+}
 .save-btn { padding: 0.3rem 0.8rem; }
 
 .form-group { margin-bottom: 0.75rem; }
@@ -74,14 +93,18 @@ body {
 .url-link-item a:hover { text-decoration: underline; }
 .label-group { display: flex; justify-content: space-between; align-items: center; }
 
+/* --- ENHANCEMENT 4: .delete-btn & .copy-btn are now modifiers --- */
 .delete-btn, .copy-btn {
-    background: none; border: none; padding: 0; margin: 0;
-    cursor: pointer; color: var(--subtle-text);
-    padding: 0.25rem; border-radius: 50%; transition: background-color 0.2s, color 0.2s;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    /* Common styles are in .icon-btn */
+    /* We just need the :hover modifiers */
+    padding: 0.25rem; /* Copied from original for alignment */
+    display: flex;    /* Copied from original */
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 .delete-btn:hover { background-color: var(--danger-hover-bg); color: var(--danger-color); }
-.copy-btn:hover { background-color: #e0e7ff; color: var(--primary-color); }
+.copy-btn:hover { background-color: var(--primary-hover-bg-light); color: var(--primary-color); }
 .copy-btn svg, .delete-btn svg { width: 14px; height: 14px; }
 
 .shortcut-item { 
@@ -115,7 +138,11 @@ body {
     border-radius: 0.375rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     z-index: 100; width: 150px; padding: 0.25rem 0; margin-top: 0.25rem;
 }
-.actions-menu-item { display: block; padding: 0.5rem 0.75rem; color: var(--text-color); text-decoration: none; font-size: 0.875rem; }
+.actions-menu-item { 
+    display: block; padding: 0.5rem 0.75rem; color: var(--text-color); 
+    text-decoration: none; font-size: 0.875rem; 
+    transition: background-color 0.2s; /* ENHANCEMENT 1: Added transition */
+}
 .actions-menu-item:hover { background-color: var(--bg-color); }
 
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(100,116,139,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
@@ -152,6 +179,7 @@ body {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
     font-size: 0.875rem;
+    transition: background-color 0.2s, color 0.2s; /* ENHANCEMENT 1: Added transition */
 }
 .search-dropdown-item:hover, .search-dropdown-item.selected {
     background-color: var(--bg-color);
@@ -172,6 +200,7 @@ body {
     margin-bottom: -1px;
     font-size: 0.85rem;
     font-weight: 500;
+    transition: background-color 0.2s, color 0.2s; /* ENHANCEMENT 1: Added transition */
 }
 .tab-link:hover {
     color: var(--text-color);
@@ -185,7 +214,12 @@ body {
     :root {
         --bg-color: #111827; --panel-bg: #1f2937; --border-color: #374151;
         --text-color: #f9fafb; --subtle-text: #9ca3af; --primary-color: #60a5fa;
-        --info-bg: #111827; --danger-hover-bg: #4b1d1d;
+        
+        /* ENHANCEMENT 3: Refined dark mode contrast */
+        --info-bg: #1f2937; /* Was #111827 */
+        
+        --danger-hover-bg: #4b1d1d;
+        --primary-hover-bg-light: #374151; /* Dark mode equivalent for copy button */
     }
     .button-base { background-color: #374151; border-color: #4b5563; }
     .button-base:hover { background-color: #4b5563; }
@@ -193,4 +227,20 @@ body {
     .input-base:focus, .sidebar-input:focus, .sidebar-textarea:focus { background-color: #1f2937; }
     .actions-menu { border-color: #4b5563; }
     .actions-menu-item:hover { background-color: #374151; }
+    
+    /* ENHANCEMENT 4: Dark mode hover for copy button */
+    .copy-btn:hover {
+        background-color: var(--primary-hover-bg-light); 
+        color: var(--primary-color); 
+    }
+}
+
+/* --- ENHANCEMENT 2: ACCESSIBLE FOCUS STATES --- */
+.button-base:focus-visible,
+.tab-link:focus-visible,
+.search-dropdown-item:focus-visible,
+.actions-menu-item:focus-visible,
+.icon-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--primary-color);
 }
