@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .drag-handle { cursor: grab; color: var(--subtle-text); padding-right: 0.4rem; touch-action: none; }
+        .drag-handle:active { cursor: grabbing; }
+        .shortcut-item.dragging { opacity: 0.5; background: var(--primary-color); }
+        .shortcut-item > .drag-handle { flex-shrink: 0; }
+        .shortcut-item > a { flex-grow: 1; }
+        .shortcut-item > .delete-btn { flex-shrink: 0; }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -13,6 +21,7 @@
                 <div class="tabs-container">
                     <a href="dashboard.html" class="tab-link active">Dashboard</a>
                     <a href="tasks.html" class="tab-link">Tasks</a>
+                    <a href="assignment_tool.html" class="tab-link">Support Toolkit</a>
                 </div>
 
                 <div id="shortcuts-container" class="shortcuts-container"></div>
@@ -25,8 +34,9 @@
                         <div id="actions-menu" class="actions-menu hidden">
                             <a href="#" id="add-shortcut-btn-menu" class="actions-menu-item">+ Shortcut</a>
                             <a href="#" id="add-new-app-btn-menu" class="actions-menu-item">+ App</a>
-                            <a href="#" id="backup-btn-menu" class="actions-menu-item">Backup State</a>
-                            <a href="#" id="restore-btn-menu" class="actions-menu-item">Restore State</a>
+                            <div class="divider" style="margin: 0.25rem 0;"></div>
+                            <a href="#" id="backup-btn-menu" class="actions-menu-item">Backup Dashboard</a>
+                            <a href="#" id="restore-btn-menu" class="actions-menu-item">Restore Dashboard</a>
                         </div>
                     </div>
                 </div>
@@ -64,7 +74,7 @@
                                 <label for="edit-app-escalation">Notes</label>
                                 <div class="button-group">
                                     <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
-                                    <button id="delete-app-btn" class="delete-btn icon-btn" title="Delete Application"></button>
+                                    <button id="delete-app-btn" class="icon-btn delete-btn" title="Delete Application"></button>
                                 </div>
                             </div>
                             <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
@@ -95,21 +105,13 @@
 
     <script>
     {
-        /*
-            FILE: dashboard.html
-            ARCHITECTURE: Monolithic, single-file, vanilla JavaScript application.
-            ENVIRONMENT: Constrained browser sidebar. No external dependencies.
-            STATE MANAGEMENT: A single, unified state object (`state`) is the source of truth. All data is persisted to localStorage.
-            LIFECYCLE: init() -> loadState() -> renderAll() -> Event Listeners.
-        */
-        const APP_VERSION = '3.5.0'; // Refactor shortcuts into a manager module.
+        const APP_VERSION = '5.3.0'; // Mode F Refinement Release
+        const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
 
-        // Application-wide configuration constants for timing and behavior.
         const DEBOUNCE_DELAY = 500;
         const TOAST_DURATION = 3000;
         const UNDO_DURATION = 7000;
 
-        // Centralized SVG icon definitions to ensure UI consistency and maintain the single-file constraint.
         const SVGIcons = {
             plus: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`,
             pencil: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`,
@@ -118,7 +120,6 @@
             menu: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`,
         };
 
-        // Cache of frequently accessed DOM elements for performance.
         const DOMElements = {
             shortcutsContainer: document.getElementById('shortcuts-container'),
             appSelectGroup: document.getElementById('app-select-group'),
@@ -143,10 +144,19 @@
             noteSelect: document.getElementById('note-select'),
             notepadEditor: document.getElementById('notepad-editor'),
             toast: document.getElementById('toast'),
-            urlLinksContainer: document.getElementById('url-links-container')
+            urlLinksContainer: document.getElementById('url-links-container'),
+            newNoteBtn: document.getElementById('new-note-btn'),
+            renameNoteBtn: document.getElementById('rename-note-btn'),
+            deleteNoteBtn: document.getElementById('delete-note-btn')
         };
         
-        const defaultState = { apps: [], notes: [], shortcuts: [] };
+        const defaultState = {
+            apps: [],
+            notes: [],
+            shortcuts: [],
+            version: APP_VERSION
+        };
+
         let state; 
         let shortcutsManager;
         let selectedAppId = null;
@@ -155,45 +165,45 @@
         let undoTimers = {};
 
         function loadState() {
-            const rawState = localStorage.getItem('dashboard_state');
+            const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
             if(rawState) {
                 try {
                     const parsed = JSON.parse(rawState);
-                    if (!parsed || typeof parsed.apps === 'undefined' || typeof parsed.notes === 'undefined' || typeof parsed.shortcuts === 'undefined') {
+                    if (!parsed || !Array.isArray(parsed.apps) || !Array.isArray(parsed.notes) || !Array.isArray(parsed.shortcuts)) {
                         throw new Error("State data is missing core properties.");
                     }
-                    return {
-                        apps: Array.isArray(parsed.apps) ? parsed.apps : [],
-                        notes: Array.isArray(parsed.notes) ? parsed.notes : [],
-                        shortcuts: Array.isArray(parsed.shortcuts) ? parsed.shortcuts : [],
-                        version: parsed.version || APP_VERSION
-                    };
+                    return { ...defaultState, ...parsed };
                 } catch(e) { 
                     console.error("Failed to load state, backing up corrupted data.", e);
-                    localStorage.setItem('dashboard_state_corrupted_' + Date.now(), rawState);
-                    throw e;
+                    localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
+                    return JSON.parse(JSON.stringify(defaultState));
                 }
             }
-            return { ...defaultState };
+            return JSON.parse(JSON.stringify(defaultState));
         }
 
         const saveState = () => {
             try {
-                const stateWithVersion = { ...state, version: APP_VERSION, timestamp: Date.now() };
-                localStorage.setItem('dashboard_state', JSON.stringify(stateWithVersion));
+                state.version = APP_VERSION;
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
             } catch(e) {
                 console.error("Failed to save state:", e);
                 showToast("Error saving data");
             }
         };
         
-        // --- UTILITY FUNCTIONS (STATELESS & PURE) ---
         const debounce = (func, delay) => {
             let timeout;
             return (...args) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => func(...args), delay);
             };
+        };
+        const escapeHTML = (str) => {
+            if (!str) return '';
+            const p = document.createElement('p');
+            p.textContent = str;
+            return p.innerHTML;
         };
         const validators = {
             url: (value) => {
@@ -212,9 +222,8 @@
             navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard')).catch(err => console.error('Failed to copy:', err));
         }
 
-        // --- UI NOTIFICATION SYSTEM ---
         const showModal = (title, contentHtml, actions) => {
-            DOMElements.modalContent.innerHTML = `<h3>${title}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
+            DOMElements.modalContent.innerHTML = `<h3>${escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
             const actionsContainer = DOMElements.modalContent.querySelector('.modal-actions');
             actions.forEach(action => {
                 const btn = document.createElement('button');
@@ -231,7 +240,7 @@
             const toast = DOMElements.toast;
             if (undoKey && undoTimers[undoKey]) clearTimeout(undoTimers[undoKey]);
 
-            toast.innerHTML = `<span>${message}</span>`;
+            toast.innerHTML = `<span>${escapeHTML(message)}</span>`;
             if (undoKey && undoCallback) {
                 const undoButton = document.createElement('button');
                 undoButton.textContent = 'Undo';
@@ -241,6 +250,7 @@
                     clearTimeout(undoTimers[undoKey]);
                     delete undoTimers[undoKey];
                 };
+                undoButton.addEventListener('click', undoCallback, { once: true });
                 toast.appendChild(undoButton);
                 undoTimers[undoKey] = setTimeout(() => {
                     toast.classList.remove('show');
@@ -253,27 +263,42 @@
             toast.classList.add('show');
         };
 
-        // --- LOGIC MODULES ---
-        const createShortcutsManager = (globalState, dom, services) => {
+        const createShortcutsManager = (state, dom, services) => {
             const container = dom.shortcutsContainer;
+            let draggedItemId = null;
+
+            const addDragAndDropListeners = (element) => {
+                element.addEventListener('dragstart', (e) => {
+                    draggedItemId = element.dataset.id;
+                    setTimeout(() => element.classList.add('dragging'), 0);
+                });
+                element.addEventListener('dragend', () => {
+                    element.classList.remove('dragging');
+                    draggedItemId = null;
+                });
+            };
 
             const createShortcutElement = (shortcut) => {
                 const div = document.createElement('div');
                 div.className = 'shortcut-item';
                 div.dataset.id = shortcut.id;
+                div.draggable = true;
+                // Applied icon-btn class
                 div.innerHTML = `
-                    <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${shortcut.name}</a>
-                    <button class="delete-btn" data-id="${shortcut.id}" title="Delete">${services.SVGIcons.trash}</button>
+                    <span class="drag-handle" title="Drag to reorder">☰</span>
+                    <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${escapeHTML(shortcut.name)}</a>
+                    <button class="icon-btn delete-btn" data-id="${shortcut.id}" title="Delete">${services.SVGIcons.trash}</button>
                 `;
+                addDragAndDropListeners(div);
                 return div;
             };
 
             const render = () => {
                 container.innerHTML = '';
-                if (globalState.shortcuts.length === 0) {
+                if (state.shortcuts.length === 0) {
                     container.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add from 'Actions'.</span>`;
                 } else {
-                    globalState.shortcuts.forEach(shortcut => {
+                    state.shortcuts.forEach(shortcut => {
                         const element = createShortcutElement(shortcut);
                         container.appendChild(element);
                     });
@@ -281,15 +306,15 @@
             };
 
             const remove = (shortcutId) => {
-                const itemIndex = globalState.shortcuts.findIndex(s => s.id === shortcutId);
+                const itemIndex = state.shortcuts.findIndex(s => s.id === shortcutId);
                 if (itemIndex === -1) return;
 
-                const itemCopy = { ...globalState.shortcuts[itemIndex] };
+                const itemCopy = { ...state.shortcuts[itemIndex] };
                 const name = itemCopy.name;
-                globalState.shortcuts.splice(itemIndex, 1);
+                state.shortcuts.splice(itemIndex, 1);
 
                 const undo = () => {
-                    globalState.shortcuts.splice(itemIndex, 0, itemCopy);
+                    state.shortcuts.splice(itemIndex, 0, itemCopy);
                     services.saveState();
                     render();
                     services.showToast(`${name} restored.`);
@@ -310,7 +335,7 @@
                             const name = nameInput.value;
                             const url = urlInput.value;
                             if (services.validators.notEmpty(name) && services.validators.maxLength(name, 50) && services.validators.url(url)) {
-                                globalState.shortcuts.push({ id: crypto.randomUUID(), name, url });
+                                state.shortcuts.push({ id: crypto.randomUUID(), name, url });
                                 services.saveState();
                                 render();
                             } else {
@@ -329,13 +354,36 @@
                         remove(deleteBtn.dataset.id);
                     }
                 });
+
+                container.addEventListener('dragover', (e) => e.preventDefault());
+                
+                container.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (!draggedItemId) return;
+                    
+                    const targetElement = e.target.closest('.shortcut-item, .shortcuts-container');
+                    if (!targetElement) return;
+
+                    const shortcuts = state.shortcuts;
+                    const draggedIndex = shortcuts.findIndex(s => s.id === draggedItemId);
+                    if (draggedIndex === -1) return;
+
+                    const [draggedItem] = shortcuts.splice(draggedIndex, 1);
+                    
+                    if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id !== draggedItemId) {
+                        const targetIndex = shortcuts.findIndex(s => s.id === targetElement.dataset.id);
+                        shortcuts.splice(targetIndex, 0, draggedItem);
+                    } else {
+                        shortcuts.push(draggedItem);
+                    }
+                    services.saveState();
+                    render();
+                });
             };
 
             return { init, render, add };
         };
 
-
-        // --- RENDERING LOGIC (STATE -> DOM) ---
         const renderAppDropdown = (filterTerm = '') => {
             const panel = DOMElements.appDropdownPanel;
             panel.innerHTML = '';
@@ -387,8 +435,8 @@
                 DOMElements.notepadEditor.value = '';
                 DOMElements.notepadEditor.disabled = true;
             }
-            DOMElements.notepadHeader.querySelector('#delete-note-btn').disabled = state.notes.length === 0;
-            DOMElements.notepadHeader.querySelector('#rename-note-btn').disabled = state.notes.length === 0;
+            DOMElements.deleteNoteBtn.disabled = state.notes.length === 0;
+            DOMElements.renameNoteBtn.disabled = state.notes.length === 0;
         };
 
         const renderUrlLinks = (urlString) => { 
@@ -398,8 +446,9 @@
                 urlString.split('\n').filter(url => url.trim()).forEach(url => {
                      const div = document.createElement('div');
                      div.className = 'url-link-item';
-                     div.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
-                     <button class="copy-btn" data-url="${url}" title="Copy URL">${SVGIcons.copy}</button>`;
+                     // Applied icon-btn class
+                     div.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHTML(url)}</a>
+                     <button class="icon-btn copy-btn" data-url="${url}" title="Copy URL">${SVGIcons.copy}</button>`;
                      container.appendChild(div);
                 });
             }
@@ -410,7 +459,6 @@
             renderNotesData();
         };
 
-        // --- CORE LOGIC & EVENT HANDLERS (STATE MUTATION) ---
         const checkFormDirty = () => {
             if (!initialAppData) return false;
             const nameDirty = DOMElements.editAppName.value.trim() !== initialAppData.name;
@@ -461,7 +509,9 @@
             updateSaveButtonState();
         };
 
-        [DOMElements.editAppName, DOMElements.editAppUrls, DOMElements.editAppEscalation].forEach(el => el.addEventListener('input', updateSaveButtonState));
+        [DOMElements.editAppName, DOMElements.editAppUrls, DOMElements.editAppEscalation].forEach(el => {
+            el.addEventListener('input', updateSaveButtonState);
+        });
         DOMElements.editAppUrls.addEventListener('input', () => renderUrlLinks(DOMElements.editAppUrls.value));
 
         DOMElements.appSearchInput.addEventListener('focus', () => {
@@ -476,17 +526,12 @@
             const target = e.target.closest('.search-dropdown-item');
             if (target && target.dataset.id) {
                 const targetId = target.dataset.id;
-                if (targetId === selectedAppId) {
-                    DOMElements.appDropdownPanel.classList.add('hidden');
-                    return;
-                }
-
-                if (checkFormDirty()) {
+                
+                if (checkFormDirty() && targetId !== selectedAppId) {
                     showModal('Unsaved Changes', '<p>You have unsaved changes. Are you sure you want to discard them?</p>', [
-                        { label: 'Cancel' },
+                        { label: 'Cancel', callback: () => false },
                         {
-                            label: 'Discard',
-                            class: 'button-danger',
+                            label: 'Discard', class: 'button-danger',
                             callback: () => {
                                 displayAppDetails(targetId);
                                 DOMElements.appDropdownPanel.classList.add('hidden');
@@ -499,11 +544,26 @@
                 }
             }
         });
+        
+        DOMElements.appDropdownPanel.addEventListener('mouseover', (e) => {
+            const target = e.target.closest('.search-dropdown-item');
+            if (target) {
+                Array.from(DOMElements.appDropdownPanel.children).forEach(child => child.classList.remove('selected'));
+                target.classList.add('selected');
+            }
+        });
+        DOMElements.appDropdownPanel.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('.search-dropdown-item');
+            if (target) {
+                target.classList.remove('selected');
+            }
+        });
+
 
         DOMElements.toggleDetailsEditorBtn.addEventListener('click', (e) => {
             const isHidden = DOMElements.urlEditor.classList.toggle('hidden');
             DOMElements.editAppNameWrapper.classList.toggle('hidden', isHidden);
-            e.currentTarget.innerHTML = isHidden ? SVGIcons.pencil : SVGIcons.pencil;
+            e.currentTarget.innerHTML = SVGIcons.pencil;
         });
         
         DOMElements.saveChangesBtn.addEventListener('click', () => {
@@ -533,49 +593,41 @@
             showToast('Changes saved');
         });
 
-        const handleDelete = (itemType, itemId) => { 
-            let itemIndex, itemCopy, name;
-            const undoKey = `${itemType}-${itemId}`;
+        const handleDelete = (list, itemId, itemName, onUndoCallback) => {
+            const itemIndex = list.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
+
+            const itemCopy = { ...list[itemIndex] };
+            list.splice(itemIndex, 1);
+
             const undo = () => {
-                if(itemType === 'app') {
-                    state.apps.splice(itemIndex, 0, itemCopy);
-                    displayAppDetails(itemCopy.id);
-                }
-                if(itemType === 'note') {
-                    state.notes.splice(itemIndex, 0, itemCopy);
-                    activeNoteId = itemCopy.id;
-                }
+                list.splice(itemIndex, 0, itemCopy);
+                if (onUndoCallback) onUndoCallback();
                 saveState();
                 renderAll();
-                showToast(`${name} restored.`);
+                showToast(`${escapeHTML(itemName)} restored.`);
             };
 
-            if (itemType === 'app') {
-                itemIndex = state.apps.findIndex(a => a.id == itemId);
-                if(itemIndex === -1) return;
-                itemCopy = { ...state.apps[itemIndex] };
-                name = itemCopy.name;
-                state.apps.splice(itemIndex, 1);
-                displayAppDetails(null);
-            } else if (itemType === 'note') {
-                itemIndex = state.notes.findIndex(n => n.id == itemId);
-                if(itemIndex === -1) return;
-                itemCopy = { ...state.notes[itemIndex] };
-                name = itemCopy.title;
-                state.notes.splice(itemIndex, 1);
-                activeNoteId = state.notes[0]?.id || null;
-            }
-            showToast(`${name} deleted`, undoKey, undo);
-            renderAll();
+            showToast(`${escapeHTML(itemName)} deleted`, `delete-${itemId}`, undo);
         };
 
         DOMElements.deleteAppBtn.addEventListener('click', () => {
              if(selectedAppId) {
                 const app = state.apps.find(a => a.id == selectedAppId);
                 if (app) {
-                    showModal('Delete Application', `<p>Are you sure you want to delete "${app.name}"?</p>`, [
+                    showModal('Delete Application', `<p>Are you sure you want to delete "${escapeHTML(app.name)}"?</p>`, [
                         {label: 'Cancel'},
-                        {label: 'Delete', class: 'button-danger', callback: () => handleDelete('app', selectedAppId) }
+                        {
+                            label: 'Delete', 
+                            class: 'button-danger', 
+                            callback: () => {
+                                handleDelete(state.apps, selectedAppId, app.name, () => {
+                                    displayAppDetails(app.id); 
+                                });
+                                displayAppDetails(null); 
+                                renderAll();
+                            } 
+                        }
                     ]);
                 }
              }
@@ -592,12 +644,8 @@
         });
 
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.actions-menu-wrapper')) {
-                DOMElements.actionsMenu.classList.add('hidden');
-            }
-            if (!e.target.closest('.search-dropdown-wrapper')) {
-                DOMElements.appDropdownPanel.classList.add('hidden');
-            }
+            if (!e.target.closest('.actions-menu-wrapper')) DOMElements.actionsMenu.classList.add('hidden');
+            if (!e.target.closest('.search-dropdown-wrapper')) DOMElements.appDropdownPanel.classList.add('hidden');
         });
         
         DOMElements.actionsMenu.addEventListener('click', (e) => {
@@ -605,22 +653,14 @@
             if(!menuItem) return;
             e.preventDefault();
             const id = menuItem.id;
-            if (id === 'add-shortcut-btn-menu') {
-                shortcutsManager.add();
-            }
+            if (id === 'add-shortcut-btn-menu') shortcutsManager.add();
             if (id === 'add-new-app-btn-menu') {
                 if (checkFormDirty()) {
-                    showModal('Unsaved Changes', '<p>You have unsaved changes. Are you sure you want to discard them?</p>', [
+                    showModal('Unsaved Changes', '<p>Discard unsaved changes?</p>', [
                         { label: 'Cancel' },
-                        {
-                            label: 'Discard',
-                            class: 'button-danger',
-                            callback: () => createNewAppForm()
-                        }
+                        { label: 'Discard', class: 'button-danger', callback: () => createNewAppForm() }
                     ]);
-                } else {
-                    createNewAppForm();
-                }
+                } else createNewAppForm();
             }
             if (id === 'backup-btn-menu') {
                  const dataStr = JSON.stringify(state, null, 2);
@@ -631,9 +671,7 @@
                  link.click();
                  URL.revokeObjectURL(link.href);
             }
-            if(id === 'restore-btn-menu') {
-                DOMElements.restoreFileInput.click();
-            }
+            if(id === 'restore-btn-menu') DOMElements.restoreFileInput.click();
         });
         
         DOMElements.restoreFileInput.addEventListener('change', (e) => {
@@ -643,22 +681,25 @@
             reader.onload = (event) => {
                 try {
                     const restored = JSON.parse(event.target.result);
-                    if(Array.isArray(restored.apps) && Array.isArray(restored.notes) && Array.isArray(restored.shortcuts)) {
-                         showModal('Confirm Restore', `<p>Overwrite all data?</p>`, [
-                            {label: 'Cancel'},
-                            {label: 'Restore', class: 'button-danger', callback: () => {
-                                state = { ...defaultState, ...restored };
-                                saveState();
-                                displayAppDetails(null);
-                                renderAll();
-                                showToast('Data restored');
-                            }}
-                         ]);
-                    } else { throw new Error('Invalid backup file'); }
+                    if(!Array.isArray(restored.apps) || !Array.isArray(restored.notes) || !Array.isArray(restored.shortcuts)) {
+                        throw new Error('Invalid dashboard backup file structure.');
+                    }
+                    showModal('Confirm Restore', `<p>Overwrite dashboard data? This cannot be undone.</p>`, [
+                        {label: 'Cancel'},
+                        {label: 'Restore', class: 'button-danger', callback: () => {
+                            state = { ...defaultState, ...restored };
+                            saveState();
+                            displayAppDetails(null);
+                            renderAll();
+                            showToast('Dashboard data restored.');
+                        }}
+                    ]);
                 } catch(err) {
-                    showToast('Failed to restore backup');
+                    console.error("Restore failed:", err);
+                    showToast('Restore failed: ' + err.message);
                 }
             };
+            reader.onerror = () => showToast('Error reading the backup file.');
             reader.readAsText(file);
             e.target.value = '';
         });
@@ -676,7 +717,7 @@
              } else if (id === 'rename-note-btn' && activeNoteId) {
                 const note = state.notes.find(n => n.id == activeNoteId);
                 if(note) {
-                    showModal('Rename Note', `<input id="rename-note-input" class="sidebar-input" value="${note.title}">`, [
+                    showModal('Rename Note', `<input id="rename-note-input" class="sidebar-input" value="${escapeHTML(note.title)}">`, [
                         {label: 'Cancel'},
                         {label: 'Save', class: 'button-primary', callback: () => {
                             const newTitle = document.getElementById('rename-note-input').value;
@@ -692,7 +733,21 @@
                     ]);
                 }
              } else if (id === 'delete-note-btn' && activeNoteId) {
-                 handleDelete('note', activeNoteId);
+                 const note = state.notes.find(n => n.id == activeNoteId);
+                 if (!note) return;
+
+                 handleDelete(state.notes, activeNoteId, note.title, () => {
+                    activeNoteId = note.id; 
+                 });
+                 
+                 if (state.notes.length === 0) {
+                    const newNote = { id: crypto.randomUUID(), title: 'My Scratchpad', content: '' };
+                    state.notes.push(newNote);
+                    activeNoteId = newNote.id;
+                 } else {
+                    activeNoteId = state.notes[0]?.id || null;
+                 }
+                 renderAll();
              }
         });
 
@@ -713,17 +768,12 @@
         DOMElements.modalOverlay.addEventListener('click', (e) => { if(e.target === DOMElements.modalOverlay) hideModal() });
         document.addEventListener('keydown', (e) => { if(e.key === 'Escape') hideModal() });
 
-        // --- APPLICATION INITIALIZATION ---
         const init = () => {
             try {
                 state = loadState();
             } catch (e) {
-                state = { ...defaultState };
-                showModal(
-                    'Data Corruption Detected',
-                    '<p>Your saved data could not be read. A backup of the corrupted data has been saved, and the application has been reset to its default state.</p>',
-                    [{ label: 'OK' }]
-                );
+                state = JSON.parse(JSON.stringify(defaultState));
+                showModal('Data Corruption Detected', '<p>Saved data could not be read. A backup has been saved and the application has been reset.</p>', [{ label: 'OK' }]);
             }
 
             const services = { showModal, showToast, validators, SVGIcons, saveState };
@@ -733,12 +783,12 @@
             DOMElements.actionsBtn.innerHTML = SVGIcons.menu;
             DOMElements.toggleDetailsEditorBtn.innerHTML = SVGIcons.pencil;
             DOMElements.deleteAppBtn.innerHTML = SVGIcons.trash;
-            DOMElements.notepadHeader.querySelector('#new-note-btn').innerHTML = SVGIcons.plus;
-            DOMElements.notepadHeader.querySelector('#rename-note-btn').innerHTML = SVGIcons.pencil;
-            DOMElements.notepadHeader.querySelector('#delete-note-btn').innerHTML = SVGIcons.trash;
+            DOMElements.newNoteBtn.innerHTML = SVGIcons.plus;
+            DOMElements.renameNoteBtn.innerHTML = SVGIcons.pencil;
+            DOMElements.deleteNoteBtn.innerHTML = SVGIcons.trash;
 
             if (state.notes.length === 0) {
-                state.notes.push({ id: crypto.randomUUID(), title: 'Note 1', content: '' });
+                state.notes.push({ id: crypto.randomUUID(), title: 'My Scratchpad', content: '' });
                 saveState();
             }
             renderAll();
@@ -749,4 +799,3 @@
     </script>
 </body>
 </html>
-
