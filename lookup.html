@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-T">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lookup</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Styles specific to the Lookup page */
+        :root {
+            --lookup-header-bg: #2b3a4a;
+            --lookup-content-bg: #25313f;
+            --lookup-input-bg: #3c4a59;
+            --lookup-border-color: #4a5b6c;
+            --lookup-result-hover: #3a4856;
+        }
+
+        body {
+            background-color: var(--lookup-content-bg);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 10px auto;
+            padding: 0 10px;
+        }
+
+        /* Header / Search */
+        .lookup-header {
+            background-color: var(--lookup-header-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-bottom: 15px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+        }
+
+        .lookup-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        #search-input {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 1rem;
+            background-color: var(--lookup-input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--lookup-border-color);
+            border-radius: var(--border-radius);
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: var(--accent-color-light);
+            box-shadow: 0 0 5px var(--accent-color-light-translucent);
+        }
+
+        .btn-new-entry {
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-new-entry:hover {
+            background-color: var(--accent-color-dark);
+        }
+
+        /* Results Area */
+        .results-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .column {
+            background-color: var(--lookup-header-bg);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            box-shadow: var(--box-shadow);
+            /* Ensure columns don't overflow viewport height */
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .column h2 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--lookup-border-color);
+            font-size: 1.2rem;
+            position: sticky;
+            top: 0;
+            background-color: var(--lookup-header-bg);
+            z-index: 10;
+        }
+
+        .result-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .result-item, .snippet-item, .edit-form-li {
+            background-color: var(--lookup-content-bg);
+            border: 1px solid var(--lookup-border-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 10px;
+            padding: 10px;
+            transition: background-color 0.2s ease;
+        }
+
+        .result-item:hover, .snippet-item:hover {
+            background-color: var(--lookup-result-hover);
+        }
+
+        /* Give edit form a slightly different look */
+        .edit-form-li {
+            background-color: var(--lookup-result-hover); /* Make edit form stand out */
+            border-color: var(--accent-color-light);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .item-keyword {
+            font-weight: 600;
+            font-size: 1.1rem;
+            word-break: break-all;
+        }
+
+        .item-actions button, .edit-form-actions button {
+            background-color: var(--lookup-input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--lookup-border-color);
+            border-radius: 4px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 5px;
+            transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
+        }
+        
+        .item-actions button:disabled, .edit-form-actions button:disabled {
+            opacity: 0.7;
+            cursor: default;
+        }
+
+        .item-actions button:hover:not(:disabled), .edit-form-actions button:hover:not(:disabled) {
+            background-color: #4a5b6c;
+            border-color: #5a6c7d;
+        }
+
+        .item-actions .btn-delete, .edit-form-actions .btn-cancel {
+            background-color: var(--color-danger-bg);
+            border-color: var(--color-danger-border);
+            color: var(--color-danger);
+        }
+        .item-actions .btn-delete:hover:not(:disabled), .edit-form-actions .btn-cancel:hover:not(:disabled) {
+            background-color: var(--color-danger-bg-hover);
+            border-color: var(--color-danger-border-hover);
+        }
+
+        .edit-form-actions .btn-save {
+            background-color: var(--color-success-bg);
+            border-color: var(--color-success-border);
+            color: var(--color-success);
+        }
+        .edit-form-actions .btn-save:hover:not(:disabled) {
+            background-color: var(--color-success-bg-hover);
+            border-color: var(--color-success-border-hover);
+        }
+
+        .item-content {
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: var(--lookup-input-bg);
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .snippet-item .item-content {
+            cursor: pointer;
+        }
+
+        /* Edit Form */
+        .edit-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .edit-form label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .edit-form input,
+        .edit-form textarea {
+            width: 100%;
+            padding: 8px;
+            font-size: 0.9rem;
+            background-color: var(--lookup-input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--lookup-border-color);
+            border-radius: var(--border-radius);
+            box-sizing: border-box; /* Ensures padding doesn't affect width */
+            font-family: var(--font-family);
+        }
+
+        .edit-form textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .edit-form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-color-faded);
+            font-style: italic;
+        }
+        
+        /* Options Modal Import Options */
+        .import-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background-color: var(--lookup-content-bg);
+            padding: 10px;
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+        .import-options label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <ul class="nav-links">
+            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            <li><a href="lookup.html" class="nav-link active">Lookup</a></li>
+        </ul>
+        <div class="nav-actions">
+            <button id="show-options-modal" class="btn-nav">Options</button>
+            <button id="lookup-state-backup" class="btn-nav">Backup</button>
+            <button id="lookup-state-restore" class="btn-nav">Restore</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="lookup-header">
+            <h1>Lookup</h1>
+            <div class="search-controls">
+                <input type="text" id="search-input" placeholder="Search keywords...">
+                <button id="btn-add-new-entry" class="btn-new-entry">+ New Entry</button>
+            </div>
+        </header>
+
+        <main class="results-container">
+            <section class="column" id="routing-column">
+                <h2>Routing</h2>
+                <ul id="routing-results" class="result-list"></ul>
+            </section>
+            <section class="column" id="snippets-column">
+                <h2>Snippets</h2>
+                <ul id="snippets-results" class="result-list"></ul>
+            </section>
+        </main>
+    </div>
+
+    <div id="lookup-options-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-lookup-options" class="modal-close">&times;</span>
+            <h2>Lookup Options</h2>
+
+            <div class="modal-section">
+                <h3>Data Management</h3>
+                <p>Import or Export your data. Exports are great for backups or sharing.</p>
+                
+                <div class="import-options">
+                  <label><input type="radio" name="importMode" value="merge" checked> Merge with existing data (adds new, doesn't overwrite)</label>
+                  <label><input type="radio" name="importMode" value="replace"> Replace all existing data (wipes current data)</label>
+                </div>
+                
+                <div class="modal-actions">
+                    <button id="lookup-config-import-json" class="btn">Import JSON Data</button>
+                    <button id="lookup-config-export-json" class="btn">Export Data to JSON</button>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h3>Recommended File Path</h3>
+                <p>For consistency, we recommend saving your lookup data to:</p>
+                <code id="lookup-config-file-path" class="code-block">C:\Users\[YourName]\Documents\Dashboard\lookup_data.json</code>
+            </div>
+
+            <div class="modal-section">
+                <h3>JSON Data Template</h3>
+                <p>Your import file must follow this structure. You can use this as a template.</p>
+                <pre class="code-block" id="json-template">
+{
+  "routing": [
+    {
+      "id": "r1",
+      "keyword": "Password Reset",
+      "content": "Identity Management"
+    },
+    {
+      "id": "r2",
+      "keyword": "VPN Issue",
+      "content": "Network Operations"
+    }
+  ],
+  "snippets": [
+    {
+      "id": "s1",
+      "keyword": "Greeting",
+      "content": "Hello, thank you for contacting support. My name is [Your Name]. How can I help you today?"
+    },
+    {
+      "id": "s2",
+      "keyword": "Ticket Close",
+      "content": "I am closing this ticket now. Please feel free to reach out if you have any further issues."
+    }
+  ]
+}
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <div id="undo-toast" class="toast">
+        <span id="undo-toast-message"></span>
+        <button id="undo-toast-button" class="btn-toast-undo">Undo</button>
+    </div>
+
+    <input type="file" id="restore-file-input" accept="application/json" style="display: none;">
+    <input type="file" id="import-file-input" accept="application/json" style="display: none;">
+
+
+    <script>
+        /**
+         * Lookup Tool (v5.4.0)
+         * Manages knowledge base routing and text snippets.
+         * * v5.4.0 Changelog:
+         * - Fix 1: Editing state is now preserved during search (no data loss).
+         * - Fix 2: Implemented an Undo Stack for multiple-item undo.
+         * - Fix 3: Added duplicate keyword validation on save.
+         * - Fix 4: Added "Merge" vs "Replace" options for JSON import.
+         * - Fix 5: Added blank input validation for keyword and content.
+         * - Fix 6: Added "Copied!" feedback to copy buttons.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // === CONSTANTS ===
+            const APP_NAME = 'lookup';
+            const DATA_KEY = `${APP_NAME}_data`;
+            const CONFIG_KEY = `${APP_NAME}_config`;
+            const TOAST_TIMEOUT = 5000; // 5 seconds
+
+            // === DOM ELEMENTS ===
+            const searchInput = document.getElementById('search-input');
+            const routingResults = document.getElementById('routing-results');
+            const snippetsResults = document.getElementById('snippets-results');
+            const btnAddNewEntry = document.getElementById('btn-add-new-entry');
+            
+            // Modal Elements
+            const optionsModal = document.getElementById('lookup-options-modal');
+            const showOptionsBtn = document.getElementById('show-options-modal');
+            const closeOptionsBtn = document.getElementById('close-lookup-options');
+            const importBtn = document.getElementById('lookup-config-import-json');
+            const exportBtn = document.getElementById('lookup-config-export-json');
+            
+            // Backup/Restore Elements
+            const backupBtn = document.getElementById('lookup-state-backup');
+            const restoreBtn = document.getElementById('lookup-state-restore');
+            const restoreFileInput = document.getElementById('restore-file-input');
+            const importFileInput = document.getElementById('import-file-input');
+
+            // Toast Elements
+            const undoToast = document.getElementById('undo-toast');
+            const undoToastMessage = document.getElementById('undo-toast-message');
+            const undoToastButton = document.getElementById('undo-toast-button');
+
+            // === APPLICATION STATE ===
+            let state = {
+                routingData: [],
+                snippetsData: []
+            };
+            let config = {
+                recommendedPath: 'C:\\Users\\DefaultUser\\Documents\\Dashboard\\lookup_data.json'
+            };
+            
+            let undoStack = []; // Replaces lastDeletedItem
+            let toastTimer = null;
+            let currentEditState = { id: null, type: null }; // Tracks the item being edited
+
+            // === CONFIGURATION HANDLERS ===
+            
+            /**
+             * Base configuration for data types (routing, snippets).
+             * This abstraction simplifies rendering, searching, and CRUD operations.
+             */
+            const dataTypesConfig = {
+                routing: {
+                    listElement: routingResults,
+                    dataKey: 'routingData',
+                    title: 'Routing',
+                    emptyState: 'No routing entries found.',
+                    createItemElement: (item, searchTerm, type) => createResultItem(item, searchTerm, type)
+                },
+                snippets: {
+                    listElement: snippetsResults,
+                    dataKey: 'snippetsData',
+                    title: 'Snippets',
+                    emptyState: 'No snippets found.',
+                    createItemElement: (item, searchTerm, type) => createSnippetItem(item, searchTerm, type)
+                }
+            };
+
+            // === INITIALIZATION ===
+
+            /**
+             * Loads state and config from localStorage.
+             */
+            function loadState() {
+                const storedData = localStorage.getItem(DATA_KEY);
+                const storedConfig = localStorage.getItem(CONFIG_KEY);
+
+                if (storedData) {
+                    try {
+                        state = JSON.parse(storedData);
+                    } catch (e) {
+                        console.error("Failed to parse state from localStorage:", e);
+                        state = { routingData: [], snippetsData: [] };
+                    }
+                } else {
+                    // Initialize with empty state if nothing is stored
+                    state = { routingData: [], snippetsData: [] };
+                }
+
+                if (storedConfig) {
+                    try {
+                        config = JSON.parse(storedConfig);
+                    } catch (e) {
+                        console.error("Failed to parse config from localStorage:", e);
+                        // Config is less critical, use default
+                    }
+                }
+                
+                // Ensure data structure is valid after loading
+                if (!state.routingData) state.routingData = [];
+                if (!state.snippetsData) state.snippetsData = [];
+                
+                updateRecommendedPath();
+            }
+
+            /**
+             * Saves the current state to localStorage.
+             */
+            function saveState() {
+                try {
+                    localStorage.setItem(DATA_KEY, JSON.stringify(state));
+                } catch (e) {
+                    console.error("Failed to save state to localStorage:", e);
+                    showToast("Error: Failed to save data. Storage might be full.", false);
+                }
+            }
+            
+            /**
+             * Updates the recommended file path display in options.
+             */
+            function updateRecommendedPath() {
+                const pathElement = document.getElementById('lookup-config-file-path');
+                if (pathElement) {
+                    pathElement.textContent = config.recommendedPath || 'C:\\Users\\DefaultUser\\Documents\\Dashboard\\lookup_data.json';
+                }
+            }
+
+            // === UTILITY FUNCTIONS ===
+
+            /**
+             * Generates a unique ID.
+             */
+            function generateId() {
+                return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            }
+
+            /**
+             * Copies text to the clipboard.
+             * @param {string} text - The text to copy.
+             * @param {HTMLElement} [buttonEl=null] - The button element to give feedback.
+             */
+            async function copyToClipboard(text, buttonEl = null) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    if (buttonEl) {
+                        const originalText = buttonEl.textContent;
+                        buttonEl.textContent = 'Copied!';
+                        buttonEl.disabled = true;
+                        setTimeout(() => {
+                            if (buttonEl) { // Check if element still exists
+                                buttonEl.textContent = originalText;
+                                buttonEl.disabled = false;
+                            }
+                        }, 1200);
+                    }
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                    showToast("Failed to copy.", false);
+                }
+            }
+
+            /**
+             * Highlights a search term within a string.
+             * @param {string} text - The text to search within.
+             * @param {string} term - The search term to highlight.
+             * @returns {string} - HTML string with the term highlighted.
+             */
+            function highlight(text, term) {
+                if (!term) return text;
+                // Escape regex special characters in the search term
+                const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+                const regex = new RegExp(`(${escapedTerm})`, 'gi');
+                // Use textContent replacement to avoid HTML injection
+                const tempDiv = document.createElement('div');
+                tempDiv.textContent = text;
+                tempDiv.innerHTML = tempDiv.innerHTML.replace(regex, '<mark>$1</mark>');
+                return tempDiv.innerHTML;
+            }
+
+            // === DOM RENDERING ===
+
+            /**
+             * Renders a list of items for a specific data type (routing or snippets).
+             * @param {string} type - 'routing' or 'snippets'.
+             * @param {string} [searchTerm=''] - The term to filter and highlight.
+             */
+            function renderList(type, searchTerm = '') {
+                const config = dataTypesConfig[type];
+                const data = state[config.dataKey] || [];
+                config.listElement.innerHTML = ''; // Clear current list
+
+                const lowerSearchTerm = searchTerm.toLowerCase();
+                const filteredData = data.filter(item => 
+                    item.keyword.toLowerCase().includes(lowerSearchTerm)
+                );
+                
+                filteredData.sort((a, b) => a.keyword.localeCompare(b.keyword));
+
+                if (filteredData.length === 0 && (currentEditState.type !== type || currentEditState.id === null)) {
+                    config.listElement.innerHTML = `<li class="empty-state">${config.emptyState}</li>`;
+                    return;
+                }
+
+                filteredData.forEach(item => {
+                    let itemElement;
+                    // Fix 1: Check if this item is the one being edited
+                    if (item.id === currentEditState.id && type === currentEditState.type) {
+                        itemElement = createEditForm(type, item);
+                    } else {
+                        itemElement = config.createItemElement(item, searchTerm, type);
+                    }
+                    config.listElement.appendChild(itemElement);
+                });
+            }
+
+            /**
+             * Renders all lists based on the current search term.
+             */
+            function renderAll() {
+                const searchTerm = searchInput.value; // Don't trim here, allow searching for spaces
+                renderList('routing', searchTerm);
+                renderList('snippets', searchTerm);
+            }
+
+            /**
+             * Creates a DOM element for a routing result item.
+             * @param {object} item - The routing data item.
+             * @param {string} searchTerm - The current search term.
+             * @param {string} type - The data type ('routing').
+             * @returns {HTMLLIElement}
+             */
+            function createResultItem(item, searchTerm, type) {
+                const li = document.createElement('li');
+                li.className = 'result-item';
+                li.dataset.id = item.id;
+                li.dataset.type = type;
+
+                // Create content div safely
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'item-content';
+                contentDiv.textContent = item.content; // Use textContent to prevent XSS
+
+                li.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-keyword">${highlight(item.keyword, searchTerm)}</span>
+                        <div class="item-actions">
+                            <button class="btn-copy-keyword">Copy Keyword</button>
+                            <button class="btn-edit">Edit</button>
+                            <button class="btn-delete">Delete</button>
+                        </div>
+                    </div>
+                `;
+                li.appendChild(contentDiv); // Append the safe content div
+                li.innerHTML += `
+                    <div class="item-actions">
+                        <button class="btn-copy-content">Copy Content</button>
+                    </div>
+                `;
+
+                // Add event listeners
+                li.querySelector('.btn-copy-keyword').addEventListener('click', (e) => copyToClipboard(item.keyword, e.target));
+                li.querySelector('.btn-copy-content').addEventListener('click', (e) => copyToClipboard(item.content, e.target));
+                li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
+                li.querySelector('.btn-delete').addEventListener('click', () => handleDelete(item.id, type));
+
+                return li;
+            }
+
+            /**
+             * Creates a DOM element for a snippet result item.
+             * @param {object} item - The snippet data item.
+             * @param {string} searchTerm - The current search term.
+             * @param {string} type - The data type ('snippets').
+             * @returns {HTMLLIElement}
+             */
+            function createSnippetItem(item, searchTerm, type) {
+                const li = document.createElement('li');
+                li.className = 'snippet-item';
+                li.dataset.id = item.id;
+                li.dataset.type = type;
+                
+                // Create content div safely
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'item-content';
+                contentDiv.title = 'Click to copy snippet';
+                contentDiv.textContent = item.content; // Use textContent to prevent XSS
+
+                li.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-keyword">${highlight(item.keyword, searchTerm)}</span>
+                        <div class="item-actions">
+                            <button class="btn-edit">Edit</button>
+                            <button class="btn-delete">Delete</button>
+                        </div>
+                    </div>
+                `;
+                li.appendChild(contentDiv); // Append the safe content div
+
+                // Add event listeners
+                // Fix 6: Show toast on snippet content click
+                li.querySelector('.item-content').addEventListener('click', () => {
+                    copyToClipboard(item.content);
+                    showToast("Snippet copied!", false);
+                });
+                li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
+                li.querySelector('.btn-delete').addEventListener('click', () => handleDelete(item.id, type));
+
+                return li;
+            }
+            
+            /**
+             * Creates a form for adding/editing an entry.
+             * @param {string} type - 'routing' or 'snippets'.
+             * @param {object} item - The data item to edit.
+             * @returns {HTMLLIElement} - Returns an LI element wrapping the form.
+             */
+            function createEditForm(type, item) {
+                const config = dataTypesConfig[type];
+
+                const li = document.createElement('li');
+                li.className = 'edit-form-li'; // Wrapper li
+
+                const form = document.createElement('form');
+                form.className = 'edit-form';
+                form.dataset.id = item.id;
+                form.dataset.type = type;
+
+                const keywordLabel = config.title === 'Routing' ? 'Keyword (e.g., "VPN")' : 'Keyword (e.g., "Greeting")';
+                const contentLabel = config.title === 'Routing' ? 'Content (Assignment Group)' : 'Content (Snippet Text)';
+                
+                // Use textContent to safely set values
+                const keywordInput = document.createElement('input');
+                keywordInput.type = 'text';
+                keywordInput.id = `edit-keyword-${item.id}`;
+                keywordInput.value = item.keyword;
+                keywordInput.placeholder = keywordLabel;
+
+                const contentTextarea = document.createElement('textarea');
+                contentTextarea.id = `edit-content-${item.id}`;
+                contentTextarea.textContent = item.content;
+                contentTextarea.placeholder = contentLabel;
+
+                const keywordLabelEl = document.createElement('label');
+                keywordLabelEl.htmlFor = keywordInput.id;
+                keywordLabelEl.textContent = 'Keyword';
+                
+                const contentLabelEl = document.createElement('label');
+                contentLabelEl.htmlFor = contentTextarea.id;
+                contentLabelEl.textContent = 'Content';
+
+                form.appendChild(keywordLabelEl);
+                form.appendChild(keywordInput);
+                form.appendChild(contentLabelEl);
+                form.appendChild(contentTextarea);
+
+                form.innerHTML += `
+                    <div class="edit-form-actions">
+                        <button type="button" class="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn-save">Save</button>
+                    </div>
+                `;
+
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleSave(form, item.id, type);
+                });
+
+                form.querySelector('.btn-cancel').addEventListener('click', () => {
+                    // Fix 1: Handle cancel logic
+                    // If it was a new, blank item, delete it on cancel.
+                    if (item.keyword.trim() === '' && item.content.trim() === '') {
+                        handleDelete(item.id, type, true); // Pass 'true' to skip undo
+                    }
+                    currentEditState = { id: null, type: null };
+                    renderAll();
+                });
+                
+                li.appendChild(form);
+                return li;
+            }
+
+            // === CRUD HANDLERS ===
+
+            /**
+             * Handles the "Add New Entry" button click.
+             * Prompts user to select which type to add.
+             */
+            function handleAddNewEntry() {
+                // Stop any other edit
+                if (currentEditState.id) {
+                    showToast("Please save or cancel your current edit first.", false);
+                    return;
+                }
+
+                const type = prompt("What do you want to add?\nType 'routing' or 'snippets'", "routing");
+                
+                if (type === 'routing' || type === 'snippets') {
+                    const config = dataTypesConfig[type];
+                    
+                    // Fix 1: Create new item, add to state, and set as being edited
+                    const newItem = { id: generateId(), keyword: '', content: '' };
+                    state[config.dataKey].unshift(newItem); // Add to top
+                    // Do not save state yet, only on successful save
+                    
+                    currentEditState = { id: newItem.id, type: type };
+                    searchInput.value = ''; // Clear search to ensure it's visible
+                    
+                    renderAll();
+                    
+                    // Focus the new form's input
+                    const newInput = document.getElementById(`edit-keyword-${newItem.id}`);
+                    if (newInput) {
+                        newInput.focus();
+                    }
+                    
+                } else if (type !== null) {
+                    alert("Invalid type. Please enter 'routing' or 'snippets'.");
+                }
+            }
+
+            /**
+             * Handles clicking the "Edit" button on an item.
+             * @param {string} id - The ID of the item to edit.
+             * @param {string} type - The data type ('routing' or 'snippets').
+             */
+            function handleEdit(id, type) {
+                // Stop any other edit
+                if (currentEditState.id && currentEditState.id !== id) {
+                    showToast("Please save or cancel your current edit first.", false);
+                    return;
+                }
+
+                // Fix 1: Set the editing state and re-render
+                currentEditState = { id: id, type: type };
+                renderAll();
+                // Focus the input
+                const editInput = document.getElementById(`edit-keyword-${id}`);
+                if (editInput) {
+                    editInput.focus();
+                    editInput.select(); // Select text for easy replacement
+                }
+            }
+
+            /**
+             * Saves the data from an edit form (for new or existing items).
+             * @param {HTMLFormElement} form - The form element.
+             * @param {string} id - The ID of the item being saved.
+             * @param {string} type - The data type ('routing' or 'snippets').
+             */
+            function handleSave(form, id, type) {
+                // Fix 5: Trim inputs
+                const keywordInput = form.querySelector(`#edit-keyword-${id}`);
+                const contentInput = form.querySelector(`#edit-content-${id}`);
+                
+                const keyword = keywordInput.value.trim();
+                const content = contentInput.value.trim();
+                const data = state[dataTypesConfig[type].dataKey];
+                
+                // Fix 5: Validate for blank inputs
+                if (keyword === '') {
+                    showToast("Error: Keyword cannot be blank.", false);
+                    keywordInput.focus();
+                    return;
+                }
+                if (content === '') {
+                    showToast("Error: Content cannot be blank.", false);
+                    contentInput.focus();
+                    return;
+                }
+
+                // Fix 3: Validate for duplicate keywords
+                const isDuplicate = data.some(i => 
+                    i.id !== id && // Not itself
+                    i.keyword.toLowerCase() === keyword.toLowerCase()
+                );
+
+                if (isDuplicate) {
+                    showToast(`Error: Keyword "${keyword}" already exists.`, false);
+                    keywordInput.focus();
+                    return;
+                }
+
+                // All validation passed, find and update item
+                const item = data.find(i => i.id === id);
+                if (item) {
+                    item.keyword = keyword;
+                    item.content = content;
+                }
+                
+                saveState();
+                
+                // Fix 1: Clear editing state and re-render
+                currentEditState = { id: null, type: null };
+                renderAll(); 
+            }
+
+            /**
+             * Handles deleting an item.
+             * @param {string} id - The ID of the item to delete.
+             * @param {string} type - The data type ('routing' or 'snippets').
+             * @param {boolean} [skipUndo=false] - If true, delete without adding to undo stack.
+             */
+            function handleDelete(id, type, skipUndo = false) {
+                // If we're deleting the item currently being edited, just clear the edit state
+                if (currentEditState.id === id) {
+                    currentEditState = { id: null, type: null };
+                }
+                
+                const config = dataTypesConfig[type];
+                const data = state[config.dataKey];
+                const index = data.findIndex(i => i.id === id);
+
+                if (index === -1) return;
+
+                const [deletedItem] = data.splice(index, 1);
+                
+                // Fix 2: Add to undoStack unless skipped
+                if (!skipUndo) {
+                    // Clear toast timer to stack onto the previous undo
+                    if (toastTimer) clearTimeout(toastTimer);
+
+                    undoStack.push({
+                        item: deletedItem,
+                        type: type,
+                        index: index // Store original index
+                    });
+                }
+
+                saveState();
+                renderAll(); // Re-render lists
+                
+                if (!skipUndo) {
+                    showToast(`Deleted "${deletedItem.keyword}"`, true);
+                }
+            }
+
+            /**
+             * Handles the "Undo" button click from the toast.
+             */
+            function handleUndo() {
+                // Fix 2: Use undoStack
+                if (undoStack.length === 0) return;
+
+                const { item, type, index } = undoStack.pop();
+                const data = state[dataTypesConfig[type].dataKey];
+
+                // Restore item at its original index
+                data.splice(index, 0, item);
+                
+                saveState();
+                renderAll();
+                
+                // Show feedback, and show Undo button again if stack is not empty
+                const message = `Restored "${item.keyword}"`;
+                // Clear the main timer, as we're showing a new toast
+                if (toastTimer) clearTimeout(toastTimer);
+                toastTimer = null; // Important: clear timer ID
+                
+                showToast(message, undoStack.length > 0);
+            }
+
+            // === TOAST (UNDO) NOTIFICATIONS ===
+
+            /**
+             * Shows the undo toast message.
+             * @param {string} message - The message to display.
+             * @param {boolean} showUndo - Whether to show the "Undo" button.
+             */
+            function showToast(message, showUndo = false) {
+                // Clear any existing timer ONLY if we are NOT stacking undos
+                if (toastTimer && !showUndo) {
+                    clearTimeout(toastTimer);
+                    toastTimer = null;
+                }
+
+                // Fix 2: Update message to include stack count if undoing
+                if (showUndo && undoStack.length > 0) {
+                    undoToastMessage.textContent = `${message} (${undoStack.length} in stack)`;
+                } else {
+                    undoToastMessage.textContent = message;
+                }
+                
+                undoToastButton.style.display = showUndo ? 'inline-block' : 'none';
+                undoToast.classList.add('show');
+
+                // (Re)set a timer to hide the toast
+                toastTimer = setTimeout(() => {
+                    hideToast();
+                    undoStack = []; // Clear stack ONLY when toast expires
+                }, TOAST_TIMEOUT);
+            }
+
+            /**
+             * Hides the undo toast.
+             */
+            function hideToast() {
+                if (toastTimer) {
+                    clearTimeout(toastTimer);
+                    toastTimer = null;
+                }
+                undoToast.classList.remove('show');
+            }
+
+            // === DATA IMPORT / EXPORT (FROM OPTIONS) ===
+
+            /**
+             * Handles the "Import JSON Data" button click.
+             * Merges or replaces data from a JSON file.
+             */
+            function handleImportJson(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // Fix 4: Get the selected import mode
+                const importModeEl = document.querySelector('input[name="importMode"]:checked');
+                const importMode = importModeEl ? importModeEl.value : 'merge'; // Default to merge
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+
+                        // Validate the imported data structure
+                        if (data && (Array.isArray(data.routing) || Array.isArray(data.snippets))) {
+                            
+                            // Fix 4: Implement Merge vs Replace logic
+                            if (importMode === 'replace') {
+                                state.routingData = data.routing || [];
+                                state.snippetsData = data.snippets || [];
+                                showToast("Data replaced successfully.", false);
+                            } else { // 'merge'
+                                // Simple concat. A more robust merge would check for duplicate IDs/keywords.
+                                state.routingData = (state.routingData || []).concat(data.routing || []);
+                                state.snippetsData = (state.snippetsData || []).concat(data.snippets || []);
+                                showToast("Data merged successfully.", false);
+                            }
+                            
+                            saveState();
+                            renderAll();
+                            closeOptionsModal();
+                        } else {
+                            throw new Error("Invalid JSON structure. Must contain 'routing' and/or 'snippets' arrays.");
+                        }
+                    } catch (error) {
+                        console.error("Failed to import JSON:", error);
+                        showToast(`Error: ${error.message}`, false);
+                    } finally {
+                        // Reset file input to allow importing the same file again
+                        importFileInput.value = null;
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            /**
+             * Handles the "Export Data to JSON" button click.
+             * Downloads the current state as a JSON file.
+             */
+            function handleExportJson() {
+                try {
+                    // Create a data object with only routing and snippets
+                    const exportData = {
+                        routing: state.routingData || [],
+                        snippets: state.snippetsData || []
+                    };
+                    
+                    const dataStr = JSON.stringify(exportData, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${APP_NAME}_export.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                } catch (error) {
+                    console.error("Failed to export JSON:", error);
+                    showToast("Error exporting data.", false);
+                }
+            }
+
+
+            // === GLOBAL BACKUP / RESTORE (FROM NAVBAR) ===
+            
+            /**
+             * Creates a single backup object for the entire page's state.
+             * @returns {string} - A JSON string of the backup.
+             */
+            function createBackupData() {
+                const backupData = {
+                    appName: APP_NAME,
+                    timestamp: new Date().toISOString(),
+                    version: '5.4.0', // Updated version
+                    data: state,
+                    config: config
+                };
+                return JSON.stringify(backupData, null, 2);
+            }
+
+            /**
+             * Handles the global "Backup" button click.
+             */
+            function handleBackup() {
+                try {
+                    const dataStr = createBackupData();
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${APP_NAME}_backup.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                } catch (error) {
+                    console.error("Failed to back up state:", error);
+                    showToast("Error creating backup.", false);
+                }
+            }
+
+            /**
+             * Handles the global "Restore" button click.
+             * Triggers the hidden file input.
+             */
+            function handleRestore() {
+                if (currentEditState.id) {
+                    showToast("Please save or cancel your current edit before restoring.", false);
+                    return;
+                }
+                if (confirm("Restoring from a backup will overwrite all current lookup data. Are you sure?")) {
+                    restoreFileInput.click();
+                }
+            }
+
+            /**
+             * Processes the selected restore file.
+             */
+            function processRestoreFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const backupData = JSON.parse(e.target.result);
+
+                        // CRITICAL: Validate that this is the correct backup file
+                        if (!backupData.appName || backupData.appName !== APP_NAME) {
+                            // Check for old appName for migration
+                            if (backupData.appName === 'assignment_tool') {
+                                if (!confirm("This appears to be a backup from the old 'Assignment Tool'. Restore it?")) {
+                                    throw new Error("Restore cancelled by user.");
+                                }
+                                // Allow migration
+                            } else {
+                                throw new Error(`Invalid backup file. Expected app name '${APP_NAME}'.`);
+                            }
+                        }
+
+                        // Restore state
+                        state = backupData.data || { routingData: [], snippetsData: [] };
+                        config = backupData.config || {};
+                        
+                        saveState(); // Save the new restored state
+                        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+                        
+                        // Re-initialize the page
+                        currentEditState = { id: null, type: null }; // Reset editing state
+                        undoStack = []; // Clear undo stack
+                        updateRecommendedPath();
+                        renderAll();
+                        showToast("Restore successful.", false);
+                        
+                    } catch (error) {
+                        console.error("Failed to restore state:", error);
+                        showToast(`Restore failed: ${error.message}`, false);
+                    } finally {
+                        // Reset file input to allow restoring the same file again
+                        restoreFileInput.value = null;
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // === MODAL (OPTIONS) HANDLERS ===
+            
+            function showOptionsModal() {
+                optionsModal.style.display = 'block';
+            }
+            
+            function closeOptionsModal() {
+                optionsModal.style.display = 'none';
+            }
+
+            // === EVENT LISTENERS ===
+            
+            // Search
+            searchInput.addEventListener('input', renderAll); // Use 'input' for better response
+            
+            // CRUD
+            btnAddNewEntry.addEventListener('click', handleAddNewEntry);
+            
+            // Toast
+            undoToastButton.addEventListener('click', handleUndo);
+
+            // Nav Bar Actions
+            backupBtn.addEventListener('click', handleBackup);
+            restoreBtn.addEventListener('click', handleRestore);
+            restoreFileInput.addEventListener('change', processRestoreFile);
+
+            // Options Modal
+            showOptionsBtn.addEventListener('click', showOptionsModal);
+            closeOptionsBtn.addEventListener('click', closeOptionsModal);
+            importBtn.addEventListener('click', () => importFileInput.click());
+            importFileInput.addEventListener('change', handleImportJson);
+            exportBtn.addEventListener('click', handleExportJson);
+            
+            // Close modal if clicking outside of it
+            window.addEventListener('click', (event) => {
+                if (event.target === optionsModal) {
+                    closeOptionsModal();
+                }
+            });
+
+            // === INITIAL LOAD ===
+            loadState();
+            renderAll();
+        });
+    </script>
+</body>
+</html>
+
