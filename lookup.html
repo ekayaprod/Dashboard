@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-T">
+    <!-- MODE A FIX: Corrected charset typo -->
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
@@ -911,6 +912,12 @@
                         type: type,
                         index: index // Store original index
                     });
+
+                    // MODE B-10 FIX: Add max undo stack size
+                    const MAX_UNDO_STACK = 50;
+                    if (undoStack.length > MAX_UNDO_STACK) {
+                        undoStack.shift(); // Remove oldest item
+                    }
                 }
 
                 saveState();
@@ -960,12 +967,10 @@
                     toastTimer = null;
                 }
 
-                // Fix 2: Update message to include stack count if undoing
-                if (showUndo && undoStack.length > 0) {
-                    undoToastMessage.textContent = `${message} (${undoStack.length} in stack)`;
-                } else {
-                    undoToastMessage.textContent = message;
-                }
+                // MODE C-7 FIX: Simplified with ternary
+                undoToastMessage.textContent = showUndo && undoStack.length > 0 
+                    ? `${message} (${undoStack.length} in stack)` 
+                    : message;
                 
                 undoToastButton.style.display = showUndo ? 'inline-block' : 'none';
                 undoToast.classList.add('show');
