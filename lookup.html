@@ -386,7 +386,7 @@
             // === CONSTANTS ===
             const APP_NAME = 'lookup';
             const DATA_KEY = `${APP_NAME}_data`;
-            const CONFIG_KEY = `${APP_NAME}_config`;
+            // MODE F-4 FIX: Removed unused CONFIG_KEY
             const TOAST_TIMEOUT = 5000; // 5 seconds
             // MODE B-10 FIX: Add max undo stack
             const MAX_UNDO_STACK = 50;
@@ -420,8 +420,7 @@
                 routingData: [],
                 snippetsData: []
             };
-            // MODE E-1 FIX: Removed unused recommendedPath
-            let config = {};
+            // MODE E-1 & F-4 FIX: Removed unused config object
             
             let undoStack = []; // Replaces lastDeletedItem
             let toastTimer = null;
@@ -453,11 +452,11 @@
             // === INITIALIZATION ===
 
             /**
-             * Loads state and config from localStorage.
+             * Loads state from localStorage.
              */
             function loadState() {
                 const storedData = localStorage.getItem(DATA_KEY);
-                const storedConfig = localStorage.getItem(CONFIG_KEY);
+                // MODE F-4 FIX: Removed config loading
 
                 if (storedData) {
                     try {
@@ -471,20 +470,11 @@
                     state = { routingData: [], snippetsData: [] };
                 }
 
-                if (storedConfig) {
-                    try {
-                        config = JSON.parse(storedConfig);
-                    } catch (e) {
-                        console.error("Failed to parse config from localStorage:", e);
-                        // Config is less critical, use default
-                    }
-                }
+                // MODE F-4 FIX: Removed config loading
                 
                 // Ensure data structure is valid after loading
                 if (!state.routingData) state.routingData = [];
                 if (!state.snippetsData) state.snippetsData = [];
-                
-                // MODE E-1 FIX: Removed call to updateRecommendedPath()
             }
 
             /**
@@ -492,21 +482,37 @@
              */
             function saveState() {
                 try {
+                    // MODE F-2 FIX: Sort data on save, not on render
+                    state.routingData.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                    state.snippetsData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     localStorage.setItem(DATA_KEY, JSON.stringify(state));
                 } catch (e) {
                     console.error("Failed to save state to localStorage:", e);
                     showToast("Error: Failed to save data. Storage might be full.", false);
                 }
             }
-            
-            // MODE E-1 FIX: Removed unused updateRecommendedPath() function
 
+            /**
+             * FINAL REVIEW-7: Applies saved theme from localStorage
+             */
+            function initTheme() {
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme) {
+                    // This assumes CSS is set up to handle [data-theme="dark/light"]
+                    document.documentElement.setAttribute('data-theme', savedTheme);
+                }
+            }
+            
             // === UTILITY FUNCTIONS ===
 
             /**
-             * Generates a unique ID.
+             * FINAL REVIEW-6: Generates a unique ID with fallback.
              */
             function generateId() {
+                if (crypto.randomUUID) {
+                    return crypto.randomUUID();
+                }
+                // Fallback for older browsers
                 return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             }
 
@@ -565,12 +571,13 @@
                 const data = state[config.dataKey] || [];
                 config.listElement.innerHTML = ''; // Clear current list
 
-                const lowerSearchTerm = searchTerm.toLowerCase();
+                // MODE F-3 FIX: Renamed lowerSearchTerm to term
+                const term = searchTerm.toLowerCase();
                 const filteredData = data.filter(item => 
-                    item.keyword.toLowerCase().includes(lowerSearchTerm)
+                    item.keyword.toLowerCase().includes(term)
                 );
                 
-                filteredData.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                // MODE F-2 FIX: Sorting removed from render, moved to saveState
 
                 if (filteredData.length === 0 && (currentEditState.type !== type || currentEditState.id === null)) {
                     config.listElement.innerHTML = `<li class="empty-state">${config.emptyState}</li>`;
@@ -1023,8 +1030,8 @@
                         appName: APP_NAME,
                         timestamp: new Date().toISOString(),
                         version: '5.4.0',
-                        data: state,
-                        config: config
+                        data: state
+                        // MODE F-4 FIX: Removed config object
                     }, null, 2);
                 }
             }
@@ -1041,6 +1048,8 @@
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    // FINAL REVIEW-5: Add loading toast
+                    showToast("Processing file...", false);
                     try {
                         const data = JSON.parse(e.target.result);
                         if (data && (Array.isArray(data.routing) || Array.isArray(data.snippets))) {
@@ -1109,6 +1118,8 @@
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    // FINAL REVIEW-5: Add loading toast
+                    showToast("Processing file...", false);
                     try {
                         const backupData = JSON.parse(e.target.result);
                         if (!backupData.appName || backupData.appName !== APP_NAME) {
@@ -1122,14 +1133,13 @@
                         }
 
                         state = backupData.data || { routingData: [], snippetsData: [] };
-                        config = backupData.config || {};
+                        // MODE F-4 FIX: Removed config restore
                         
                         saveState();
-                        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+                        // MODE F-4 FIX: Removed config save
                         
                         currentEditState = { id: null, type: null };
                         undoStack = [];
-                        // updateRecommendedPath(); // No longer exists
                         renderAll();
                         showToast("Restore successful.", false);
                         
@@ -1185,6 +1195,8 @@
             });
 
             // === INITIAL LOAD ===
+            // FINAL REVIEW-7: Apply theme first
+            initTheme();
             loadState();
             renderAll();
         });
