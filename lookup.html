@@ -323,11 +323,7 @@
                 </div>
             </div>
 
-            <div class="modal-section">
-                <h3>Recommended File Path</h3>
-                <p>For consistency, we recommend saving your lookup data to:</p>
-                <code id="lookup-config-file-path" class="code-block">C:\Users\[YourName]\Documents\Dashboard\lookup_data.json</code>
-            </div>
+            <!-- MODE E-1 FIX: Removed non-functional Recommended File Path section -->
 
             <div class="modal-section">
                 <h3>JSON Data Template</h3>
@@ -424,9 +420,8 @@
                 routingData: [],
                 snippetsData: []
             };
-            let config = {
-                recommendedPath: 'C:\\Users\\DefaultUser\\Documents\\Dashboard\\lookup_data.json'
-            };
+            // MODE E-1 FIX: Removed unused recommendedPath
+            let config = {};
             
             let undoStack = []; // Replaces lastDeletedItem
             let toastTimer = null;
@@ -489,7 +484,7 @@
                 if (!state.routingData) state.routingData = [];
                 if (!state.snippetsData) state.snippetsData = [];
                 
-                updateRecommendedPath();
+                // MODE E-1 FIX: Removed call to updateRecommendedPath()
             }
 
             /**
@@ -504,15 +499,7 @@
                 }
             }
             
-            /**
-             * Updates the recommended file path display in options.
-             */
-            function updateRecommendedPath() {
-                const pathElement = document.getElementById('lookup-config-file-path');
-                if (pathElement) {
-                    pathElement.textContent = config.recommendedPath || 'C:\\Users\\DefaultUser\\Documents\\Dashboard\\lookup_data.json';
-                }
-            }
+            // MODE E-1 FIX: Removed unused updateRecommendedPath() function
 
             // === UTILITY FUNCTIONS ===
 
@@ -1142,7 +1129,7 @@
                         
                         currentEditState = { id: null, type: null };
                         undoStack = [];
-                        updateRecommendedPath();
+                        // updateRecommendedPath(); // No longer exists
                         renderAll();
                         showToast("Restore successful.", false);
                         
