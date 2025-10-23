@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- MODE A FIX: Corrected charset typo -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
@@ -393,6 +392,8 @@
             const DATA_KEY = `${APP_NAME}_data`;
             const CONFIG_KEY = `${APP_NAME}_config`;
             const TOAST_TIMEOUT = 5000; // 5 seconds
+            // MODE B-10 FIX: Add max undo stack
+            const MAX_UNDO_STACK = 50;
 
             // === DOM ELEMENTS ===
             const searchInput = document.getElementById('search-input');
@@ -700,7 +701,7 @@
              * Creates a form for adding/editing an entry.
              * @param {string} type - 'routing' or 'snippets'.
              * @param {object} item - The data item to edit.
-             * @returns {HTMLLIElement} - Returns an LI element wrapping the form.
+             *s {HTMLLIElement} - Returns an LI element wrapping the form.
              */
             function createEditForm(type, item) {
                 const config = dataTypesConfig[type];
@@ -913,8 +914,7 @@
                         index: index // Store original index
                     });
 
-                    // MODE B-10 FIX: Add max undo stack size
-                    const MAX_UNDO_STACK = 50;
+                    // MODE B-10 FIX: Enforce max stack size
                     if (undoStack.length > MAX_UNDO_STACK) {
                         undoStack.shift(); // Remove oldest item
                     }
@@ -967,7 +967,7 @@
                     toastTimer = null;
                 }
 
-                // MODE C-7 FIX: Simplified with ternary
+                // MODE C-7 FIX: Simplified ternary
                 undoToastMessage.textContent = showUndo && undoStack.length > 0 
                     ? `${message} (${undoStack.length} in stack)` 
                     : message;
@@ -992,41 +992,80 @@
                 }
                 undoToast.classList.remove('show');
             }
-
-            // === DATA IMPORT / EXPORT (FROM OPTIONS) ===
+            
+            // === DATA IMPORT / EXPORT / BACKUP / RESTORE ===
 
             /**
-             * Handles the "Import JSON Data" button click.
-             * Merges or replaces data from a JSON file.
+             * MODE D-8 CONSOLIDATION: Handles downloading any data as a JSON file.
+             * @param {string} dataStr - The JSON string to download.
+             * @param {string} filename - The name for the downloaded file.
+             */
+            function downloadJSON(dataStr, filename) {
+                try {
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error("Failed to download JSON:", error);
+                    showToast("Error creating download.", false);
+                }
+            }
+            
+            /**
+             * MODE D-6 CONSOLIDATION: Creates a backup string.
+             * @param {boolean} [dataOnly=false] - If true, export only data. If false, export full state.
+             * @returns {string} - A JSON string of the backup.
+             */
+            function createBackup(dataOnly = false) {
+                if (dataOnly) {
+                    // Export only the raw data (for import/export)
+                    return JSON.stringify({
+                        routing: state.routingData || [],
+                        snippets: state.snippetsData || []
+                    }, null, 2);
+                } else {
+                    // Export the full application state (for backup/restore)
+                    return JSON.stringify({
+                        appName: APP_NAME,
+                        timestamp: new Date().toISOString(),
+                        version: '5.4.0',
+                        data: state,
+                        config: config
+                    }, null, 2);
+                }
+            }
+
+            /**
+             * Handles the "Import JSON Data" button click (from Options modal).
              */
             function handleImportJson(event) {
                 const file = event.target.files[0];
                 if (!file) return;
 
-                // Fix 4: Get the selected import mode
                 const importModeEl = document.querySelector('input[name="importMode"]:checked');
-                const importMode = importModeEl ? importModeEl.value : 'merge'; // Default to merge
+                const importMode = importModeEl ? importModeEl.value : 'merge';
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const data = JSON.parse(e.target.result);
-
-                        // Validate the imported data structure
                         if (data && (Array.isArray(data.routing) || Array.isArray(data.snippets))) {
-                            
-                            // Fix 4: Implement Merge vs Replace logic
                             if (importMode === 'replace') {
                                 state.routingData = data.routing || [];
                                 state.snippetsData = data.snippets || [];
                                 showToast("Data replaced successfully.", false);
                             } else { // 'merge'
-                                // Simple concat. A more robust merge would check for duplicate IDs/keywords.
                                 state.routingData = (state.routingData || []).concat(data.routing || []);
                                 state.snippetsData = (state.snippetsData || []).concat(data.snippets || []);
                                 showToast("Data merged successfully.", false);
                             }
-                            
                             saveState();
                             renderAll();
                             closeOptionsModal();
@@ -1037,87 +1076,32 @@
                         console.error("Failed to import JSON:", error);
                         showToast(`Error: ${error.message}`, false);
                     } finally {
-                        // Reset file input to allow importing the same file again
                         importFileInput.value = null;
                     }
                 };
+                reader.onerror = () => showToast('Error reading the import file.');
                 reader.readAsText(file);
             }
 
             /**
-             * Handles the "Export Data to JSON" button click.
-             * Downloads the current state as a JSON file.
+             * Handles the "Export Data to JSON" button click (from Options modal).
+             * MODE D-6/D-8 CONSOLIDATION: Calls new helper functions.
              */
             function handleExportJson() {
-                try {
-                    // Create a data object with only routing and snippets
-                    const exportData = {
-                        routing: state.routingData || [],
-                        snippets: state.snippetsData || []
-                    };
-                    
-                    const dataStr = JSON.stringify(exportData, null, 2);
-                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(dataBlob);
-                    
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${APP_NAME}_export.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    
-                } catch (error) {
-                    console.error("Failed to export JSON:", error);
-                    showToast("Error exporting data.", false);
-                }
+                downloadJSON(createBackup(true), `${APP_NAME}_export.json`);
             }
 
 
-            // === GLOBAL BACKUP / RESTORE (FROM NAVBAR) ===
-            
             /**
-             * Creates a single backup object for the entire page's state.
-             * @returns {string} - A JSON string of the backup.
-             */
-            function createBackupData() {
-                const backupData = {
-                    appName: APP_NAME,
-                    timestamp: new Date().toISOString(),
-                    version: '5.4.0', // Updated version
-                    data: state,
-                    config: config
-                };
-                return JSON.stringify(backupData, null, 2);
-            }
-
-            /**
-             * Handles the global "Backup" button click.
+             * Handles the global "Backup" button click (from nav bar).
+             * MODE D-6/D-8 CONSOLIDATION: Calls new helper functions.
              */
             function handleBackup() {
-                try {
-                    const dataStr = createBackupData();
-                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(dataBlob);
-                    
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${APP_NAME}_backup.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    
-                } catch (error) {
-                    console.error("Failed to back up state:", error);
-                    showToast("Error creating backup.", false);
-                }
+                downloadJSON(createBackup(false), `${APP_NAME}_backup.json`);
             }
 
             /**
-             * Handles the global "Restore" button click.
-             * Triggers the hidden file input.
+             * Handles the global "Restore" button click (from nav bar).
              */
             function handleRestore() {
                 if (currentEditState.id) {
@@ -1140,30 +1124,24 @@
                 reader.onload = (e) => {
                     try {
                         const backupData = JSON.parse(e.target.result);
-
-                        // CRITICAL: Validate that this is the correct backup file
                         if (!backupData.appName || backupData.appName !== APP_NAME) {
-                            // Check for old appName for migration
                             if (backupData.appName === 'assignment_tool') {
                                 if (!confirm("This appears to be a backup from the old 'Assignment Tool'. Restore it?")) {
                                     throw new Error("Restore cancelled by user.");
                                 }
-                                // Allow migration
                             } else {
                                 throw new Error(`Invalid backup file. Expected app name '${APP_NAME}'.`);
                             }
                         }
 
-                        // Restore state
                         state = backupData.data || { routingData: [], snippetsData: [] };
                         config = backupData.config || {};
                         
-                        saveState(); // Save the new restored state
+                        saveState();
                         localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
                         
-                        // Re-initialize the page
-                        currentEditState = { id: null, type: null }; // Reset editing state
-                        undoStack = []; // Clear undo stack
+                        currentEditState = { id: null, type: null };
+                        undoStack = [];
                         updateRecommendedPath();
                         renderAll();
                         showToast("Restore successful.", false);
@@ -1172,10 +1150,10 @@
                         console.error("Failed to restore state:", error);
                         showToast(`Restore failed: ${error.message}`, false);
                     } finally {
-                        // Reset file input to allow restoring the same file again
                         restoreFileInput.value = null;
                     }
                 };
+                reader.onerror = () => showToast('Error reading the backup file.');
                 reader.readAsText(file);
             }
 
@@ -1226,4 +1204,5 @@
     </script>
 </body>
 </html>
+
 
