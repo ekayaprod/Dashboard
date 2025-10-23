@@ -80,12 +80,12 @@
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
                     // Show a modal error on the *next* tick to ensure DOM is ready
                     setTimeout(() => showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
-                    // MODE C-6 FIX: Simplified deep copy
-                    return { ...defaultState, exampleList: [], version: APP_VERSION };
+                    // MODE C-1 (Updated) FIX: Simplified deep copy
+                    return { ...defaultState };
                 }
             }
-            // MODE C-6 FIX: Simplified deep copy
-            return { ...defaultState, exampleList: [], version: APP_VERSION };
+            // MODE C-1 (Updated) FIX: Simplified deep copy
+            return { ...defaultState };
         }
 
         const saveState = () => {
@@ -131,7 +131,7 @@
                 btn.textContent = action.label;
                 btn.onclick = () => { if (!action.callback || action.callback() !== false) hideModal(); };
                 actionsContainer.appendChild(btn);
-            });
+_            });
             DOMElements.modalOverlay.innerHTML = '';
             DOMElements.modalOverlay.appendChild(modalContent);
             DOMElements.modalOverlay.style.display = 'flex';
@@ -181,4 +181,5 @@
     </script>
 </body>
 </html>
+
 
