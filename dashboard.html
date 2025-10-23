@@ -176,11 +176,9 @@
                 } catch(e) { 
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
-                    // MODE C-1 (Updated) FIX: Simplified deep copy
                     return { ...defaultState };
                 }
             }
-            // MODE C-1 (Updated) FIX: Simplified deep copy
             return { ...defaultState };
         }
 
@@ -192,6 +190,27 @@
                 console.error("Failed to save state:", e);
                 showToast("Error saving data");
             }
+        };
+
+        /**
+         * FINAL REVIEW-7: Applies saved theme from localStorage
+         */
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        }
+
+        /**
+         * FINAL REVIEW-6: Generates a unique ID with fallback.
+         */
+        const generateId = () => {
+            if (crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            // Fallback for older browsers
+            return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         };
         
         const debounce = (func, delay) => {
@@ -208,7 +227,6 @@
             return p.innerHTML;
         };
         const validators = {
-            // MODE C-4 FIX: Simplified URL validator
             url: (value) => {
                 if (!value?.trim()) return false;
                 let urlToTest = value.trim();
@@ -338,7 +356,7 @@
                             const name = nameInput.value;
                             const url = urlInput.value;
                             if (services.validators.notEmpty(name) && services.validators.maxLength(name, 50) && services.validators.url(url)) {
-                                state.shortcuts.push({ id: crypto.randomUUID(), name, url });
+                                state.shortcuts.push({ id: generateId(), name, url });
                                 services.saveState();
                                 render();
                             } else {
@@ -360,7 +378,6 @@
 
                 container.addEventListener('dragover', (e) => e.preventDefault());
                 
-                // MODE B-8 FIX: Added try/catch/finally
                 container.addEventListener('drop', (e) => {
                     e.preventDefault();
                     if (!draggedItemId) return;
@@ -399,23 +416,24 @@
         const renderAppDropdown = (filterTerm = '') => {
             const panel = DOMElements.appDropdownPanel;
             panel.innerHTML = '';
-            // MODE B-1 FIX: Added null safety check
             const sortedApps = (state?.apps || []).sort((a,b) => a.name.localeCompare(b.name));
-            
-            // MODE C-3 (Updated) FIX: Cache lowercase filter
-            const lowerFilter = filterTerm.toLowerCase();
-            const filteredApps = lowerFilter 
-                ? sortedApps.filter(app => app.name.toLowerCase().includes(lowerFilter)) 
+            // MODE F-3 FIX: Cache lowercase filter term
+            const term = filterTerm.toLowerCase();
+            const filteredApps = term 
+                ? sortedApps.filter(app => app.name.toLowerCase().includes(term)) 
                 : sortedApps;
             
             if (filteredApps.length > 0) {
+                // MODE F-6 FIX: Use DocumentFragment
+                const fragment = document.createDocumentFragment();
                 filteredApps.forEach(app => {
                     const item = document.createElement('div');
                     item.className = 'search-dropdown-item';
                     item.textContent = app.name;
                     item.dataset.id = app.id;
-                    panel.appendChild(item);
+                    fragment.appendChild(item);
                 });
+                panel.appendChild(fragment);
             } else {
                 panel.innerHTML = `<div class="search-dropdown-item" style="color: var(--subtle-text);">No results</div>`;
             }
@@ -457,22 +475,26 @@
             DOMElements.renameNoteBtn.disabled = state.notes.length === 0;
         };
 
+        // MODE F-1 FIX: Use DocumentFragment
         const renderUrlLinks = (urlString) => { 
             const container = DOMElements.urlLinksContainer;
-            container.innerHTML = '';
-            if(urlString) {
-                urlString.split('\n').filter(url => url.trim()).forEach(url => {
-                     const div = document.createElement('div');
-                     div.className = 'url-link-item';
-                     // Applied icon-btn class
-                     div.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHTML(url)}</a>
-                     <button class="icon-btn copy-btn" data-url="${url}" title="Copy URL">${SVGIcons.copy}</button>`;
-                     container.appendChild(div);
-                });
+            if(!urlString) {
+                container.innerHTML = '';
+                return;
             }
+            
+            const fragment = document.createDocumentFragment();
+            urlString.split('\n').filter(url => url.trim()).forEach(url => {
+                const div = document.createElement('div');
+                div.className = 'url-link-item';
+                div.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHTML(url)}</a>
+                <button class="icon-btn copy-btn" data-url="${url}" title="Copy URL">${SVGIcons.copy}</button>`;
+                fragment.appendChild(div);
+            });
+            container.innerHTML = '';
+            container.appendChild(fragment);
         };
         const renderAll = () => { 
-            // MODE B-2 FIX: Added null check
             if (shortcutsManager) shortcutsManager.render();
             renderAppData();
             renderNotesData();
@@ -541,6 +563,42 @@
             renderAppDropdown(DOMElements.appSearchInput.value);
         });
 
+        // FINAL REVIEW-4: Add keyboard navigation
+        DOMElements.appSearchInput.addEventListener('keydown', (e) => {
+            const panel = DOMElements.appDropdownPanel;
+            if (panel.classList.contains('hidden')) return;
+            
+            const items = Array.from(panel.querySelectorAll('.search-dropdown-item[data-id]'));
+            if (items.length === 0) return;
+
+            const selected = panel.querySelector('.search-dropdown-item.selected');
+            let index = selected ? items.indexOf(selected) : -1;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                index = Math.min(index + 1, items.length - 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                index = Math.max(index - 1, 0);
+            } else if (e.key === 'Enter' && selected) {
+                e.preventDefault();
+                selected.click();
+                return;
+            } else if (e.key === 'Escape') {
+                panel.classList.add('hidden');
+                return;
+            } else {
+                return;
+            }
+            
+            items.forEach(item => item.classList.remove('selected'));
+            if (items[index]) {
+                items[index].classList.add('selected');
+                // Ensure the selected item is visible
+                items[index].scrollIntoView({ block: 'nearest' });
+            }
+        });
+
         DOMElements.appDropdownPanel.addEventListener('click', (e) => {
             const target = e.target.closest('.search-dropdown-item');
             if (target && target.dataset.id) {
@@ -593,7 +651,6 @@
             if (!validators.notEmpty(name) || !validators.maxLength(name, 100)) return showToast('App name must be 1-100 characters');
             if (!validators.notEmpty(urls) && !validators.notEmpty(escalation)) return showToast('App must have at least one URL or a note.');
             
-            // MODE B-5 FIX: Enhanced error message
             if (state.apps.some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedAppId)) {
                 return showToast('An app with this name already exists. Please use a unique name.');
             }
@@ -603,7 +660,7 @@
             if (appIndex > -1) {
                 state.apps[appIndex] = { ...state.apps[appIndex], name, urls, escalation };
             } else {
-                const newApp = { id: crypto.randomUUID(), name, urls, escalation };
+                const newApp = { id: generateId(), name, urls, escalation };
                 state.apps.push(newApp);
                 savedAppId = newApp.id;
             }
@@ -693,6 +750,23 @@
             }
             if(id === 'restore-btn-menu') DOMElements.restoreFileInput.click();
         });
+
+        /**
+         * FINAL REVIEW-9: Validate state structure during restore
+         */
+        function validateState(restored) {
+            if (!restored || typeof restored !== 'object') return false;
+            if (!Array.isArray(restored.apps)) return false;
+            if (!Array.isArray(restored.notes)) return false;
+            if (!Array.isArray(restored.shortcuts)) return false;
+            
+            // Validate each app has required fields
+            if (!restored.apps.every(a => a && a.id && typeof a.name === 'string' && typeof a.urls === 'string' && typeof a.escalation === 'string')) return false;
+            if (!restored.notes.every(n => n && n.id && typeof n.title === 'string' && typeof n.content === 'string')) return false;
+            if (!restored.shortcuts.every(s => s && s.id && typeof s.name === 'string' && typeof s.url === 'string')) return false;
+            
+            return true;
+        }
         
         DOMElements.restoreFileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -701,7 +775,8 @@
             reader.onload = (event) => {
                 try {
                     const restored = JSON.parse(event.target.result);
-                    if(!Array.isArray(restored.apps) || !Array.isArray(restored.notes) || !Array.isArray(restored.shortcuts)) {
+                    // FINAL REVIEW-9: Add validation call
+                    if(!validateState(restored)) {
                         throw new Error('Invalid dashboard backup file structure.');
                     }
                     showModal('Confirm Restore', `<p>Overwrite dashboard data? This cannot be undone.</p>`, [
@@ -729,7 +804,7 @@
              if(!button) return;
              const id = button.id;
              if(id === 'new-note-btn') {
-                 const newId = crypto.randomUUID();
+                 const newId = generateId();
                  state.notes.unshift({id: newId, title: `Note ${state.notes.length + 1}`, content:''});
                  activeNoteId = newId;
                  saveState();
@@ -761,11 +836,11 @@
                  });
                  
                  if (state.notes.length === 0) {
-                    const newNote = { id: crypto.randomUUID(), title: 'My Scratchpad', content: '' };
+                    const newNote = { id: generateId(), title: 'My Scratchpad', content: '' };
                     state.notes.push(newNote);
                     activeNoteId = newNote.id;
                  } else {
-                    // MODE C-2 (Updated) FIX: Simplified logic
+                    // MODE C-3 FIX: Simplified logic, removed redundant ?. and || null
                     activeNoteId = state.notes[0].id;
                  }
                  renderAll();
@@ -790,16 +865,17 @@
         document.addEventListener('keydown', (e) => { if(e.key === 'Escape') hideModal() });
 
         const init = () => {
+            // FINAL REVIEW-7: Apply theme first
+            initTheme();
             try {
                 state = loadState();
             } catch (e) {
-                // MODE C-1 (Updated) FIX: Simplified deep copy
                 state = { ...defaultState };
                 showModal('Data Corruption Detected', '<p>Saved data could not be read. A backup has been saved and the application has been reset.</p>', [{ label: 'OK' }]);
             }
 
             const services = { showModal, showToast, validators, SVGIcons, saveState };
-            shortcutsManager = createShortcutsManager(state, DOMElements, services);
+            shortcutsManager = createShortCutsManager(state, DOMElements, services);
             shortcutsManager.init();
 
             DOMElements.actionsBtn.innerHTML = SVGIcons.menu;
@@ -810,7 +886,7 @@
             DOMElements.deleteNoteBtn.innerHTML = SVGIcons.trash;
 
             if (state.notes.length === 0) {
-                state.notes.push({ id: crypto.randomUUID(), title: 'My Scratchpad', content: '' });
+                state.notes.push({ id: generateId(), title: 'My Scratchpad', content: '' });
                 saveState();
             }
             renderAll();
