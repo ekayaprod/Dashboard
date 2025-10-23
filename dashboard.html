@@ -176,12 +176,12 @@
                 } catch(e) { 
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
-                    // MODE C-6 FIX: Simplified deep copy
-                    return { ...defaultState, apps: [], notes: [], shortcuts: [], version: APP_VERSION };
+                    // MODE C-1 (Updated) FIX: Simplified deep copy
+                    return { ...defaultState };
                 }
             }
-            // MODE C-6 FIX: Simplified deep copy
-            return { ...defaultState, apps: [], notes: [], shortcuts: [], version: APP_VERSION };
+            // MODE C-1 (Updated) FIX: Simplified deep copy
+            return { ...defaultState };
         }
 
         const saveState = () => {
@@ -401,7 +401,12 @@
             panel.innerHTML = '';
             // MODE B-1 FIX: Added null safety check
             const sortedApps = (state?.apps || []).sort((a,b) => a.name.localeCompare(b.name));
-            const filteredApps = filterTerm ? sortedApps.filter(app => app.name.toLowerCase().includes(filterTerm.toLowerCase())) : sortedApps;
+            
+            // MODE C-3 (Updated) FIX: Cache lowercase filter
+            const lowerFilter = filterTerm.toLowerCase();
+            const filteredApps = lowerFilter 
+                ? sortedApps.filter(app => app.name.toLowerCase().includes(lowerFilter)) 
+                : sortedApps;
             
             if (filteredApps.length > 0) {
                 filteredApps.forEach(app => {
@@ -760,7 +765,8 @@
                     state.notes.push(newNote);
                     activeNoteId = newNote.id;
                  } else {
-                    activeNoteId = state.notes[0]?.id || null;
+                    // MODE C-2 (Updated) FIX: Simplified logic
+                    activeNoteId = state.notes[0].id;
                  }
                  renderAll();
              }
@@ -787,8 +793,8 @@
             try {
                 state = loadState();
             } catch (e) {
-                // MODE C-6 FIX: Simplified deep copy
-                state = { ...defaultState, apps: [], notes: [], shortcuts: [], version: APP_VERSION };
+                // MODE C-1 (Updated) FIX: Simplified deep copy
+                state = { ...defaultState };
                 showModal('Data Corruption Detected', '<p>Saved data could not be read. A backup has been saved and the application has been reset.</p>', [{ label: 'OK' }]);
             }
 
@@ -815,4 +821,5 @@
     </script>
 </body>
 </html>
+
 
