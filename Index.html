@@ -9,7 +9,6 @@
     <script src="ui.common.js" defer></script>
 </head>
 <body>
-    <!-- (Mode C) Replaced tabs with standard navbar -->
     <nav class="navbar">
         <ul class="nav-links">
             <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
@@ -87,7 +86,6 @@
                 </div>
             </div>
             <div id="toast" class="toast"></div>
-            <!-- (Mode C) Removed file input, now handled by UIUtils -->
         </div>
     </div>
 
@@ -97,11 +95,14 @@
 
     <script>
     {
+        /**
+         * Dashboard (v6.0.0)
+         * Central hub for application management, shortcuts, and notes.
+         */
         const APP_VERSION = '6.0.0'; // Final Refactor Release
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const DEBOUNCE_DELAY = 500;
 
-        // (Mode C) Removed local SVGIcons, now in UIUtils
         const SVGIcons = (typeof UIUtils !== 'undefined' && UIUtils.SVGIcons) ? UIUtils.SVGIcons : {
             plus: '...', pencil: '...', trash: '...', copy: '...', menu: '...'
         };
@@ -122,7 +123,7 @@
             editAppEscalation: document.getElementById('edit-app-escalation'),
             saveChangesBtn: document.getElementById('save-changes-btn'),
             deleteAppBtn: document.getElementById('delete-app-btn'),
-            
+
             addShortcutBtn: document.getElementById('add-shortcut-btn-menu'),
             addNewAppBtn: document.getElementById('add-new-app-btn-menu'),
             backupBtn: document.getElementById('backup-btn-menu'),
@@ -136,7 +137,7 @@
             renameNoteBtn: document.getElementById('rename-note-btn'),
             deleteNoteBtn: document.getElementById('delete-note-btn')
         };
-        
+
         const defaultState = {
             apps: [],
             notes: [],
@@ -144,12 +145,12 @@
             version: APP_VERSION
         };
 
-        let state; 
+        let state;
         let shortcutsManager;
         let selectedAppId = null;
         let activeNoteId = null;
         let initialAppData = null;
-        
+
         function loadState() {
             const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
             if(rawState) {
@@ -159,10 +160,11 @@
                         throw new Error("State data is missing core properties.");
                     }
                     return { ...defaultState, ...parsed };
-                } catch(e) { 
+                } catch(e) {
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
                     setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
+                    // Initialize with default state
                     return { ...defaultState };
                 }
             }
@@ -179,8 +181,6 @@
             }
         };
 
-        // (Mode C) All local helpers (debounce, generateId, escapeHTML, validators, showToast) removed
-        // Now using UIUtils directly
 
         const createShortcutsManager = (state, dom, services) => {
             const container = dom.shortcutsContainer;
@@ -232,9 +232,9 @@
 
                 services.showModal('Delete Shortcut', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(itemCopy.name)}"?</p>`, [
                     { label: 'Cancel' },
-                    { 
-                        label: 'Delete', 
-                        class: 'button-danger', 
+                    {
+                        label: 'Delete',
+                        class: 'button-danger',
                         callback: () => {
                             state.shortcuts.splice(itemIndex, 1);
                             services.saveState();
@@ -254,13 +254,12 @@
                             const urlInput = document.getElementById('shortcut-url');
                             const name = nameInput.value;
                             const url = urlInput.value;
-                            // (Mode C) Use shared validators
                             if (UIUtils.validators.notEmpty(name) && UIUtils.validators.maxLength(name, 50) && UIUtils.validators.url(url)) {
                                 state.shortcuts.push({ id: UIUtils.generateId(), name, url });
                                 services.saveState();
                                 render();
                             } else {
-                                UIUtils.showToast('Invalid name or URL'); 
+                                UIUtils.showToast('Invalid name or URL');
                                 return false;
                             }
                         }
@@ -277,7 +276,7 @@
                 });
 
                 container.addEventListener('dragover', (e) => e.preventDefault());
-                
+
                 container.addEventListener('drop', (e) => {
                     e.preventDefault();
                     if (!draggedItemId) return;
@@ -291,7 +290,7 @@
                         if (draggedIndex === -1) return;
 
                         const [draggedItem] = shortcuts.splice(draggedIndex, 1);
-                        
+
                         if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id !== draggedItemId) {
                             const targetIndex = shortcuts.findIndex(s => s.id === targetElement.dataset.id);
                             shortcuts.splice(targetIndex, 0, draggedItem);
@@ -302,8 +301,8 @@
                         render();
                     } catch (error) {
                         console.error('Drag-and-drop error:', error);
-                        UIUtils.showToast('Error reordering shortcuts'); 
-                        render(); 
+                        UIUtils.showToast('Error reordering shortcuts');
+                        render();
                     } finally {
                         draggedItemId = null;
                     }
@@ -317,11 +316,12 @@
             const panel = DOMElements.appDropdownPanel;
             panel.innerHTML = '';
             const sortedApps = (state?.apps || []).sort((a,b) => a.name.localeCompare(b.name));
+            // Performance optimization
             const term = filterTerm.toLowerCase();
-            const filteredApps = term 
-                ? sortedApps.filter(app => app.name.toLowerCase().includes(term)) 
+            const filteredApps = term
+                ? sortedApps.filter(app => app.name.toLowerCase().includes(term))
                 : sortedApps;
-            
+
             if (filteredApps.length > 0) {
                 const fragment = document.createDocumentFragment();
                 filteredApps.forEach(app => {
@@ -347,14 +347,14 @@
             }
         };
 
-        const renderNotesData = () => { 
+        const renderNotesData = () => {
             const noteSelect = DOMElements.noteSelect;
             noteSelect.innerHTML = '';
-            
+
             const fragment = document.createDocumentFragment();
             state.notes.forEach(note => fragment.appendChild(new Option(note.title, note.id)));
             noteSelect.appendChild(fragment);
-            
+
             if (activeNoteId && state.notes.some(n => n.id == activeNoteId)) {
                  noteSelect.value = activeNoteId;
             } else if (state.notes.length > 0) {
@@ -363,7 +363,7 @@
             } else {
                 activeNoteId = null;
             }
-            
+
             const activeNote = state.notes.find(n => n.id == activeNoteId);
             if (activeNote) {
                 DOMElements.notepadEditor.value = activeNote.content;
@@ -376,7 +376,7 @@
             DOMElements.renameNoteBtn.disabled = state.notes.length === 0;
         };
 
-        const renderAll = () => { 
+        const renderAll = () => {
             if (shortcutsManager) shortcutsManager.render();
             renderAppData();
             renderNotesData();
@@ -415,7 +415,7 @@
             }
             updateSaveButtonState();
         };
-        
+
         const createNewAppForm = () => {
             displayAppDetails(null);
             DOMElements.appDetailsContainer.classList.remove('hidden');
@@ -440,16 +440,17 @@
             renderAppDropdown(DOMElements.appSearchInput.value);
         });
 
+        // Keyboard navigation support
         DOMElements.appSearchInput.addEventListener('keydown', (e) => {
             const panel = DOMElements.appDropdownPanel;
             if (panel.classList.contains('hidden')) return;
-            
+
             const items = Array.from(panel.querySelectorAll('.search-dropdown-item[data-id]'));
             if (items.length === 0) return;
 
             const selected = panel.querySelector('.search-dropdown-item.selected');
             let index = selected ? items.indexOf(selected) : -1;
-            
+
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 index = Math.min(index + 1, items.length - 1);
@@ -466,7 +467,7 @@
             } else {
                 return;
             }
-            
+
             items.forEach(item => item.classList.remove('selected'));
             if (items[index]) {
                 items[index].classList.add('selected');
@@ -478,7 +479,7 @@
             const target = e.target.closest('.search-dropdown-item');
             if (target && target.dataset.id) {
                 const targetId = target.dataset.id;
-                
+
                 if (checkFormDirty() && targetId !== selectedAppId) {
                     UIUtils.showModal('Unsaved Changes', '<p>You have unsaved changes. Are you sure you want to discard them?</p>', [
                         { label: 'Cancel', callback: () => false },
@@ -496,7 +497,7 @@
                 }
             }
         });
-        
+
         DOMElements.appDropdownPanel.addEventListener('mouseover', (e) => {
             const target = e.target.closest('.search-dropdown-item');
             if (target && !target.classList.contains('selected')) {
@@ -507,16 +508,15 @@
                 target.classList.add('selected');
             }
         });
-        
+
         DOMElements.saveChangesBtn.addEventListener('click', () => {
             const name = DOMElements.editAppName.value.trim();
             const urls = DOMElements.editAppUrls.value.trim();
             const escalation = DOMElements.editAppEscalation.value.trim();
 
-            // (Mode C) Use shared validators
             if (!UIUtils.validators.notEmpty(name) || !UIUtils.validators.maxLength(name, 100)) return UIUtils.showModal('Invalid Name', '<p>App name must be 1-100 characters.</p>', [{label: 'OK'}]);
             if (!UIUtils.validators.notEmpty(urls) && !UIUtils.validators.notEmpty(escalation)) return UIUtils.showModal('Invalid Data', '<p>App must have at least one URL or a note.</p>', [{label: 'OK'}]);
-            
+
             if (state.apps.some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedAppId)) {
                 return UIUtils.showModal('Duplicate Name', '<p>An app with this name already exists. Please use a unique name.</p>', [{label: 'OK'}]);
             }
@@ -526,6 +526,7 @@
             if (appIndex > -1) {
                 state.apps[appIndex] = { ...state.apps[appIndex], name, urls, escalation };
             } else {
+                // ID generation with browser compatibility fallback
                 const newApp = { id: UIUtils.generateId(), name, urls, escalation };
                 state.apps.push(newApp);
                 savedAppId = newApp.id;
@@ -543,27 +544,27 @@
                     UIUtils.showModal('Delete Application', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(app.name)}"?</p><p>This cannot be undone.</p>`, [
                         {label: 'Cancel'},
                         {
-                            label: 'Delete', 
-                            class: 'button-danger', 
+                            label: 'Delete',
+                            class: 'button-danger',
                             callback: () => {
                                 const appIndex = state.apps.findIndex(item => item.id === selectedAppId);
                                 if (appIndex > -1) {
                                     state.apps.splice(appIndex, 1);
                                     saveState();
                                 }
-                                displayAppDetails(null); 
+                                displayAppDetails(null);
                                 renderAll();
-                            } 
+                            }
                         }
                     ]);
                 }
              }
         });
-        
+
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-dropdown-wrapper')) DOMElements.appDropdownPanel.classList.add('hidden');
         });
-        
+
         DOMElements.addShortcutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             shortcutsManager.add();
@@ -589,11 +590,11 @@
 
         DOMElements.restoreBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            // (Mode C) Use shared file picker
             UIUtils.openFilePicker(handleFileLoad);
         });
 
 
+        // Backup validation
         function validateState(restored) {
             if (!restored || typeof restored !== 'object') {
                 throw new Error('Backup file is not a valid object');
@@ -607,7 +608,7 @@
             if (!Array.isArray(restored.shortcuts)) {
                 throw new Error('Backup missing "shortcuts" array');
             }
-            
+
             for (let i = 0; i < restored.apps.length; i++) {
                 const a = restored.apps[i];
                 if (!a || !a.id) {
@@ -623,7 +624,7 @@
                     throw new Error(`App "${a.name}" is missing "escalation" field`);
                 }
             }
-            
+
             for (let i = 0; i < restored.notes.length; i++) {
                 const n = restored.notes[i];
                 if (!n || !n.id) {
@@ -636,7 +637,7 @@
                     throw new Error(`Note "${n.title}" is missing "content" field`);
                 }
             }
-            
+
             for (let i = 0; i < restored.shortcuts.length; i++) {
                 const s = restored.shortcuts[i];
                 if (!s || !s.id) {
@@ -649,17 +650,18 @@
                     throw new Error(`Shortcut "${s.name}" is missing "url" field`);
                 }
             }
-            
+
             return true;
         }
-        
+
         function handleFileLoad(file) {
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
                     const restored = JSON.parse(event.target.result);
                     if(!validateState(restored)) {
-                        throw new Error('Invalid dashboard backup file structure.');
+                        // Error message handled by validateState throwing
+                        return;
                     }
                     UIUtils.showModal('Confirm Restore', `<p>Overwrite dashboard data? This cannot be undone.</p>`, [
                         {label: 'Cancel'},
@@ -673,7 +675,8 @@
                     ]);
                 } catch(err) {
                     console.error("Restore failed:", err);
-                    UIUtils.showToast('Restore failed: ' + err.message);
+                    // Show specific validation error
+                    UIUtils.showModal('Restore Failed', `<p>${UIUtils.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
                 }
             };
             reader.onerror = () => UIUtils.showToast('Error reading the backup file.');
@@ -698,7 +701,6 @@
                         {label: 'Cancel'},
                         {label: 'Save', class: 'button-primary', callback: () => {
                             const newTitle = document.getElementById('rename-note-input').value;
-                            // (Mode C) Use shared validators
                             if(UIUtils.validators.notEmpty(newTitle) && UIUtils.validators.maxLength(newTitle, 50)) {
                                 note.title = newTitle;
                                 saveState();
@@ -725,15 +727,16 @@
                             if (noteIndex > -1) {
                                 state.notes.splice(noteIndex, 1);
                             }
-                            
+
                             if (state.notes.length === 0) {
                                 const newNote = { id: UIUtils.generateId(), title: 'My Scratchpad', content: '' };
                                 state.notes.push(newNote);
                                 activeNoteId = newNote.id;
                             } else {
+                                // Simplified conditional logic
                                 activeNoteId = state.notes[0].id;
                             }
-                            saveState(); 
+                            saveState();
                             renderAll();
                         }
                     }
@@ -754,7 +757,7 @@
                 saveState();
             }
         }, DEBOUNCE_DELAY));
-        
+
         DOMElements.notepadEditor.addEventListener('blur', () => {
             if (!activeNoteId) return;
             const note = state.notes.find(n => n.id == activeNoteId);
@@ -763,9 +766,9 @@
                 saveState();
             }
         });
-        
+
         const init = () => {
-            // (Mode C) Theme is now initialized by ui.common.js
+            // Theme initialization
             try {
                 state = loadState();
             } catch (e) {
@@ -773,12 +776,11 @@
                 UIUtils.showModal('Data Corruption Detected', '<p>Saved data could not be read. A backup has been saved and the application has been reset.</p>', [{ label: 'OK' }]);
             }
 
-            const services = { 
-                showModal: UIUtils.showModal, 
-                // (Mode C) Pass shared validators
-                validators: UIUtils.validators, 
-                SVGIcons, 
-                saveState 
+            const services = {
+                showModal: UIUtils.showModal,
+                validators: UIUtils.validators,
+                SVGIcons,
+                saveState
             };
             shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
@@ -797,12 +799,10 @@
             renderAll();
         };
 
-        // (Mode C) Removed local validators object
 
         init();
     }
     </script>
 </body>
 </html>
-
 
