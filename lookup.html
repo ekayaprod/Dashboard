@@ -8,12 +8,12 @@
     <!-- Added shared JS file -->
     <script src="ui.common.js" defer></script>
 </head>
-<!-- Page-specific class for CSS targeting -->
 <body class="lookup-page">
 
     <nav class="navbar">
         <ul class="nav-links">
-            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            <!-- Ensure href points correctly, might need to be Index.html -->
+            <li><a href="Index.html" class="nav-link">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link active">Lookup</a></li>
             <li><a href="template.html" class="nav-link">Template</a></li>
         </ul>
@@ -51,36 +51,40 @@
         /**
          * Lookup Tool (v6.0.0)
          * Manages knowledge base routing and text snippets.
-         * * Recent improvements:
-         * - Refactored to use centralized UIUtils
-         * - Removed all inline CSS and local helper functions
-         * - Edit state preserved during filtering
-         * - Import/Restore logic consolidated
+         *
+         * Recent improvements:
+         * - Preserved edit state during filtering
+         * - Multi-item undo support (Removed in v6)
+         * - Duplicate keyword prevention
+         * - Import merge/replace options
+         * - Enhanced input validation
+         * - Visual copy feedback
+         * - Centralized utilities with ui.common.js
          */
         document.addEventListener('DOMContentLoaded', () => {
 
             // === CONSTANTS ===
             const APP_NAME = 'lookup';
             const DATA_KEY = `${APP_NAME}_data`;
-            
+
             // === DOM ELEMENTS ===
             const searchInput = document.getElementById('search-input');
             const routingResults = document.getElementById('routing-results');
             const snippetsResults = document.getElementById('snippets-results');
             const btnAddNewEntry = document.getElementById('btn-add-new-entry');
             const backupBtn = document.getElementById('lookup-state-backup');
-            const restoreBtn = document.getElementById('lookup-state-restore'); 
+            const restoreBtn = document.getElementById('lookup-state-restore');
 
             // === APPLICATION STATE ===
             let state = {
                 routingData: [],
                 snippetsData: []
             };
-            
-            let currentEditState = { id: null, type: null }; 
+
+            let currentEditState = { id: null, type: null };
 
             // === CONFIGURATION HANDLERS ===
-            
+
             const dataTypesConfig = {
                 routing: {
                     listElement: routingResults,
@@ -113,7 +117,7 @@
                 } else {
                     state = { routingData: [], snippetsData: [] };
                 }
-                
+
                 if (!state.routingData) state.routingData = [];
                 if (!state.snippetsData) state.snippetsData = [];
             }
@@ -129,14 +133,13 @@
                     UIUtils.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
                 }
             }
-            
+
             // === UTILITY FUNCTIONS ===
 
-            // Local helpers removed, using UIUtils
+            // Using UIUtils directly for generateId, copyToClipboard, escapeHTML, etc.
 
             function highlight(text, term) {
                 if (!term) return UIUtils.escapeHTML(text);
-                // Use shared escapeHTML
                 const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
                 const regex = new RegExp(`(${escapedTerm})`, 'gi');
                 return UIUtils.escapeHTML(text).replace(regex, '<mark>$1</mark>');
@@ -147,19 +150,20 @@
             function renderList(type, searchTerm = '') {
                 const config = dataTypesConfig[type];
                 const data = state[config.dataKey] || [];
-                config.listElement.innerHTML = ''; 
+                config.listElement.innerHTML = '';
 
                 const term = searchTerm.toLowerCase();
-                
+
                 const filteredData = data.filter(item => {
-                    // Always show the item being edited, even if filtered
+                    // Always show the item being edited, even if it doesn't match search
                     if (item.id === currentEditState.id && type === currentEditState.type) {
-                        return true; 
+                        return true;
                     }
                     return item.keyword.toLowerCase().includes(term);
                 });
-                
+
                 if (filteredData.length === 0 && (currentEditState.type !== type || currentEditState.id === null)) {
+                    // Display different messages based on whether a search term exists
                     if (searchTerm.trim()) {
                         config.listElement.innerHTML = `<li class="empty-state">No results found for "<strong>${UIUtils.escapeHTML(searchTerm)}</strong>"</li>`;
                     } else {
@@ -171,6 +175,7 @@
                 const fragment = document.createDocumentFragment();
                 filteredData.forEach(item => {
                     let itemElement;
+                    // Render the edit form if the item is being edited
                     if (item.id === currentEditState.id && type === currentEditState.type) {
                         itemElement = createEditForm(type, item);
                     } else {
@@ -195,7 +200,7 @@
 
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'item-content';
-                contentDiv.textContent = item.content; 
+                contentDiv.textContent = item.content;
 
                 li.innerHTML = `
                     <div class="item-header">
@@ -214,44 +219,37 @@
                     </div>
                 `;
 
-                // Use shared copyToClipboard
-                li.querySelector('.btn-copy-keyword').addEventListener('click', async (e) => {
-                    const success = await UIUtils.copyToClipboard(item.keyword);
-                    if (success && e.target) {
-                        const originalText = e.target.textContent;
-                        e.target.textContent = 'Copied!';
-                        e.target.disabled = true;
-                        setTimeout(() => {
-                            if (e.target) {
-                                e.target.textContent = originalText;
-                                e.target.disabled = false;
-                            }
-                        }, 1200);
-                    }
-                });
-                li.querySelector('.btn-copy-content').addEventListener('click', async (e) => {
-                    const success = await UIUtils.copyToClipboard(item.content);
-                     if (success && e.target) {
-                        const originalText = e.target.textContent;
-                        e.target.textContent = 'Copied!';
-                        e.target.disabled = true;
-                        setTimeout(() => {
-                            if (e.target) {
-                                e.target.textContent = originalText;
-                                e.target.disabled = false;
-                            }
-                        }, 1200);
-                    }
-                });
+                // Add copy feedback
+                const setupCopyButton = (buttonSelector, textToCopy) => {
+                    li.querySelector(buttonSelector).addEventListener('click', async (e) => {
+                        const success = await UIUtils.copyToClipboard(textToCopy);
+                        if (success && e.target) {
+                            const originalText = e.target.textContent;
+                            e.target.textContent = 'Copied!';
+                            e.target.disabled = true;
+                            setTimeout(() => {
+                                if (e.target) { // Check element still exists
+                                    e.target.textContent = originalText;
+                                    e.target.disabled = false;
+                                }
+                            }, 1200);
+                        } else if (!success) {
+                            UIUtils.showToast("Failed to copy.");
+                        }
+                    });
+                };
+
+                setupCopyButton('.btn-copy-keyword', item.keyword);
+                setupCopyButton('.btn-copy-content', item.content);
 
                 li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
-                
+
                 li.querySelector('.btn-delete').addEventListener('click', () => {
                     UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
                         { label: 'Cancel' },
-                        { 
-                            label: 'Delete', 
-                            class: 'button-danger', 
+                        {
+                            label: 'Delete',
+                            class: 'button-danger',
                             callback: () => handleDelete(item.id, type)
                         }
                     ]);
@@ -265,11 +263,11 @@
                 li.className = 'snippet-item';
                 li.dataset.id = item.id;
                 li.dataset.type = type;
-                
+
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'item-content';
                 contentDiv.title = 'Click to copy snippet';
-                contentDiv.textContent = item.content; 
+                contentDiv.textContent = item.content;
 
                 li.innerHTML = `
                     <div class="item-header">
@@ -280,27 +278,28 @@
                         </div>
                     </div>
                 `;
-                li.appendChild(contentDiv); 
+                li.appendChild(contentDiv);
 
                 li.querySelector('.item-content').addEventListener('click', async (e) => {
-                    // Use shared copyToClipboard
                     const success = await UIUtils.copyToClipboard(item.content);
                     if (success) {
                         UIUtils.showToast("Snippet copied!");
-                        // Visual feedback
+                        // Add temporary visual feedback
                         e.target.style.transition = 'background-color 0.1s ease-in-out';
                         e.target.style.backgroundColor = 'var(--color-success-bg)';
                         setTimeout(() => { e.target.style.backgroundColor = ''; }, 200);
+                    } else {
+                         UIUtils.showToast("Failed to copy snippet.");
                     }
                 });
                 li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
-                
+
                 li.querySelector('.btn-delete').addEventListener('click', () => {
                     UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
                         { label: 'Cancel' },
-                        { 
-                            label: 'Delete', 
-                            class: 'button-danger', 
+                        {
+                            label: 'Delete',
+                            class: 'button-danger',
                             callback: () => handleDelete(item.id, type)
                         }
                     ]);
@@ -308,12 +307,12 @@
 
                 return li;
             }
-            
+
             function createEditForm(type, item) {
                 const config = dataTypesConfig[type];
 
                 const li = document.createElement('li');
-                li.className = 'edit-form-li'; 
+                li.className = 'edit-form-li';
 
                 const form = document.createElement('form');
                 form.className = 'edit-form';
@@ -322,7 +321,7 @@
 
                 const keywordLabel = config.title === 'Routing' ? 'Keyword (e.g., "VPN")' : 'Keyword (e.g., "Greeting")';
                 const contentLabel = config.title === 'Routing' ? 'Content (Assignment Group)' : 'Content (Snippet Text)';
-                
+
                 const keywordInput = document.createElement('input');
                 keywordInput.type = 'text';
                 keywordInput.id = `edit-keyword-${item.id}`;
@@ -337,7 +336,7 @@
                 const keywordLabelEl = document.createElement('label');
                 keywordLabelEl.htmlFor = keywordInput.id;
                 keywordLabelEl.textContent = 'Keyword';
-                
+
                 const contentLabelEl = document.createElement('label');
                 contentLabelEl.htmlFor = contentTextarea.id;
                 contentLabelEl.textContent = 'Content';
@@ -360,13 +359,14 @@
                 });
 
                 form.querySelector('.btn-cancel').addEventListener('click', () => {
+                    // If it was a new, blank item, delete it on cancel without confirmation
                     if (item.keyword.trim() === '' && item.content.trim() === '') {
                         handleDelete(item.id, type, true); // Pass 'true' to skip confirm
                     }
                     currentEditState = { id: null, type: null };
                     renderAll();
                 });
-                
+
                 li.appendChild(form);
                 return li;
             }
@@ -374,29 +374,34 @@
             // === CRUD HANDLERS ===
 
             function handleAddNewEntry() {
+                // Prevent starting a new entry while another is being edited
                 if (currentEditState.id) {
                     UIUtils.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
                     return;
                 }
 
+                // Ask user which type to add via modal
                 UIUtils.showModal("Add New Entry", "<p>What do you want to add?</p>", [
                     { label: 'Cancel' },
                     { label: 'Snippet', callback: () => addNewItem('snippets') },
                     { label: 'Routing', class: 'button-primary', callback: () => addNewItem('routing') }
                 ]);
             }
-            
+
             function addNewItem(type) {
                 const config = dataTypesConfig[type];
-                
-                // Use shared generateId
+
+                // UUID generation with fallback
                 const newItem = { id: UIUtils.generateId(), keyword: '', content: '' };
-                state[config.dataKey].unshift(newItem); 
-                
+                // Add to the beginning of the list for visibility
+                state[config.dataKey].unshift(newItem);
+
+                // Set state to editing this new item
                 currentEditState = { id: newItem.id, type: type };
-                searchInput.value = ''; 
+                searchInput.value = ''; // Clear search to ensure it's visible
                 renderAll();
-                
+
+                // Focus the keyword input of the new form
                 const newEl = document.getElementById(`edit-keyword-${newItem.id}`);
                 if (newEl) {
                     newEl.focus();
@@ -405,28 +410,32 @@
 
 
             function handleEdit(id, type) {
+                // Prevent editing multiple items at once
                 if (currentEditState.id && currentEditState.id !== id) {
                     UIUtils.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
                     return;
                 }
 
+                // Set the current edit state and re-render to show the form
                 currentEditState = { id: id, type: type };
                 renderAll();
+                // Focus the keyword input and select text
                 const editInput = document.getElementById(`edit-keyword-${id}`);
                 if (editInput) {
                     editInput.focus();
-                    editInput.select(); 
+                    editInput.select();
                 }
             }
 
             function handleSave(form, id, type) {
                 const keywordInput = form.querySelector(`#edit-keyword-${id}`);
                 const contentInput = form.querySelector(`#edit-content-${id}`);
-                
+
                 const keyword = keywordInput.value.trim();
                 const content = contentInput.value.trim();
                 const data = state[dataTypesConfig[type].dataKey];
-                
+
+                // Validate inputs are not blank
                 if (keyword === '') {
                     UIUtils.showModal("Invalid Input", "<p>Error: Keyword cannot be blank.</p>", [{label: 'OK'}]);
                     keywordInput.focus();
@@ -438,8 +447,9 @@
                     return;
                 }
 
-                const isDuplicate = data.some(i => 
-                    i.id !== id && 
+                // Check for duplicate keywords (case-insensitive)
+                const isDuplicate = data.some(i =>
+                    i.id !== id && // Exclude self
                     i.keyword.toLowerCase() === keyword.toLowerCase()
                 );
 
@@ -449,40 +459,47 @@
                     return;
                 }
 
+                // Find the item and update its properties
                 const item = data.find(i => i.id === id);
                 if (item) {
                     item.keyword = keyword;
                     item.content = content;
                 }
-                
-                saveState();
-                
+
+                saveState(); // Save the updated state
+
+                // Clear the edit state and re-render the lists
                 currentEditState = { id: null, type: null };
-                renderAll(); 
+                renderAll();
             }
 
-            function handleDelete(id, type, skipConfirm = false) {
+            function handleDelete(id, type, skipConfirm = false) { // skipConfirm added for cancelling new entries
+                // If deleting the item currently being edited, reset the edit state
                 if (currentEditState.id === id) {
                     currentEditState = { id: null, type: null };
                 }
-                
+
                 const config = dataTypesConfig[type];
                 const data = state[config.dataKey];
                 const index = data.findIndex(i => i.id === id);
 
-                if (index === -1) return;
+                if (index === -1) return; // Item not found
 
+                // Remove the item from the state array
                 data.splice(index, 1);
-                
-                saveState();
-                renderAll(); 
+
+                saveState(); // Persist the change
+                renderAll(); // Update the UI
+                // Note: No toast message on delete as per refactoring
             }
-            
+
             // === DATA IMPORT / EXPORT / BACKUP / RESTORE ===
 
+            // File loading logic moved into handleFileLoad
             function handleFileLoad(file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    // User feedback during file processing
                     UIUtils.showToast("Processing file...");
                     let jsonData;
                     try {
@@ -493,31 +510,32 @@
                         return;
                     }
 
-                    // --- Logic to determine file type ---
-                    
+                    // --- Determine file type and handle accordingly ---
+
+                    // Check if it's a full backup file (modern format)
                     if (jsonData.appName === APP_NAME && jsonData.data) {
                         UIUtils.showModal("Confirm Restore", "<p>This is a full backup file. Restoring will overwrite all current data.</p>", [
                             { label: 'Cancel' },
-                            { 
-                                label: 'Restore', 
+                            {
+                                label: 'Restore',
                                 class: 'button-danger',
                                 callback: () => {
                                     state = jsonData.data || { routingData: [], snippetsData: [] };
                                     saveState();
-                                    currentEditState = { id: null, type: null };
+                                    currentEditState = { id: null, type: null }; // Reset edit state
                                     renderAll();
                                     UIUtils.showToast("Restore successful.");
                                 }
                             }
                         ]);
-                    
+
+                    // Check if it's a legacy backup file
                     } else if (jsonData.appName === 'assignment_tool' && jsonData.data) {
-                        // Use modal for legacy restore confirmation
                         UIUtils.showModal("Confirm Legacy Restore", "<p>This is a backup from the old 'Assignment Tool'. Restore it?</p>", [
                             { label: 'Cancel' },
-                            { 
-                                label: 'Restore', 
-                                class: 'button-primary', 
+                            {
+                                label: 'Restore',
+                                class: 'button-primary',
                                 callback: () => {
                                     state = jsonData.data || { routingData: [], snippetsData: [] };
                                     saveState();
@@ -528,17 +546,18 @@
                             }
                         ]);
 
+                    // Check if it's a data-only import file
                     } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
-                        
                         const newRoutingCount = jsonData.routing?.length || 0;
                         const newSnippetsCount = jsonData.snippets?.length || 0;
 
-                        UIUtils.showModal("Confirm Data Import", 
-                            `<p>This file contains <strong>${newRoutingCount} routing</strong> entries and <strong>${newSnippetsCount} snippet</strong> entries.</p><p>How do you want to import this data?</p>`, 
+                        // Ask user whether to merge or replace
+                        UIUtils.showModal("Confirm Data Import",
+                            `<p>This file contains <strong>${newRoutingCount} routing</strong> entries and <strong>${newSnippetsCount} snippet</strong> entries.</p><p>How do you want to import this data?</p>`,
                             [
                                 { label: 'Cancel' },
                                 {
-                                    label: 'Merge',
+                                    label: 'Merge', // Adds new data without overwriting
                                     class: 'button-primary',
                                     callback: () => {
                                         state.routingData = (state.routingData || []).concat(jsonData.routing || []);
@@ -549,7 +568,7 @@
                                     }
                                 },
                                 {
-                                    label: 'Replace All',
+                                    label: 'Replace All', // Wipes existing data
                                     class: 'button-danger',
                                     callback: () => {
                                         state.routingData = jsonData.routing || [];
@@ -562,6 +581,7 @@
                             ]
                         );
 
+                    // If file structure doesn't match known types
                     } else {
                         UIUtils.showModal("Import Error", "<p>Invalid file structure. Not a valid backup or import file.</p>", [{label: 'OK'}]);
                     }
@@ -577,33 +597,34 @@
                 }
             }
 
+            // Helper for creating backup data
             function handleBackup() {
                 const dataStr = JSON.stringify({
                     appName: APP_NAME,
                     timestamp: new Date().toISOString(),
-                    version: '6.0.0', 
+                    version: '6.0.0', // Updated version
                     data: state
                 }, null, 2);
-                // Use shared downloadJSON
+                // Helper for JSON downloads
                 UIUtils.downloadJSON(dataStr, `${APP_NAME}_backup.json`);
                 UIUtils.showToast("Backup created.");
             }
 
             // === EVENT LISTENERS ===
-            
+
             searchInput.addEventListener('input', renderAll);
             btnAddNewEntry.addEventListener('click', handleAddNewEntry);
-            
+
             backupBtn.addEventListener('click', handleBackup);
-            // Use shared openFilePicker
             restoreBtn.addEventListener('click', () => UIUtils.openFilePicker(handleFileLoad));
-            
+
             // === INITIAL LOAD ===
-            // Theme is initialized by ui.common.js
+            // Initialize theme preference (handled by ui.common.js)
             loadState();
             renderAll();
         });
     </script>
 </body>
 </html>
+
 
