@@ -7,9 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <!-- Link to shared modal script -->
     <script src="ui.common.js" defer></script>
-    <style>
-        /* Page-specific styles can go here */
-    </style>
+    <!-- (Mode C Fix) Removed inline <style> block -->
 </head>
 <body>
     <div class="app-container">
@@ -28,20 +26,25 @@
                 
                 <div class="section-header-wrapper">
                     <h3 class="section-header">New Page Title</h3>
+                    <button id="example-button" class="button-base button-primary">Example Button</button>
                 </div>
                 
                 <p>Your content for this new page goes here.</p>
-                <div class="empty-state-message">This is an empty state message.</div>
+                <div class="empty-state-message" id="empty-state">This is an empty state message.</div>
+                
+                <div id="item-list-container">
+                    <!-- Items will be rendered here -->
+                </div>
 
                 <!-- --- End Page Content --- -->
 
             </div>
-            <!-- Required for showToast() -->
+            <!-- (Mode C Fix) Added shared toast container -->
             <div id="toast" class="toast"></div>
         </div>
     </div>
 
-    <!-- Required for showModal() -->
+    <!-- (Mode C Fix) Added shared modal containers -->
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
@@ -49,26 +52,27 @@
     <script>
     {
         // --- PAGE CONFIG ---
-        const APP_VERSION = '5.3.0';
+        const APP_VERSION = '5.7.0'; // (Mode D)
         // IMPORTANT: Give this page its own unique local storage key
         const LOCAL_STORAGE_KEY = 'newpage_state_v5';
 
         // --- DOM ELEMENT CACHE ---
         const DOMElements = {
             toast: document.getElementById('toast'),
-            modalOverlay: document.getElementById('modal-overlay')
-            // Add other page-specific elements here
-            // e.g., myButton: document.getElementById('my-button')
+            modalOverlay: document.getElementById('modal-overlay'),
+            // (Mode C Fix) Updated cache
+            exampleButton: document.getElementById('example-button'),
+            emptyState: document.getElementById('empty-state'),
+            itemList: document.getElementById('item-list-container')
         };
         
         // --- STATE MANAGEMENT ---
+        // (Mode C Fix) Simplified state for a better template
         const defaultState = {
             version: APP_VERSION,
-            // Add page-specific state properties
-            exampleList: []
+            items: []
         };
         let state;
-        let undoTimers = {}; // Required for showToast undo
 
         function loadState() {
             const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -76,21 +80,18 @@
                 try {
                     const parsed = JSON.parse(rawState);
                     // Add validation for your state properties
-                    if (!parsed || !Array.isArray(parsed.exampleList)) {
+                    if (!parsed || !Array.isArray(parsed.items)) {
                         throw new Error("State is invalid.");
                     }
                     return { ...defaultState, ...parsed };
                 } catch (e) { 
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
-                    // Show a modal error on the *next* tick to ensure DOM is ready
-                    // USE UIUtils.showModal
+                    // (Mode C Fix) Use UIUtils.showModal
                     setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
-                    // MODE C-1 (Updated) FIX: Simplified deep copy
                     return { ...defaultState };
                 }
             }
-            // MODE C-1 (Updated) FIX: Simplified deep copy
             return { ...defaultState };
         }
 
@@ -99,40 +100,12 @@
                 state.version = APP_VERSION;
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
             } catch (e) { 
-                showToast("Error saving data"); 
+                UIUtils.showToast("Error saving data"); // (Mode C Fix) Use UIUtils
                 console.error("Failed to save state:", e);
             }
         };
 
-        // --- CORE UTILITIES ---
-        
-        // Use shared escapeHTML
-        const escapeHTML = (typeof UIUtils !== 'undefined' && UIUtils.escapeHTML) ? UIUtils.escapeHTML : (str) => {
-            if (!str) return '';
-            const p = document.createElement('p');
-            p.textContent = str;
-            return p.innerHTML;
-        };
-        
-        const showToast = (message, undoKey = null, undoCallback = null) => {
-            const toast = DOMElements.toast;
-            if (undoKey && undoTimers[undoKey]) clearTimeout(undoTimers[undoKey]);
-
-            toast.innerHTML = `<span>${escapeHTML(message)}</span>`;
-
-            if (undoKey && undoCallback) {
-                const undoButton = document.createElement('button');
-                undoButton.textContent = 'Undo';
-                undoButton.onclick = () => { undoCallback(); toast.classList.remove('show'); clearTimeout(undoTimers[undoKey]); delete undoTimers[undoKey]; };
-                toast.appendChild(undoButton);
-                undoTimers[undoKey] = setTimeout(() => { toast.classList.remove('show'); saveState(); delete undoTimers[undoKey]; }, 5000);
-            } else { setTimeout(() => toast.classList.remove('show'), 3000); }
-            toast.classList.add('show');
-        };
-
-        // Use shared showModal and hideModal
-        const showModal = (typeof UIUtils !== 'undefined' && UIUtils.showModal) ? UIUtils.showModal : () => console.error("UIUtils.showModal not loaded");
-        const hideModal = (typeof UIUtils !== 'undefined' && UIUtils.hideModal) ? UIUtils.hideModal : () => console.error("UIUtils.hideModal not loaded");
+        // --- (Mode C Fix) Removed all local helpers (escapeHTML, showToast, showModal) ---
 
         // --- PAGE-SPECIFIC LOGIC ---
 
@@ -141,19 +114,73 @@
          */
         const renderAll = () => {
             console.log("Rendering page with state:", state);
-            // Add your rendering logic here
-            // e.g., listContainer.innerHTML = state.exampleList.map(item => `...`).join('');
+            
+            if (state.items.length === 0) {
+                DOMElements.emptyState.style.display = 'block';
+                DOMElements.itemList.innerHTML = '';
+            } else {
+                DOMElements.emptyState.style.display = 'none';
+                // (Mode C Fix) Use fragment and UIUtils
+                const fragment = document.createDocumentFragment();
+                state.items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'shortcut-item'; // Re-using a style
+                    div.innerHTML = `
+                        <span>${UIUtils.escapeHTML(item.name)}</span>
+                        <button class="icon-btn delete-btn" data-id="${item.id}" title="Delete">${UIUtils.SVGIcons.trash}</button>
+                    `;
+                    // Add listener for the delete button
+                    div.querySelector('.delete-btn').addEventListener('click', () => {
+                        handleDeleteItem(item.id, item.name);
+                    });
+                    fragment.appendChild(div);
+                });
+                DOMElements.itemList.innerHTML = '';
+                DOMElements.itemList.appendChild(fragment);
+            }
         };
 
+        /**
+         * Example: Add a new item
+         */
+        const handleAddItem = () => {
+            const newItem = {
+                id: UIUtils.generateId(),
+                name: `Item ${new Date().toLocaleTimeString()}`
+            };
+            state.items.push(newItem);
+            saveState();
+            renderAll();
+            UIUtils.showToast(`${newItem.name} added`);
+        };
+        
+        /**
+         * Example: Delete an item with confirmation
+         */
+        const handleDeleteItem = (id, name) => {
+            UIUtils.showModal('Delete Item', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(name)}"?</p>`, [
+                { label: 'Cancel' },
+                {
+                    label: 'Delete',
+                    class: 'button-danger',
+                    callback: () => {
+                        state.items = state.items.filter(item => item.id !== id);
+                        saveState();
+                        renderAll();
+                        UIUtils.showToast(`${name} deleted`);
+                    }
+                }
+            ]);
+        };
 
 
         /**
          * Attaches all event listeners for the page.
          */
         const attachEventListeners = () => {
-            // e.g., DOMElements.myButton.addEventListener('click', () => { ... });
+            DOMElements.exampleButton.addEventListener('click', handleAddItem);
             
-            // Modal close listeners are now in ui.common.js
+            // Modal close listeners are in ui.common.js
         };
 
         /**
