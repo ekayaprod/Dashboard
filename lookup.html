@@ -695,7 +695,7 @@
              * Creates a form for adding/editing an entry.
              * @param {string} type - 'routing' or 'snippets'.
              * @param {object} item - The data item to edit.
-             *s {HTMLLIElement} - Returns an LI element wrapping the form.
+             s {HTMLLIElement} - Returns an LI element wrapping the form.
              */
             function createEditForm(type, item) {
                 const config = dataTypesConfig[type];
@@ -1126,7 +1126,7 @@
                             if (backupData.appName === 'assignment_tool') {
                                 if (!confirm("This appears to be a backup from the old 'Assignment Tool'. Restore it?")) {
                                     throw new Error("Restore cancelled by user.");
-                                }
+                                 }
                             } else {
                                 throw new Error(`Invalid backup file. Expected app name '${APP_NAME}'.`);
                             }
@@ -1203,5 +1203,4 @@
     </script>
 </body>
 </html>
-
 
