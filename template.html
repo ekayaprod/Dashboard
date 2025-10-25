@@ -9,10 +9,10 @@
     <script src="ui.common.js" defer></script>
 </head>
 <body>
-    <!-- (Mode C) Replaced tabs with standard navbar -->
     <nav class="navbar">
         <ul class="nav-links">
-            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            <!-- Ensure href points correctly -->
+            <li><a href="Index.html" class="nav-link">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link">Lookup</a></li>
             <li><a href="template.html" class="nav-link active">Template</a></li>
         </ul>
@@ -25,11 +25,11 @@
         <div class="panel">
             <div class="main-content">
                 <!-- --- Your Page Content Goes Here --- -->
-                
+
                 <div class="section-header-wrapper">
                     <h3 class="section-header">New Page Title</h3>
                 </div>
-                
+
                 <p>Your content for this new page goes here.</p>
                 <div class="empty-state-message">This is an empty state message.</div>
 
@@ -58,7 +58,7 @@
             modalOverlay: document.getElementById('modal-overlay')
             // e.g., myButton: document.getElementById('my-button')
         };
-        
+
         // --- STATE MANAGEMENT ---
         const defaultState = {
             version: APP_VERSION,
@@ -75,10 +75,11 @@
                         throw new Error("State is invalid.");
                     }
                     return { ...defaultState, ...parsed };
-                } catch (e) { 
+                } catch (e) {
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
                     setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
+                    // Initialize with default state
                     return { ...defaultState };
                 }
             }
@@ -89,17 +90,15 @@
             try {
                 state.version = APP_VERSION;
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-            } catch (e) { 
-                // (Mode C) Use shared UIUtils.showModal for errors
-                UIUtils.showModal("Error", "Error saving data", [{label: "OK"}]); 
+            } catch (e) {
+                UIUtils.showModal("Error", "Error saving data", [{label: "OK"}]);
                 console.error("Failed to save state:", e);
             }
         };
 
         // --- CORE UTILITIES ---
-        
-        // (Mode C) Removed local escapeHTML and showToast
-        // Now using UIUtils directly
+
+        // Using UIUtils directly for escapeHTML, showToast, showModal etc.
 
         // --- PAGE-SPECIFIC LOGIC ---
 
@@ -117,7 +116,7 @@
          */
         const attachEventListeners = () => {
             // e.g., DOMElements.myButton.addEventListener('click', () => { ... });
-            
+
             // Example of using a shared utility:
             // UIUtils.showToast("Page loaded!");
         };
@@ -126,7 +125,7 @@
          * Initializes the application.
          */
         const init = () => {
-            // (Mode C) Theme is initialized by ui.common.js
+            // Theme is initialized by ui.common.js
             state = loadState();
             renderAll();
             attachEventListeners();
