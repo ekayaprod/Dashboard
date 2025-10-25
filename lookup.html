@@ -8,7 +8,7 @@
     <!-- Added shared JS file -->
     <script src="ui.common.js" defer></script>
 </head>
-<!-- (Mode C) Added class for CSS targeting -->
+<!-- Page-specific class for CSS targeting -->
 <body class="lookup-page">
 
     <nav class="navbar">
@@ -45,18 +45,17 @@
         </main>
     </div>
 
-    <!-- (Mode C) Removed all modal HTML -->
     <div id="toast" class="toast"></div>
-    <!-- (Mode C) Removed file input, now handled by UIUtils -->
 
     <script>
         /**
          * Lookup Tool (v6.0.0)
          * Manages knowledge base routing and text snippets.
-         * * v6.0.0 Changelog (Mode C Refactor):
-         * - Removed all inline CSS.
-         * - Removed all local helper functions (generateId, copyToClipboard, etc.).
-         * - Now uses centralized UIUtils for all helpers.
+         * * Recent improvements:
+         * - Refactored to use centralized UIUtils
+         * - Removed all inline CSS and local helper functions
+         * - Edit state preserved during filtering
+         * - Import/Restore logic consolidated
          */
         document.addEventListener('DOMContentLoaded', () => {
 
@@ -121,6 +120,7 @@
 
             function saveState() {
                 try {
+                    // Data sorted on save for performance
                     state.routingData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     state.snippetsData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     localStorage.setItem(DATA_KEY, JSON.stringify(state));
@@ -132,12 +132,11 @@
             
             // === UTILITY FUNCTIONS ===
 
-            // (Mode C) All local helpers (escapeHTML, generateId, copyToClipboard) removed
-            // Now using UIUtils directly
+            // Local helpers removed, using UIUtils
 
             function highlight(text, term) {
                 if (!term) return UIUtils.escapeHTML(text);
-                // (Mode C) Use shared escapeHTML
+                // Use shared escapeHTML
                 const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
                 const regex = new RegExp(`(${escapedTerm})`, 'gi');
                 return UIUtils.escapeHTML(text).replace(regex, '<mark>$1</mark>');
@@ -153,7 +152,7 @@
                 const term = searchTerm.toLowerCase();
                 
                 const filteredData = data.filter(item => {
-                    // (Mode B Fix) Always show the item being edited
+                    // Always show the item being edited, even if filtered
                     if (item.id === currentEditState.id && type === currentEditState.type) {
                         return true; 
                     }
@@ -215,7 +214,7 @@
                     </div>
                 `;
 
-                // (Mode C) Use shared UIUtils.copyToClipboard
+                // Use shared copyToClipboard
                 li.querySelector('.btn-copy-keyword').addEventListener('click', async (e) => {
                     const success = await UIUtils.copyToClipboard(item.keyword);
                     if (success && e.target) {
@@ -284,7 +283,7 @@
                 li.appendChild(contentDiv); 
 
                 li.querySelector('.item-content').addEventListener('click', async (e) => {
-                    // (Mode C) Use shared UIUtils.copyToClipboard
+                    // Use shared copyToClipboard
                     const success = await UIUtils.copyToClipboard(item.content);
                     if (success) {
                         UIUtils.showToast("Snippet copied!");
@@ -390,7 +389,7 @@
             function addNewItem(type) {
                 const config = dataTypesConfig[type];
                 
-                // (Mode C) Use shared generateId
+                // Use shared generateId
                 const newItem = { id: UIUtils.generateId(), keyword: '', content: '' };
                 state[config.dataKey].unshift(newItem); 
                 
@@ -481,8 +480,6 @@
             
             // === DATA IMPORT / EXPORT / BACKUP / RESTORE ===
 
-            // (Mode C) Removed local openFilePicker, now in UIUtils
-
             function handleFileLoad(file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -515,7 +512,7 @@
                         ]);
                     
                     } else if (jsonData.appName === 'assignment_tool' && jsonData.data) {
-                        // (Mode B Fix) Replaced confirm() with showModal()
+                        // Use modal for legacy restore confirmation
                         UIUtils.showModal("Confirm Legacy Restore", "<p>This is a backup from the old 'Assignment Tool'. Restore it?</p>", [
                             { label: 'Cancel' },
                             { 
@@ -587,7 +584,7 @@
                     version: '6.0.0', 
                     data: state
                 }, null, 2);
-                // (Mode C) Use shared downloadJSON
+                // Use shared downloadJSON
                 UIUtils.downloadJSON(dataStr, `${APP_NAME}_backup.json`);
                 UIUtils.showToast("Backup created.");
             }
@@ -598,16 +595,15 @@
             btnAddNewEntry.addEventListener('click', handleAddNewEntry);
             
             backupBtn.addEventListener('click', handleBackup);
-            // (Mode C) Use shared openFilePicker
+            // Use shared openFilePicker
             restoreBtn.addEventListener('click', () => UIUtils.openFilePicker(handleFileLoad));
             
             // === INITIAL LOAD ===
-            // (Mode C) Theme is now initialized by ui.common.js
+            // Theme is initialized by ui.common.js
             loadState();
             renderAll();
         });
     </script>
 </body>
 </html>
-
 
