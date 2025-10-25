@@ -134,6 +134,16 @@ body {
 }
 .shortcut-item a:hover { text-decoration: underline; }
 
+/* --- (Mode C Fix) Styles for drag-and-drop (from dashboard.html) --- */
+.drag-handle { cursor: grab; color: var(--subtle-text); padding-right: 0.4rem; touch-action: none; }
+.drag-handle:active { cursor: grabbing; }
+.shortcut-item.dragging { opacity: 0.5; background: var(--primary-color); }
+.shortcut-item > .drag-handle { flex-shrink: 0; }
+.shortcut-item > a { flex-grow: 1; }
+.shortcut-item > .delete-btn { flex-shrink: 0; }
+/* --- End Mode C Fix --- */
+
+
 .notepad-wrapper { display: flex; flex-direction: column; flex-grow: 1; min-height: 200px; }
 .notepad-header { position: relative; display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.75rem; }
 .notepad-header .sidebar-input { margin-bottom: 0; flex-grow: 1; }
@@ -162,12 +172,18 @@ body {
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
 
 .toast {
-    position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: -100px; /* Start hidden */
+    left: 50%; transform: translateX(-50%);
     background-color: #334155; color: white; padding: 0.75rem 1rem; border-radius: 0.5rem;
     display: flex; align-items: center; gap: 1rem; z-index: 3000;
-    opacity: 0; transition: opacity 0.3s, bottom 0.3s;
+    opacity: 0; transition: opacity 0.3s, bottom 0.3s ease-out;
+    visibility: hidden;
 }
-.toast.show { opacity: 1; bottom: 1.5rem; }
+.toast.show { 
+    opacity: 1; 
+    bottom: 1.5rem; /* Animate in */
+    visibility: visible;
+}
 .toast button { background: none; border: 1px solid #64748b; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; }
 .toast button:hover { background-color: #475569; }
 
@@ -270,84 +286,11 @@ body {
     background-color: var(--border-color);
 }
 
-/* === FINAL REVIEW CRITICAL FIX: MODAL STYLES (for lookup.html) === */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-}
-.modal.show {
-    display: flex;
-}
-.modal-close {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    font-size: 1.5rem;
-    color: var(--subtle-text);
-    cursor: pointer;
-    background: none;
-    border: none;
-    line-height: 1;
-}
-.modal-close:hover {
-    color: var(--text-color);
-}
-.modal-section {
-    margin-bottom: 1.5rem;
-}
-.modal-section:last-child {
-    margin-bottom: 0;
-}
-.modal-section h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    font-size: 1rem;
-}
-.code-block {
-    background-color: var(--info-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.375rem;
-    padding: 0.75rem;
-    font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
-    overflow-x: auto;
-    white-space: pre;
-}
-.btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-.btn:hover {
-    background-color: #2563eb;
-}
-
-/* === FINAL REVIEW CRITICAL FIX: TOAST STYLES (for lookup.html) === */
-.btn-toast-undo {
-    background: none;
-    border: 1px solid #64748b;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    font-size: 0.875rem;
-}
-.btn-toast-undo:hover {
-    background-color: #475569;
-}
+/* === (Mode C Fix) REMOVED legacy modal/toast styles from lookup.html === */
+/* .modal, .modal-close, .modal-section, .code-block, .btn, .btn-toast-undo 
+    styles were here and have been removed as they are now redundant
+    or handled by .button-base and the new .toast styles.
+*/
 
 
 @media (prefers-color-scheme: dark) {
@@ -391,9 +334,8 @@ body {
     .nav-link.active { background-color: var(--primary-color); color: #fff; }
     .btn-nav { background-color: #374151; border-color: #4b5563; }
     .btn-nav:hover { background-color: #4b5563; }
-    .code-block { background-color: #374151; border-color: #4b5563; }
-    .btn { background-color: var(--primary-color); color: #fff; }
-    .btn:hover { background-color: #2563eb; }
+    
+    /* (Mode C Fix) .code-block removed, handled by data-theme rule */
 }
 
 /* --- ENHANCEMENT 2: ACCESSIBLE FOCUS STATES --- */
@@ -403,10 +345,178 @@ body {
 .actions-menu-item:focus-visible,
 .icon-btn:focus-visible,
 .nav-link:focus-visible,
-.btn-nav:focus-visible,
-.btn:focus-visible {
+.btn-nav:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--primary-color);
 }
 
 
+/* --- (Mode C Fix) Manual theme override support --- */
+:root[data-theme="dark"] {
+    --bg-color: #111827;
+    --panel-bg: #1f2937;
+    --border-color: #374151;
+    --text-color: #f9fafb;
+    --subtle-text: #9ca3af;
+    --primary-color: #60a5fa;
+    --info-bg: #1f2937;
+    --danger-hover-bg: #4b1d1d;
+    --primary-hover-bg-light: #374151;
+    --color-danger-bg: #4b1d1d;
+    --color-danger-border: #991b1b;
+    --color-danger: #f87171;
+    --color-danger-bg-hover: #7f1d1d;
+    --color-danger-border-hover: #b91c1c;
+    --color-success-bg: #164e34;
+    --color-success-border: #166534;
+    --color-success: #4ade80;
+    --color-success-bg-hover: #166534;
+    --color-success-border-hover: #15803d;
+}
+
+:root[data-theme="dark"] .button-base {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+:root[data-theme="dark"] .button-base:hover {
+    background-color: #4b5563;
+}
+
+:root[data-theme="dark"] .input-base,
+:root[data-theme="dark"] .sidebar-input,
+:root[data-theme="dark"] .sidebar-textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: var(--text-color);
+}
+
+:root[data-theme="dark"] .input-base:focus,
+:root[data-theme="dark"] .sidebar-input:focus,
+:root[data-theme="dark"] .sidebar-textarea:focus {
+    background-color: #1f2937;
+}
+
+:root[data-theme="dark"] .actions-menu {
+    border-color: #4b5563;
+}
+
+:root[data-theme="dark"] .actions-menu-item:hover {
+    background-color: #374151;
+}
+
+:root[data-theme="dark"] .copy-btn:hover {
+    background-color: var(--primary-hover-bg-light);
+    color: var(--primary-color);
+}
+
+:root[data-theme="dark"] .nav-link:hover {
+    background-color: #374151;
+}
+
+:root[data-theme="dark"] .nav-link.active {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+:root[data-theme="dark"] .btn-nav {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+:root[data-theme="dark"] .btn-nav:hover {
+    background-color: #4b5563;
+}
+
+/* (Mode C Fix) This style is now needed for the modal's code block */
+:root[data-theme="dark"] .code-block {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+/* (Mode C Fix) This style is now needed for the modal's buttons */
+:root[data-theme="dark"] .btn {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+:root[data-theme="dark"] .btn:hover {
+    background-color: #2563eb;
+}
+
+:root[data-theme="light"] {
+    --bg-color: #f4f7fa;
+    --panel-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --text-color: #1e293b;
+    --subtle-text: #64748b;
+    --primary-color: #3b82f6;
+    --info-bg: #f8fafc;
+    --danger-hover-bg: #fee2e2;
+    --primary-hover-bg-light: #e0e7ff;
+    
+    /* (Mode C Fix) Added light-mode modal button styles */
+    --color-danger-bg: #fef2f2;
+    --color-danger-border: #fecaca;
+    --color-danger: #dc2626;
+    --color-danger-bg-hover: #fee2e2;
+    --color-danger-border-hover: #fca5a5;
+    --color-success-bg: #f0fdf4;
+    --color-success-border: #bbf7d0;
+    --color-success: #16a34a;
+    --color-success-bg-hover: #dcfce7;
+    --color-success-border-hover: #86efac;
+}
+
+/* (Mode C Fix) Added light-mode modal/code-block styles */
+:root[data-theme="light"] .code-block {
+    background-color: var(--info-bg);
+    border: 1px solid var(--border-color);
+}
+:root[data-theme="light"] .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+:root[data-theme="light"] .btn:hover {
+    background-color: #2563eb;
+}
+:root[data-theme="light"] .btn.button-danger {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+:root[data-theme="light"] .btn.button-danger:hover {
+     background-color: #dc2626;
+}
+
+/* (Mode C Fix) General styles for new dynamic modal elements */
+.code-block {
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    overflow-x: auto;
+    white-space: pre;
+}
+.import-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: var(--info-bg);
+    padding: 10px;
+    border-radius: 0.375rem;
+    margin: 1rem 0;
+    border: 1px solid var(--border-color);
+}
+.import-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
