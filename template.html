@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - New Page</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Link to shared modal script -->
+    <script src="ui.common.js" defer></script>
     <style>
         /* Page-specific styles can go here */
     </style>
@@ -13,13 +15,14 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
+                <!-- --- NAVIGATION LINKS UPDATED --- -->
                 <div class="tabs-container">
                     <a href="dashboard.html" class="tab-link">Dashboard</a>
-                    <a href="tasks.html" class="tab-link">Tasks</a>
-                    <a href="assignment_tool.html" class="tab-link">Support Toolkit</a>
+                    <a href="lookup.html" class="tab-link">Lookup</a>
                     <!-- Add your new page link; mark it as 'active' -->
                     <a href="template.html" class="tab-link active">New Page</a>
                 </div>
+                <!-- --- END NAVIGATION UPDATE --- -->
 
                 <!-- --- Your Page Content Goes Here --- -->
                 
@@ -39,7 +42,9 @@
     </div>
 
     <!-- Required for showModal() -->
-    <div id="modal-overlay" class="modal-overlay"></div>
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
 
     <script>
     {
@@ -79,7 +84,8 @@
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
                     // Show a modal error on the *next* tick to ensure DOM is ready
-                    setTimeout(() => showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
+                    // USE UIUtils.showModal
+                    setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
                     // MODE C-1 (Updated) FIX: Simplified deep copy
                     return { ...defaultState };
                 }
@@ -99,7 +105,9 @@
         };
 
         // --- CORE UTILITIES ---
-        const escapeHTML = (str) => {
+        
+        // Use shared escapeHTML
+        const escapeHTML = (typeof UIUtils !== 'undefined' && UIUtils.escapeHTML) ? UIUtils.escapeHTML : (str) => {
             if (!str) return '';
             const p = document.createElement('p');
             p.textContent = str;
@@ -109,7 +117,9 @@
         const showToast = (message, undoKey = null, undoCallback = null) => {
             const toast = DOMElements.toast;
             if (undoKey && undoTimers[undoKey]) clearTimeout(undoTimers[undoKey]);
+
             toast.innerHTML = `<span>${escapeHTML(message)}</span>`;
+
             if (undoKey && undoCallback) {
                 const undoButton = document.createElement('button');
                 undoButton.textContent = 'Undo';
@@ -120,23 +130,9 @@
             toast.classList.add('show');
         };
 
-        const showModal = (title, contentHtml, actions) => {
-            const modalContent = document.createElement('div');
-            modalContent.className = 'modal-content';
-            modalContent.innerHTML = `<h3>${escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
-            const actionsContainer = modalContent.querySelector('.modal-actions');
-            actions.forEach(action => {
-                const btn = document.createElement('button');
-                btn.className = `button-base ${action.class || ''}`;
-                btn.textContent = action.label;
-                btn.onclick = () => { if (!action.callback || action.callback() !== false) hideModal(); };
-                actionsContainer.appendChild(btn);
-_            });
-            DOMElements.modalOverlay.innerHTML = '';
-            DOMElements.modalOverlay.appendChild(modalContent);
-            DOMElements.modalOverlay.style.display = 'flex';
-        };
-        const hideModal = () => { DOMElements.modalOverlay.style.display = 'none'; };
+        // Use shared showModal and hideModal
+        const showModal = (typeof UIUtils !== 'undefined' && UIUtils.showModal) ? UIUtils.showModal : () => console.error("UIUtils.showModal not loaded");
+        const hideModal = (typeof UIUtils !== 'undefined' && UIUtils.hideModal) ? UIUtils.hideModal : () => console.error("UIUtils.hideModal not loaded");
 
         // --- PAGE-SPECIFIC LOGIC ---
 
@@ -157,13 +153,7 @@ _            });
         const attachEventListeners = () => {
             // e.g., DOMElements.myButton.addEventListener('click', () => { ... });
             
-            // Modal close listeners
-            DOMElements.modalOverlay.addEventListener('click', (e) => { 
-                if (e.target.id === 'modal-overlay') hideModal(); 
-            });
-            document.addEventListener('keydown', (e) => { 
-                if(e.key === 'Escape') hideModal();
-            });
+            // Modal close listeners are now in ui.common.js
         };
 
         /**
