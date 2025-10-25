@@ -8,7 +8,8 @@
     <!-- Added shared JS file -->
     <script src="ui.common.js" defer></script>
 </head>
-<body>
+<!-- (Mode C) Added class for CSS targeting -->
+<body class="lookup-page">
 
     <nav class="navbar">
         <ul class="nav-links">
@@ -17,6 +18,7 @@
             <li><a href="template.html" class="nav-link">Template</a></li>
         </ul>
         <div class="nav-actions">
+            <button id="theme-toggle" class="btn-nav">Toggle Theme</button>
             <button id="lookup-state-backup" class="btn-nav">Backup</button>
             <button id="lookup-state-restore" class="btn-nav">Import / Restore</button>
         </div>
@@ -43,15 +45,18 @@
         </main>
     </div>
 
+    <!-- (Mode C) Removed all modal HTML -->
     <div id="toast" class="toast"></div>
+    <!-- (Mode C) Removed file input, now handled by UIUtils -->
 
     <script>
         /**
-         * Lookup Tool (v5.9.1)
+         * Lookup Tool (v6.0.0)
          * Manages knowledge base routing and text snippets.
-         * * v5.9.1 Changelog (Mode E):
-         * - Removed "Quick Add" feature from search.
-         * - Removed "Backup Reminder" toast.
+         * * v6.0.0 Changelog (Mode C Refactor):
+         * - Removed all inline CSS.
+         * - Removed all local helper functions (generateId, copyToClipboard, etc.).
+         * - Now uses centralized UIUtils for all helpers.
          */
         document.addEventListener('DOMContentLoaded', () => {
 
@@ -96,8 +101,6 @@
 
             // === INITIALIZATION ===
 
-            // (Mode E Fix 5) Removed checkBackupReminder function
-
             function loadState() {
                 const storedData = localStorage.getItem(DATA_KEY);
 
@@ -114,8 +117,6 @@
                 
                 if (!state.routingData) state.routingData = [];
                 if (!state.snippetsData) state.snippetsData = [];
-
-                // (Mode E Fix 5) Removed call to checkBackupReminder
             }
 
             function saveState() {
@@ -131,43 +132,15 @@
             
             // === UTILITY FUNCTIONS ===
 
-            function escapeHTML(str) {
-                return UIUtils.escapeHTML(str);
-            }
-
-            function generateId() {
-                return UIUtils.generateId();
-            }
-
-            async function copyToClipboard(text, buttonEl = null) {
-                const success = await UIUtils.copyToClipboard(text);
-                if (success && buttonEl) {
-                    if (buttonEl.classList.contains('item-content')) {
-                        buttonEl.style.transition = 'background-color 0.1s ease-in-out';
-                        buttonEl.style.backgroundColor = 'var(--color-success-bg)';
-                        setTimeout(() => { buttonEl.style.backgroundColor = ''; }, 200);
-                        UIUtils.showToast("Snippet copied!");
-                    } else {
-                        const originalText = buttonEl.textContent;
-                        buttonEl.textContent = 'Copied!';
-                        buttonEl.disabled = true;
-                        setTimeout(() => {
-                            if (buttonEl) {
-                                buttonEl.textContent = originalText;
-                                buttonEl.disabled = false;
-                            }
-                        }, 1200);
-                    }
-                } else if (!success) {
-                    console.warn('Failed to copy.');
-                }
-            }
+            // (Mode C) All local helpers (escapeHTML, generateId, copyToClipboard) removed
+            // Now using UIUtils directly
 
             function highlight(text, term) {
-                if (!term) return escapeHTML(text);
+                if (!term) return UIUtils.escapeHTML(text);
+                // (Mode C) Use shared escapeHTML
                 const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
                 const regex = new RegExp(`(${escapedTerm})`, 'gi');
-                return escapeHTML(text).replace(regex, '<mark>$1</mark>');
+                return UIUtils.escapeHTML(text).replace(regex, '<mark>$1</mark>');
             }
 
             // === DOM RENDERING ===
@@ -180,6 +153,7 @@
                 const term = searchTerm.toLowerCase();
                 
                 const filteredData = data.filter(item => {
+                    // (Mode B Fix) Always show the item being edited
                     if (item.id === currentEditState.id && type === currentEditState.type) {
                         return true; 
                     }
@@ -187,9 +161,8 @@
                 });
                 
                 if (filteredData.length === 0 && (currentEditState.type !== type || currentEditState.id === null)) {
-                    // (Mode E Fix 4) Removed "Quick Add" logic
                     if (searchTerm.trim()) {
-                        config.listElement.innerHTML = `<li class="empty-state">No results found for "<strong>${escapeHTML(searchTerm)}</strong>"</li>`;
+                        config.listElement.innerHTML = `<li class="empty-state">No results found for "<strong>${UIUtils.escapeHTML(searchTerm)}</strong>"</li>`;
                     } else {
                         config.listElement.innerHTML = `<li class="empty-state">${config.emptyState}</li>`;
                     }
@@ -242,12 +215,40 @@
                     </div>
                 `;
 
-                li.querySelector('.btn-copy-keyword').addEventListener('click', (e) => copyToClipboard(item.keyword, e.target));
-                li.querySelector('.btn-copy-content').addEventListener('click', (e) => copyToClipboard(item.content, e.target));
+                // (Mode C) Use shared UIUtils.copyToClipboard
+                li.querySelector('.btn-copy-keyword').addEventListener('click', async (e) => {
+                    const success = await UIUtils.copyToClipboard(item.keyword);
+                    if (success && e.target) {
+                        const originalText = e.target.textContent;
+                        e.target.textContent = 'Copied!';
+                        e.target.disabled = true;
+                        setTimeout(() => {
+                            if (e.target) {
+                                e.target.textContent = originalText;
+                                e.target.disabled = false;
+                            }
+                        }, 1200);
+                    }
+                });
+                li.querySelector('.btn-copy-content').addEventListener('click', async (e) => {
+                    const success = await UIUtils.copyToClipboard(item.content);
+                     if (success && e.target) {
+                        const originalText = e.target.textContent;
+                        e.target.textContent = 'Copied!';
+                        e.target.disabled = true;
+                        setTimeout(() => {
+                            if (e.target) {
+                                e.target.textContent = originalText;
+                                e.target.disabled = false;
+                            }
+                        }, 1200);
+                    }
+                });
+
                 li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
                 
                 li.querySelector('.btn-delete').addEventListener('click', () => {
-                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
+                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
                         { label: 'Cancel' },
                         { 
                             label: 'Delete', 
@@ -282,13 +283,21 @@
                 `;
                 li.appendChild(contentDiv); 
 
-                li.querySelector('.item-content').addEventListener('click', (e) => {
-                    copyToClipboard(item.content, e.target);
+                li.querySelector('.item-content').addEventListener('click', async (e) => {
+                    // (Mode C) Use shared UIUtils.copyToClipboard
+                    const success = await UIUtils.copyToClipboard(item.content);
+                    if (success) {
+                        UIUtils.showToast("Snippet copied!");
+                        // Visual feedback
+                        e.target.style.transition = 'background-color 0.1s ease-in-out';
+                        e.target.style.backgroundColor = 'var(--color-success-bg)';
+                        setTimeout(() => { e.target.style.backgroundColor = ''; }, 200);
+                    }
                 });
                 li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
                 
                 li.querySelector('.btn-delete').addEventListener('click', () => {
-                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
+                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
                         { label: 'Cancel' },
                         { 
                             label: 'Delete', 
@@ -378,11 +387,11 @@
                 ]);
             }
             
-            // (Mode E Fix 4) Simplified function
             function addNewItem(type) {
                 const config = dataTypesConfig[type];
                 
-                const newItem = { id: generateId(), keyword: '', content: '' };
+                // (Mode C) Use shared generateId
+                const newItem = { id: UIUtils.generateId(), keyword: '', content: '' };
                 state[config.dataKey].unshift(newItem); 
                 
                 currentEditState = { id: newItem.id, type: type };
@@ -436,7 +445,7 @@
                 );
 
                 if (isDuplicate) {
-                    UIUtils.showModal("Duplicate Keyword", `<p>Error: Keyword "${escapeHTML(keyword)}" already exists.</p>`, [{label: 'OK'}]);
+                    UIUtils.showModal("Duplicate Keyword", `<p>Error: Keyword "${UIUtils.escapeHTML(keyword)}" already exists.</p>`, [{label: 'OK'}]);
                     keywordInput.focus();
                     return;
                 }
@@ -472,18 +481,7 @@
             
             // === DATA IMPORT / EXPORT / BACKUP / RESTORE ===
 
-            function openFilePicker(callback) {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'application/json,.json';
-                input.onchange = (event) => {
-                    const file = event.target.files[0];
-                    if (file) {
-                        callback(file);
-                    }
-                };
-                input.click();
-            }
+            // (Mode C) Removed local openFilePicker, now in UIUtils
 
             function handleFileLoad(file) {
                 const reader = new FileReader();
@@ -500,7 +498,6 @@
 
                     // --- Logic to determine file type ---
                     
-                    // 1. Check for Modern Full Backup (appName: 'lookup', has 'data' key)
                     if (jsonData.appName === APP_NAME && jsonData.data) {
                         UIUtils.showModal("Confirm Restore", "<p>This is a full backup file. Restoring will overwrite all current data.</p>", [
                             { label: 'Cancel' },
@@ -517,8 +514,8 @@
                             }
                         ]);
                     
-                    // 2. Check for Legacy Full Backup (appName: 'assignment_tool', has 'data' key)
                     } else if (jsonData.appName === 'assignment_tool' && jsonData.data) {
+                        // (Mode B Fix) Replaced confirm() with showModal()
                         UIUtils.showModal("Confirm Legacy Restore", "<p>This is a backup from the old 'Assignment Tool'. Restore it?</p>", [
                             { label: 'Cancel' },
                             { 
@@ -534,7 +531,6 @@
                             }
                         ]);
 
-                    // 3. Check for Data-Only Import (has 'routing' or 'snippets' array at root)
                     } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
                         
                         const newRoutingCount = jsonData.routing?.length || 0;
@@ -569,7 +565,6 @@
                             ]
                         );
 
-                    // 4. Unknown file type
                     } else {
                         UIUtils.showModal("Import Error", "<p>Invalid file structure. Not a valid backup or import file.</p>", [{label: 'OK'}]);
                     }
@@ -581,7 +576,7 @@
                     reader.readAsText(file);
                 } catch (error) {
                     console.error("Failed to read file:", error);
-                    UIUtils.showModal("Import Error", `<p>${escapeHTML(error.message)}</p>`, [{label: 'OK'}]);
+                    UIUtils.showModal("Import Error", `<p>${UIUtils.escapeHTML(error.message)}</p>`, [{label: 'OK'}]);
                 }
             }
 
@@ -589,12 +584,11 @@
                 const dataStr = JSON.stringify({
                     appName: APP_NAME,
                     timestamp: new Date().toISOString(),
-                    version: '5.9.1', 
+                    version: '6.0.0', 
                     data: state
                 }, null, 2);
+                // (Mode C) Use shared downloadJSON
                 UIUtils.downloadJSON(dataStr, `${APP_NAME}_backup.json`);
-                
-                // (Mode E Fix 5) Removed tracking of last backup date
                 UIUtils.showToast("Backup created.");
             }
 
@@ -604,9 +598,11 @@
             btnAddNewEntry.addEventListener('click', handleAddNewEntry);
             
             backupBtn.addEventListener('click', handleBackup);
-            restoreBtn.addEventListener('click', () => openFilePicker(handleFileLoad));
+            // (Mode C) Use shared openFilePicker
+            restoreBtn.addEventListener('click', () => UIUtils.openFilePicker(handleFileLoad));
             
             // === INITIAL LOAD ===
+            // (Mode C) Theme is now initialized by ui.common.js
             loadState();
             renderAll();
         });
