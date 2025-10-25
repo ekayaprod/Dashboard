@@ -7,44 +7,41 @@
     <link rel="stylesheet" href="style.css">
     <!-- Link to shared modal script -->
     <script src="ui.common.js" defer></script>
-    <!-- (Mode C Fix) Removed inline <style> block -->
 </head>
 <body>
+    <!-- (Mode C) Replaced tabs with standard navbar -->
+    <nav class="navbar">
+        <ul class="nav-links">
+            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            <li><a href="lookup.html" class="nav-link">Lookup</a></li>
+            <li><a href="template.html" class="nav-link active">Template</a></li>
+        </ul>
+        <div class="nav-actions">
+            <button id="theme-toggle" class="btn-nav">Toggle Theme</button>
+        </div>
+    </nav>
+
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <!-- --- NAVIGATION LINKS UPDATED --- -->
-                <div class="tabs-container">
-                    <a href="dashboard.html" class="tab-link">Dashboard</a>
-                    <a href="lookup.html" class="tab-link">Lookup</a>
-                    <!-- Add your new page link; mark it as 'active' -->
-                    <a href="template.html" class="tab-link active">New Page</a>
-                </div>
-                <!-- --- END NAVIGATION UPDATE --- -->
-
                 <!-- --- Your Page Content Goes Here --- -->
                 
                 <div class="section-header-wrapper">
                     <h3 class="section-header">New Page Title</h3>
-                    <button id="example-button" class="button-base button-primary">Example Button</button>
                 </div>
                 
                 <p>Your content for this new page goes here.</p>
-                <div class="empty-state-message" id="empty-state">This is an empty state message.</div>
-                
-                <div id="item-list-container">
-                    <!-- Items will be rendered here -->
-                </div>
+                <div class="empty-state-message">This is an empty state message.</div>
 
                 <!-- --- End Page Content --- -->
 
             </div>
-            <!-- (Mode C Fix) Added shared toast container -->
+            <!-- Required for showToast() -->
             <div id="toast" class="toast"></div>
         </div>
     </div>
 
-    <!-- (Mode C Fix) Added shared modal containers -->
+    <!-- Required for showModal() -->
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
@@ -52,25 +49,20 @@
     <script>
     {
         // --- PAGE CONFIG ---
-        const APP_VERSION = '5.7.0'; // (Mode D)
-        // IMPORTANT: Give this page its own unique local storage key
+        const APP_VERSION = '6.0.0';
         const LOCAL_STORAGE_KEY = 'newpage_state_v5';
 
         // --- DOM ELEMENT CACHE ---
         const DOMElements = {
             toast: document.getElementById('toast'),
-            modalOverlay: document.getElementById('modal-overlay'),
-            // (Mode C Fix) Updated cache
-            exampleButton: document.getElementById('example-button'),
-            emptyState: document.getElementById('empty-state'),
-            itemList: document.getElementById('item-list-container')
+            modalOverlay: document.getElementById('modal-overlay')
+            // e.g., myButton: document.getElementById('my-button')
         };
         
         // --- STATE MANAGEMENT ---
-        // (Mode C Fix) Simplified state for a better template
         const defaultState = {
             version: APP_VERSION,
-            items: []
+            exampleList: []
         };
         let state;
 
@@ -79,15 +71,13 @@
             if (rawState) {
                 try {
                     const parsed = JSON.parse(rawState);
-                    // Add validation for your state properties
-                    if (!parsed || !Array.isArray(parsed.items)) {
+                    if (!parsed || !Array.isArray(parsed.exampleList)) {
                         throw new Error("State is invalid.");
                     }
                     return { ...defaultState, ...parsed };
                 } catch (e) { 
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
-                    // (Mode C Fix) Use UIUtils.showModal
                     setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
                     return { ...defaultState };
                 }
@@ -100,12 +90,16 @@
                 state.version = APP_VERSION;
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
             } catch (e) { 
-                UIUtils.showToast("Error saving data"); // (Mode C Fix) Use UIUtils
+                // (Mode C) Use shared UIUtils.showModal for errors
+                UIUtils.showModal("Error", "Error saving data", [{label: "OK"}]); 
                 console.error("Failed to save state:", e);
             }
         };
 
-        // --- (Mode C Fix) Removed all local helpers (escapeHTML, showToast, showModal) ---
+        // --- CORE UTILITIES ---
+        
+        // (Mode C) Removed local escapeHTML and showToast
+        // Now using UIUtils directly
 
         // --- PAGE-SPECIFIC LOGIC ---
 
@@ -114,79 +108,25 @@
          */
         const renderAll = () => {
             console.log("Rendering page with state:", state);
-            
-            if (state.items.length === 0) {
-                DOMElements.emptyState.style.display = 'block';
-                DOMElements.itemList.innerHTML = '';
-            } else {
-                DOMElements.emptyState.style.display = 'none';
-                // (Mode C Fix) Use fragment and UIUtils
-                const fragment = document.createDocumentFragment();
-                state.items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'shortcut-item'; // Re-using a style
-                    div.innerHTML = `
-                        <span>${UIUtils.escapeHTML(item.name)}</span>
-                        <button class="icon-btn delete-btn" data-id="${item.id}" title="Delete">${UIUtils.SVGIcons.trash}</button>
-                    `;
-                    // Add listener for the delete button
-                    div.querySelector('.delete-btn').addEventListener('click', () => {
-                        handleDeleteItem(item.id, item.name);
-                    });
-                    fragment.appendChild(div);
-                });
-                DOMElements.itemList.innerHTML = '';
-                DOMElements.itemList.appendChild(fragment);
-            }
+            // Example of using a shared utility:
+            // const safeTitle = UIUtils.escapeHTML(state.title);
         };
-
-        /**
-         * Example: Add a new item
-         */
-        const handleAddItem = () => {
-            const newItem = {
-                id: UIUtils.generateId(),
-                name: `Item ${new Date().toLocaleTimeString()}`
-            };
-            state.items.push(newItem);
-            saveState();
-            renderAll();
-            UIUtils.showToast(`${newItem.name} added`);
-        };
-        
-        /**
-         * Example: Delete an item with confirmation
-         */
-        const handleDeleteItem = (id, name) => {
-            UIUtils.showModal('Delete Item', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(name)}"?</p>`, [
-                { label: 'Cancel' },
-                {
-                    label: 'Delete',
-                    class: 'button-danger',
-                    callback: () => {
-                        state.items = state.items.filter(item => item.id !== id);
-                        saveState();
-                        renderAll();
-                        UIUtils.showToast(`${name} deleted`);
-                    }
-                }
-            ]);
-        };
-
 
         /**
          * Attaches all event listeners for the page.
          */
         const attachEventListeners = () => {
-            DOMElements.exampleButton.addEventListener('click', handleAddItem);
+            // e.g., DOMElements.myButton.addEventListener('click', () => { ... });
             
-            // Modal close listeners are in ui.common.js
+            // Example of using a shared utility:
+            // UIUtils.showToast("Page loaded!");
         };
 
         /**
          * Initializes the application.
          */
         const init = () => {
+            // (Mode C) Theme is initialized by ui.common.js
             state = loadState();
             renderAll();
             attachEventListeners();
