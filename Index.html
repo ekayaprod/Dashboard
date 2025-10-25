@@ -11,7 +11,8 @@
 <body>
     <nav class="navbar">
         <ul class="nav-links">
-            <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+            <!-- Ensure this href points correctly -->
+            <li><a href="Index.html" class="nav-link active">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link">Lookup</a></li>
             <li><a href="template.html" class="nav-link">Template</a></li>
         </ul>
@@ -440,7 +441,7 @@
             renderAppDropdown(DOMElements.appSearchInput.value);
         });
 
-        // Keyboard navigation support
+        // Keyboard navigation
         DOMElements.appSearchInput.addEventListener('keydown', (e) => {
             const panel = DOMElements.appDropdownPanel;
             if (panel.classList.contains('hidden')) return;
@@ -526,7 +527,7 @@
             if (appIndex > -1) {
                 state.apps[appIndex] = { ...state.apps[appIndex], name, urls, escalation };
             } else {
-                // ID generation with browser compatibility fallback
+                // ID generation
                 const newApp = { id: UIUtils.generateId(), name, urls, escalation };
                 state.apps.push(newApp);
                 savedAppId = newApp.id;
@@ -594,7 +595,7 @@
         });
 
 
-        // Backup validation
+        // Backup validation logic
         function validateState(restored) {
             if (!restored || typeof restored !== 'object') {
                 throw new Error('Backup file is not a valid object');
@@ -733,7 +734,7 @@
                                 state.notes.push(newNote);
                                 activeNoteId = newNote.id;
                             } else {
-                                // Simplified conditional logic
+                                // Simplified logic
                                 activeNoteId = state.notes[0].id;
                             }
                             saveState();
@@ -768,7 +769,7 @@
         });
 
         const init = () => {
-            // Theme initialization
+            // Theme initialization handled by ui.common.js
             try {
                 state = loadState();
             } catch (e) {
@@ -805,4 +806,5 @@
     </script>
 </body>
 </html>
+
 
