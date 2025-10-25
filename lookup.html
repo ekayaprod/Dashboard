@@ -5,268 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Styles specific to the Lookup page */
-        :root {
-            --lookup-header-bg: #2b3a4a;
-            --lookup-content-bg: #25313f;
-            --lookup-input-bg: #3c4a59;
-            --lookup-border-color: #4a5b6c;
-            --lookup-result-hover: #3a4856;
-        }
-
-        body {
-            background-color: var(--lookup-content-bg);
-            color: var(--text-color);
-            font-family: var(--font-family);
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 10px auto;
-            padding: 0 10px;
-        }
-
-        /* Header / Search */
-        .lookup-header {
-            background-color: var(--lookup-header-bg);
-            padding: 15px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            margin-bottom: 15px;
-            position: sticky;
-            top: 10px;
-            z-index: 100;
-        }
-
-        .lookup-header h1 {
-            margin: 0 0 10px 0;
-            font-size: 1.5rem;
-            text-align: center;
-        }
-
-        .search-controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        #search-input {
-            flex-grow: 1;
-            padding: 10px;
-            font-size: 1rem;
-            background-color: var(--lookup-input-bg);
-            color: var(--text-color);
-            border: 1px solid var(--lookup-border-color);
-            border-radius: var(--border-radius);
-        }
-
-        #search-input:focus {
-            outline: none;
-            border-color: var(--accent-color-light);
-            box-shadow: 0 0 5px var(--accent-color-light-translucent);
-        }
-
-        .btn-new-entry {
-            padding: 10px 15px;
-            font-size: 0.9rem;
-            background-color: var(--accent-color);
-            color: #fff;
-            border: none;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            white-space: nowrap;
-        }
-
-        .btn-new-entry:hover {
-            background-color: var(--accent-color-dark);
-        }
-
-        /* Results Area */
-        .results-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .column {
-            background-color: var(--lookup-header-bg);
-            border-radius: var(--border-radius);
-            padding: 15px;
-            box-shadow: var(--box-shadow);
-            /* Ensure columns don't overflow viewport height */
-            max-height: calc(100vh - 140px);
-            overflow-y: auto;
-        }
-
-        .column h2 {
-            margin-top: 0;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--lookup-border-color);
-            font-size: 1.2rem;
-            position: sticky;
-            top: 0;
-            background-color: var(--lookup-header-bg);
-            z-index: 10;
-        }
-
-        .result-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .result-item, .snippet-item, .edit-form-li {
-            background-color: var(--lookup-content-bg);
-            border: 1px solid var(--lookup-border-color);
-            border-radius: var(--border-radius);
-            margin-bottom: 10px;
-            padding: 10px;
-            transition: background-color 0.2s ease;
-        }
-
-        .result-item:hover, .snippet-item:hover {
-            background-color: var(--lookup-result-hover);
-        }
-
-        /* Give edit form a slightly different look */
-        .edit-form-li {
-            background-color: var(--lookup-result-hover); /* Make edit form stand out */
-            border-color: var(--accent-color-light);
-        }
-
-        .item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .item-keyword {
-            font-weight: 600;
-            font-size: 1.1rem;
-            word-break: break-all;
-        }
-
-        .item-actions button, .edit-form-actions button {
-            background-color: var(--lookup-input-bg);
-            color: var(--text-color);
-            border: 1px solid var(--lookup-border-color);
-            border-radius: 4px;
-            padding: 5px 8px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            margin-left: 5px;
-            transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
-        }
-        
-        .item-actions button:disabled, .edit-form-actions button:disabled {
-            opacity: 0.7;
-            cursor: default;
-        }
-
-        .item-actions button:hover:not(:disabled), .edit-form-actions button:hover:not(:disabled) {
-            background-color: #4a5b6c;
-            border-color: #5a6c7d;
-        }
-
-        .item-actions .btn-delete, .edit-form-actions .btn-cancel {
-            background-color: var(--color-danger-bg);
-            border-color: var(--color-danger-border);
-            color: var(--color-danger);
-        }
-        .item-actions .btn-delete:hover:not(:disabled), .edit-form-actions .btn-cancel:hover:not(:disabled) {
-            background-color: var(--color-danger-bg-hover);
-            border-color: var(--color-danger-border-hover);
-        }
-
-        .edit-form-actions .btn-save {
-            background-color: var(--color-success-bg);
-            border-color: var(--color-success-border);
-            color: var(--color-success);
-        }
-        .edit-form-actions .btn-save:hover:not(:disabled) {
-            background-color: var(--color-success-bg-hover);
-            border-color: var(--color-success-border-hover);
-        }
-
-        .item-content {
-            font-size: 0.95rem;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            background-color: var(--lookup-input-bg);
-            padding: 8px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-
-        .snippet-item .item-content {
-            cursor: pointer;
-        }
-
-        /* Edit Form */
-        .edit-form {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .edit-form label {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .edit-form input,
-        .edit-form textarea {
-            width: 100%;
-            padding: 8px;
-            font-size: 0.9rem;
-            background-color: var(--lookup-input-bg);
-            color: var(--text-color);
-            border: 1px solid var(--lookup-border-color);
-            border-radius: var(--border-radius);
-            box-sizing: border-box; /* Ensures padding doesn't affect width */
-            font-family: var(--font-family);
-        }
-
-        .edit-form textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .edit-form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-        
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 20px;
-            color: var(--text-color-faded);
-            font-style: italic;
-        }
-        
-        /* Options Modal Import Options */
-        .import-options {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background-color: var(--lookup-content-bg);
-            padding: 10px;
-            border-radius: var(--border-radius);
-            margin-bottom: 15px;
-        }
-        .import-options label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-    </style>
+    <!-- Added shared JS file -->
+    <script src="ui.common.js" defer></script>
 </head>
 <body>
 
@@ -274,11 +14,11 @@
         <ul class="nav-links">
             <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link active">Lookup</a></li>
+            <li><a href="template.html" class="nav-link">Template</a></li>
         </ul>
         <div class="nav-actions">
-            <button id="show-options-modal" class="btn-nav">Options</button>
             <button id="lookup-state-backup" class="btn-nav">Backup</button>
-            <button id="lookup-state-restore" class="btn-nav">Restore</button>
+            <button id="lookup-state-restore" class="btn-nav">Import / Restore</button>
         </div>
     </nav>
 
@@ -303,135 +43,40 @@
         </main>
     </div>
 
-    <div id="lookup-options-modal" class="modal">
-        <div class="modal-content">
-            <span id="close-lookup-options" class="modal-close">&times;</span>
-            <h2>Lookup Options</h2>
-
-            <div class="modal-section">
-                <h3>Data Management</h3>
-                <p>Import or Export your data. Exports are great for backups or sharing.</p>
-                
-                <div class="import-options">
-                  <label><input type="radio" name="importMode" value="merge" checked> Merge with existing data (adds new, doesn't overwrite)</label>
-                  <label><input type="radio" name="importMode" value="replace"> Replace all existing data (wipes current data)</label>
-                </div>
-                
-                <div class="modal-actions">
-                    <button id="lookup-config-import-json" class="btn">Import JSON Data</button>
-                    <button id="lookup-config-export-json" class="btn">Export Data to JSON</button>
-                </div>
-            </div>
-
-            <!-- MODE E-1 FIX: Removed non-functional Recommended File Path section -->
-
-            <div class="modal-section">
-                <h3>JSON Data Template</h3>
-                <p>Your import file must follow this structure. You can use this as a template.</p>
-                <pre class="code-block" id="json-template">
-{
-  "routing": [
-    {
-      "id": "r1",
-      "keyword": "Password Reset",
-      "content": "Identity Management"
-    },
-    {
-      "id": "r2",
-      "keyword": "VPN Issue",
-      "content": "Network Operations"
-    }
-  ],
-  "snippets": [
-    {
-      "id": "s1",
-      "keyword": "Greeting",
-      "content": "Hello, thank you for contacting support. My name is [Your Name]. How can I help you today?"
-    },
-    {
-      "id": "s2",
-      "keyword": "Ticket Close",
-      "content": "I am closing this ticket now. Please feel free to reach out if you have any further issues."
-    }
-  ]
-}
-                </pre>
-            </div>
-        </div>
-    </div>
-
-    <div id="undo-toast" class="toast">
-        <span id="undo-toast-message"></span>
-        <button id="undo-toast-button" class="btn-toast-undo">Undo</button>
-    </div>
-
-    <input type="file" id="restore-file-input" accept="application/json" style="display: none;">
-    <input type="file" id="import-file-input" accept="application/json" style="display: none;">
-
+    <div id="toast" class="toast"></div>
 
     <script>
         /**
-         * Lookup Tool (v5.4.0)
+         * Lookup Tool (v5.9.1)
          * Manages knowledge base routing and text snippets.
-         * * v5.4.0 Changelog:
-         * - Fix 1: Editing state is now preserved during search (no data loss).
-         * - Fix 2: Implemented an Undo Stack for multiple-item undo.
-         * - Fix 3: Added duplicate keyword validation on save.
-         * - Fix 4: Added "Merge" vs "Replace" options for JSON import.
-         * - Fix 5: Added blank input validation for keyword and content.
-         * - Fix 6: Added "Copied!" feedback to copy buttons.
+         * * v5.9.1 Changelog (Mode E):
+         * - Removed "Quick Add" feature from search.
+         * - Removed "Backup Reminder" toast.
          */
         document.addEventListener('DOMContentLoaded', () => {
 
             // === CONSTANTS ===
             const APP_NAME = 'lookup';
             const DATA_KEY = `${APP_NAME}_data`;
-            // MODE F-4 FIX: Removed unused CONFIG_KEY
-            const TOAST_TIMEOUT = 5000; // 5 seconds
-            // MODE B-10 FIX: Add max undo stack
-            const MAX_UNDO_STACK = 50;
-
+            
             // === DOM ELEMENTS ===
             const searchInput = document.getElementById('search-input');
             const routingResults = document.getElementById('routing-results');
             const snippetsResults = document.getElementById('snippets-results');
             const btnAddNewEntry = document.getElementById('btn-add-new-entry');
-            
-            // Modal Elements
-            const optionsModal = document.getElementById('lookup-options-modal');
-            const showOptionsBtn = document.getElementById('show-options-modal');
-            const closeOptionsBtn = document.getElementById('close-lookup-options');
-            const importBtn = document.getElementById('lookup-config-import-json');
-            const exportBtn = document.getElementById('lookup-config-export-json');
-            
-            // Backup/Restore Elements
             const backupBtn = document.getElementById('lookup-state-backup');
-            const restoreBtn = document.getElementById('lookup-state-restore');
-            const restoreFileInput = document.getElementById('restore-file-input');
-            const importFileInput = document.getElementById('import-file-input');
-
-            // Toast Elements
-            const undoToast = document.getElementById('undo-toast');
-            const undoToastMessage = document.getElementById('undo-toast-message');
-            const undoToastButton = document.getElementById('undo-toast-button');
+            const restoreBtn = document.getElementById('lookup-state-restore'); 
 
             // === APPLICATION STATE ===
             let state = {
                 routingData: [],
                 snippetsData: []
             };
-            // MODE E-1 & F-4 FIX: Removed unused config object
             
-            let undoStack = []; // Replaces lastDeletedItem
-            let toastTimer = null;
-            let currentEditState = { id: null, type: null }; // Tracks the item being edited
+            let currentEditState = { id: null, type: null }; 
 
             // === CONFIGURATION HANDLERS ===
             
-            /**
-             * Base configuration for data types (routing, snippets).
-             * This abstraction simplifies rendering, searching, and CRUD operations.
-             */
             const dataTypesConfig = {
                 routing: {
                     listElement: routingResults,
@@ -451,12 +96,10 @@
 
             // === INITIALIZATION ===
 
-            /**
-             * Loads state from localStorage.
-             */
+            // (Mode E Fix 5) Removed checkBackupReminder function
+
             function loadState() {
                 const storedData = localStorage.getItem(DATA_KEY);
-                // MODE F-4 FIX: Removed config loading
 
                 if (storedData) {
                     try {
@@ -466,162 +109,121 @@
                         state = { routingData: [], snippetsData: [] };
                     }
                 } else {
-                    // Initialize with empty state if nothing is stored
                     state = { routingData: [], snippetsData: [] };
                 }
-
-                // MODE F-4 FIX: Removed config loading
                 
-                // Ensure data structure is valid after loading
                 if (!state.routingData) state.routingData = [];
                 if (!state.snippetsData) state.snippetsData = [];
+
+                // (Mode E Fix 5) Removed call to checkBackupReminder
             }
 
-            /**
-             * Saves the current state to localStorage.
-             */
             function saveState() {
                 try {
-                    // MODE F-2 FIX: Sort data on save, not on render
                     state.routingData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     state.snippetsData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     localStorage.setItem(DATA_KEY, JSON.stringify(state));
                 } catch (e) {
                     console.error("Failed to save state to localStorage:", e);
-                    showToast("Error: Failed to save data. Storage might be full.", false);
-                }
-            }
-
-            /**
-             * FINAL REVIEW-7: Applies saved theme from localStorage
-             */
-            function initTheme() {
-                const savedTheme = localStorage.getItem('theme');
-                if (savedTheme) {
-                    // This assumes CSS is set up to handle [data-theme="dark/light"]
-                    document.documentElement.setAttribute('data-theme', savedTheme);
+                    UIUtils.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
                 }
             }
             
             // === UTILITY FUNCTIONS ===
 
-            /**
-             * FINAL REVIEW-6: Generates a unique ID with fallback.
-             */
-            function generateId() {
-                if (crypto.randomUUID) {
-                    return crypto.randomUUID();
-                }
-                // Fallback for older browsers
-                return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            function escapeHTML(str) {
+                return UIUtils.escapeHTML(str);
             }
 
-            /**
-             * Copies text to the clipboard.
-             * @param {string} text - The text to copy.
-             * @param {HTMLElement} [buttonEl=null] - The button element to give feedback.
-             */
+            function generateId() {
+                return UIUtils.generateId();
+            }
+
             async function copyToClipboard(text, buttonEl = null) {
-                try {
-                    await navigator.clipboard.writeText(text);
-                    if (buttonEl) {
+                const success = await UIUtils.copyToClipboard(text);
+                if (success && buttonEl) {
+                    if (buttonEl.classList.contains('item-content')) {
+                        buttonEl.style.transition = 'background-color 0.1s ease-in-out';
+                        buttonEl.style.backgroundColor = 'var(--color-success-bg)';
+                        setTimeout(() => { buttonEl.style.backgroundColor = ''; }, 200);
+                        UIUtils.showToast("Snippet copied!");
+                    } else {
                         const originalText = buttonEl.textContent;
                         buttonEl.textContent = 'Copied!';
                         buttonEl.disabled = true;
                         setTimeout(() => {
-                            if (buttonEl) { // Check if element still exists
+                            if (buttonEl) {
                                 buttonEl.textContent = originalText;
                                 buttonEl.disabled = false;
                             }
                         }, 1200);
                     }
-                } catch (err) {
-                    console.error('Failed to copy: ', err);
-                    showToast("Failed to copy.", false);
+                } else if (!success) {
+                    console.warn('Failed to copy.');
                 }
             }
 
-            /**
-             * Highlights a search term within a string.
-             * @param {string} text - The text to search within.
-             * @param {string} term - The search term to highlight.
-             * @returns {string} - HTML string with the term highlighted.
-             */
             function highlight(text, term) {
-                if (!term) return text;
-                // Escape regex special characters in the search term
+                if (!term) return escapeHTML(text);
                 const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
                 const regex = new RegExp(`(${escapedTerm})`, 'gi');
-                // Use textContent replacement to avoid HTML injection
-                const tempDiv = document.createElement('div');
-                tempDiv.textContent = text;
-                tempDiv.innerHTML = tempDiv.innerHTML.replace(regex, '<mark>$1</mark>');
-                return tempDiv.innerHTML;
+                return escapeHTML(text).replace(regex, '<mark>$1</mark>');
             }
 
             // === DOM RENDERING ===
 
-            /**
-             * Renders a list of items for a specific data type (routing or snippets).
-             * @param {string} type - 'routing' or 'snippets'.
-             * @param {string} [searchTerm=''] - The term to filter and highlight.
-             */
             function renderList(type, searchTerm = '') {
                 const config = dataTypesConfig[type];
                 const data = state[config.dataKey] || [];
-                config.listElement.innerHTML = ''; // Clear current list
+                config.listElement.innerHTML = ''; 
 
-                // MODE F-3 FIX: Renamed lowerSearchTerm to term
                 const term = searchTerm.toLowerCase();
-                const filteredData = data.filter(item => 
-                    item.keyword.toLowerCase().includes(term)
-                );
                 
-                // MODE F-2 FIX: Sorting removed from render, moved to saveState
-
+                const filteredData = data.filter(item => {
+                    if (item.id === currentEditState.id && type === currentEditState.type) {
+                        return true; 
+                    }
+                    return item.keyword.toLowerCase().includes(term);
+                });
+                
                 if (filteredData.length === 0 && (currentEditState.type !== type || currentEditState.id === null)) {
-                    config.listElement.innerHTML = `<li class="empty-state">${config.emptyState}</li>`;
+                    // (Mode E Fix 4) Removed "Quick Add" logic
+                    if (searchTerm.trim()) {
+                        config.listElement.innerHTML = `<li class="empty-state">No results found for "<strong>${escapeHTML(searchTerm)}</strong>"</li>`;
+                    } else {
+                        config.listElement.innerHTML = `<li class="empty-state">${config.emptyState}</li>`;
+                    }
                     return;
                 }
 
+                const fragment = document.createDocumentFragment();
                 filteredData.forEach(item => {
                     let itemElement;
-                    // Fix 1: Check if this item is the one being edited
                     if (item.id === currentEditState.id && type === currentEditState.type) {
                         itemElement = createEditForm(type, item);
                     } else {
                         itemElement = config.createItemElement(item, searchTerm, type);
                     }
-                    config.listElement.appendChild(itemElement);
+                    fragment.appendChild(itemElement);
                 });
+                config.listElement.appendChild(fragment);
             }
 
-            /**
-             * Renders all lists based on the current search term.
-             */
             function renderAll() {
-                const searchTerm = searchInput.value; // Don't trim here, allow searching for spaces
+                const searchTerm = searchInput.value;
                 renderList('routing', searchTerm);
                 renderList('snippets', searchTerm);
             }
 
-            /**
-             * Creates a DOM element for a routing result item.
-             * @param {object} item - The routing data item.
-             * @param {string} searchTerm - The current search term.
-             * @param {string} type - The data type ('routing').
-             * @returns {HTMLLIElement}
-             */
             function createResultItem(item, searchTerm, type) {
                 const li = document.createElement('li');
                 li.className = 'result-item';
                 li.dataset.id = item.id;
                 li.dataset.type = type;
 
-                // Create content div safely
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'item-content';
-                contentDiv.textContent = item.content; // Use textContent to prevent XSS
+                contentDiv.textContent = item.content; 
 
                 li.innerHTML = `
                     <div class="item-header">
@@ -633,40 +235,41 @@
                         </div>
                     </div>
                 `;
-                li.appendChild(contentDiv); // Append the safe content div
+                li.appendChild(contentDiv);
                 li.innerHTML += `
                     <div class="item-actions">
                         <button class="btn-copy-content">Copy Content</button>
                     </div>
                 `;
 
-                // Add event listeners
                 li.querySelector('.btn-copy-keyword').addEventListener('click', (e) => copyToClipboard(item.keyword, e.target));
                 li.querySelector('.btn-copy-content').addEventListener('click', (e) => copyToClipboard(item.content, e.target));
                 li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
-                li.querySelector('.btn-delete').addEventListener('click', () => handleDelete(item.id, type));
+                
+                li.querySelector('.btn-delete').addEventListener('click', () => {
+                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Delete', 
+                            class: 'button-danger', 
+                            callback: () => handleDelete(item.id, type)
+                        }
+                    ]);
+                });
 
                 return li;
             }
 
-            /**
-             * Creates a DOM element for a snippet result item.
-             * @param {object} item - The snippet data item.
-             * @param {string} searchTerm - The current search term.
-             * @param {string} type - The data type ('snippets').
-             * @returns {HTMLLIElement}
-             */
             function createSnippetItem(item, searchTerm, type) {
                 const li = document.createElement('li');
                 li.className = 'snippet-item';
                 li.dataset.id = item.id;
                 li.dataset.type = type;
                 
-                // Create content div safely
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'item-content';
                 contentDiv.title = 'Click to copy snippet';
-                contentDiv.textContent = item.content; // Use textContent to prevent XSS
+                contentDiv.textContent = item.content; 
 
                 li.innerHTML = `
                     <div class="item-header">
@@ -677,31 +280,32 @@
                         </div>
                     </div>
                 `;
-                li.appendChild(contentDiv); // Append the safe content div
+                li.appendChild(contentDiv); 
 
-                // Add event listeners
-                // Fix 6: Show toast on snippet content click
-                li.querySelector('.item-content').addEventListener('click', () => {
-                    copyToClipboard(item.content);
-                    showToast("Snippet copied!", false);
+                li.querySelector('.item-content').addEventListener('click', (e) => {
+                    copyToClipboard(item.content, e.target);
                 });
                 li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
-                li.querySelector('.btn-delete').addEventListener('click', () => handleDelete(item.id, type));
+                
+                li.querySelector('.btn-delete').addEventListener('click', () => {
+                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Delete', 
+                            class: 'button-danger', 
+                            callback: () => handleDelete(item.id, type)
+                        }
+                    ]);
+                });
 
                 return li;
             }
             
-            /**
-             * Creates a form for adding/editing an entry.
-             * @param {string} type - 'routing' or 'snippets'.
-             * @param {object} item - The data item to edit.
-             s {HTMLLIElement} - Returns an LI element wrapping the form.
-             */
             function createEditForm(type, item) {
                 const config = dataTypesConfig[type];
 
                 const li = document.createElement('li');
-                li.className = 'edit-form-li'; // Wrapper li
+                li.className = 'edit-form-li'; 
 
                 const form = document.createElement('form');
                 form.className = 'edit-form';
@@ -711,7 +315,6 @@
                 const keywordLabel = config.title === 'Routing' ? 'Keyword (e.g., "VPN")' : 'Keyword (e.g., "Greeting")';
                 const contentLabel = config.title === 'Routing' ? 'Content (Assignment Group)' : 'Content (Snippet Text)';
                 
-                // Use textContent to safely set values
                 const keywordInput = document.createElement('input');
                 keywordInput.type = 'text';
                 keywordInput.id = `edit-keyword-${item.id}`;
@@ -749,10 +352,8 @@
                 });
 
                 form.querySelector('.btn-cancel').addEventListener('click', () => {
-                    // Fix 1: Handle cancel logic
-                    // If it was a new, blank item, delete it on cancel.
                     if (item.keyword.trim() === '' && item.content.trim() === '') {
-                        handleDelete(item.id, type, true); // Pass 'true' to skip undo
+                        handleDelete(item.id, type, true); // Pass 'true' to skip confirm
                     }
                     currentEditState = { id: null, type: null };
                     renderAll();
@@ -764,74 +365,53 @@
 
             // === CRUD HANDLERS ===
 
-            /**
-             * Handles the "Add New Entry" button click.
-             * Prompts user to select which type to add.
-             */
             function handleAddNewEntry() {
-                // Stop any other edit
                 if (currentEditState.id) {
-                    showToast("Please save or cancel your current edit first.", false);
+                    UIUtils.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
                     return;
                 }
 
-                const type = prompt("What do you want to add?\nType 'routing' or 'snippets'", "routing");
+                UIUtils.showModal("Add New Entry", "<p>What do you want to add?</p>", [
+                    { label: 'Cancel' },
+                    { label: 'Snippet', callback: () => addNewItem('snippets') },
+                    { label: 'Routing', class: 'button-primary', callback: () => addNewItem('routing') }
+                ]);
+            }
+            
+            // (Mode E Fix 4) Simplified function
+            function addNewItem(type) {
+                const config = dataTypesConfig[type];
                 
-                if (type === 'routing' || type === 'snippets') {
-                    const config = dataTypesConfig[type];
-                    
-                    // Fix 1: Create new item, add to state, and set as being edited
-                    const newItem = { id: generateId(), keyword: '', content: '' };
-                    state[config.dataKey].unshift(newItem); // Add to top
-                    // Do not save state yet, only on successful save
-                    
-                    currentEditState = { id: newItem.id, type: type };
-                    searchInput.value = ''; // Clear search to ensure it's visible
-                    
-                    renderAll();
-                    
-                    // Focus the new form's input
-                    const newInput = document.getElementById(`edit-keyword-${newItem.id}`);
-                    if (newInput) {
-                        newInput.focus();
-                    }
-                    
-                } else if (type !== null) {
-                    alert("Invalid type. Please enter 'routing' or 'snippets'.");
+                const newItem = { id: generateId(), keyword: '', content: '' };
+                state[config.dataKey].unshift(newItem); 
+                
+                currentEditState = { id: newItem.id, type: type };
+                searchInput.value = ''; 
+                renderAll();
+                
+                const newEl = document.getElementById(`edit-keyword-${newItem.id}`);
+                if (newEl) {
+                    newEl.focus();
                 }
             }
 
-            /**
-             * Handles clicking the "Edit" button on an item.
-             * @param {string} id - The ID of the item to edit.
-             * @param {string} type - The data type ('routing' or 'snippets').
-             */
+
             function handleEdit(id, type) {
-                // Stop any other edit
                 if (currentEditState.id && currentEditState.id !== id) {
-                    showToast("Please save or cancel your current edit first.", false);
+                    UIUtils.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
                     return;
                 }
 
-                // Fix 1: Set the editing state and re-render
                 currentEditState = { id: id, type: type };
                 renderAll();
-                // Focus the input
                 const editInput = document.getElementById(`edit-keyword-${id}`);
                 if (editInput) {
                     editInput.focus();
-                    editInput.select(); // Select text for easy replacement
+                    editInput.select(); 
                 }
             }
 
-            /**
-             * Saves the data from an edit form (for new or existing items).
-             * @param {HTMLFormElement} form - The form element.
-             * @param {string} id - The ID of the item being saved.
-             * @param {string} type - The data type ('routing' or 'snippets').
-             */
             function handleSave(form, id, type) {
-                // Fix 5: Trim inputs
                 const keywordInput = form.querySelector(`#edit-keyword-${id}`);
                 const contentInput = form.querySelector(`#edit-content-${id}`);
                 
@@ -839,31 +419,28 @@
                 const content = contentInput.value.trim();
                 const data = state[dataTypesConfig[type].dataKey];
                 
-                // Fix 5: Validate for blank inputs
                 if (keyword === '') {
-                    showToast("Error: Keyword cannot be blank.", false);
+                    UIUtils.showModal("Invalid Input", "<p>Error: Keyword cannot be blank.</p>", [{label: 'OK'}]);
                     keywordInput.focus();
                     return;
                 }
                 if (content === '') {
-                    showToast("Error: Content cannot be blank.", false);
+                    UIUtils.showModal("Invalid Input", "<p>Error: Content cannot be blank.</p>", [{label: 'OK'}]);
                     contentInput.focus();
                     return;
                 }
 
-                // Fix 3: Validate for duplicate keywords
                 const isDuplicate = data.some(i => 
-                    i.id !== id && // Not itself
+                    i.id !== id && 
                     i.keyword.toLowerCase() === keyword.toLowerCase()
                 );
 
                 if (isDuplicate) {
-                    showToast(`Error: Keyword "${keyword}" already exists.`, false);
+                    UIUtils.showModal("Duplicate Keyword", `<p>Error: Keyword "${escapeHTML(keyword)}" already exists.</p>`, [{label: 'OK'}]);
                     keywordInput.focus();
                     return;
                 }
 
-                // All validation passed, find and update item
                 const item = data.find(i => i.id === id);
                 if (item) {
                     item.keyword = keyword;
@@ -872,19 +449,11 @@
                 
                 saveState();
                 
-                // Fix 1: Clear editing state and re-render
                 currentEditState = { id: null, type: null };
                 renderAll(); 
             }
 
-            /**
-             * Handles deleting an item.
-             * @param {string} id - The ID of the item to delete.
-             * @param {string} type - The data type ('routing' or 'snippets').
-             * @param {boolean} [skipUndo=false] - If true, delete without adding to undo stack.
-             */
-            function handleDelete(id, type, skipUndo = false) {
-                // If we're deleting the item currently being edited, just clear the edit state
+            function handleDelete(id, type, skipConfirm = false) {
                 if (currentEditState.id === id) {
                     currentEditState = { id: null, type: null };
                 }
@@ -895,312 +464,154 @@
 
                 if (index === -1) return;
 
-                const [deletedItem] = data.splice(index, 1);
-                
-                // Fix 2: Add to undoStack unless skipped
-                if (!skipUndo) {
-                    // Clear toast timer to stack onto the previous undo
-                    if (toastTimer) clearTimeout(toastTimer);
-
-                    undoStack.push({
-                        item: deletedItem,
-                        type: type,
-                        index: index // Store original index
-                    });
-
-                    // MODE B-10 FIX: Enforce max stack size
-                    if (undoStack.length > MAX_UNDO_STACK) {
-                        undoStack.shift(); // Remove oldest item
-                    }
-                }
-
-                saveState();
-                renderAll(); // Re-render lists
-                
-                if (!skipUndo) {
-                    showToast(`Deleted "${deletedItem.keyword}"`, true);
-                }
-            }
-
-            /**
-             * Handles the "Undo" button click from the toast.
-             */
-            function handleUndo() {
-                // Fix 2: Use undoStack
-                if (undoStack.length === 0) return;
-
-                const { item, type, index } = undoStack.pop();
-                const data = state[dataTypesConfig[type].dataKey];
-
-                // Restore item at its original index
-                data.splice(index, 0, item);
+                data.splice(index, 1);
                 
                 saveState();
-                renderAll();
-                
-                // Show feedback, and show Undo button again if stack is not empty
-                const message = `Restored "${item.keyword}"`;
-                // Clear the main timer, as we're showing a new toast
-                if (toastTimer) clearTimeout(toastTimer);
-                toastTimer = null; // Important: clear timer ID
-                
-                showToast(message, undoStack.length > 0);
-            }
-
-            // === TOAST (UNDO) NOTIFICATIONS ===
-
-            /**
-             * Shows the undo toast message.
-             * @param {string} message - The message to display.
-             * @param {boolean} showUndo - Whether to show the "Undo" button.
-             */
-            function showToast(message, showUndo = false) {
-                // Clear any existing timer ONLY if we are NOT stacking undos
-                if (toastTimer && !showUndo) {
-                    clearTimeout(toastTimer);
-                    toastTimer = null;
-                }
-
-                // MODE C-7 FIX: Simplified ternary
-                undoToastMessage.textContent = showUndo && undoStack.length > 0 
-                    ? `${message} (${undoStack.length} in stack)` 
-                    : message;
-                
-                undoToastButton.style.display = showUndo ? 'inline-block' : 'none';
-                undoToast.classList.add('show');
-
-                // (Re)set a timer to hide the toast
-                toastTimer = setTimeout(() => {
-                    hideToast();
-                    undoStack = []; // Clear stack ONLY when toast expires
-                }, TOAST_TIMEOUT);
-            }
-
-            /**
-             * Hides the undo toast.
-             */
-            function hideToast() {
-                if (toastTimer) {
-                    clearTimeout(toastTimer);
-                    toastTimer = null;
-                }
-                undoToast.classList.remove('show');
+                renderAll(); 
             }
             
             // === DATA IMPORT / EXPORT / BACKUP / RESTORE ===
 
-            /**
-             * MODE D-8 CONSOLIDATION: Handles downloading any data as a JSON file.
-             * @param {string} dataStr - The JSON string to download.
-             * @param {string} filename - The name for the downloaded file.
-             */
-            function downloadJSON(dataStr, filename) {
-                try {
-                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(dataBlob);
+            function openFilePicker(callback) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'application/json,.json';
+                input.onchange = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        callback(file);
+                    }
+                };
+                input.click();
+            }
+
+            function handleFileLoad(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    UIUtils.showToast("Processing file...");
+                    let jsonData;
+                    try {
+                        jsonData = JSON.parse(e.target.result);
+                    } catch (error) {
+                        console.error("Failed to parse JSON:", error);
+                        UIUtils.showModal("Import Error", "<p>File is not valid JSON.</p>", [{label: 'OK'}]);
+                        return;
+                    }
+
+                    // --- Logic to determine file type ---
                     
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    // 1. Check for Modern Full Backup (appName: 'lookup', has 'data' key)
+                    if (jsonData.appName === APP_NAME && jsonData.data) {
+                        UIUtils.showModal("Confirm Restore", "<p>This is a full backup file. Restoring will overwrite all current data.</p>", [
+                            { label: 'Cancel' },
+                            { 
+                                label: 'Restore', 
+                                class: 'button-danger',
+                                callback: () => {
+                                    state = jsonData.data || { routingData: [], snippetsData: [] };
+                                    saveState();
+                                    currentEditState = { id: null, type: null };
+                                    renderAll();
+                                    UIUtils.showToast("Restore successful.");
+                                }
+                            }
+                        ]);
+                    
+                    // 2. Check for Legacy Full Backup (appName: 'assignment_tool', has 'data' key)
+                    } else if (jsonData.appName === 'assignment_tool' && jsonData.data) {
+                        UIUtils.showModal("Confirm Legacy Restore", "<p>This is a backup from the old 'Assignment Tool'. Restore it?</p>", [
+                            { label: 'Cancel' },
+                            { 
+                                label: 'Restore', 
+                                class: 'button-primary', 
+                                callback: () => {
+                                    state = jsonData.data || { routingData: [], snippetsData: [] };
+                                    saveState();
+                                    currentEditState = { id: null, type: null };
+                                    renderAll();
+                                    UIUtils.showToast("Restore successful.");
+                                }
+                            }
+                        ]);
+
+                    // 3. Check for Data-Only Import (has 'routing' or 'snippets' array at root)
+                    } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
+                        
+                        const newRoutingCount = jsonData.routing?.length || 0;
+                        const newSnippetsCount = jsonData.snippets?.length || 0;
+
+                        UIUtils.showModal("Confirm Data Import", 
+                            `<p>This file contains <strong>${newRoutingCount} routing</strong> entries and <strong>${newSnippetsCount} snippet</strong> entries.</p><p>How do you want to import this data?</p>`, 
+                            [
+                                { label: 'Cancel' },
+                                {
+                                    label: 'Merge',
+                                    class: 'button-primary',
+                                    callback: () => {
+                                        state.routingData = (state.routingData || []).concat(jsonData.routing || []);
+                                        state.snippetsData = (state.snippetsData || []).concat(jsonData.snippets || []);
+                                        saveState();
+                                        renderAll();
+                                        UIUtils.showToast("Data merged successfully.");
+                                    }
+                                },
+                                {
+                                    label: 'Replace All',
+                                    class: 'button-danger',
+                                    callback: () => {
+                                        state.routingData = jsonData.routing || [];
+                                        state.snippetsData = jsonData.snippets || [];
+                                        saveState();
+                                        renderAll();
+                                        UIUtils.showToast("Data replaced successfully.");
+                                    }
+                                }
+                            ]
+                        );
+
+                    // 4. Unknown file type
+                    } else {
+                        UIUtils.showModal("Import Error", "<p>Invalid file structure. Not a valid backup or import file.</p>", [{label: 'OK'}]);
+                    }
+
+                };
+                reader.onerror = () => UIUtils.showModal("Import Error", "<p>Error reading the file.</p>", [{label: 'OK'}]);
+
+                try {
+                    reader.readAsText(file);
                 } catch (error) {
-                    console.error("Failed to download JSON:", error);
-                    showToast("Error creating download.", false);
-                }
-            }
-            
-            /**
-             * MODE D-6 CONSOLIDATION: Creates a backup string.
-             * @param {boolean} [dataOnly=false] - If true, export only data. If false, export full state.
-             * @returns {string} - A JSON string of the backup.
-             */
-            function createBackup(dataOnly = false) {
-                if (dataOnly) {
-                    // Export only the raw data (for import/export)
-                    return JSON.stringify({
-                        routing: state.routingData || [],
-                        snippets: state.snippetsData || []
-                    }, null, 2);
-                } else {
-                    // Export the full application state (for backup/restore)
-                    return JSON.stringify({
-                        appName: APP_NAME,
-                        timestamp: new Date().toISOString(),
-                        version: '5.4.0',
-                        data: state
-                        // MODE F-4 FIX: Removed config object
-                    }, null, 2);
+                    console.error("Failed to read file:", error);
+                    UIUtils.showModal("Import Error", `<p>${escapeHTML(error.message)}</p>`, [{label: 'OK'}]);
                 }
             }
 
-            /**
-             * Handles the "Import JSON Data" button click (from Options modal).
-             */
-            function handleImportJson(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-
-                const importModeEl = document.querySelector('input[name="importMode"]:checked');
-                const importMode = importModeEl ? importModeEl.value : 'merge';
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // FINAL REVIEW-5: Add loading toast
-                    showToast("Processing file...", false);
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (data && (Array.isArray(data.routing) || Array.isArray(data.snippets))) {
-                            if (importMode === 'replace') {
-                                state.routingData = data.routing || [];
-                                state.snippetsData = data.snippets || [];
-                                showToast("Data replaced successfully.", false);
-                            } else { // 'merge'
-                                state.routingData = (state.routingData || []).concat(data.routing || []);
-                                state.snippetsData = (state.snippetsData || []).concat(data.snippets || []);
-                                showToast("Data merged successfully.", false);
-                            }
-                            saveState();
-                            renderAll();
-                            closeOptionsModal();
-                        } else {
-                            throw new Error("Invalid JSON structure. Must contain 'routing' and/or 'snippets' arrays.");
-                        }
-                    } catch (error) {
-                        console.error("Failed to import JSON:", error);
-                        showToast(`Error: ${error.message}`, false);
-                    } finally {
-                        importFileInput.value = null;
-                    }
-                };
-                reader.onerror = () => showToast('Error reading the import file.');
-                reader.readAsText(file);
-            }
-
-            /**
-             * Handles the "Export Data to JSON" button click (from Options modal).
-             * MODE D-6/D-8 CONSOLIDATION: Calls new helper functions.
-             */
-            function handleExportJson() {
-                downloadJSON(createBackup(true), `${APP_NAME}_export.json`);
-            }
-
-
-            /**
-             * Handles the global "Backup" button click (from nav bar).
-             * MODE D-6/D-8 CONSOLIDATION: Calls new helper functions.
-             */
             function handleBackup() {
-                downloadJSON(createBackup(false), `${APP_NAME}_backup.json`);
-            }
-
-            /**
-             * Handles the global "Restore" button click (from nav bar).
-             */
-            function handleRestore() {
-                if (currentEditState.id) {
-                    showToast("Please save or cancel your current edit before restoring.", false);
-                    return;
-                }
-                if (confirm("Restoring from a backup will overwrite all current lookup data. Are you sure?")) {
-                    restoreFileInput.click();
-                }
-            }
-
-            /**
-             * Processes the selected restore file.
-             */
-            function processRestoreFile(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // FINAL REVIEW-5: Add loading toast
-                    showToast("Processing file...", false);
-                    try {
-                        const backupData = JSON.parse(e.target.result);
-                        if (!backupData.appName || backupData.appName !== APP_NAME) {
-                            if (backupData.appName === 'assignment_tool') {
-                                if (!confirm("This appears to be a backup from the old 'Assignment Tool'. Restore it?")) {
-                                    throw new Error("Restore cancelled by user.");
-                                 }
-                            } else {
-                                throw new Error(`Invalid backup file. Expected app name '${APP_NAME}'.`);
-                            }
-                        }
-
-                        state = backupData.data || { routingData: [], snippetsData: [] };
-                        // MODE F-4 FIX: Removed config restore
-                        
-                        saveState();
-                        // MODE F-4 FIX: Removed config save
-                        
-                        currentEditState = { id: null, type: null };
-                        undoStack = [];
-                        renderAll();
-                        showToast("Restore successful.", false);
-                        
-                    } catch (error) {
-                        console.error("Failed to restore state:", error);
-                        showToast(`Restore failed: ${error.message}`, false);
-                    } finally {
-                        restoreFileInput.value = null;
-                    }
-                };
-                reader.onerror = () => showToast('Error reading the backup file.');
-                reader.readAsText(file);
-            }
-
-            // === MODAL (OPTIONS) HANDLERS ===
-            
-            function showOptionsModal() {
-                optionsModal.style.display = 'block';
-            }
-            
-            function closeOptionsModal() {
-                optionsModal.style.display = 'none';
+                const dataStr = JSON.stringify({
+                    appName: APP_NAME,
+                    timestamp: new Date().toISOString(),
+                    version: '5.9.1', 
+                    data: state
+                }, null, 2);
+                UIUtils.downloadJSON(dataStr, `${APP_NAME}_backup.json`);
+                
+                // (Mode E Fix 5) Removed tracking of last backup date
+                UIUtils.showToast("Backup created.");
             }
 
             // === EVENT LISTENERS ===
             
-            // Search
-            searchInput.addEventListener('input', renderAll); // Use 'input' for better response
-            
-            // CRUD
+            searchInput.addEventListener('input', renderAll);
             btnAddNewEntry.addEventListener('click', handleAddNewEntry);
             
-            // Toast
-            undoToastButton.addEventListener('click', handleUndo);
-
-            // Nav Bar Actions
             backupBtn.addEventListener('click', handleBackup);
-            restoreBtn.addEventListener('click', handleRestore);
-            restoreFileInput.addEventListener('change', processRestoreFile);
-
-            // Options Modal
-            showOptionsBtn.addEventListener('click', showOptionsModal);
-            closeOptionsBtn.addEventListener('click', closeOptionsModal);
-            importBtn.addEventListener('click', () => importFileInput.click());
-            importFileInput.addEventListener('change', handleImportJson);
-            exportBtn.addEventListener('click', handleExportJson);
+            restoreBtn.addEventListener('click', () => openFilePicker(handleFileLoad));
             
-            // Close modal if clicking outside of it
-            window.addEventListener('click', (event) => {
-                if (event.target === optionsModal) {
-                    closeOptionsModal();
-                }
-            });
-
             // === INITIAL LOAD ===
-            // FINAL REVIEW-7: Apply theme first
-            initTheme();
             loadState();
             renderAll();
         });
     </script>
 </body>
 </html>
+
 
