@@ -9,26 +9,29 @@
     <script src="ui.common.js" defer></script>
 </head>
 <body>
+    <!-- (Mode C) Replaced tabs with standard navbar -->
+    <nav class="navbar">
+        <ul class="nav-links">
+            <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+            <li><a href="lookup.html" class="nav-link">Lookup</a></li>
+            <li><a href="template.html" class="nav-link">Template</a></li>
+        </ul>
+        <div class="nav-actions">
+            <button id="theme-toggle" class="btn-nav">Toggle Theme</button>
+        </div>
+    </nav>
+
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <!-- --- NAVIGATION LINKS UPDATED --- -->
-                <div class="tabs-container">
-                    <a href="dashboard.html" class="tab-link active">Dashboard</a>
-                    <a href="lookup.html" class="tab-link">Lookup</a>
-                    <a href="template.html" class="tab-link">Template</a>
-                </div>
-                <!-- --- END NAVIGATION UPDATE --- -->
-
                 <div id="shortcuts-container" class="shortcuts-container"></div>
                 <div class="divider"></div>
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
-                    <!-- (Mode E Fix 2) Replaced dropdown menu with a direct button group -->
                     <div class="actions-menu-wrapper button-group">
-                        <button id="add-shortcut-btn-menu" class="button-base icon-btn" title="Add Shortcut"></button> <!-- JS will add SVG -->
-                        <button id="add-new-app-btn-menu" class="button-base icon-btn" title="Add App"></button> <!-- JS will add SVG -->
+                        <button id="add-shortcut-btn-menu" class="button-base icon-btn" title="Add Shortcut"></button>
+                        <button id="add-new-app-btn-menu" class="button-base icon-btn" title="Add App"></button>
                         <button id="backup-btn-menu" class="button-base" title="Backup Dashboard">Backup</button>
                         <button id="restore-btn-menu" class="button-base" title="Restore Dashboard">Restore</button>
                     </div>
@@ -84,7 +87,7 @@
                 </div>
             </div>
             <div id="toast" class="toast"></div>
-            <input type="file" id="restore-file-input" accept=".json" class="hidden">
+            <!-- (Mode C) Removed file input, now handled by UIUtils -->
         </div>
     </div>
 
@@ -94,11 +97,11 @@
 
     <script>
     {
-        const APP_VERSION = '5.9.1'; // Mode E Refinement
+        const APP_VERSION = '6.0.0'; // Final Refactor Release
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
-
         const DEBOUNCE_DELAY = 500;
 
+        // (Mode C) Removed local SVGIcons, now in UIUtils
         const SVGIcons = (typeof UIUtils !== 'undefined' && UIUtils.SVGIcons) ? UIUtils.SVGIcons : {
             plus: '...', pencil: '...', trash: '...', copy: '...', menu: '...'
         };
@@ -120,13 +123,11 @@
             saveChangesBtn: document.getElementById('save-changes-btn'),
             deleteAppBtn: document.getElementById('delete-app-btn'),
             
-            // (Mode E Fix 2) Updated DOM cache
             addShortcutBtn: document.getElementById('add-shortcut-btn-menu'),
             addNewAppBtn: document.getElementById('add-new-app-btn-menu'),
             backupBtn: document.getElementById('backup-btn-menu'),
             restoreBtn: document.getElementById('restore-btn-menu'),
 
-            restoreFileInput: document.getElementById('restore-file-input'),
             notepadHeader: document.getElementById('notepad-header'),
             noteSelect: document.getElementById('note-select'),
             notepadEditor: document.getElementById('notepad-editor'),
@@ -177,6 +178,9 @@
                 UIUtils.showModal("Error", "Error saving data", [{label: "OK"}]);
             }
         };
+
+        // (Mode C) All local helpers (debounce, generateId, escapeHTML, validators, showToast) removed
+        // Now using UIUtils directly
 
         const createShortcutsManager = (state, dom, services) => {
             const container = dom.shortcutsContainer;
@@ -250,7 +254,8 @@
                             const urlInput = document.getElementById('shortcut-url');
                             const name = nameInput.value;
                             const url = urlInput.value;
-                            if (services.validators.notEmpty(name) && services.validators.maxLength(name, 50) && services.validators.url(url)) {
+                            // (Mode C) Use shared validators
+                            if (UIUtils.validators.notEmpty(name) && UIUtils.validators.maxLength(name, 50) && UIUtils.validators.url(url)) {
                                 state.shortcuts.push({ id: UIUtils.generateId(), name, url });
                                 services.saveState();
                                 render();
@@ -508,8 +513,9 @@
             const urls = DOMElements.editAppUrls.value.trim();
             const escalation = DOMElements.editAppEscalation.value.trim();
 
-            if (!validators.notEmpty(name) || !validators.maxLength(name, 100)) return UIUtils.showModal('Invalid Name', '<p>App name must be 1-100 characters.</p>', [{label: 'OK'}]);
-            if (!validators.notEmpty(urls) && !validators.notEmpty(escalation)) return UIUtils.showModal('Invalid Data', '<p>App must have at least one URL or a note.</p>', [{label: 'OK'}]);
+            // (Mode C) Use shared validators
+            if (!UIUtils.validators.notEmpty(name) || !UIUtils.validators.maxLength(name, 100)) return UIUtils.showModal('Invalid Name', '<p>App name must be 1-100 characters.</p>', [{label: 'OK'}]);
+            if (!UIUtils.validators.notEmpty(urls) && !UIUtils.validators.notEmpty(escalation)) return UIUtils.showModal('Invalid Data', '<p>App must have at least one URL or a note.</p>', [{label: 'OK'}]);
             
             if (state.apps.some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedAppId)) {
                 return UIUtils.showModal('Duplicate Name', '<p>An app with this name already exists. Please use a unique name.</p>', [{label: 'OK'}]);
@@ -554,8 +560,6 @@
              }
         });
         
-        // (Mode E Fix 2) Removed dropdown menu listeners
-        // Added direct button listeners
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-dropdown-wrapper')) DOMElements.appDropdownPanel.classList.add('hidden');
         });
@@ -580,11 +584,13 @@
             const dataStr = JSON.stringify(state, null, 2);
             const filename = `dashboard-backup-${new Date().toISOString().split('T')[0]}.json`;
             UIUtils.downloadJSON(dataStr, filename);
+            UIUtils.showToast('Backup created.');
         });
 
         DOMElements.restoreBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            DOMElements.restoreFileInput.click();
+            // (Mode C) Use shared file picker
+            UIUtils.openFilePicker(handleFileLoad);
         });
 
 
@@ -647,9 +653,7 @@
             return true;
         }
         
-        DOMElements.restoreFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if(!file) return;
+        function handleFileLoad(file) {
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
@@ -674,8 +678,7 @@
             };
             reader.onerror = () => UIUtils.showToast('Error reading the backup file.');
             reader.readAsText(file);
-            e.target.value = '';
-        });
+        }
 
         DOMElements.notepadHeader.addEventListener('click', (e) => {
              const button = e.target.closest('button');
@@ -695,7 +698,8 @@
                         {label: 'Cancel'},
                         {label: 'Save', class: 'button-primary', callback: () => {
                             const newTitle = document.getElementById('rename-note-input').value;
-                            if(validators.notEmpty(newTitle) && validators.maxLength(newTitle, 50)) {
+                            // (Mode C) Use shared validators
+                            if(UIUtils.validators.notEmpty(newTitle) && UIUtils.validators.maxLength(newTitle, 50)) {
                                 note.title = newTitle;
                                 saveState();
                                 renderNotesData();
@@ -761,6 +765,7 @@
         });
         
         const init = () => {
+            // (Mode C) Theme is now initialized by ui.common.js
             try {
                 state = loadState();
             } catch (e) {
@@ -770,15 +775,14 @@
 
             const services = { 
                 showModal: UIUtils.showModal, 
-                showToast: UIUtils.showToast, 
-                validators, 
+                // (Mode C) Pass shared validators
+                validators: UIUtils.validators, 
                 SVGIcons, 
                 saveState 
             };
             shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
 
-            // (Mode E Fix 2) Updated icon setup
             DOMElements.addShortcutBtn.innerHTML = SVGIcons.plus;
             DOMElements.addNewAppBtn.innerHTML = SVGIcons.plus;
             DOMElements.deleteAppBtn.innerHTML = SVGIcons.trash;
@@ -793,19 +797,7 @@
             renderAll();
         };
 
-        const validators = {
-            url: (value) => {
-                if (!value?.trim()) return false;
-                let urlToTest = value.trim();
-                if (!urlToTest.match(/^(\w+?:\/\/)/)) urlToTest = 'https://' + urlToTest;
-                try {
-                    const parsedUrl = new URL(urlToTest);
-                    return parsedUrl.hostname.includes('.') || parsedUrl.hostname === 'localhost';
-                } catch { return false; }
-            },
-            notEmpty: (value) => value && value.trim().length > 0,
-            maxLength: (value, max) => value.length <= max,
-        };
+        // (Mode C) Removed local validators object
 
         init();
     }
