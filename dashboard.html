@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Link to shared modal script -->
+    <script src="ui.common.js" defer></script>
     <style>
         .drag-handle { cursor: grab; color: var(--subtle-text); padding-right: 0.4rem; touch-action: none; }
         .drag-handle:active { cursor: grabbing; }
@@ -18,11 +20,12 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
+                <!-- --- NAVIGATION LINKS UPDATED --- -->
                 <div class="tabs-container">
                     <a href="dashboard.html" class="tab-link active">Dashboard</a>
-                    <a href="tasks.html" class="tab-link">Tasks</a>
-                    <a href="assignment_tool.html" class="tab-link">Support Toolkit</a>
+                    <a href="lookup.html" class="tab-link">Lookup</a>
                 </div>
+                <!-- --- END NAVIGATION UPDATE --- -->
 
                 <div id="shortcuts-container" class="shortcuts-container"></div>
                 <div class="divider"></div>
@@ -112,12 +115,9 @@
         const TOAST_DURATION = 3000;
         const UNDO_DURATION = 7000;
 
-        const SVGIcons = {
-            plus: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`,
-            pencil: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`,
-            trash: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
-            copy: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
-            menu: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`,
+        // Use SVGIcons from the shared UIUtils
+        const SVGIcons = (typeof UIUtils !== 'undefined' && UIUtils.SVGIcons) ? UIUtils.SVGIcons : {
+            plus: '...', pencil: '...', trash: '...', copy: '...', menu: '...'
         };
 
         const DOMElements = {
@@ -176,6 +176,8 @@
                 } catch(e) { 
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
+                    // Use shared modal
+                    setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
                     return { ...defaultState };
                 }
             }
@@ -194,38 +196,41 @@
 
         /**
          * FINAL REVIEW-7: Applies saved theme from localStorage
+         * This function is now defined in ui.common.js and runs automatically.
+         * We keep the function call here in init() in case we override it locally.
          */
         function initTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                document.documentElement.setAttribute('data-theme', savedTheme);
+            if (typeof UIUtils !== 'undefined') {
+                UIUtils.initTheme();
+            } else {
+                console.warn("UIUtils not loaded, theme may not apply.");
             }
         }
 
         /**
          * FINAL REVIEW-6: Generates a unique ID with fallback.
          */
-        const generateId = () => {
-            if (crypto.randomUUID) {
-                return crypto.randomUUID();
-            }
+        const generateId = (typeof UIUtils !== 'undefined' && UIUtils.generateId) ? UIUtils.generateId : () => {
             // Fallback for older browsers
             return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         };
         
-        const debounce = (func, delay) => {
+        const debounce = (typeof UIUtils !== 'undefined' && UIUtils.debounce) ? UIUtils.debounce : (func, delay) => {
             let timeout;
             return (...args) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => func(...args), delay);
             };
         };
-        const escapeHTML = (str) => {
+        
+        // Use shared escapeHTML
+        const escapeHTML = (typeof UIUtils !== 'undefined' && UIUtils.escapeHTML) ? UIUtils.escapeHTML : (str) => {
             if (!str) return '';
             const p = document.createElement('p');
             p.textContent = str;
             return p.innerHTML;
         };
+
         const validators = {
             url: (value) => {
                 if (!value?.trim()) return false;
@@ -239,23 +244,14 @@
             notEmpty: (value) => value && value.trim().length > 0,
             maxLength: (value, max) => value.length <= max,
         };
+
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard')).catch(err => console.error('Failed to copy:', err));
         }
 
-        const showModal = (title, contentHtml, actions) => {
-            DOMElements.modalContent.innerHTML = `<h3>${escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
-            const actionsContainer = DOMElements.modalContent.querySelector('.modal-actions');
-            actions.forEach(action => {
-                const btn = document.createElement('button');
-                btn.className = `button-base ${action.class || ''}`;
-                btn.textContent = action.label;
-                btn.onclick = () => { if (!action.callback || action.callback() !== false) hideModal(); };
-                actionsContainer.appendChild(btn);
-            });
-            DOMElements.modalOverlay.style.display = 'flex';
-        };
-        const hideModal = () => { DOMElements.modalOverlay.style.display = 'none'; };
+        // Use shared showModal and hideModal
+        const showModal = (typeof UIUtils !== 'undefined' && UIUtils.showModal) ? UIUtils.showModal : () => console.error("UIUtils.showModal not loaded");
+        const hideModal = (typeof UIUtils !== 'undefined' && UIUtils.hideModal) ? UIUtils.hideModal : () => console.error("UIUtils.hideModal not loaded");
         
         const showToast = (message, undoKey = null, undoCallback = null) => {
             const toast = DOMElements.toast;
@@ -861,12 +857,10 @@
             }
         }, DEBOUNCE_DELAY));
         
-        DOMElements.modalOverlay.addEventListener('click', (e) => { if(e.target === DOMElements.modalOverlay) hideModal() });
-        document.addEventListener('keydown', (e) => { if(e.key === 'Escape') hideModal() });
+        // Modal close listeners are now in ui.common.js
 
         const init = () => {
-            // FINAL REVIEW-7: Apply theme first
-            initTheme();
+            // Theme is applied by ui.common.js
             try {
                 state = loadState();
             } catch (e) {
@@ -875,7 +869,7 @@
             }
 
             const services = { showModal, showToast, validators, SVGIcons, saveState };
-            shortcutsManager = createShortCutsManager(state, DOMElements, services);
+            shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
 
             DOMElements.actionsBtn.innerHTML = SVGIcons.menu;
