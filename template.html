@@ -5,21 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - New Page</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Link to shared modal script -->
     <script src="ui.common.js" defer></script>
 </head>
 <body>
-    <!-- 
-      MODIFIED: 
-      Removed the static navbar and replaced it with a placeholder.
-      The 'loadNavbar' function in ui.common.js will populate this.
-    -->
     <div id="navbar-container"></div>
 
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <!-- --- Your Page Content Goes Here --- -->
 
                 <div class="section-header-wrapper">
                     <h3 class="section-header">New Page Title</h3>
@@ -28,39 +21,26 @@
                 <p>Your content for this new page goes here.</p>
                 <div class="empty-state-message">This is an empty state message.</div>
 
-                <!-- --- End Page Content --- -->
-
             </div>
-            <!-- Required for showToast() -->
             <div id="toast" class="toast"></div>
         </div>
     </div>
 
-    <!-- Required for showModal() -->
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
 
     <script>
-    // CRITICAL FIX: Wait for the DOM and deferred scripts (ui.common.js) to be ready
     document.addEventListener('DOMContentLoaded', () => {
         
-        /**
-         * New Page Template (v6.1.0 - Mode D Refactor)
-         */
-        
-        // --- PAGE CONFIG ---
         const APP_VERSION = '6.1.0';
-        // !!! IMPORTANT: Change this key for your new page!
-        const LOCAL_STORAGE_KEY = 'newpage_state_v5'; 
+        const LOCAL_STORAGE_KEY = 'newpage_state_v5';
 
-        // (Mode A) Encapsulate UIUtils to prevent startup errors
         const SafeUI = (() => {
             const isReady = typeof UIUtils !== 'undefined' && UIUtils;
             
             return {
                 isReady,
-                // MODIFIED: Added loadNavbar
                 loadNavbar: (containerId, currentPage) => isReady && UIUtils.loadNavbar(containerId, currentPage),
                 showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
                 hideModal: () => isReady && UIUtils.hideModal(),
@@ -77,16 +57,15 @@
             };
         })();
 
-        // --- DOM ELEMENT CACHE ---
         const DOMElements = {};
 
-        // (Mode A) DOM Caching and Validation
         function cacheAndValidateDOMElements() {
-            // These are the minimum required by SafeUI
-            // MODIFIED: Added navbar-container
-            const requiredIds = ['toast', 'modal-overlay', 'modal-content', 'navbar-container'];
-            // Add your page-specific element IDs here
-            // e.g., 'my-button', 'my-list-container'
+            const requiredIds = [
+                'toast', 
+                'modal-overlay', 
+                'modal-content',
+                'navbar-container'
+            ];
             
             let allElementsFound = true;
             for (const id of requiredIds) {
@@ -100,50 +79,29 @@
             return allElementsFound;
         }
 
-        // --- STATE MANAGEMENT ---
         const defaultState = {
             version: APP_VERSION,
             exampleList: []
         };
         
-        // (Mode D) Initialize State Manager
         const stateManager = SafeUI.createStateManager(LOCAL_STORAGE_KEY, defaultState, APP_VERSION);
         
         let state;
 
-        // (Mode D) Abstracted state saving function
         const saveState = () => {
             if (stateManager) {
                 stateManager.save(state);
             }
         };
 
-        // --- PAGE-SPECIFIC LOGIC ---
-
-        /**
-         * Renders all data from the state object into the DOM.
-         */
         const renderAll = () => {
             console.log("Rendering page with state:", state);
-            // Example of using a shared utility:
-            // const safeTitle = SafeUI.escapeHTML(state.title);
         };
 
-        /**
-         * Attaches all event listeners for the page.
-         */
         const attachEventListeners = () => {
-            // e.g., DOMElements.myButton.addEventListener('click', () => { ... });
-
-            // Example of using a shared utility:
-            // SafeUI.showToast("Page loaded!");
         };
 
-        /**
-         * Initializes the application.
-         */
         const init = () => {
-            // (Mode A) Check for UI framework first
             if (!SafeUI.isReady || !stateManager) {
                 console.error("FATAL: UIUtils or StateManager failed to initialize. Application halted.");
                 document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
@@ -153,33 +111,29 @@
                 return;
             }
             
-            // (Mode A) Check for all required DOM elements
             if (!cacheAndValidateDOMElements()) {
                 console.error("FATAL: Missing critical DOM elements. Application halted.");
                 return;
             }
 
-            // MODIFIED: Load the navbar
-            // !!! IMPORTANT: Change "template.html" to your new page's filename!
+            // Update this filename when copying the template
             SafeUI.loadNavbar("navbar-container", "template.html");
 
-            // (Mode D) Load state using the manager
             state = stateManager.load();
             
             renderAll();
             attachEventListeners();
         };
 
-        // --- START APPLICATION ---
-        // (Mode A) Wrap init in a try/catch as a final safeguard
         try {
             init();
         } catch (err) {
             console.error("Unhandled exception during initialization:", err);
             SafeUI.showModal("Fatal Error", `<p>An unexpected error occurred: ${err.message}</p>`, [{label: 'OK'}]);
         }
-    }); // End DOMContentLoaded
+    });
     </script>
 </body>
 </html>
+
 
