@@ -45,117 +45,139 @@
         </main>
     </div>
 
+    <!-- Required for showToast() -->
     <div id="toast" class="toast"></div>
+
+    <!-- (Mode D Fix) Required for showModal() -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
 
     <script>
         /**
-         * Lookup Tool (v6.0.0)
+         * Lookup Tool (v6.1.0 - Mode D Refactor)
          * Manages knowledge base routing and text snippets.
-         *
-         * Recent improvements:
-         * - Preserved edit state during filtering
-         * - Multi-item undo support (Removed in v6)
-         * - Duplicate keyword prevention
-         * - Import merge/replace options
-         * - Enhanced input validation
-         * - Visual copy feedback
-         * - Centralized utilities with ui.common.js
          */
         document.addEventListener('DOMContentLoaded', () => {
 
             // === CONSTANTS ===
             const APP_NAME = 'lookup';
+            const APP_VERSION = '6.1.0'; // (Mode D) Added version
             const DATA_KEY = `${APP_NAME}_data`;
 
+            // (Mode A) Encapsulate UIUtils to prevent startup errors
+            const SafeUI = (() => {
+                const isReady = typeof UIUtils !== 'undefined' && UIUtils;
+                
+                return {
+                    isReady,
+                    showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
+                    hideModal: () => isReady && UIUtils.hideModal(),
+                    showToast: (msg) => isReady ? UIUtils.showToast(msg) : console.log("Toast:", msg),
+                    escapeHTML: (str) => isReady ? UIUtils.escapeHTML(str) : (str || ''),
+                    generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
+                    copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
+                    downloadJSON: (data, filename) => isReady && UIUtils.downloadJSON(data, filename),
+                    openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
+                    readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
+                    createStateManager: (key, defaults, version, onCorruption) => isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null,
+                    validators: isReady ? UIUtils.validators : { notEmpty: (v) => v }
+                };
+            })();
+
             // === DOM ELEMENTS ===
-            const searchInput = document.getElementById('search-input');
-            const routingResults = document.getElementById('routing-results');
-            const snippetsResults = document.getElementById('snippets-results');
-            const btnAddNewEntry = document.getElementById('btn-add-new-entry');
-            const backupBtn = document.getElementById('lookup-state-backup');
-            const restoreBtn = document.getElementById('lookup-state-restore');
+            const DOMElements = {};
+
+            // (Mode A) DOM Caching and Validation
+            function cacheAndValidateDOMElements() {
+                const requiredIds = [
+                    'search-input', 'routing-results', 'snippets-results',
+                    'btn-add-new-entry', 'lookup-state-backup', 'lookup-state-restore',
+                    'toast', 'modal-overlay', 'modal-content'
+                ];
+                
+                let allElementsFound = true;
+                for (const id of requiredIds) {
+                    const el = document.getElementById(id);
+                    if (!el) {
+                        console.error(`FATAL: DOM element with id "${id}" not found.`);
+                        allElementsFound = false;
+                    }
+                    // Simple conversion: search-input -> searchInput
+                    DOMElements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
+                }
+                return allElementsFound;
+            }
+
 
             // === APPLICATION STATE ===
-            let state = {
+            // (Mode D) Define default state
+            const defaultState = {
                 routingData: [],
                 snippetsData: []
             };
 
+            // (Mode D) Initialize State Manager
+            const stateManager = SafeUI.createStateManager(DATA_KEY, defaultState, APP_VERSION, () => {
+                // Custom corruption handler for lookup (optional, but good practice)
+                SafeUI.showModal('Data Corruption Detected', `<p>Your lookup data could not be read. A backup has been saved and the page has been reset.</p>`, [{ label: 'OK' }]);
+            });
+
+            let state; // Will be populated by stateManager.load()
             let currentEditState = { id: null, type: null };
 
-            // === CONFIGURATION HANDLERS ===
-
-            const dataTypesConfig = {
-                routing: {
-                    listElement: routingResults,
-                    dataKey: 'routingData',
-                    title: 'Routing',
-                    emptyState: 'No routing entries found.',
-                    createItemElement: (item, searchTerm, type) => createResultItem(item, searchTerm, type)
-                },
-                snippets: {
-                    listElement: snippetsResults,
-                    dataKey: 'snippetsData',
-                    title: 'Snippets',
-                    emptyState: 'No snippets found.',
-                    createItemElement: (item, searchTerm, type) => createSnippetItem(item, searchTerm, type)
-                }
-            };
-
-            // === INITIALIZATION ===
-
-            function loadState() {
-                const storedData = localStorage.getItem(DATA_KEY);
-
-                if (storedData) {
-                    try {
-                        state = JSON.parse(storedData);
-                    } catch (e) {
-                        console.error("Failed to parse state from localStorage:", e);
-                        state = { routingData: [], snippetsData: [] };
-                    }
-                } else {
-                    state = { routingData: [], snippetsData: [] };
-                }
-
-                if (!state.routingData) state.routingData = [];
-                if (!state.snippetsData) state.snippetsData = [];
-            }
-
+            // (Mode D) Abstracted state saving function
             function saveState() {
+                if (!stateManager) return;
                 try {
                     // Data sorted on save for performance
                     state.routingData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     state.snippetsData.sort((a, b) => a.keyword.localeCompare(b.keyword));
-                    localStorage.setItem(DATA_KEY, JSON.stringify(state));
+                    stateManager.save(state);
                 } catch (e) {
-                    console.error("Failed to save state to localStorage:", e);
-                    UIUtils.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
+                    console.error("Failed to save state:", e);
+                    SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
                 }
             }
+            
+            // === CONFIGURATION HANDLERS ===
+            const dataTypesConfig = {
+                routing: {
+                    listElement: null, // (Mode D) Populated in init
+                    dataKey: 'routingData',
+                    title: 'Routing',
+                    emptyState: 'No routing entries found.',
+                },
+                snippets: {
+                    listElement: null, // (Mode D) Populated in init
+                    dataKey: 'snippetsData',
+                    title: 'Snippets',
+                    emptyState: 'No snippets found.',
+                }
+            };
 
             // === UTILITY FUNCTIONS ===
 
-            // Using UIUtils directly for generateId, copyToClipboard, escapeHTML, etc.
-
             function highlight(text, term) {
-                if (!term) return UIUtils.escapeHTML(text);
+                if (!term) return SafeUI.escapeHTML(text);
                 const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
                 const regex = new RegExp(`(${escapedTerm})`, 'gi');
-                return UIUtils.escapeHTML(text).replace(regex, '<mark>$1</mark>');
+                return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
             }
 
             // === DOM RENDERING ===
 
             function renderList(type, searchTerm = '') {
                 const config = dataTypesConfig[type];
+                if (!config || !config.listElement) return; // Guard clause
+
                 const data = state[config.dataKey] || [];
                 config.listElement.innerHTML = '';
 
                 const term = searchTerm.toLowerCase();
 
                 const filteredData = data.filter(item => {
-                    // Always show the item being edited, even if it doesn't match search
+                    // Always show the item being edited
                     if (item.id === currentEditState.id && type === currentEditState.type) {
                         return true;
                     }
@@ -163,9 +185,8 @@
                 });
 
                 if (filteredData.length === 0 && (currentEditState.type !== type || currentEditState.id === null)) {
-                    // Display different messages based on whether a search term exists
                     if (searchTerm.trim()) {
-                        config.listElement.innerHTML = `<li class="empty-state">No results found for "<strong>${UIUtils.escapeHTML(searchTerm)}</strong>"</li>`;
+                        config.listElement.innerHTML = `<li class="empty-state">No results found for "<strong>${SafeUI.escapeHTML(searchTerm)}</strong>"</li>`;
                     } else {
                         config.listElement.innerHTML = `<li class="empty-state">${config.emptyState}</li>`;
                     }
@@ -175,11 +196,11 @@
                 const fragment = document.createDocumentFragment();
                 filteredData.forEach(item => {
                     let itemElement;
-                    // Render the edit form if the item is being edited
                     if (item.id === currentEditState.id && type === currentEditState.type) {
                         itemElement = createEditForm(type, item);
                     } else {
-                        itemElement = config.createItemElement(item, searchTerm, type);
+                        // (Mode D) Call consolidated function
+                        itemElement = createItemElement(item, searchTerm, type);
                     }
                     fragment.appendChild(itemElement);
                 });
@@ -187,65 +208,45 @@
             }
 
             function renderAll() {
-                const searchTerm = searchInput.value;
+                const searchTerm = DOMElements.searchInput.value;
                 renderList('routing', searchTerm);
                 renderList('snippets', searchTerm);
             }
 
-            function createResultItem(item, searchTerm, type) {
+            /**
+             * (Mode D) Consolidated item renderer
+             * @param {object} item The data item
+             * @param {string} searchTerm The current search term
+             * @param {string} type 'routing' or 'snippets'
+             * @returns {HTMLLIElement} The rendered list item
+             */
+            function createItemElement(item, searchTerm, type) {
                 const li = document.createElement('li');
-                li.className = 'result-item';
+                li.className = (type === 'routing') ? 'result-item' : 'snippet-item';
                 li.dataset.id = item.id;
                 li.dataset.type = type;
-
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'item-content';
-                contentDiv.textContent = item.content;
-
-                li.innerHTML = `
-                    <div class="item-header">
-                        <span class="item-keyword">${highlight(item.keyword, searchTerm)}</span>
-                        <div class="item-actions">
-                            <button class="btn-copy-keyword">Copy Keyword</button>
-                            <button class="btn-edit">Edit</button>
-                            <button class="btn-delete">Delete</button>
-                        </div>
-                    </div>
-                `;
-                li.appendChild(contentDiv);
-                li.innerHTML += `
-                    <div class="item-actions">
-                        <button class="btn-copy-content">Copy Content</button>
-                    </div>
-                `;
-
-                // Add copy feedback
-                const setupCopyButton = (buttonSelector, textToCopy) => {
-                    li.querySelector(buttonSelector).addEventListener('click', async (e) => {
-                        const success = await UIUtils.copyToClipboard(textToCopy);
-                        if (success && e.target) {
-                            const originalText = e.target.textContent;
-                            e.target.textContent = 'Copied!';
-                            e.target.disabled = true;
-                            setTimeout(() => {
-                                if (e.target) { // Check element still exists
-                                    e.target.textContent = originalText;
-                                    e.target.disabled = false;
-                                }
-                            }, 1200);
-                        } else if (!success) {
-                            UIUtils.showToast("Failed to copy.");
-                        }
-                    });
-                };
-
-                setupCopyButton('.btn-copy-keyword', item.keyword);
-                setupCopyButton('.btn-copy-content', item.content);
-
-                li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
-
-                li.querySelector('.btn-delete').addEventListener('click', () => {
-                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
+                
+                // --- Build Header ---
+                const header = document.createElement('div');
+                header.className = 'item-header';
+                
+                const keywordSpan = document.createElement('span');
+                keywordSpan.className = 'item-keyword';
+                keywordSpan.innerHTML = highlight(item.keyword, searchTerm);
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'item-actions';
+                
+                const editButton = document.createElement('button');
+                editButton.className = 'btn-edit';
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => handleEdit(item.id, type);
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn-delete';
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => {
+                    SafeUI.showModal('Delete Entry', `<p>Are you sure you want to delete "${SafeUI.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
                         { label: 'Cancel' },
                         {
                             label: 'Delete',
@@ -253,60 +254,82 @@
                             callback: () => handleDelete(item.id, type)
                         }
                     ]);
-                });
+                };
+                
+                // Specific to Routing
+                if (type === 'routing') {
+                    const copyKeywordBtn = document.createElement('button');
+                    copyKeywordBtn.className = 'btn-copy-keyword';
+                    copyKeywordBtn.textContent = 'Copy Keyword';
+                    setupCopyButton(copyKeywordBtn, item.keyword, "Keyword copied!");
+                    actionsDiv.appendChild(copyKeywordBtn);
+                }
+                
+                actionsDiv.appendChild(editButton);
+                actionsDiv.appendChild(deleteButton);
+                header.appendChild(keywordSpan);
+                header.appendChild(actionsDiv);
+                
+                // --- Build Content ---
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'item-content';
+                contentDiv.textContent = item.content;
+                
+                if (type === 'snippets') {
+                    contentDiv.title = 'Click to copy snippet';
+                    contentDiv.onclick = async (e) => {
+                        const success = await SafeUI.copyToClipboard(item.content);
+                        if (success) {
+                            SafeUI.showToast("Snippet copied!");
+                            e.target.style.transition = 'background-color 0.1s ease-in-out';
+                            e.target.style.backgroundColor = 'var(--color-success-bg)';
+                            setTimeout(() => { 
+                                if (e.target) e.target.style.backgroundColor = ''; 
+                            }, 200);
+                        } else {
+                            SafeUI.showToast("Failed to copy snippet.");
+                        }
+                    };
+                }
+                
+                li.appendChild(header);
+                li.appendChild(contentDiv);
+                
+                // --- Build Footer (Routing-specific) ---
+                if (type === 'routing') {
+                    const footerActions = document.createElement('div');
+                    footerActions.className = 'item-actions';
+                    
+                    const copyContentBtn = document.createElement('button');
+                    copyContentBtn.className = 'btn-copy-content';
+                    copyContentBtn.textContent = 'Copy Content';
+                    setupCopyButton(copyContentBtn, item.content, "Content copied!");
+                    
+                    footerActions.appendChild(copyContentBtn);
+                    li.appendChild(footerActions);
+                }
 
                 return li;
             }
 
-            function createSnippetItem(item, searchTerm, type) {
-                const li = document.createElement('li');
-                li.className = 'snippet-item';
-                li.dataset.id = item.id;
-                li.dataset.type = type;
-
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'item-content';
-                contentDiv.title = 'Click to copy snippet';
-                contentDiv.textContent = item.content;
-
-                li.innerHTML = `
-                    <div class="item-header">
-                        <span class="item-keyword">${highlight(item.keyword, searchTerm)}</span>
-                        <div class="item-actions">
-                            <button class="btn-edit">Edit</button>
-                            <button class="btn-delete">Delete</button>
-                        </div>
-                    </div>
-                `;
-                li.appendChild(contentDiv);
-
-                li.querySelector('.item-content').addEventListener('click', async (e) => {
-                    const success = await UIUtils.copyToClipboard(item.content);
-                    if (success) {
-                        UIUtils.showToast("Snippet copied!");
-                        // Add temporary visual feedback
-                        e.target.style.transition = 'background-color 0.1s ease-in-out';
-                        e.target.style.backgroundColor = 'var(--color-success-bg)';
-                        setTimeout(() => { e.target.style.backgroundColor = ''; }, 200);
-                    } else {
-                         UIUtils.showToast("Failed to copy snippet.");
+            // Helper for copy button feedback
+            function setupCopyButton(button, textToCopy, message) {
+                button.addEventListener('click', async (e) => {
+                    const success = await SafeUI.copyToClipboard(textToCopy);
+                    if (success && e.target) {
+                        const originalText = e.target.textContent;
+                        e.target.textContent = 'Copied!';
+                        e.target.disabled = true;
+                        setTimeout(() => {
+                            if (e.target) {
+                                e.target.textContent = originalText;
+                                e.target.disabled = false;
+                            }
+                        }, 1200);
+                    } else if (!success) {
+                        SafeUI.showToast("Failed to copy.");
                     }
                 });
-                li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id, type));
-
-                li.querySelector('.btn-delete').addEventListener('click', () => {
-                    UIUtils.showModal('Delete Entry', `<p>Are you sure you want to delete "${UIUtils.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
-                        { label: 'Cancel' },
-                        {
-                            label: 'Delete',
-                            class: 'button-danger',
-                            callback: () => handleDelete(item.id, type)
-                        }
-                    ]
-                );
-                });
-
-                return li;
             }
 
             function createEditForm(type, item) {
@@ -319,6 +342,10 @@
                 form.className = 'edit-form';
                 form.dataset.id = item.id;
                 form.dataset.type = type;
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    handleSave(form, item.id, type);
+                };
 
                 const keywordLabel = config.title === 'Routing' ? 'Keyword (e.g., "VPN")' : 'Keyword (e.g., "Greeting")';
                 const contentLabel = config.title === 'Routing' ? 'Content (Assignment Group)' : 'Content (Snippet Text)';
@@ -354,15 +381,9 @@
                     </div>
                 `;
 
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    handleSave(form, item.id, type);
-                });
-
                 form.querySelector('.btn-cancel').addEventListener('click', () => {
-                    // If it was a new, blank item, delete it on cancel without confirmation
                     if (item.keyword.trim() === '' && item.content.trim() === '') {
-                        handleDelete(item.id, type, true); // Pass 'true' to skip confirm
+                        handleDelete(item.id, type, true); // Skip confirm
                     }
                     currentEditState = { id: null, type: null };
                     renderAll();
@@ -375,14 +396,12 @@
             // === CRUD HANDLERS ===
 
             function handleAddNewEntry() {
-                // Prevent starting a new entry while another is being edited
                 if (currentEditState.id) {
-                    UIUtils.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
+                    SafeUI.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
                     return;
                 }
 
-                // Ask user which type to add via modal
-                UIUtils.showModal("Add New Entry", "<p>What do you want to add?</p>", [
+                SafeUI.showModal("Add New Entry", "<p>What do you want to add?</p>", [
                     { label: 'Cancel' },
                     { label: 'Snippet', callback: () => addNewItem('snippets') },
                     { label: 'Routing', class: 'button-primary', callback: () => addNewItem('routing') }
@@ -392,35 +411,27 @@
             function addNewItem(type) {
                 const config = dataTypesConfig[type];
 
-                // UUID generation with fallback
-                const newItem = { id: UIUtils.generateId(), keyword: '', content: '' };
-                // Add to the beginning of the list for visibility
-                state[config.dataKey].unshift(newItem);
+                const newItem = { id: SafeUI.generateId(), keyword: '', content: '' };
+                state[config.dataKey].unshift(newItem); // Add to beginning
 
-                // Set state to editing this new item
                 currentEditState = { id: newItem.id, type: type };
-                searchInput.value = ''; // Clear search to ensure it's visible
+                DOMElements.searchInput.value = ''; // Clear search
                 renderAll();
 
-                // Focus the keyword input of the new form
                 const newEl = document.getElementById(`edit-keyword-${newItem.id}`);
                 if (newEl) {
                     newEl.focus();
                 }
             }
 
-
             function handleEdit(id, type) {
-                // Prevent editing multiple items at once
                 if (currentEditState.id && currentEditState.id !== id) {
-                    UIUtils.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
+                    SafeUI.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
                     return;
                 }
 
-                // Set the current edit state and re-render to show the form
                 currentEditState = { id: id, type: type };
                 renderAll();
-                // Focus the keyword input and select text
                 const editInput = document.getElementById(`edit-keyword-${id}`);
                 if (editInput) {
                     editInput.focus();
@@ -436,46 +447,47 @@
                 const content = contentInput.value.trim();
                 const data = state[dataTypesConfig[type].dataKey];
 
-                // Validate inputs are not blank
-                if (keyword === '') {
-                    UIUtils.showModal("Invalid Input", "<p>Error: Keyword cannot be blank.</p>", [{label: 'OK'}]);
+                if (!SafeUI.validators.notEmpty(keyword)) {
+                    SafeUI.showModal("Invalid Input", "<p>Error: Keyword cannot be blank.</p>", [{label: 'OK'}]);
                     keywordInput.focus();
                     return;
                 }
-                if (content === '') {
-                    UIUtils.showModal("Invalid Input", "<p>Error: Content cannot be blank.</p>", [{label: 'OK'}]);
+                if (!SafeUI.validators.notEmpty(content)) {
+                    SafeUI.showModal("Invalid Input", "<p>Error: Content cannot be blank.</p>", [{label: 'OK'}]);
                     contentInput.focus();
                     return;
                 }
 
-                // Check for duplicate keywords (case-insensitive)
-                const isDuplicate = data.some(i =>
-                    i.id !== id && // Exclude self
-                    i.keyword.toLowerCase() === keyword.toLowerCase()
-                );
+                // (Mode C) Optimized: Check for duplicate and find item in one loop
+                let itemToUpdate = null;
+                let isDuplicate = false;
+                for (const item of data) {
+                    if (item.id === id) {
+                        itemToUpdate = item;
+                    } else if (item.keyword.toLowerCase() === keyword.toLowerCase()) {
+                        isDuplicate = true;
+                    }
+                    if (itemToUpdate && isDuplicate) break; // Found both
+                }
 
                 if (isDuplicate) {
-                    UIUtils.showModal("Duplicate Keyword", `<p>Error: Keyword "${UIUtils.escapeHTML(keyword)}" already exists.</p>`, [{label: 'OK'}]);
+                    SafeUI.showModal("Duplicate Keyword", `<p>Error: Keyword "${SafeUI.escapeHTML(keyword)}" already exists.</p>`, [{label: 'OK'}]);
                     keywordInput.focus();
                     return;
                 }
 
-                // Find the item and update its properties
-                const item = data.find(i => i.id === id);
-                if (item) {
-                    item.keyword = keyword;
-                    item.content = content;
+                if (itemToUpdate) {
+                    itemToUpdate.keyword = keyword;
+                    itemToUpdate.content = content;
                 }
 
                 saveState(); // Save the updated state
 
-                // Clear the edit state and re-render the lists
                 currentEditState = { id: null, type: null };
                 renderAll();
             }
 
-            function handleDelete(id, type, skipConfirm = false) { // skipConfirm added for cancelling new entries
-                // If deleting the item currently being edited, reset the edit state
+            function handleDelete(id, type, skipConfirm = false) { 
                 if (currentEditState.id === id) {
                     currentEditState = { id: null, type: null };
                 }
@@ -486,116 +498,107 @@
 
                 if (index === -1) return; // Item not found
 
-                // Remove the item from the state array
                 data.splice(index, 1);
 
                 saveState(); // Persist the change
                 renderAll(); // Update the UI
-                // Note: No toast message on delete as per refactoring
             }
 
             // === DATA IMPORT / EXPORT / BACKUP / RESTORE ===
 
-            // File loading logic moved into handleFileLoad
-            function handleFileLoad(file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // User feedback during file processing
-                    UIUtils.showToast("Processing file...");
-                    let jsonData;
-                    try {
-                        jsonData = JSON.parse(e.target.result);
-                    } catch (error) {
-                        console.error("Failed to parse JSON:", error);
-                        UIUtils.showModal("Import Error", "<p>File is not valid JSON.</p>", [{label: 'OK'}]);
-                        return;
-                    }
+            /**
+             * (Mode D) Processes the read JSON data from a file
+             * @param {object} jsonData The parsed JSON object
+             */
+            function processImportData(jsonData) {
+                SafeUI.showToast("Processing file...");
 
-                    // --- Determine file type and handle accordingly ---
-
-                    // Check if it's a full backup file (modern format)
-                    if (jsonData.appName === APP_NAME && jsonData.data) {
-                        UIUtils.showModal("Confirm Restore", "<p>This is a full backup file. Restoring will overwrite all current data.</p>", [
-                            { label: 'Cancel' },
-                            {
-                                label: 'Restore',
-                                class: 'button-danger',
-                                callback: () => {
-                                    state = jsonData.data || { routingData: [], snippetsData: [] };
-                                    saveState();
-                                    currentEditState = { id: null, type: null }; // Reset edit state
-                                    renderAll();
-                                    UIUtils.showToast("Restore successful.");
-                                }
+                // Check if it's a full backup file (modern format)
+                if (jsonData.appName === APP_NAME && jsonData.data) {
+                    SafeUI.showModal("Confirm Restore", "<p>This is a full backup file. Restoring will overwrite all current data.</p>", [
+                        { label: 'Cancel' },
+                        {
+                            label: 'Restore',
+                            class: 'button-danger',
+                            callback: () => {
+                                state = jsonData.data || { ...defaultState };
+                                // (Mode D) Ensure arrays exist after restore
+                                if (!state.routingData) state.routingData = [];
+                                if (!state.snippetsData) state.snippetsData = [];
+                                saveState();
+                                currentEditState = { id: null, type: null };
+                                renderAll();
+                                SafeUI.showToast("Restore successful.");
                             }
-                        ]);
+                        }
+                    ]);
 
-                    // Check if it's a legacy backup file
-                    } else if (jsonData.appName === 'assignment_tool' && jsonData.data) {
-                        UIUtils.showModal("Confirm Legacy Restore", "<p>This is a backup from the old 'Assignment Tool'. Restore it?</p>", [
+                // Check if it's a legacy backup file
+                } else if (jsonData.appName === 'assignment_tool' && jsonData.data) {
+                    SafeUI.showModal("Confirm Legacy Restore", "<p>This is a backup from the old 'Assignment Tool'. Restore it?</p>", [
+                        { label: 'Cancel' },
+                        {
+                            label: 'Restore',
+                            class: 'button-primary',
+                            callback: () => {
+                                state = jsonData.data || { ...defaultState };
+                                // (Mode D) Ensure arrays exist after restore
+                                if (!state.routingData) state.routingData = [];
+                                if (!state.snippetsData) state.snippetsData = [];
+                                saveState();
+                                currentEditState = { id: null, type: null };
+                                renderAll();
+                                SafeUI.showToast("Restore successful.");
+                            }
+                        }
+                    ]);
+
+                // Check if it's a data-only import file
+                } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
+                    const newRoutingCount = jsonData.routing?.length || 0;
+                    const newSnippetsCount = jsonData.snippets?.length || 0;
+
+                    SafeUI.showModal("Confirm Data Import",
+                        `<p>This file contains <strong>${newRoutingCount} routing</strong> entries and <strong>${newSnippetsCount} snippet</strong> entries.</p><p>How do you want to import this data?</p>`,
+                        [
                             { label: 'Cancel' },
                             {
-                                label: 'Restore',
+                                label: 'Merge', // Adds new data
                                 class: 'button-primary',
                                 callback: () => {
-                                    state = jsonData.data || { routingData: [], snippetsData: [] };
+                                    state.routingData = (state.routingData || []).concat(jsonData.routing || []);
+                                    state.snippetsData = (state.snippetsData || []).concat(jsonData.snippets || []);
                                     saveState();
-                                    currentEditState = { id: null, type: null };
                                     renderAll();
-                                    UIUtils.showToast("Restore successful.");
+                                    SafeUI.showToast("Data merged successfully.");
+                                }
+                            },
+                            {
+                                label: 'Replace All', // Wipes existing data
+                                class: 'button-danger',
+                                callback: () => {
+                                    state.routingData = jsonData.routing || [];
+                                    state.snippetsData = jsonData.snippets || [];
+                                    saveState();
+                                    renderAll();
+                                    SafeUI.showToast("Data replaced successfully.");
                                 }
                             }
-                        ]);
+                        ]
+                    );
 
-                    // Check if it's a data-only import file
-                    } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
-                        const newRoutingCount = jsonData.routing?.length || 0;
-                        const newSnippetsCount = jsonData.snippets?.length || 0;
-
-                        // Ask user whether to merge or replace
-                        UIUtils.showModal("Confirm Data Import",
-                            `<p>This file contains <strong>${newRoutingCount} routing</strong> entries and <strong>${newSnippetsCount} snippet</strong> entries.</p><p>How do you want to import this data?</p>`,
-                            [
-                                { label: 'Cancel' },
-                                {
-                                    label: 'Merge', // Adds new data without overwriting
-                                    class: 'button-primary',
-                                    callback: () => {
-                                        state.routingData = (state.routingData || []).concat(jsonData.routing || []);
-                                        state.snippetsData = (state.snippetsData || []).concat(jsonData.snippets || []);
-                                        saveState();
-                                        renderAll();
-                                        UIUtils.showToast("Data merged successfully.");
-                                    }
-                                },
-                                {
-                                    label: 'Replace All', // Wipes existing data
-                                    class: 'button-danger',
-                                    callback: () => {
-                                        state.routingData = jsonData.routing || [];
-                                        state.snippetsData = jsonData.snippets || [];
-                                        saveState();
-                                        renderAll();
-                                        UIUtils.showToast("Data replaced successfully.");
-                                    }
-                                }
-                            ]
-                        );
-
-                    // If file structure doesn't match known types
-                    } else {
-                        UIUtils.showModal("Import Error", "<p>Invalid file structure. Not a valid backup or import file.</p>", [{label: 'OK'}]);
-                    }
-
-                };
-                reader.onerror = () => UIUtils.showModal("Import Error", "<p>Error reading the file.</p>", [{label: 'OK'}]);
-
-                try {
-                    reader.readAsText(file);
-                } catch (error) {
-                    console.error("Failed to read file:", error);
-                    UIUtils.showModal("Import Error", `<p>${UIUtils.escapeHTML(error.message)}</p>`, [{label: 'OK'}]);
+                // If file structure doesn't match known types
+                } else {
+                    SafeUI.showModal("Import Error", "<p>Invalid file structure. Not a valid backup or import file.</p>", [{label: 'OK'}]);
                 }
+            }
+
+            /**
+             * (Mode D) Handles errors from the file reader
+             * @param {string} errorMsg The error message from readJSONFile
+             */
+            function handleImportError(errorMsg) {
+                SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
             }
 
             // Helper for creating backup data
@@ -603,28 +606,70 @@
                 const dataStr = JSON.stringify({
                     appName: APP_NAME,
                     timestamp: new Date().toISOString(),
-                    version: '6.0.0', // Updated version
+                    version: APP_VERSION, 
                     data: state
                 }, null, 2);
-                // Helper for JSON downloads
-                UIUtils.downloadJSON(dataStr, `${APP_NAME}_backup.json`);
-                UIUtils.showToast("Backup created.");
+                SafeUI.downloadJSON(dataStr, `${APP_NAME}_backup.json`);
+                SafeUI.showToast("Backup created.");
             }
 
             // === EVENT LISTENERS ===
 
-            searchInput.addEventListener('input', renderAll);
-            btnAddNewEntry.addEventListener('click', handleAddNewEntry);
+            function attachEventListeners() {
+                DOMElements.searchInput.addEventListener('input', renderAll);
+                DOMElements.btnAddTewEntry.addEventListener('click', handleAddNewEntry);
 
-            backupBtn.addEventListener('click', handleBackup);
-            restoreBtn.addEventListener('click', () => UIUtils.openFilePicker(handleFileLoad));
+                DOMElements.lookupStateBackup.addEventListener('click', handleBackup);
+                DOMElements.lookupStateRestore.addEventListener('click', () => {
+                    SafeUI.openFilePicker((file) => {
+                        SafeUI.readJSONFile(file, processImportData, handleImportError);
+                    });
+                });
+            }
 
             // === INITIAL LOAD ===
-            // Initialize theme preference (handled by ui.common.js)
-            loadState();
-            renderAll();
+            function init() {
+                // (Mode A) Check for UI framework first
+                if (!SafeUI.isReady || !stateManager) {
+                    console.error("FATAL: UIUtils or StateManager failed to initialize. Application halted.");
+                    document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
+                        <h2>Application Failed to Load</h2>
+                        <p>A critical file (ui.common.js) may be missing or failed to load. Please check the console for errors.</p>
+                    </div>`;
+                    return;
+                }
+                
+                // (Mode A) Check for all required DOM elements
+                if (!cacheAndValidateDOMElements()) {
+                    console.error("FATAL: Missing critical DOM elements. Application halted.");
+                    return;
+                }
+                
+                // (Mode D) Populate config with cached elements
+                dataTypesConfig.routing.listElement = DOMElements.routingResults;
+                dataTypesConfig.snippets.listElement = DOMElements.snippetsResults;
+                
+                // (Mode D) Load state using the manager
+                state = stateManager.load();
+
+                // Ensure data arrays exist after load
+                if (!state.routingData) state.routingData = [];
+                if (!state.snippetsData) state.snippetsData = [];
+
+                attachEventListeners();
+                renderAll();
+            }
+
+            // (Mode A) Wrap init in a try/catch as a final safeguard
+            try {
+                init();
+            } catch (err) {
+                console.error("Unhandled exception during initialization:", err);
+                SafeUI.showModal("Fatal Error", `<p>An unexpected error occurred: ${err.message}</p>`, [{label: 'OK'}]);
+            }
         });
     </script>
 </body>
 </html>
+
 
