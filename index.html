@@ -5,19 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Link to shared modal script -->
     <script src="ui.common.js" defer></script>
 </head>
 <body>
     <nav class="navbar">
         <ul class="nav-links">
-            <!-- Ensure this href points correctly -->
             <li><a href="index.html" class="nav-link active">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link">Lookup</a></li>
         </ul>
         <div class="nav-actions">
-            <!-- Theme toggle button removed as requested -->
-        </div>
+            </div>
     </nav>
 
     <div class="app-container">
@@ -125,10 +122,10 @@
                 debounce: (func, delay) => isReady ? UIUtils.debounce(func, delay) : func,
                 copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
                 downloadJSON: (data, filename) => isReady && UIUtils.downloadJSON(data, filename),
-                openFilePicker: (cb) => isReady && UIUtils.openFilePicker(cb),
+                openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
                 // (Mode D) Add new utilities
                 readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
-                createStateManager: (key, defaults, version) => isReady ? UIUtils.createStateManager(key, defaults, version) : null,
+                createStateManager: (key, defaults, version, onCorruption) => isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null,
                 validators: isReady ? UIUtils.validators : { url: (v) => v, notEmpty: (v) => v, maxLength: (v, m) => v }
             };
         })();
@@ -625,45 +622,23 @@
                     throw new Error('Backup missing "shortcuts" array');
                 }
 
+                // Deep validation of array items
                 for (let i = 0; i < restored.apps.length; i++) {
                     const a = restored.apps[i];
-                    if (!a || !a.id) {
-                        throw new Error(`App at index ${i} is missing "id" field`);
-                    }
-                    if (typeof a.name !== 'string') {
-                        throw new Error(`App "${a.id}" has invalid "name" field`);
-                    }
-                    if (typeof a.urls !== 'string') {
-                        throw new Error(`App "${a.name}" is missing "urls" field`);
-                    }
-                    if (typeof a.escalation !== 'string') {
-                        throw new Error(`App "${a.name}" is missing "escalation" field`);
+                    if (!a || !a.id || typeof a.name !== 'string' || typeof a.urls !== 'string' || typeof a.escalation !== 'string') {
+                        throw new Error(`Data for app at index ${i} is corrupt or missing fields.`);
                     }
                 }
-
                 for (let i = 0; i < restored.notes.length; i++) {
                     const n = restored.notes[i];
-                    if (!n || !n.id) {
-                        throw new Error(`Note at index ${i} is missing "id" field`);
-                    }
-                    if (typeof n.title !== 'string') {
-                        throw new Error(`Note "${n.id}" has invalid "title" field`);
-                    }
-                    if (typeof n.content !== 'string') {
-                        throw new Error(`Note "${n.title}" is missing "content" field`);
+                    if (!n || !n.id || typeof n.title !== 'string' || typeof n.content !== 'string') {
+                        throw new Error(`Data for note at index ${i} is corrupt or missing fields.`);
                     }
                 }
-
                 for (let i = 0; i < restored.shortcuts.length; i++) {
                     const s = restored.shortcuts[i];
-                    if (!s || !s.id) {
-                        throw new Error(`Shortcut at index ${i} is missing "id" field`);
-                    }
-                    if (typeof s.name !== 'string') {
-                        throw new Error(`Shortcut "${s.id}" has invalid "name" field`);
-                    }
-                    if (typeof s.url !== 'string') {
-                        throw new Error(`Shortcut "${s.name}" is missing "url" field`);
+                    if (!s || !s.id || typeof s.name !== 'string' || typeof s.url !== 'string') {
+                        throw new Error(`Data for shortcut at index ${i} is corrupt or missing fields.`);
                     }
                 }
                 // End validation logic
@@ -775,17 +750,16 @@
             // (Mode A) Check for UI framework first
             if (!SafeUI.isReady || !stateManager) {
                 console.error("FATAL: UIUtils or StateManager failed to initialize. Application halted.");
-                document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-                    <h2>Application Failed to Load</h2>
-                    <p>A critical file (ui.common.js) may be missing or failed to load. Please check the console for errors.</p>
-                </div>`;
+                // Use alert as a fallback if SafeUI.showModal isn't available
+                alert("Application Failed to Load!\nA critical file (ui.common.js) may be missing or failed to load. Please check the console for errors.");
                 return;
             }
             
             // (Mode A) Check for all required DOM elements
             if (!cacheAndValidateDOMElements()) {
                 console.error("FATAL: Missing critical DOM elements. Application halted.");
-                // We can't use SafeUI.showModal because modal elements might be the ones missing.
+                // Use alert as a fallback if SafeUI.showModal isn't available
+                alert("Application Failed to Load!\nCritical page elements are missing. Please check the console for errors.");
                 return;
             }
 
@@ -819,10 +793,15 @@
         };
 
         // --- START APPLICATION ---
-        init();
+        // (Mode A) Wrap init in a try/catch as a final safeguard
+        try {
+            init();
+        } catch (err) {
+            console.error("Unhandled exception during initialization:", err);
+            // Use alert as a fallback
+            alert(`An unexpected error occurred during startup: ${err.message}\nPlease check the console.`);
+        }
     }); // End DOMContentLoaded
     </script>
 </body>
 </html>
-
-
