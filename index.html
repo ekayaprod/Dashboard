@@ -12,12 +12,11 @@
     <nav class="navbar">
         <ul class="nav-links">
             <!-- Ensure this href points correctly -->
-            <li><a href="Index.html" class="nav-link active">Dashboard</a></li>
+            <li><a href="index.html" class="nav-link active">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link">Lookup</a></li>
-            <li><a href="template.html" class="nav-link">Template</a></li>
         </ul>
         <div class="nav-actions">
-            <button id="theme-toggle" class="btn-nav">Toggle Theme</button>
+            <!-- Theme toggle button removed as requested -->
         </div>
     </nav>
 
@@ -95,7 +94,8 @@
     </div>
 
     <script>
-    {
+    // CRITICAL FIX: Wait for the DOM and deferred scripts (ui.common.js) to be ready
+    document.addEventListener('DOMContentLoaded', () => {
         /**
          * Dashboard (v6.0.0)
          * Central hub for application management, shortcuts, and notes.
@@ -104,6 +104,7 @@
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const DEBOUNCE_DELAY = 500;
 
+        // This check ensures UIUtils (from ui.common.js) is loaded
         const SVGIcons = (typeof UIUtils !== 'undefined' && UIUtils.SVGIcons) ? UIUtils.SVGIcons : {
             plus: '...', pencil: '...', trash: '...', copy: '...', menu: '...'
         };
@@ -164,6 +165,7 @@
                 } catch(e) {
                     console.error("Failed to load state, backing up corrupted data.", e);
                     localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
+                    // Use setTimeout to ensure modal is ready
                     setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
                     // Initialize with default state
                     return { ...defaultState };
@@ -802,9 +804,8 @@
 
 
         init();
-    }
+    }); // End DOMContentLoaded
     </script>
 </body>
 </html>
-
 
