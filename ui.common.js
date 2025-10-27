@@ -196,26 +196,8 @@ const UIUtils = {
     },
 
     // === THEME INITIALIZATION ===
-    
-    /**
-     * Applies the theme (light/dark) from localStorage.
-     */
-    initTheme: () => {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        }
-        // A button with id 'theme-toggle' can now control this
-        const toggleBtn = document.getElementById('theme-toggle');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => {
-                let currentTheme = document.documentElement.getAttribute('data-theme');
-                const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-            });
-        }
-    }
+    // Removed initTheme function to allow CSS media query to handle system theme
+    // automatically, as requested.
 };
 
 // --- GLOBAL EVENT LISTENERS ---
@@ -235,6 +217,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initialize theme
-    UIUtils.initTheme();
+    // Removed theme initialization call
 });
