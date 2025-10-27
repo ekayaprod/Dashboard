@@ -12,12 +12,12 @@
     <nav class="navbar">
         <ul class="nav-links">
             <!-- Ensure href points correctly -->
-            <li><a href="Index.html" class="nav-link">Dashboard</a></li>
+            <li><a href="index.html" class="nav-link">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link">Lookup</a></li>
-            <li><a href="template.html" class="nav-link active">Template</a></li>
+            <!-- Template link removed -->
         </ul>
         <div class="nav-actions">
-            <button id="theme-toggle" class="btn-nav">Toggle Theme</button>
+            <!-- Theme toggle button removed -->
         </div>
     </nav>
 
@@ -47,7 +47,8 @@
     </div>
 
     <script>
-    {
+    // CRITICAL FIX: Wait for the DOM and deferred scripts (ui.common.js) to be ready
+    document.addEventListener('DOMContentLoaded', () => {
         // --- PAGE CONFIG ---
         const APP_VERSION = '6.0.0';
         const LOCAL_STORAGE_KEY = 'newpage_state_v5';
@@ -133,9 +134,8 @@
 
         // --- START APPLICATION ---
         init();
-    }
+    }); // End DOMContentLoaded
     </script>
 </body>
 </html>
-
 
