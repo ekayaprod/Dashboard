@@ -1,14 +1,10 @@
 /**
- * ui.common.js (v2.1)
- *
+ * ui.common.js
  * Contains shared UI helper functions for the application suite.
- * Centralized all common logic (Modals, Toasts, Validators, DOM utils).
- * Added StateManager and readJSONFile.
  */
 
 const UIUtils = {
 
-    // === SVG ICONS ===
     SVGIcons: {
         plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>',
         pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
@@ -17,7 +13,38 @@ const UIUtils = {
         menu: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>'
     },
 
-    // === CORE UTILITIES ===
+    /**
+     * Dynamically loads the navigation bar from a file.
+     * @param {string} containerId The ID of the element to inject the nav into.
+     * @param {string} currentPage The filename of the current page (e.g., "index.html").
+     */
+    loadNavbar: async (containerId, currentPage) => {
+        const navContainer = document.getElementById(containerId);
+        if (!navContainer) {
+            console.error(`Navbar container with id "${containerId}" not found.`);
+            return;
+        }
+
+        try {
+            const response = await fetch('_nav.html');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch _nav.html: ${response.statusText}`);
+            }
+            const navHTML = await response.text();
+            navContainer.innerHTML = navHTML;
+
+            const links = navContainer.querySelectorAll('.nav-link');
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === currentPage) {
+                    link.classList.add('active');
+                }
+            });
+        } catch (error) {
+            console.error('Failed to load navbar:', error);
+            navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
+        }
+    },
 
     /**
      * Escapes a string for safe insertion into HTML.
@@ -39,7 +66,6 @@ const UIUtils = {
         if (crypto.randomUUID) {
             return crypto.randomUUID();
         }
-        // Fallback for older browsers
         return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     },
 
@@ -98,11 +124,12 @@ const UIUtils = {
     /**
      * Programmatically opens a file picker.
      * @param {function} callback The function to call with the selected file.
+     * @param {string} [accept="application/json,.json"] The file types to accept.
      */
-    openFilePicker: (callback) => {
+    openFilePicker: (callback, accept = "application/json,.json") => {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = 'application/json,.json';
+        input.accept = accept;
         input.onchange = (event) => {
             const file = event.target.files[0];
             if (file) {
@@ -113,95 +140,80 @@ const UIUtils = {
     },
 
     /**
-     * Reads a JSON file and calls back with parsed data or an error.
-     * @param {File} file The file from a file input.
+     * Reads a file as JSON.
+     * @param {File} file The file object to read.
      * @param {function} onSuccess Callback function on successful parse.
-     * @param {function} onError Callback function on failure.
+     * @param {function} onError Callback function on file read or parse error.
      */
     readJSONFile: (file, onSuccess, onError) => {
-        if (!file) {
-            return onError("No file selected.");
-        }
-        if (file.type !== 'application/json') {
-            return onError("Invalid file type. Please select a .json file.");
-        }
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                const restored = JSON.parse(event.target.result);
-                onSuccess(restored);
+                const data = JSON.parse(event.target.result);
+                onSuccess(data);
             } catch (err) {
                 console.error("Failed to parse JSON:", err);
-                onError(`Failed to read file: ${err.message}`);
+                onError("File is not valid JSON.");
             }
         };
         reader.onerror = () => {
-            console.error("File reader error:", reader.error);
-            onError("Failed to read file.");
+            console.error("Failed to read file.");
+            onError("Failed to read the file.");
         };
         reader.readAsText(file);
     },
 
     /**
-     * Creates a state manager for loading/saving from localStorage.
+     * Creates a state manager for localStorage.
      * @param {string} key The localStorage key.
      * @param {object} defaults The default state object.
-     * @param {string} version The application version for migration.
+     * @param {string} version The current application version.
      * @param {function} onCorruption Optional callback for data corruption.
-     * @returns {object} An object with { load, save } methods.
+     * @returns {object|null} State manager with load() and save() methods.
      */
     createStateManager: (key, defaults, version, onCorruption) => {
+        if (!key || !defaults || !version) {
+            console.error("createStateManager requires key, defaults, and version.");
+            return null;
+        }
+
         const load = () => {
-            const rawState = localStorage.getItem(key);
-            if (!rawState) {
-                return { ...defaults };
-            }
-            try {
-                const parsed = JSON.parse(rawState);
-                if (parsed.version !== version) {
-                    console.warn(`State version mismatch (found ${parsed.version}, expected ${version}). Resetting to default.`);
-                    // Here you could add migration logic if needed
-                    return { ...defaults };
+            let data;
+            const rawData = localStorage.getItem(key);
+
+            if (rawData) {
+                try {
+                    data = JSON.parse(rawData);
+                    if (data.version !== version) {
+                        console.warn(`State version mismatch (found ${data.version}, expected ${version}). Resetting to default.`);
+                        data = { ...defaults };
+                    }
+                } catch (err) {
+                    console.error("Failed to parse state:", err);
+                    if (onCorruption) {
+                        onCorruption();
+                    }
+                    localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
+                    data = { ...defaults };
                 }
-                return parsed;
-            } catch (e) {
-                console.error(`Failed to load state for key "${key}":`, e);
-                localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawState);
-                if (onCorruption) onCorruption();
-                return { ...defaults };
+            } else {
+                data = { ...defaults };
             }
+            return data;
         };
 
         const save = (state) => {
             try {
-                const stateWithVersion = { ...state, version: version, timestamp: Date.now() };
-                localStorage.setItem(key, JSON.stringify(stateWithVersion));
-                return true;
-            } catch (e) {
-                console.error(`Failed to save state for key "${key}":`, e);
-                return false;
+                state.version = version;
+                localStorage.setItem(key, JSON.stringify(state));
+            } catch (err) {
+                console.error("Failed to save state:", err);
+                UIUtils.showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{label: 'OK'}]);
             }
         };
 
         return { load, save };
     },
-
-    // === INPUT VALIDATORS ===
-    validators: {
-        url: (value) => {
-            if (!value?.trim()) return false;
-            let urlToTest = value.trim();
-            if (!urlToTest.match(/^(\w+?:\/\/)/)) urlToTest = 'https://' + urlToTest;
-            try {
-                const parsedUrl = new URL(urlToTest);
-                return parsedUrl.hostname.includes('.') || parsedUrl.hostname === 'localhost';
-            } catch { return false; }
-        },
-        notEmpty: (value) => value && value.trim().length > 0,
-        maxLength: (value, max) => value.length <= max,
-    },
-
-    // === MODAL DIALOG ===
 
     /**
      * Hides the global modal.
@@ -245,8 +257,6 @@ const UIUtils = {
         modalOverlay.style.display = 'flex';
     },
 
-    // === TOAST NOTIFICATION ===
-
     /**
      * Shows a simple feedback toast message.
      * @param {string} message The message to display.
@@ -261,7 +271,6 @@ const UIUtils = {
         toast.innerHTML = `<span>${UIUtils.escapeHTML(message)}</span>`;
         toast.classList.add('show');
         
-        // Use a property on the element to avoid overlapping timers
         if (toast.timer) clearTimeout(toast.timer);
         
         toast.timer = setTimeout(() => {
@@ -269,15 +278,9 @@ const UIUtils = {
             toast.timer = null;
         }, 3000);
     },
-
-    // === THEME INITIALIZATION ===
-    // Removed initTheme function to allow CSS media query to handle system theme
-    // automatically, as requested.
 };
 
-// --- GLOBAL EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Attach modal close listeners
     const modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.addEventListener('click', (e) => {
@@ -291,6 +294,4 @@ document.addEventListener('DOMContentLoaded', () => {
             UIUtils.hideModal();
         }
     });
-
-    // Removed theme initialization call
 });
