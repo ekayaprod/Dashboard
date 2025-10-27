@@ -1,8 +1,9 @@
 /**
- * ui.common.js (v2.0)
+ * ui.common.js (v2.1)
  *
  * Contains shared UI helper functions for the application suite.
  * Centralized all common logic (Modals, Toasts, Validators, DOM utils).
+ * Added StateManager and readJSONFile.
  */
 
 const UIUtils = {
@@ -109,6 +110,80 @@ const UIUtils = {
             }
         };
         input.click();
+    },
+
+    /**
+     * Reads a JSON file and calls back with parsed data or an error.
+     * @param {File} file The file from a file input.
+     * @param {function} onSuccess Callback function on successful parse.
+     * @param {function} onError Callback function on failure.
+     */
+    readJSONFile: (file, onSuccess, onError) => {
+        if (!file) {
+            return onError("No file selected.");
+        }
+        if (file.type !== 'application/json') {
+            return onError("Invalid file type. Please select a .json file.");
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const restored = JSON.parse(event.target.result);
+                onSuccess(restored);
+            } catch (err) {
+                console.error("Failed to parse JSON:", err);
+                onError(`Failed to read file: ${err.message}`);
+            }
+        };
+        reader.onerror = () => {
+            console.error("File reader error:", reader.error);
+            onError("Failed to read file.");
+        };
+        reader.readAsText(file);
+    },
+
+    /**
+     * Creates a state manager for loading/saving from localStorage.
+     * @param {string} key The localStorage key.
+     * @param {object} defaults The default state object.
+     * @param {string} version The application version for migration.
+     * @param {function} onCorruption Optional callback for data corruption.
+     * @returns {object} An object with { load, save } methods.
+     */
+    createStateManager: (key, defaults, version, onCorruption) => {
+        const load = () => {
+            const rawState = localStorage.getItem(key);
+            if (!rawState) {
+                return { ...defaults };
+            }
+            try {
+                const parsed = JSON.parse(rawState);
+                if (parsed.version !== version) {
+                    console.warn(`State version mismatch (found ${parsed.version}, expected ${version}). Resetting to default.`);
+                    // Here you could add migration logic if needed
+                    return { ...defaults };
+                }
+                return parsed;
+            } catch (e) {
+                console.error(`Failed to load state for key "${key}":`, e);
+                localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawState);
+                if (onCorruption) onCorruption();
+                return { ...defaults };
+            }
+        };
+
+        const save = (state) => {
+            try {
+                const stateWithVersion = { ...state, version: version, timestamp: Date.now() };
+                localStorage.setItem(key, JSON.stringify(stateWithVersion));
+                return true;
+            } catch (e) {
+                console.error(`Failed to save state for key "${key}":`, e);
+                return false;
+            }
+        };
+
+        return { load, save };
     },
 
     // === INPUT VALIDATORS ===
