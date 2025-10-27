@@ -12,13 +12,13 @@
 
     <nav class="navbar">
         <ul class="nav-links">
-            <!-- Ensure href points correctly, might need to be Index.html -->
-            <li><a href="Index.html" class="nav-link">Dashboard</a></li>
+            <!-- Ensure href points correctly -->
+            <li><a href="index.html" class="nav-link">Dashboard</a></li>
             <li><a href="lookup.html" class="nav-link active">Lookup</a></li>
-            <li><a href="template.html" class="nav-link">Template</a></li>
+            <!-- Template link removed -->
         </ul>
         <div class="nav-actions">
-            <button id="theme-toggle" class="btn-nav">Toggle Theme</button>
+            <!-- Theme toggle button removed -->
             <button id="lookup-state-backup" class="btn-nav">Backup</button>
             <button id="lookup-state-restore" class="btn-nav">Import / Restore</button>
         </div>
@@ -302,7 +302,8 @@
                             class: 'button-danger',
                             callback: () => handleDelete(item.id, type)
                         }
-                    ]);
+                    ]
+                );
                 });
 
                 return li;
@@ -626,5 +627,4 @@
     </script>
 </body>
 </html>
-
 
