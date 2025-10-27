@@ -12,7 +12,6 @@
     --primary-hover-bg-light: #e0e7ff;
     --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     
-    /* Added from lookup.html for color consistency */
     --color-danger-bg: #fef2f2;
     --color-danger-border: #fecaca;
     --color-danger: #dc2626;
@@ -24,7 +23,6 @@
     --color-success-bg-hover: #dcfce7;
     --color-success-border-hover: #86efac;
 
-    /* (Mode C) Added from lookup.html inline styles */
     --border-radius: 0.375rem; /* 6px */
     --box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 
@@ -75,7 +73,6 @@ body {
     flex-grow: 1;
     display: flex; 
     flex-direction: column;
-    /* Removed padding-bottom, no longer needed for indicator */
 }
 
 .input-base, 
@@ -108,7 +105,6 @@ body {
 }
 
 .sidebar-textarea { 
-    /* Changes for auto-sizing */
     resize: none; 
     min-height: 40px; /* Small default height */
     overflow-y: hidden; /* JS will handle height */
@@ -256,30 +252,16 @@ body {
     flex-wrap: wrap; 
     gap: 0.3rem; 
 }
-.url-link-item { 
-    display: flex; 
-    align-items: center; 
-    gap: 0.5rem; 
-}
-.url-link-item a { 
-    color: var(--primary-color); 
-    text-decoration: none; 
-    font-size: 0.875rem; 
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    flex-grow: 1; 
-}
-.url-link-item a:hover { 
-    text-decoration: underline; 
-}
+
+/* (Mode E) Removed unused .url-link-item rules */
+
 .label-group { 
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
 }
 
-.delete-btn, .copy-btn {
+.delete-btn {
     padding: 0.25rem;
     display: flex;
     align-items: center;
@@ -290,11 +272,11 @@ body {
     background-color: var(--danger-hover-bg); 
     color: var(--danger-color); 
 }
-.copy-btn:hover { 
-    background-color: var(--primary-hover-bg-light); 
-    color: var(--primary-color); 
-}
-.copy-btn svg, .delete-btn svg { 
+
+/* (Mode E) Removed unused .copy-btn rules */
+
+/* (Mode E) Modified rule to only apply to .delete-btn */
+.delete-btn svg { 
     width: 14px; 
     height: 14px; 
 }
@@ -322,7 +304,6 @@ body {
     text-decoration: underline; 
 }
 
-/* (Mode C) Added from dashboard.html inline styles */
 .drag-handle { 
     cursor: grab; 
     color: var(--subtle-text); 
@@ -369,8 +350,6 @@ body {
     flex-grow: 1; 
     border: 1px solid var(--border-color); 
     border-radius: 0.375rem; 
-    /* Use sidebar-textarea styles for resize/height */
-    /* resize: none; */
     padding: 0.5rem; 
     font-size: 0.875rem; 
     line-height: 1.6; 
@@ -477,8 +456,6 @@ body {
     background-color: #475569; 
 }
 
-/* Removed autosave indicator style */
-
 .search-dropdown-wrapper { 
     position: relative; 
 }
@@ -532,7 +509,6 @@ body {
     border-bottom-color: var(--primary-color);
 }
 
-/* === (Mode C) CONSOLIDATED NAVBAR STYLES === */
 .navbar {
     background-color: var(--panel-bg);
     border-bottom: 1px solid var(--border-color);
@@ -540,7 +516,6 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    /* (Mode C) Added from lookup.html for dashboard.html */
     flex-shrink: 0; 
 }
 .nav-links {
@@ -583,9 +558,8 @@ body {
     background-color: var(--border-color);
 }
 
-/* === (Mode C) CONSOLIDATED LOOKUP.HTML STYLES === */
+/* === CONSOLIDATED LOOKUP.HTML STYLES === */
 
-/* (Mode C) Overriding body for lookup page */
 body.lookup-page {
     background-color: var(--lookup-content-bg);
     color: var(--text-color);
@@ -594,12 +568,10 @@ body.lookup-page {
     padding: 0;
 }
 
-/* (Mode C) Container for lookup page content */
 .container {
     max-width: 900px;
     margin: 10px auto;
     padding: 0 10px;
-    /* (Mode C) Added */
     flex-grow: 1;
     overflow-y: auto;
     display: flex;
@@ -636,13 +608,13 @@ body.lookup-page {
 }
 #search-input:focus {
     outline: none;
-    border-color: var(--primary-color); /* Use standard focus color */
-    box-shadow: 0 0 0 3px var(--primary-color); /* Use standard focus shadow */
+    border-color: var(--primary-color); 
+    box-shadow: 0 0 0 3px var(--primary-color); 
 }
 .btn-new-entry {
     padding: 10px 15px;
     font-size: 0.9rem;
-    background-color: var(--primary-color); /* Use standard color */
+    background-color: var(--primary-color); 
     color: #fff;
     border: none;
     border-radius: var(--border-radius);
@@ -651,14 +623,13 @@ body.lookup-page {
     white-space: nowrap;
 }
 .btn-new-entry:hover {
-    background-color: #2563eb; /* Use standard hover */
+    background-color: #2563eb; 
 }
 
 .results-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
-    /* (Mode C) Added */
     flex-grow: 1;
     min-height: 0; /* Fix for grid overflow */
 }
@@ -699,7 +670,7 @@ body.lookup-page {
 }
 .edit-form-li {
     background-color: var(--lookup-result-hover); 
-    border-color: var(--primary-color); /* Use standard focus */
+    border-color: var(--primary-color); 
 }
 .item-header {
     display: flex;
@@ -851,11 +822,6 @@ body.lookup-page {
     .actions-menu { border-color: #4b5563; }
     .actions-menu-item:hover { background-color: #374151; }
     
-    .copy-btn:hover {
-        background-color: var(--primary-hover-bg-light); 
-        color: var(--primary-color); 
-    }
-
     .nav-link:hover { background-color: #374151; }
     .nav-link.active { background-color: var(--primary-color); color: #fff; }
     .btn-nav { background-color: #374151; border-color: #4b5563; }
@@ -864,179 +830,77 @@ body.lookup-page {
     .btn { background-color: var(--primary-color); color: #fff; }
     .btn:hover { background-color: #2563eb; }
     
-    /* Dark mode autosave indicator */
-    /* (removed) */
 }
 
-/* === MANUAL THEME OVERRIDE SUPPORT === */
-/* Removed manual theme override CSS rules to default to system theme */
-:root[data-theme="dark"] {
-    --bg-color: #111827;
-    --panel-bg: #1f2937;
-    --border-color: #374151;
-    --text-color: #f9fafb;
-    --subtle-text: #9ca3af;
-    --primary-color: #60a5fa;
-    --info-bg: #1f2937;
-    --danger-hover-bg: #4b1d1d;
-    --primary-hover-bg-light: #374151;
-    --color-danger-bg: #4b1d1d;
-    --color-danger-border: #991b1b;
-    --color-danger: #f87171;
-    --color-danger-bg-hover: #7f1d1t;
-    --color-danger-border-hover: #b91c1c;
-    --color-success-bg: #164e34;
-    --color-success-border: #166534;
-    --color-success: #4ade80;
-    --color-success-bg-hover: #166534;
-    --color-success-border-hover: #15803d;
-}
-:root[data-theme="dark"] .button-base {
-    background-color: #374151;
-    border-color: #4b5563;
-}
-:root[data-theme="dark"] .button-base:hover {
-    background-color: #4b5563;
-}
-:root[data-theme="dark"] .input-base,
-:root[data-theme="dark"] .sidebar-input,
-:root[data-theme="dark"] .sidebar-textarea {
-    background-color: #374151;
-    border-color: #4b5563;
-    color: var(--text-color);
-}
-:root[data-theme="dark"] .input-base:focus,
-:root[data-theme="dark"] .sidebar-input:focus,
-:root[data-theme="dark"] .sidebar-textarea:focus {
-    background-color: #1f2937;
-}
-:root[data-theme="dark"] .actions-menu {
-    border-color: #4b5563;
-}
-:root[data-theme="dark"] .actions-menu-item:hover {
-    background-color: #374151;
-}
-:root[data-theme="dark"] .copy-btn:hover {
-    background-color: var(--primary-hover-bg-light);
-    color: var(--primary-color);
-}
-:root[data-theme="dark"] .nav-link:hover {
-    background-color: #374151;
-}
-:root[data-theme="dark"] .nav-link.active {
-    background-color: var(--primary-color);
-    color: #fff;
-}
-:root[data-theme="dark"] .btn-nav {
-    background-color: #374151;
-    border-color: #4b5563;
-}
-:root[data-theme="dark"] .btn-nav:hover {
-    background-color: #4b5563;
-}
-:root[data-theme="dark"] .code-block {
-    background-color: #374151;
-    border-color: #4b5563;
-}
-:root[data-theme="dark"] .btn {
-    background-color: var(--primary-color);
-    color: #fff;
-}
-:root[data-theme="dark"] .btn:hover {
-    background-color: #2563eb;
-}
-/* (removed) */
-
-:root[data-theme="light"] {
-    /* Explicitly define light theme overrides */
-    --bg-color: #f4f7fa;
-    --panel-bg: #ffffff;
-    --border-color: #e2e8f0;
-    --text-color: #1e293b;
-    --subtle-text: #64748b;
-    --primary-color: #3b82f6;
-    --info-bg: #f8fafc;
-    --danger-hover-bg: #fee2e2;
-    --primary-hover-bg-light: #e0e7ff;
-    --color-danger-bg: #fef2f2;
-    --color-danger-border: #fecaca;
-    --color-danger: #dc2626;
-    --color-danger-bg-hover: #fee2e2;
-    --color-danger-border-hover: #fca5a5;
-    --color-success-bg: #f0fdf4;
-    --color-success-border: #bbf7d0;
-    --color-success: #16a34a;
-    --color-success-bg-hover: #dcfce7;
-    --color-success-border-hover: #86efac;
-    
-    /* (Mode C) Added from lookup.html for light mode */
-    --lookup-header-bg: #ffffff;
-    --lookup-content-bg: #f4f7fa;
-    --lookup-input-bg: #ffffff;
-    --lookup-border-color: #e2e8f0;
-    --lookup-result-hover: #ffffff;
-}
-/* (Mode C) Specific light mode overrides for lookup page */
-:root[data-theme="light"] body.lookup-page {
-    background-color: var(--lookup-content-bg);
-}
-:root[data-theme="light"] .lookup-header,
-:root[data-theme="light"] .column {
-    background-color: var(--lookup-header-bg);
-    border: 1px solid var(--lookup-border-color);
-}
-:root[data-theme="light"] .column h2 {
-    background-color: var(--lookup-header-bg);
-    border-bottom: 1px solid var(--lookup-border-color);
-}
-:root[data-theme="light"] #search-input,
-:root[data-theme="light"] .edit-form input,
-:root[data-theme="light"] .edit-form textarea,
-:root[data-theme="light"] .item-content {
-    background-color: var(--lookup-input-bg);
-    border: 1px solid var(--lookup-border-color);
-    color: var(--text-color);
-}
-:root[data-theme="light"] .result-item, 
-:root[data-theme="light"] .snippet-item, 
-:root[data-theme="light"] .edit-form-li {
-    background-color: var(--lookup-content-bg);
-    border-color: var(--lookup-border-color);
-}
-:root[data-theme="light"] .edit-form-li {
-    border-color: var(--primary-color);
-}
-:root[data-theme="light"] .item-actions button, 
-:root[data-theme="light"] .edit-form-actions button {
-    background-color: var(--info-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-}
-:root[data-theme="light"] .item-actions button:hover:not(:disabled), 
-:root[data-theme="light"] .edit-form-actions button:hover:not(:disabled) {
-    background-color: #f1f5f9;
-    border-color: #e2e8f0;
-}
-/* Keep specific button colors */
-:root[data-theme="light"] .item-actions .btn-delete, 
-:root[data-theme="light"] .edit-form-actions .btn-cancel {
-    background-color: var(--color-danger-bg);
-    border-color: var(--color-danger-border);
-    color: var(--color-danger);
-}
-:root[data-theme="light"] .item-actions .btn-delete:hover:not(:disabled), 
-:root[data-theme="light"] .edit-form-actions .btn-cancel:hover:not(:disabled) {
-    background-color: var(--color-danger-bg-hover);
-    border-color: var(--color-danger-border-hover);
-}
-:root[data-theme="light"] .edit-form-actions .btn-save {
-    background-color: var(--color-success-bg);
-    border-color: var(--color-success-border);
-    color: var(--color-success);
-}
-:root[data-theme="light"] .edit-form-actions .btn-save:hover:not(:disabled) {
-    background-color: var(--color-success-bg-hover);
-    border-color: var(--color-success-border-hover);
+/* === LIGHT MODE OVERRIDES for lookup-page === */
+@media (prefers-color-scheme: light) {
+    :root {
+        --lookup-header-bg: #ffffff;
+        --lookup-content-bg: #f4f7fa;
+        --lookup-input-bg: #ffffff;
+        --lookup-border-color: #e2e8f0;
+        --lookup-result-hover: #ffffff;
+    }
+    body.lookup-page {
+        background-color: var(--lookup-content-bg);
+    }
+    .lookup-header,
+    .column {
+        background-color: var(--lookup-header-bg);
+        border: 1px solid var(--lookup-border-color);
+    }
+    .column h2 {
+        background-color: var(--lookup-header-bg);
+        border-bottom: 1px solid var(--lookup-border-color);
+    }
+    #search-input,
+    .edit-form input,
+    .edit-form textarea,
+    .item-content {
+        background-color: var(--lookup-input-bg);
+        border: 1px solid var(--lookup-border-color);
+        color: var(--text-color);
+    }
+    .result-item, 
+    .snippet-item, 
+    .edit-form-li {
+        background-color: var(--lookup-content-bg);
+        border-color: var(--lookup-border-color);
+    }
+    .edit-form-li {
+        border-color: var(--primary-color);
+    }
+    .item-actions button, 
+    .edit-form-actions button {
+        background-color: var(--info-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+    }
+    .item-actions button:hover:not(:disabled), 
+    .edit-form-actions button:hover:not(:disabled) {
+        background-color: #f1f5f9;
+        border-color: #e2e8f0;
+    }
+    .item-actions .btn-delete, 
+    .edit-form-actions .btn-cancel {
+        background-color: var(--color-danger-bg);
+        border-color: var(--color-danger-border);
+        color: var(--color-danger);
+    }
+    .item-actions .btn-delete:hover:not(:disabled), 
+    .edit-form-actions .btn-cancel:hover:not(:disabled) {
+        background-color: var(--color-danger-bg-hover);
+        border-color: var(--color-danger-border-hover);
+    }
+    .edit-form-actions .btn-save {
+        background-color: var(--color-success-bg);
+        border-color: var(--color-success-border);
+        color: var(--color-success);
+    }
+    .edit-form-actions .btn-save:hover:not(:disabled) {
+        background-color: var(--color-success-bg-hover);
+        border-color: var(--color-success-border-hover);
+    }
 }
 
 
