@@ -1,151 +1,64 @@
 Client-Side Workflow Suite
-A collection of browser-based productivity tools for personal workflow management. Built with vanilla JavaScript, no frameworks, no backend.
-Architecture Overview
-Core Files
-style.css - Unified stylesheet
-Component library (buttons, modals, forms, layouts)
-Light/dark theme system (respects prefers-color-scheme)
-Page-specific overrides for dashboard and lookup tools
-ui.common.js - Shared utilities
-UIUtils.showModal() - Confirmation dialogs and alerts
-UIUtils.showToast() - Non-blocking notifications
-UIUtils.escapeHTML() - XSS prevention helper
-UIUtils.generateId() - UUID generation
-UIUtils.copyToClipboard() - Clipboard API wrapper
-UIUtils.downloadJSON() - File download helper
-UIUtils.openFilePicker() - File input trigger
-UIUtils.readJSONFile() - (New) File reader abstraction
-UIUtils.createStateManager() - (New) localStorage abstraction
-UIUtils.debounce() - Input debouncing
-UIUtils.validators - Common validation functions
-UIUtils.SVGIcons - Icon library
-Application Pages
-Each HTML file is self-contained with embedded JavaScript and links to shared resources.
-index.html (Formerly dashboard.html)
-Purpose: Central hub for application management, quick-access shortcuts, and note-taking.
-Storage Key: dashboard_state_v5
-Features
-Shortcuts
-Quick-access link tiles
-Drag-and-drop reordering
-Add/delete operations
-Applications
-CRUD interface for managing application entries
-Search-as-you-type filtering with dropdown selection
-Multi-line URL storage per application
-Notes field for additional context
-Notepad
-Multi-note manager with dropdown selector
-Create, rename, delete notes
-Auto-save on input (500ms debounce)
-Blur-save fallback to prevent data loss
-Backup/Restore
-Export full state to JSON
-Import previously exported backups
-Validation on restore with detailed error messages
-State Structure
-{
-  apps: [{id, name, urls, escalation}],
-  notes: [{id, title, content}],
-  shortcuts: [{id, name, url}],
-  version: "6.1.0" // Updated
-}
-
-
-lookup.html
-Purpose: Two-column knowledge base for routing information and text snippets.
-Storage Key: lookup_data
-Features
-Two-Column Layout
-Routing: Keyword → Assignment/Team mappings
-Snippets: Keyword → Template text (for copy-paste workflows)
-Search
-Real-time filtering across both columns
-Highlights matching terms
-Inline Editing
-Click-to-edit interface
-Forms remain visible during search to prevent accidental data loss
-Duplicate keyword validation
-Blank field validation
-File Operations
-Backup: Full state export with metadata (app name, timestamp, version)
-Restore: Intelligent file parser supporting:
-Current backup format
-Legacy assignment_tool backups (migration path)
-Data-only JSON exports with merge/replace modal
-State Structure
-{
-  routingData: [{id, keyword, content}],
-  snippetsData: [{id, keyword, content}],
-  version: "6.1.0" // Updated
-}
-
-
-template.html
-Boilerplate for creating new pages with proper integration of style.css and ui.common.js, including the shared state manager.
-Design Constraints
-Intentional Simplifications
-No Undo System: All destructive actions now require UIUtils.showModal() confirmation.
-State Isolation: Each page manages its own localStorage namespace. Backup/restore is the only data portability mechanism.
-No Backend: Entire suite runs client-side. LocalStorage is the only persistence layer. Users must manually backup data for safety.
-Recent Refactoring (v6.0.0+)
-Centralized utilities in ui.common.js.
-Unified theme system (uses prefers-color-scheme).
-Removed undo feature entirely.
-Enhanced validation and error messages across both apps.
-Consolidated state management and file reading logic into ui.common.js.
-Streamlined lookup.html rendering logic.
-Removed unused CSS and non-functional JS code paths.
-Development Notes
-Adding a New Page
-Copy template.html.
-Update <title>, LOCAL_STORAGE_KEY, and APP_VERSION.
-Define the defaultState structure for the page.
-Implement page-specific logic (rendering, event listeners) within the DOMContentLoaded listener.
-Add navigation links in index.html and lookup.html's .nav-links.
-Browser Compatibility
-Requires crypto.randomUUID() (fallback provided in ui.common.js).
-Uses localStorage (all modern browsers).
-Clipboard API requires HTTPS or localhost.
-Performance Considerations
-Lookup data sorted on save, not on render.
-DocumentFragment used for bulk DOM updates.
-Debounced auto-save (500ms) with immediate blur-save fallback.
-Search filtering happens in-memory.
-File Structure
-├── index.html           # Main application hub
-├── lookup.html          # Knowledge base tool
-├── template.html        # New page boilerplate
-├── style.css            # Shared styles and themes
-├── ui.common.js         # Shared utilities
-└── README.md            # This file
-
-
-Usage
-Open any HTML file directly in a browser (no server required).
-Data persists in localStorage per-origin.
-Use "Backup" buttons to export data as JSON.
-Keep backups safe - clearing browser data will erase all content.
-Known Limitations
-Data is not synced across devices.
-LocalStorage has ~5-10MB limit per origin.
-No collaboration features.
-No search history or analytics.
-Import/Export is a manual process (no auto-sync).
-Version History
-v6.1.0 (Current - Post-Review)
-Implemented Modes A, B, C, D, E fixes.
-Hardened startup reliability (DOM checks, UIUtils checks).
-Fixed functional bugs (drag-drop, dirty-select, last note delete).
-Optimized structure (cached DOM, consolidated functions).
-Consolidated logic (StateManager, FileReader).
-Removed dead code/CSS and updated documentation.
-v6.0.0 (Pre-Review)
-Centralized utilities in ui.common.js.
-Unified theme system (uses prefers-color-scheme).
-Removed undo feature.
-Enhanced validation and error messages.
-Added search dropdown to index.html.
-Refined lookup.html edit state preservation during search.
-Added duplicate keyword validation to lookup.html.
-Added merge/replace import options to lookup.html.
+A collection of browser-based productivity tools for personal workflow management. This suite is built with vanilla JavaScript, contains no frameworks, and runs entirely in the client with no backend. Persistence is achieved via the browser's localStorage.
+Core Architecture
+The suite is designed as a multi-page application (MPA) with a shared component library. All pages share a common stylesheet (style.css) and a core JavaScript utility module (ui.common.js).
+Dynamic Navigation
+The navigation bar is not static. It is dynamically loaded into each page at runtime.
+A central HTML fragment, _nav.html, defines the complete navigation structure. This is the single source of truth for all links.
+The ui.common.js file provides a UIUtils.loadNavbar(containerId, currentPage) function.
+On page load, each HTML file's script calls this function.
+The function fetches the content of _nav.html, injects it into the page's <div id="navbar-container"></div>, and automatically applies the .active class to the link matching the currentPage argument.
+To add a new page to the application, one only needs to add the new link to _nav.html and create the new page from template.html.
+Shared Utilities (ui.common.js)
+All shared logic is centralized in the UIUtils object. This module is the core of the application's functionality.
+State Management: The module provides a UIUtils.createStateManager(key, defaults, version) factory function. This is the core persistence layer.
+It abstracts all localStorage interactions (getItem, setItem).
+It handles all JSON.stringify and JSON.parse operations, including error handling for corrupted data.
+The returned load() and save() methods are used by each page to manage its own state.
+UI Components: Programmatic helpers for building the interface, including UIUtils.showModal(), UIUtils.showToast(), and a library of UIUtils.SVGIcons.
+File Handlers: Utilities for the Backup/Restore feature, including UIUtils.downloadJSON(), UIUtils.openFilePicker(), and UIUtils.readJSONFile().
+DOM & Validators: A set of helper functions for common tasks, such as UIUtils.escapeHTML(), UIUtils.generateId(), UIUtils.debounce(), and input UIUtils.validators.
+State Isolation
+Each application page (index.html, lookup.html) is fully self-contained and manages its own state. There is no shared application state. index.html saves its data to the dashboard_state_v5 key in localStorage, while lookup.html saves its data to the lookup_data key.
+File Structure & Responsibilities
+The project is structured as follows:
+_nav.html Purpose: A partial HTML fragment. This is the single source of truth for the global navigation bar. It is loaded by ui.common.js into all other pages.
+index.html (Dashboard) Purpose: The main application hub. State Key: dashboard_state_v5 Features:
+Shortcuts: Manages a list of quick-access links with drag-and-drop reordering.
+Applications: A CRUD interface for managing application data (URLs, notes). Features a search-as-you-type dropdown for selection.
+Notepad: A multi-note text editor with create, rename, and delete capabilities.
+lookup.html (Lookup) Purpose: A two-column knowledge base for routing information and text snippets. State Key: lookup_data Features:
+Routing: Manages keyword-to-content mappings (e.g., "VPN" -> "Tier 2 Support").
+Snippets: Manages keyword-to-snippet mappings for quick copy-paste.
+Shared Features: Real-time filtering, inline editing, and copy-to-clipboard functionality.
+ui.common.js (Shared Utilities) Purpose: The core JavaScript library for the entire suite. Provides all state management, UI generation, and utility functions (see Core Architecture).
+style.css (Shared Stylesheet) Purpose: A single, unified stylesheet providing all visual styling. Features:
+Uses CSS variables for a compact layout.
+Includes a light/dark theme managed by the prefers-color-scheme media query.
+Contains shared styles for all components (modals, buttons, inputs, etc.) and page-specific layouts.
+template.html (New Page Boilerplate) Purpose: A pre-configured template for creating new pages. It includes all necessary CSS/JS links and the UIUtils.loadNavbar() call.
+old.html (Legacy) Purpose: The original, single-page version of the Dashboard. It is no longer part of the active application but is kept for reference. Its backup/restore format is compatible with index.html.
+README.md Purpose: This documentation file.
+Core Application Workflows
+1. Page Load Workflow
+DOMContentLoaded event fires.
+The page's init() function is called.
+UIUtils.loadNavbar() is called, which fetches _nav.html, injects it into the #navbar-container div, and sets the .active class on the current page's link.
+UIUtils.createStateManager() is called with the page's unique localStorage key.
+stateManager.load() is called, which retrieves and parses the JSON data from localStorage.
+renderAll() is called to populate the UI with the loaded state data.
+2. Data Persistence Workflow
+A user action modifies data (e.g., adding a shortcut, saving a note, deleting an application).
+The event handler updates the in-memory state object.
+The saveState() helper function is called.
+stateManager.save() stringifies the entire state object and writes it to its key in localStorage.
+Note: The notepad in index.html also features a 500ms debounced auto-save on input and an immediate save on blur.
+3. Backup & Restore Workflow
+Backup: The user clicks a "Backup" button.
+The page's current state object is retrieved, wrapped in metadata (app name, timestamp), and stringified.
+UIUtils.downloadJSON() is called to trigger a browser download of the .json file.
+Restore: The user clicks a "Restore" button.
+UIUtils.openFilePicker() prompts the user to select a file.
+UIUtils.readJSONFile() reads the file's text content.
+A page-specific handleRestore() function parses the JSON, validates its structure (checking for required arrays like apps, notes, shortcuts), and asks for user confirmation via UIUtils.showModal().
+Upon confirmation, the current state object is replaced, saveState() is called to persist it to localStorage, and renderAll() is called to refresh the UI.
