@@ -49,57 +49,75 @@
     <script>
     // CRITICAL FIX: Wait for the DOM and deferred scripts (ui.common.js) to be ready
     document.addEventListener('DOMContentLoaded', () => {
+        
+        /**
+         * New Page Template (v6.1.0 - Mode D Refactor)
+         */
+        
         // --- PAGE CONFIG ---
-        const APP_VERSION = '6.0.0';
+        const APP_VERSION = '6.1.0';
         const LOCAL_STORAGE_KEY = 'newpage_state_v5';
 
+        // (Mode A) Encapsulate UIUtils to prevent startup errors
+        const SafeUI = (() => {
+            const isReady = typeof UIUtils !== 'undefined' && UIUtils;
+            
+            return {
+                isReady,
+                showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
+                hideModal: () => isReady && UIUtils.hideModal(),
+                showToast: (msg) => isReady ? UIUtils.showToast(msg) : console.log("Toast:", msg),
+                escapeHTML: (str) => isReady ? UIUtils.escapeHTML(str) : (str || ''),
+                generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
+                debounce: (func, delay) => isReady ? UIUtils.debounce(func, delay) : func,
+                copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
+                downloadJSON: (data, filename) => isReady && UIUtils.downloadJSON(data, filename),
+                openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
+                readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
+                createStateManager: (key, defaults, version, onCorruption) => isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null,
+                validators: isReady ? UIUtils.validators : { url: (v) => v, notEmpty: (v) => v, maxLength: (v, m) => v }
+            };
+        })();
+
         // --- DOM ELEMENT CACHE ---
-        const DOMElements = {
-            toast: document.getElementById('toast'),
-            modalOverlay: document.getElementById('modal-overlay')
-            // e.g., myButton: document.getElementById('my-button')
-        };
+        const DOMElements = {};
+
+        // (Mode A) DOM Caching and Validation
+        function cacheAndValidateDOMElements() {
+            // These are the minimum required by SafeUI
+            const requiredIds = ['toast', 'modal-overlay', 'modal-content'];
+            // Add your page-specific element IDs here
+            // e.g., 'my-button', 'my-list-container'
+            
+            let allElementsFound = true;
+            for (const id of requiredIds) {
+                const el = document.getElementById(id);
+                if (!el) {
+                    console.error(`FATAL: DOM element with id "${id}" not found.`);
+                    allElementsFound = false;
+                }
+                DOMElements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
+            }
+            return allElementsFound;
+        }
 
         // --- STATE MANAGEMENT ---
         const defaultState = {
             version: APP_VERSION,
             exampleList: []
         };
+        
+        // (Mode D) Initialize State Manager
+        const stateManager = SafeUI.createStateManager(LOCAL_STORAGE_KEY, defaultState, APP_VERSION);
+        
         let state;
 
-        function loadState() {
-            const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (rawState) {
-                try {
-                    const parsed = JSON.parse(rawState);
-                    if (!parsed || !Array.isArray(parsed.exampleList)) {
-                        throw new Error("State is invalid.");
-                    }
-                    return { ...defaultState, ...parsed };
-                } catch (e) {
-                    console.error("Failed to load state, backing up corrupted data.", e);
-                    localStorage.setItem(LOCAL_STORAGE_KEY + '_corrupted_' + Date.now(), rawState);
-                    setTimeout(() => UIUtils.showModal('Data Corruption Detected', '<p>Your saved data for this page could not be read. A backup has been saved and this page has been reset.</p>', [{ label: 'OK' }]), 100);
-                    // Initialize with default state
-                    return { ...defaultState };
-                }
-            }
-            return { ...defaultState };
-        }
-
+        // (Mode D) Abstracted state saving function
         const saveState = () => {
-            try {
-                state.version = APP_VERSION;
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-            } catch (e) {
-                UIUtils.showModal("Error", "Error saving data", [{label: "OK"}]);
-                console.error("Failed to save state:", e);
+            if (stateManager) {
+                stateManager.save(state);
             }
         };
-
-        // --- CORE UTILITIES ---
-
-        // Using UIUtils directly for escapeHTML, showToast, showModal etc.
 
         // --- PAGE-SPECIFIC LOGIC ---
 
@@ -109,7 +127,7 @@
         const renderAll = () => {
             console.log("Rendering page with state:", state);
             // Example of using a shared utility:
-            // const safeTitle = UIUtils.escapeHTML(state.title);
+            // const safeTitle = SafeUI.escapeHTML(state.title);
         };
 
         /**
@@ -119,23 +137,47 @@
             // e.g., DOMElements.myButton.addEventListener('click', () => { ... });
 
             // Example of using a shared utility:
-            // UIUtils.showToast("Page loaded!");
+            // SafeUI.showToast("Page loaded!");
         };
 
         /**
          * Initializes the application.
          */
         const init = () => {
-            // Theme is initialized by ui.common.js
-            state = loadState();
+            // (Mode A) Check for UI framework first
+            if (!SafeUI.isReady || !stateManager) {
+                console.error("FATAL: UIUtils or StateManager failed to initialize. Application halted.");
+                document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
+                    <h2>Application Failed to Load</h2>
+                    <p>A critical file (ui.common.js) may be missing or failed to load. Please check the console for errors.</p>
+                </div>`;
+                return;
+            }
+            
+            // (Mode A) Check for all required DOM elements
+            if (!cacheAndValidateDOMElements()) {
+                console.error("FATAL: Missing critical DOM elements. Application halted.");
+                return;
+            }
+
+            // (Mode D) Load state using the manager
+            state = stateManager.load();
+            
             renderAll();
             attachEventListeners();
         };
 
         // --- START APPLICATION ---
-        init();
+        // (Mode A) Wrap init in a try/catch as a final safeguard
+        try {
+            init();
+        } catch (err) {
+            console.error("Unhandled exception during initialization:", err);
+            SafeUI.showModal("Fatal Error", `<p>An unexpected error occurred: ${err.message}</p>`, [{label: 'OK'}]);
+        }
     }); // End DOMContentLoaded
     </script>
 </body>
 </html>
+
 
