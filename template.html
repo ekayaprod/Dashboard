@@ -9,17 +9,12 @@
     <script src="ui.common.js" defer></script>
 </head>
 <body>
-    <nav class="navbar">
-        <ul class="nav-links">
-            <!-- Ensure href points correctly -->
-            <li><a href="index.html" class="nav-link">Dashboard</a></li>
-            <li><a href="lookup.html" class="nav-link">Lookup</a></li>
-            <!-- Template link removed -->
-        </ul>
-        <div class="nav-actions">
-            <!-- Theme toggle button removed -->
-        </div>
-    </nav>
+    <!-- 
+      MODIFIED: 
+      Removed the static navbar and replaced it with a placeholder.
+      The 'loadNavbar' function in ui.common.js will populate this.
+    -->
+    <div id="navbar-container"></div>
 
     <div class="app-container">
         <div class="panel">
@@ -56,7 +51,8 @@
         
         // --- PAGE CONFIG ---
         const APP_VERSION = '6.1.0';
-        const LOCAL_STORAGE_KEY = 'newpage_state_v5';
+        // !!! IMPORTANT: Change this key for your new page!
+        const LOCAL_STORAGE_KEY = 'newpage_state_v5'; 
 
         // (Mode A) Encapsulate UIUtils to prevent startup errors
         const SafeUI = (() => {
@@ -64,6 +60,8 @@
             
             return {
                 isReady,
+                // MODIFIED: Added loadNavbar
+                loadNavbar: (containerId, currentPage) => isReady && UIUtils.loadNavbar(containerId, currentPage),
                 showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
                 hideModal: () => isReady && UIUtils.hideModal(),
                 showToast: (msg) => isReady ? UIUtils.showToast(msg) : console.log("Toast:", msg),
@@ -85,7 +83,8 @@
         // (Mode A) DOM Caching and Validation
         function cacheAndValidateDOMElements() {
             // These are the minimum required by SafeUI
-            const requiredIds = ['toast', 'modal-overlay', 'modal-content'];
+            // MODIFIED: Added navbar-container
+            const requiredIds = ['toast', 'modal-overlay', 'modal-content', 'navbar-container'];
             // Add your page-specific element IDs here
             // e.g., 'my-button', 'my-list-container'
             
@@ -160,6 +159,10 @@
                 return;
             }
 
+            // MODIFIED: Load the navbar
+            // !!! IMPORTANT: Change "template.html" to your new page's filename!
+            SafeUI.loadNavbar("navbar-container", "template.html");
+
             // (Mode D) Load state using the manager
             state = stateManager.load();
             
@@ -179,5 +182,4 @@
     </script>
 </body>
 </html>
-
 
