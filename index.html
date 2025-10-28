@@ -94,7 +94,7 @@
             
             const getSVGIcons = () => {
                 if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
-                return { plus: '+', pencil: '✎', trash: '🗑', copy: '📋', menu: '≡' };
+                return { plus: '+', pencil: '✎', trash: '🗑' }; // Removed copy/menu
             };
 
             return {
@@ -102,6 +102,9 @@
                 SVGIcons: getSVGIcons(),
                 loadNavbar: (containerId, currentPage) => isReady && UIUtils.loadNavbar(containerId, currentPage),
                 showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
+                // START: Fix for Issue #22/27 (Twinned)
+                showValidationError: (title, msg, elId) => isReady ? UIUtils.showValidationError(title, msg, elId) : console.error("UIUtils not loaded", title),
+                // END: Fix for Issue #22/27 (Twinned)
                 hideModal: () => isReady && UIUtils.hideModal(),
                 showToast: (msg) => isReady ? UIUtils.showToast(msg) : console.log("Toast:", msg),
                 escapeHTML: (str) => isReady ? UIUtils.escapeHTML(str) : (str || ''),
@@ -162,6 +165,21 @@
             }
         };
 
+        // START: Fix for Issue #21
+        const getCollection = (type) => state[type];
+        const hasItems = (type) => getCollection(type).length > 0;
+        // END: Fix for Issue #21
+
+        // START: Fix for Issue #23
+        const confirmDelete = (type, itemName, onConfirm) => {
+            const labels = {apps: 'Application', notes: 'Note', shortcuts: 'Shortcut'};
+            SafeUI.showModal(`Delete ${labels[type]}`, 
+                `<p>Are you sure you want to delete "${SafeUI.escapeHTML(itemName)}"?</p><p>This cannot be undone.</p>`,
+                [{label: 'Cancel'}, {label: 'Delete', class: 'button-danger', callback: onConfirm}]
+            );
+        };
+        // END: Fix for Issue #23
+
         const createShortcutsManager = (state, dom, services) => {
             const container = dom.shortcutsContainer;
             let draggedItemId = null;
@@ -193,11 +211,11 @@
 
             const render = () => {
                 container.innerHTML = '';
-                if (state.shortcuts.length === 0) {
+                if (!hasItems('shortcuts')) { // Applied Issue #21
                     container.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add from 'Actions'.</span>`;
                 } else {
                     const fragment = document.createDocumentFragment();
-                    state.shortcuts.forEach(shortcut => {
+                    getCollection('shortcuts').forEach(shortcut => { // Applied Issue #21
                         const element = createShortcutElement(shortcut);
                         fragment.appendChild(element);
                     });
@@ -206,22 +224,16 @@
             };
 
             const remove = (shortcutId) => {
-                const itemIndex = state.shortcuts.findIndex(s => s.id === shortcutId);
+                const itemIndex = getCollection('shortcuts').findIndex(s => s.id === shortcutId); // Applied Issue #21
                 if (itemIndex === -1) return;
-                const itemCopy = { ...state.shortcuts[itemIndex] };
+                const itemCopy = { ...getCollection('shortcuts')[itemIndex] }; // Applied Issue #21
 
-                services.showModal('Delete Shortcut', `<p>Are you sure you want to delete "${services.escapeHTML(itemCopy.name)}"?</p>`, [
-                    { label: 'Cancel' },
-                    {
-                        label: 'Delete',
-                        class: 'button-danger',
-                        callback: () => {
-                            state.shortcuts.splice(itemIndex, 1);
-                            services.saveState();
-                            render();
-                        }
-                    }
-                ]);
+                // Applied Issue #23
+                services.confirmDelete('shortcuts', itemCopy.name, () => {
+                    getCollection('shortcuts').splice(itemIndex, 1); // Applied Issue #21
+                    services.saveState();
+                    render();
+                });
             };
 
             const add = () => {
@@ -235,10 +247,11 @@
                             const name = nameInput.value;
                             const url = urlInput.value;
                             if (services.validators.notEmpty(name) && services.validators.maxLength(name, 50) && services.validators.url(url)) {
-                                state.shortcuts.push({ id: services.generateId(), name, url });
+                                getCollection('shortcuts').push({ id: services.generateId(), name, url }); // Applied Issue #21
                                 services.saveState();
                                 render();
                             } else {
+                                // Applied Issue #22/27 (Twinned) - Using showToast as it's not a blocking validation
                                 services.showToast('Invalid name or URL');
                                 return false;
                             }
@@ -264,7 +277,7 @@
                     const targetElement = e.target.closest('.shortcut-item, .shortcuts-container');
                     if (!targetElement) return;
 
-                    const shortcuts = state.shortcuts;
+                    const shortcuts = getCollection('shortcuts'); // Applied Issue #21
                     const draggedIndex = shortcuts.findIndex(s => s.id === draggedItemId);
                     if (draggedIndex === -1) return;
 
@@ -294,7 +307,7 @@
         const renderAppDropdown = (filterTerm = '') => {
             const panel = DOMElements.appDropdownPanel;
             panel.innerHTML = '';
-            const sortedApps = (state?.apps || []).sort((a,b) => a.name.localeCompare(b.name));
+            const sortedApps = (getCollection('apps') || []).sort((a,b) => a.name.localeCompare(b.name)); // Applied Issue #21
             const term = filterTerm.toLowerCase();
             const filteredApps = term
                 ? sortedApps.filter(app => app.name.toLowerCase().includes(term))
@@ -316,7 +329,7 @@
         };
 
         const renderAppData = () => {
-            if (state.apps.length === 0) {
+            if (!hasItems('apps')) { // Applied Issue #21
                 DOMElements.appSelectGroup.classList.add('hidden');
                 DOMElements.appEmptyState.classList.remove('hidden');
             } else {
@@ -330,19 +343,19 @@
             noteSelect.innerHTML = '';
 
             const fragment = document.createDocumentFragment();
-            state.notes.forEach(note => fragment.appendChild(new Option(note.title, note.id)));
+            getCollection('notes').forEach(note => fragment.appendChild(new Option(note.title, note.id))); // Applied Issue #21
             noteSelect.appendChild(fragment);
 
-            if (activeNoteId && state.notes.some(n => n.id == activeNoteId)) {
+            if (activeNoteId && getCollection('notes').some(n => n.id == activeNoteId)) { // Applied Issue #21
                  noteSelect.value = activeNoteId;
-            } else if (state.notes.length > 0) {
-                activeNoteId = state.notes[0].id;
+            } else if (hasItems('notes')) { // Applied Issue #21
+                activeNoteId = getCollection('notes')[0].id; // Applied Issue #21
                 noteSelect.value = activeNoteId;
             } else {
                 activeNoteId = null;
             }
 
-            const activeNote = state.notes.find(n => n.id == activeNoteId);
+            const activeNote = getCollection('notes').find(n => n.id == activeNoteId); // Applied Issue #21
             if (activeNote) {
                 DOMElements.notepadEditor.value = activeNote.content;
                 DOMElements.notepadEditor.disabled = false;
@@ -350,20 +363,18 @@
                 DOMElements.notepadEditor.value = '';
                 DOMElements.notepadEditor.disabled = true;
             }
-            DOMElements.deleteNoteBtn.disabled = state.notes.length === 0;
-            DOMElements.renameNoteBtn.disabled = state.notes.length === 0;
+            DOMElements.deleteNoteBtn.disabled = !hasItems('notes'); // Applied Issue #21
+            DOMElements.renameNoteBtn.disabled = !hasItems('notes'); // Applied Issue #21
         };
         
-        // START: Fix for Issue #6 (Part 1)
         function setupTextareaAutoResize(textarea) {
             const resize = () => {
                 textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, 500) + 'px';
+                textarea.style.height = Math.min(textarea.scrollHeight, 500) + 'px'; // Issue #24: Cap remains per review
             };
             textarea.addEventListener('input', resize);
             resize();
         }
-        // END: Fix for Issue #6 (Part 1)
 
         const renderAll = () => {
             if (shortcutsManager) shortcutsManager.render();
@@ -371,14 +382,11 @@
             renderNotesData();
         };
 
-        // START: Fix for Issue #6 (Part 2)
         const editAppEscalationTextarea = DOMElements.editAppEscalation;
         if (editAppEscalationTextarea) {
             setupTextareaAutoResize(editAppEscalationTextarea);
         }
-        // END: Fix for Issue #6 (Part 2)
 
-        // START: Fix for Issue #8
         const checkFormDirty = () => {
             if (!initialAppData) return false;
             if (initialAppData.id === null) {
@@ -391,25 +399,26 @@
                    DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
                    DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
         };
-        // END: Fix for Issue #8
         
         const updateSaveButtonState = () => {
             if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
         };
 
+        // START: Fix for Issue #20
         const displayAppDetails = (appId) => {
             selectedAppId = appId;
-            DOMElements.appDetailsContainer.classList.toggle('hidden', !appId);
+            const isVisible = !!appId;
+            DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
 
-            if (appId) {
-                const app = state.apps.find(a => a.id === appId);
-                if (app) {
-                    initialAppData = {...app};
-                    DOMElements.appSearchInput.value = app.name;
-                    DOMElements.editAppName.value = app.name;
-                    DOMElements.editAppUrls.value = app.urls;
-                    DOMElements.editAppEscalation.value = app.escalation;
-                }
+            if (isVisible) {
+                const app = getCollection('apps').find(a => a.id === appId); // Applied Issue #21
+                if (!app) return;
+                
+                initialAppData = {...app};
+                DOMElements.appSearchInput.value = app.name;
+                DOMElements.editAppName.value = app.name;
+                DOMElements.editAppUrls.value = app.urls;
+                DOMElements.editAppEscalation.value = app.escalation;
             } else {
                 initialAppData = null;
                 DOMElements.appSearchInput.value = '';
@@ -417,6 +426,7 @@
             }
             updateSaveButtonState();
         };
+        // END: Fix for Issue #20
 
         const createNewAppForm = () => {
             displayAppDetails(null);
@@ -440,7 +450,6 @@
             renderAppDropdown(DOMElements.appSearchInput.value);
         });
 
-        // START: Fix for Issue #9
         const handleDropdownKeyNav = (() => {
             let keyBuffer = '';
             let keyTimer = null;
@@ -482,9 +491,7 @@
         })();
 
         DOMElements.appSearchInput.addEventListener('keydown', handleDropdownKeyNav);
-        // END: Fix for Issue #9
 
-        // START: Fix for Issue #11
         DOMElements.appDropdownPanel.addEventListener('click', (e) => {
             const target = e.target.closest('.search-dropdown-item');
             if (!target?.dataset.id) return;
@@ -508,7 +515,6 @@
                 switchApp();
             }
         });
-        // END: Fix for Issue #11
 
         DOMElements.appDropdownPanel.addEventListener('mouseover', (e) => {
             const target = e.target.closest('.search-dropdown-item');
@@ -523,23 +529,28 @@
 
         DOMElements.saveChangesBtn.addEventListener('click', () => {
             const name = DOMElements.editAppName.value.trim();
-            const urls = DOMElements.editAppUrls.value.trim();
+            const urls = DOMElements.editAppUrls.value.trim(); // Issue #25: URLs stored but not parsed per review
             const escalation = DOMElements.editAppEscalation.value.trim();
 
-            if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 100)) return SafeUI.showModal('Invalid Name', '<p>App name must be 1-100 characters.</p>', [{label: 'OK'}]);
-            if (!SafeUI.validators.notEmpty(urls) && !SafeUI.validators.notEmpty(escalation)) return SafeUI.showModal('Invalid Data', '<p>App must have at least one URL or a note.</p>', [{label: 'OK'}]);
-
-            if (state.apps.some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedAppId)) {
-                return SafeUI.showModal('Duplicate Name', '<p>An app with this name already exists. Please use a unique name.</p>', [{label: 'OK'}]);
+            // START: Fix for Issue #22/27 (Twinned)
+            if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 100)) {
+                return SafeUI.showValidationError('Invalid Name', 'App name must be 1-100 characters.', 'edit-app-name');
             }
+            if (!SafeUI.validators.notEmpty(urls) && !SafeUI.validators.notEmpty(escalation)) {
+                return SafeUI.showValidationError('Invalid Data', 'App must have at least one URL or a note.');
+            }
+            if (getCollection('apps').some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedAppId)) { // Applied Issue #21
+                return SafeUI.showValidationError('Duplicate Name', 'An app with this name already exists.', 'edit-app-name');
+            }
+            // END: Fix for Issue #22/27 (Twinned)
 
-            const appIndex = state.apps.findIndex(a => a.id == selectedAppId);
+            const appIndex = getCollection('apps').findIndex(a => a.id == selectedAppId); // Applied Issue #21
             let savedAppId = selectedAppId;
             if (appIndex > -1) {
-                state.apps[appIndex] = { ...state.apps[appIndex], name, urls, escalation };
+                getCollection('apps')[appIndex] = { ...getCollection('apps')[appIndex], name, urls, escalation }; // Applied Issue #21
             } else {
                 const newApp = { id: SafeUI.generateId(), name, urls, escalation };
-                state.apps.push(newApp);
+                getCollection('apps').push(newApp); // Applied Issue #21
                 savedAppId = newApp.id;
             }
             saveState();
@@ -550,22 +561,16 @@
 
         DOMElements.deleteAppBtn.addEventListener('click', () => {
              if(selectedAppId) {
-                const appIndex = state.apps.findIndex(item => item.id === selectedAppId);
+                const appIndex = getCollection('apps').findIndex(item => item.id === selectedAppId); // Applied Issue #21
                 if (appIndex > -1) {
-                    const appName = state.apps[appIndex].name;
-                    SafeUI.showModal('Delete Application', `<p>Are you sure you want to delete "${SafeUI.escapeHTML(appName)}"?</p><p>This cannot be undone.</p>`, [
-                        {label: 'Cancel'},
-                        {
-                            label: 'Delete',
-                            class: 'button-danger',
-                            callback: () => {
-                                state.apps.splice(appIndex, 1);
-                                saveState();
-                                displayAppDetails(null);
-                                renderAll();
-                            }
-                        }
-                    ]);
+                    const appName = getCollection('apps')[appIndex].name; // Applied Issue #21
+                    // Applied Issue #23
+                    confirmDelete('apps', appName, () => {
+                        getCollection('apps').splice(appIndex, 1); // Applied Issue #21
+                        saveState();
+                        displayAppDetails(null);
+                        renderAll();
+                    });
                 }
              }
         });
@@ -641,7 +646,6 @@
                     }
                 }
 
-                // START: Fix for Issue #7
                 SafeUI.showModal('Confirm Restore', `<p>Overwrite dashboard data? This cannot be undone.</p>`, [
                     {label: 'Cancel'},
                     {label: 'Restore', class: 'button-danger', callback: async () => {
@@ -657,7 +661,6 @@
                         }
                     }}
                 ]);
-                // END: Fix for Issue #7
             } catch(err) {
                 console.error("Restore failed:", err);
                 SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
@@ -670,13 +673,13 @@
              const id = button.id;
              if(id === 'new-note-btn') {
                  const newId = SafeUI.generateId();
-                 state.notes.unshift({id: newId, title: `Note ${state.notes.length + 1}`, content:''});
+                 getCollection('notes').unshift({id: newId, title: `Note ${getCollection('notes').length + 1}`, content:''}); // Applied Issue #21
                  activeNoteId = newId;
                  saveState();
                  renderNotesData();
                  DOMElements.notepadEditor.focus();
              } else if (id === 'rename-note-btn' && activeNoteId) {
-                const note = state.notes.find(n => n.id == activeNoteId);
+                const note = getCollection('notes').find(n => n.id == activeNoteId); // Applied Issue #21
                 if(note) {
                     SafeUI.showModal('Rename Note', `<input id="rename-note-input" class="sidebar-input" value="${SafeUI.escapeHTML(note.title)}">`, [
                         {label: 'Cancel'},
@@ -687,7 +690,8 @@
                                 saveState();
                                 renderNotesData();
                             } else {
-                                SafeUI.showModal('Invalid Title', '<p>Title must be 1-50 characters.</p>', [{label: 'OK'}]);
+                                // Applied Issue #22/27 (Twinned)
+                                SafeUI.showValidationError('Invalid Title', 'Title must be 1-50 characters.', 'rename-note-input');
                                 return false;
                             }
                         }}
@@ -695,31 +699,25 @@
                     setTimeout(() => document.getElementById('rename-note-input')?.select(), 100);
                 }
              } else if (id === 'delete-note-btn' && activeNoteId) {
-                 const noteIndex = state.notes.findIndex(item => item.id === activeNoteId);
+                 const noteIndex = getCollection('notes').findIndex(item => item.id === activeNoteId); // Applied Issue #21
                  if (noteIndex === -1) return;
                  
-                 const noteName = state.notes[noteIndex].title;
+                 const noteName = getCollection('notes')[noteIndex].title; // Applied Issue #21
 
-                 SafeUI.showModal('Delete Note', `<p>Are you sure you want to delete "${SafeUI.escapeHTML(noteName)}"?</p><p>This cannot be undone.</p>`, [
-                    { label: 'Cancel' },
-                    {
-                        label: 'Delete',
-                        class: 'button-danger',
-                        callback: () => {
-                            state.notes.splice(noteIndex, 1);
+                 // Applied Issue #23
+                 confirmDelete('notes', noteName, () => {
+                    getCollection('notes').splice(noteIndex, 1); // Applied Issue #21
 
-                            if (state.notes.length === 0) {
-                                const newNote = { id: SafeUI.generateId(), title: 'My Scratchpad', content: '' };
-                                state.notes.push(newNote);
-                                activeNoteId = newNote.id;
-                            } else {
-                                activeNoteId = state.notes[0].id;
-                            }
-                            saveState();
-                            renderAll();
-                        }
+                    if (!hasItems('notes')) { // Applied Issue #21
+                        const newNote = { id: SafeUI.generateId(), title: 'My Scratchpad', content: '' };
+                        getCollection('notes').push(newNote); // Applied Issue #21
+                        activeNoteId = newNote.id;
+                    } else {
+                        activeNoteId = getCollection('notes')[0].id; // Applied Issue #21
                     }
-                 ]);
+                    saveState();
+                    renderAll();
+                 });
              }
         });
 
@@ -730,7 +728,7 @@
 
         DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
             if (!activeNoteId) return;
-            const note = state.notes.find(n => n.id == activeNoteId);
+            const note = getCollection('notes').find(n => n.id == activeNoteId); // Applied Issue #21
             if(note) {
                 note.content = DOMElements.notepadEditor.value;
                 saveState();
@@ -739,7 +737,7 @@
 
         DOMElements.notepadEditor.addEventListener('blur', () => {
             if (!activeNoteId) return;
-            const note = state.notes.find(n => n.id == activeNoteId);
+            const note = getCollection('notes').find(n => n.id == activeNoteId); // Applied Issue #21
             if(note && note.content !== DOMElements.notepadEditor.value) {
                 note.content = DOMElements.notepadEditor.value;
                 saveState();
@@ -767,6 +765,7 @@
 
             const services = {
                 showModal: SafeUI.showModal,
+                confirmDelete: confirmDelete, // Added for Issue #23
                 validators: SafeUI.validators,
                 SVGIcons: SafeUI.SVGIcons,
                 saveState: saveState, 
@@ -784,8 +783,8 @@
             DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
             DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
 
-            if (state.notes.length === 0) {
-                state.notes.push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+            if (!hasItems('notes')) { // Applied Issue #21
+                getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' }); // Applied Issue #21
                 saveState();
             }
             renderAll();
@@ -805,4 +804,3 @@
     </script>
 </body>
 </html>
-
