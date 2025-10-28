@@ -369,6 +369,7 @@
         
         // START: Fix for index.html (Line 343)
         function setupTextareaAutoResize(textarea, maxHeight = 300) {
+            if (!textarea) return; // Safety check
             const resize = () => {
                 textarea.style.height = 'auto';
                 textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
@@ -384,13 +385,9 @@
             renderNotesData();
         };
 
-        const editAppEscalationTextarea = DOMElements.editAppEscalation;
-        if (editAppEscalationTextarea) {
-            setupTextareaAutoResize(editAppEscalationTextarea);
-        }
-        
-        // This is the line inserted per your request.
-        setupTextareaAutoResize(DOMElements.editAppUrls, 150);
+        // START: CRITICAL FIX #1 - MOVED CODE BLOCK
+        // The code block below was moved here from lines ~390-397
+        // END: CRITICAL FIX #1
 
         const checkFormDirty = () => {
             if (!initialAppData) return false;
@@ -765,6 +762,18 @@
             }
 
             SafeUI.loadNavbar("navbar-container", "index.html");
+
+            // START: CRITICAL FIX #1 - MOVED CODE BLOCK
+            // Setup textarea auto-resize AFTER DOM elements are cached
+            const editAppEscalationTextarea = DOMElements.editAppEscalation;
+            if (editAppEscalationTextarea) {
+                setupTextareaAutoResize(editAppEscalationTextarea);
+            }
+            
+            if (DOMElements.editAppUrls) {
+                setupTextareaAutoResize(DOMElements.editAppUrls, 150);
+            }
+            // END: CRITICAL FIX #1
 
             state = stateManager.load();
 
