@@ -145,7 +145,7 @@ const UIUtils = {
      * @param {string} dataStr The string content of the file.
      * @param {string} filename The name for the downloaded file.
      */
-    downloadJSON: (dataStr, filename) => {
+    downloadJSON: function(dataStr, filename) {
         try {
             if (typeof dataStr !== 'string' || !filename) {
                 throw new Error('Invalid parameters');
@@ -257,8 +257,8 @@ const UIUtils = {
             } catch (err) {
                 console.error("Failed to save state:", err);
                 // --- FIX 3 (Issue 3) ---
-                // Call showModal via `this` (which is `UIUtils` in this context)
-                this.showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{label: 'OK'}]);
+                // Call showModal via `UIUtils` directly as `this` is not bound correctly
+                UIUtils.showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{label: 'OK'}]);
             }
         };
 
@@ -281,7 +281,7 @@ const UIUtils = {
      * @param {string} contentHtml The HTML content to inject.
      * @param {Array<object>} actions Array of button objects.
      */
-    showModal: (title, contentHtml, actions) => {
+    showModal: function(title, contentHtml, actions) {
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
         if (!modalOverlay || !modalContent) {
@@ -317,7 +317,7 @@ const UIUtils = {
      * @param {string} message The error message.
      * @param {string} [focusElementId] Optional ID of the element to focus.
      */
-    showValidationError: (title, message, focusElementId) => {
+    showValidationError: function(title, message, focusElementId) {
         // Call showModal via `this`
         this.showModal(title, `<p>${message}</p>`, [{label: 'OK'}]);
         if (focusElementId) {
@@ -332,22 +332,21 @@ const UIUtils = {
      * @param {string} message The message to display.
      */
     // START: Fix for Issue #19
-    showToast: (() => {
+    showToast: (function() {
         let activeTimer = null;
         
         // --- FIX 5 (Issue 5) ---
         // The IIFE runs when UIUtils is defined.
-        // We capture `this` (which is UIUtils) into a `self` variable.
-        const self = this; 
+        // `this` will be correctly bound in the returned function
         
-        return (message) => {
+        return function(message) {
             const toast = document.getElementById('toast');
             if (!toast) return;
             
             if (activeTimer) clearTimeout(activeTimer);
             
-            // Use `self.escapeHTML` instead of `UIUtils.escapeHTML`
-            toast.innerHTML = `<span>${self.escapeHTML(message)}</span>`;
+            // Use `this.escapeHTML` instead of `self.escapeHTML`
+            toast.innerHTML = `<span>${this.escapeHTML(message)}</span>`;
             toast.classList.add('show');
             
             activeTimer = setTimeout(() => {
