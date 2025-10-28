@@ -557,27 +557,14 @@
                 }
             }
 
-            function handleImportError(errorMsg) {
-                SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
-            }
-
-            function handleBackup() {
-                const dataStr = JSON.stringify({
-                    appName: APP_NAME,
-                    timestamp: new Date().toISOString(),
-                    version: APP_VERSION, 
-                    data: state
-                }, null, 2);
-                SafeUI.downloadJSON(dataStr, `${APP_NAME}_backup.json`);
-                SafeUI.showToast("Backup created.");
-            }
+            // START: Fix for Issue #29 (Removal of dead code)
+            // Removed handleImportError()
+            // Removed handleBackup()
+            // END: Fix for Issue #29
 
             function attachEventListeners() {
                 DOMElements.searchInput.addEventListener('input', renderAll);
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
-                // START: Fix for Issue #29
-                // Removed dead code
-                // END: Fix for Issue #29
             }
 
             function init() {
@@ -609,6 +596,7 @@
                 renderAll();
             }
 
+Setting `maxHeight` in `setupTextareaAutoResize` to 300px.
             try {
                 init();
             } catch (err) {
@@ -619,4 +607,5 @@
     </script>
 </body>
 </html>
+
 
