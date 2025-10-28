@@ -12,51 +12,77 @@ const UIUtils = {
         copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/></svg>',
         menu: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>'
     },
+    
+    // START: Fix for Issue #1
+    validators: {
+        url: (value) => {
+            if (!value || typeof value !== 'string') return false;
+            try {
+                new URL(value.trim());
+                return true;
+            } catch {
+                return false;
+            }
+        },
+        notEmpty: (value) => {
+            return value != null && String(value).trim().length > 0;
+        },
+        maxLength: (value, max) => {
+            return value != null && String(value).length <= max;
+        }
+    },
+    // END: Fix for Issue #1
 
     /**
      * Dynamically loads the navigation bar from a file.
      * @param {string} containerId The ID of the element to inject the nav into.
      * @param {string} currentPage The filename of the current page (e.g., "index.html").
      */
-    loadNavbar: async (containerId, currentPage) => {
-        const navContainer = document.getElementById(containerId);
-        if (!navContainer) {
-            console.error(`Navbar container with id "${containerId}" not found.`);
-            return;
-        }
-
-        try {
-            const response = await fetch('_nav.html');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch _nav.html: ${response.statusText}`);
+    // START: Fix for Issue #2
+    loadNavbar: (() => {
+        const loaded = new Set();
+        return async (containerId, currentPage) => {
+            if (loaded.has(containerId)) return;
+            loaded.add(containerId);
+            
+            const navContainer = document.getElementById(containerId);
+            if (!navContainer) {
+                console.error(`Navbar container "${containerId}" not found.`);
+                loaded.delete(containerId);
+                return;
             }
-            const navHTML = await response.text();
-            navContainer.innerHTML = navHTML;
 
-            const links = navContainer.querySelectorAll('.nav-link');
-            links.forEach(link => {
-                const href = link.getAttribute('href');
-                if (href === currentPage) {
-                    link.classList.add('active');
-                }
-            });
-        } catch (error) {
-            console.error('Failed to load navbar:', error);
-            navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
-        }
-    },
+            try {
+                const response = await fetch('_nav.html');
+                if (!response.ok) throw new Error(`Failed to fetch _nav.html: ${response.statusText}`);
+                navContainer.innerHTML = await response.text();
+                
+                navContainer.querySelectorAll('.nav-link').forEach(link => {
+                    if (link.getAttribute('href') === currentPage) {
+                        link.classList.add('active');
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load navbar:', error);
+                navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
+                loaded.delete(containerId);
+            }
+        };
+    })(),
+    // END: Fix for Issue #2
 
     /**
      * Escapes a string for safe insertion into HTML.
      * @param {string} str The string to escape.
      * @returns {string} The escaped HTML string.
      */
+    // START: Fix for Issue #5
     escapeHTML: (str) => {
-        if (!str) return '';
         const p = document.createElement('p');
-        p.textContent = str;
+        p.textContent = str ?? '';
         return p.innerHTML;
     },
+    // END: Fix for Issue #5
 
     /**
      * Generates a unique ID with a fallback.
@@ -103,11 +129,14 @@ const UIUtils = {
      * @param {string} dataStr The string content of the file.
      * @param {string} filename The name for the downloaded file.
      */
+    // START: Fix for Issue #4
     downloadJSON: (dataStr, filename) => {
         try {
+            if (typeof dataStr !== 'string' || !filename) {
+                throw new Error('Invalid parameters');
+            }
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
-            
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
@@ -115,11 +144,14 @@ const UIUtils = {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            return true;
         } catch (error) {
             console.error("Failed to download JSON:", error);
-            UIUtils.showModal("Error", "<p>Error creating download.</p>", [{label: "OK"}]);
+            UIUtils.showModal("Download Error", "<p>Failed to create download.</p>", [{label: "OK"}]);
+            return false;
         }
     },
+    // END: Fix for Issue #4
 
     /**
      * Programmatically opens a file picker.
@@ -171,11 +203,13 @@ const UIUtils = {
      * @param {function} onCorruption Optional callback for data corruption.
      * @returns {object|null} State manager with load() and save() methods.
      */
+    // START: Fix for Issue #3
     createStateManager: (key, defaults, version, onCorruption) => {
-        if (!key || !defaults || !version) {
-            console.error("createStateManager requires key, defaults, and version.");
+        if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
+            console.error("createStateManager requires valid key (string), defaults (object), and version.");
             return null;
         }
+    // END: Fix for Issue #3
 
         const load = () => {
             let data;
