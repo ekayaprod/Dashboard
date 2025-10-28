@@ -8,37 +8,38 @@ const UIUtils = {
     SVGIcons: {
         plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>',
         pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
-        trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>',
-        copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/></svg>',
-        menu: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>'
+        trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>'
+        // START: Fix for Issue #18 - Removed unused SVGIcons.copy and SVGIcons.menu
     },
     
-    // START: Fix for Issue #1
+    // START: Fix for Issue #17
     validators: {
-        url: (value) => {
-            if (!value || typeof value !== 'string') return false;
-            try {
-                new URL(value.trim());
-                return true;
-            } catch {
-                return false;
+        _validate: (value, type, options = {}) => {
+            if (value == null) return false;
+            const str = String(value).trim();
+            
+            switch(type) {
+                case 'url':
+                    try { new URL(str); return true; } catch { return false; }
+                case 'notEmpty':
+                    return str.length > 0;
+                case 'maxLength':
+                    return str.length <= (options.max || Infinity);
+                default:
+                    return false;
             }
         },
-        notEmpty: (value) => {
-            return value != null && String(value).trim().length > 0;
-        },
-        maxLength: (value, max) => {
-            return value != null && String(value).length <= max;
-        }
+        url: (value) => UIUtils.validators._validate(value, 'url'),
+        notEmpty: (value) => UIUtils.validators._validate(value, 'notEmpty'),
+        maxLength: (value, max) => UIUtils.validators._validate(value, 'maxLength', {max})
     },
-    // END: Fix for Issue #1
+    // END: Fix for Issue #17
 
     /**
      * Dynamically loads the navigation bar from a file.
      * @param {string} containerId The ID of the element to inject the nav into.
      * @param {string} currentPage The filename of the current page (e.g., "index.html").
      */
-    // START: Fix for Issue #2
     loadNavbar: (() => {
         const loaded = new Set();
         return async (containerId, currentPage) => {
@@ -69,20 +70,17 @@ const UIUtils = {
             }
         };
     })(),
-    // END: Fix for Issue #2
 
     /**
      * Escapes a string for safe insertion into HTML.
      * @param {string} str The string to escape.
      * @returns {string} The escaped HTML string.
      */
-    // START: Fix for Issue #5
     escapeHTML: (str) => {
         const p = document.createElement('p');
         p.textContent = str ?? '';
         return p.innerHTML;
     },
-    // END: Fix for Issue #5
 
     /**
      * Generates a unique ID with a fallback.
@@ -129,7 +127,6 @@ const UIUtils = {
      * @param {string} dataStr The string content of the file.
      * @param {string} filename The name for the downloaded file.
      */
-    // START: Fix for Issue #4
     downloadJSON: (dataStr, filename) => {
         try {
             if (typeof dataStr !== 'string' || !filename) {
@@ -151,7 +148,6 @@ const UIUtils = {
             return false;
         }
     },
-    // END: Fix for Issue #4
 
     /**
      * Programmatically opens a file picker.
@@ -203,13 +199,11 @@ const UIUtils = {
      * @param {function} onCorruption Optional callback for data corruption.
      * @returns {object|null} State manager with load() and save() methods.
      */
-    // START: Fix for Issue #3
     createStateManager: (key, defaults, version, onCorruption) => {
         if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
             console.error("createStateManager requires valid key (string), defaults (object), and version.");
             return null;
         }
-    // END: Fix for Issue #3
 
         const load = () => {
             let data;
@@ -291,37 +285,57 @@ const UIUtils = {
         modalOverlay.style.display = 'flex';
     },
 
+    // START: Fix for Issue #22/27 (Twinned)
+    /**
+     * Shows a standardized validation error modal and focuses the element.
+     * @param {string} title The title for the modal.
+     * @param {string} message The error message.
+     * @param {string} [focusElementId] Optional ID of the element to focus.
+     */
+    showValidationError: (title, message, focusElementId) => {
+        UIUtils.showModal(title, `<p>${message}</p>`, [{label: 'OK'}]);
+        if (focusElementId) {
+            setTimeout(() => document.getElementById(focusElementId)?.focus(), 100);
+        }
+    },
+    // END: Fix for Issue #22/27 (Twinned)
+
+
     /**
      * Shows a simple feedback toast message.
      * @param {string} message The message to display.
      */
-    showToast: (message) => {
-        const toast = document.getElementById('toast');
-        if (!toast) {
-            console.warn('Toast element not found.');
-            return;
-        }
-        
-        toast.innerHTML = `<span>${UIUtils.escapeHTML(message)}</span>`;
-        toast.classList.add('show');
-        
-        if (toast.timer) clearTimeout(toast.timer);
-        
-        toast.timer = setTimeout(() => {
-            toast.classList.remove('show');
-            toast.timer = null;
-        }, 3000);
-    },
+    // START: Fix for Issue #19
+    showToast: (() => {
+        let activeTimer = null;
+        return (message) => {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            
+            if (activeTimer) clearTimeout(activeTimer);
+            
+            toast.innerHTML = `<span>${UIUtils.escapeHTML(message)}</span>`;
+            toast.classList.add('show');
+            
+            activeTimer = setTimeout(() => {
+                toast.classList.remove('show');
+                activeTimer = null;
+            }, 3000);
+        };
+    })(),
+    // END: Fix for Issue #19
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     const modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
+        // START: Fix for Issue #16 - Removed duplicate listener
         modalOverlay.addEventListener('click', (e) => {
             if (e.target.id === 'modal-overlay') {
                 UIUtils.hideModal();
             }
         });
+        // END: Fix for Issue #16
     }
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
