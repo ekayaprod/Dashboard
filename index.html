@@ -386,6 +386,9 @@
         if (editAppEscalationTextarea) {
             setupTextareaAutoResize(editAppEscalationTextarea);
         }
+        
+        // This is the line inserted per your request.
+        setupTextareaAutoResize(DOMElements.editAppUrls, 150);
 
         const checkFormDirty = () => {
             if (!initialAppData) return false;
@@ -804,3 +807,4 @@
     </script>
 </body>
 </html>
+
