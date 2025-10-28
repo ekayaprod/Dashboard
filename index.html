@@ -367,11 +367,13 @@
             DOMElements.renameNoteBtn.disabled = !hasItems('notes'); // Applied Issue #21
         };
         
-        function setupTextareaAutoResize(textarea) {
+        // START: Fix for index.html (Line 343)
+        function setupTextareaAutoResize(textarea, maxHeight = 300) {
             const resize = () => {
                 textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, 500) + 'px'; // Issue #24: Cap remains per review
+                textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
             };
+        // END: Fix for index.html (Line 343)
             textarea.addEventListener('input', resize);
             resize();
         }
