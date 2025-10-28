@@ -115,13 +115,13 @@
                 routing: {
                     listElement: null,
                     dataKey: 'routingData',
-                    title: 'Routing',
+                    // START: Fix for Issue #15 (Part 1)
                     emptyState: 'No routing entries found.',
                 },
                 snippets: {
                     listElement: null,
                     dataKey: 'snippetsData',
-                    title: 'Snippets',
+                    // END: Fix for Issue #15 (Part 1)
                     emptyState: 'No snippets found.',
                 }
             };
@@ -299,8 +299,10 @@
                     handleSave(form, item.id, type);
                 };
 
-                const keywordLabel = config.title === 'Routing' ? 'Keyword (e.g., "VPN")' : 'Keyword (e.g., "Greeting")';
-                const contentLabel = config.title === 'Routing' ? 'Content (Assignment Group)' : 'Content (Snippet Text)';
+                // START: Fix for Issue #15 (Part 2)
+                const keywordLabel = type === 'routing' ? 'Keyword (e.g., "VPN")' : 'Keyword (e.g., "Greeting")';
+                const contentLabel = type === 'routing' ? 'Content (Assignment Group)' : 'Content (Snippet Text)';
+                // END: Fix for Issue #15 (Part 2)
 
                 const keywordInput = document.createElement('input');
                 keywordInput.type = 'text';
@@ -413,7 +415,9 @@
                 for (const item of data) {
                     if (item.id === id) {
                         itemToUpdate = item;
-                    } else if (item.keyword.toLowerCase() === keyword.toLowerCase()) {
+                    // START: Fix for Issue #12
+                    } else if (item.keyword.toLowerCase() === keyword.toLowerCase() && item.type === type) {
+                    // END: Fix for Issue #12
                         isDuplicate = true;
                     }
                     if (itemToUpdate && isDuplicate) break;
@@ -493,8 +497,27 @@
                     ]);
 
                 } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
-                    const newRoutingCount = jsonData.routing?.length || 0;
-                    const newSnippetsCount = jsonData.snippets?.length || 0;
+                    // START: Fix for Issue #13
+                    // Validate structure
+                    const validateItems = (items, requiredKeys) => {
+                        return items.every(item => 
+                            item && typeof item === 'object' && 
+                            requiredKeys.every(key => key in item)
+                        );
+                    };
+                    
+                    const routing = jsonData.routing || [];
+                    const snippets = jsonData.snippets || [];
+                    
+                    if (!validateItems(routing, ['id', 'keyword', 'content']) || 
+                        !validateItems(snippets, ['id', 'keyword', 'content'])) {
+                        SafeUI.showModal("Import Error", "<p>File contains invalid item structure.</p>", [{label: 'OK'}]);
+                        return;
+                    }
+                    // END: Fix for Issue #13
+                    
+                    const newRoutingCount = routing.length;
+                    const newSnippetsCount = snippets.length;
 
                     SafeUI.showModal("Confirm Data Import",
                         `<p>This file contains <strong>${newRoutingCount} routing</strong> entries and <strong>${newSnippetsCount} snippet</strong> entries.</p><p>How do you want to import this data?</p>`,
@@ -504,8 +527,8 @@
                                 label: 'Merge',
                                 class: 'button-primary',
                                 callback: () => {
-                                    state.routingData = (state.routingData || []).concat(jsonData.routing || []);
-                                    state.snippetsData = (state.snippetsData || []).concat(jsonData.snippets || []);
+                                    state.routingData = (state.routingData || []).concat(routing);
+                                    state.snippetsData = (state.snippetsData || []).concat(snippets);
                                     saveState();
                                     renderAll();
                                     SafeUI.showToast("Data merged successfully.");
@@ -515,8 +538,8 @@
                                 label: 'Replace All',
                                 class: 'button-danger',
                                 callback: () => {
-                                    state.routingData = jsonData.routing || [];
-                                    state.snippetsData = jsonData.snippets || [];
+                                    state.routingData = routing;
+                                    state.snippetsData = snippets;
                                     saveState();
                                     renderAll();
                                     SafeUI.showToast("Data replaced successfully.");
@@ -549,13 +572,9 @@
                 DOMElements.searchInput.addEventListener('input', renderAll);
                 DOMElements.btnAddTewEntry.addEventListener('click', handleAddNewEntry);
 
-                // These buttons are gone from the nav, but the logic is here if added back
-                // DOMElements.lookupStateBackup.addEventListener('click', handleBackup);
-                // DOMElements.lookupStateRestore.addEventListener('click', () => {
-                //     SafeUI.openFilePicker((file) => {
-                //         SafeUI.readJSONFile(file, processImportData, handleImportError);
-                //     });
-                // });
+                // START: Fix for Issue #14
+                // Removed dead code references
+                // END: Fix for Issue #14
             }
 
             function init() {
@@ -597,5 +616,4 @@
     </script>
 </body>
 </html>
-
 
