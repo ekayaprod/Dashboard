@@ -353,6 +353,17 @@
             DOMElements.deleteNoteBtn.disabled = state.notes.length === 0;
             DOMElements.renameNoteBtn.disabled = state.notes.length === 0;
         };
+        
+        // START: Fix for Issue #6 (Part 1)
+        function setupTextareaAutoResize(textarea) {
+            const resize = () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 500) + 'px';
+            };
+            textarea.addEventListener('input', resize);
+            resize();
+        }
+        // END: Fix for Issue #6 (Part 1)
 
         const renderAll = () => {
             if (shortcutsManager) shortcutsManager.render();
@@ -360,13 +371,28 @@
             renderNotesData();
         };
 
+        // START: Fix for Issue #6 (Part 2)
+        const editAppEscalationTextarea = DOMElements.editAppEscalation;
+        if (editAppEscalationTextarea) {
+            setupTextareaAutoResize(editAppEscalationTextarea);
+        }
+        // END: Fix for Issue #6 (Part 2)
+
+        // START: Fix for Issue #8
         const checkFormDirty = () => {
             if (!initialAppData) return false;
-            const nameDirty = DOMElements.editAppName.value.trim() !== initialAppData.name;
-            const urlsDirty = DOMElements.editAppUrls.value.trim() !== initialAppData.urls;
-            const escalationDirty = DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
-            return nameDirty || urlsDirty || escalationDirty;
+            if (initialAppData.id === null) {
+                // New app form - check if any data entered
+                return DOMElements.editAppName.value.trim() !== '' ||
+                       DOMElements.editAppUrls.value.trim() !== '' ||
+                       DOMElements.editAppEscalation.value.trim() !== '';
+            }
+            return DOMElements.editAppName.value.trim() !== initialAppData.name ||
+                   DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
+                   DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
         };
+        // END: Fix for Issue #8
+        
         const updateSaveButtonState = () => {
             if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
         };
@@ -414,65 +440,75 @@
             renderAppDropdown(DOMElements.appSearchInput.value);
         });
 
-        DOMElements.appSearchInput.addEventListener('keydown', (e) => {
-            const panel = DOMElements.appDropdownPanel;
-            if (panel.classList.contains('hidden')) return;
+        // START: Fix for Issue #9
+        const handleDropdownKeyNav = (() => {
+            let keyBuffer = '';
+            let keyTimer = null;
+            
+            return (e) => {
+                const panel = DOMElements.appDropdownPanel;
+                if (panel.classList.contains('hidden')) return;
+                
+                const items = Array.from(panel.querySelectorAll('.search-dropdown-item[data-id]'));
+                if (items.length === 0) return;
+                
+                const selected = panel.querySelector('.search-dropdown-item.selected');
+                let index = selected ? items.indexOf(selected) : -1;
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    index = Math.min(index + 1, items.length - 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    index = Math.max(index - 1, 0);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selected) selected.click();
+                    return;
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    panel.classList.add('hidden');
+                    return;
+                } else {
+                    return;
+                }
+                
+                items.forEach(item => item.classList.remove('selected'));
+                if (items[index]) {
+                    items[index].classList.add('selected');
+                    items[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            };
+        })();
 
-            const items = Array.from(panel.querySelectorAll('.search-dropdown-item[data-id]'));
-            if (items.length === 0) return;
+        DOMElements.appSearchInput.addEventListener('keydown', handleDropdownKeyNav);
+        // END: Fix for Issue #9
 
-            const selected = panel.querySelector('.search-dropdown-item.selected');
-            let index = selected ? items.indexOf(selected) : -1;
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                index = Math.min(index + 1, items.length - 1);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                index = Math.max(index - 1, 0);
-            } else if (e.key === 'Enter' && selected) {
-                e.preventDefault();
-                selected.click();
-                return;
-            } else if (e.key === 'Escape') {
-                panel.classList.add('hidden');
-                return;
-            } else {
-                return;
-            }
-
-            items.forEach(item => item.classList.remove('selected'));
-            if (items[index]) {
-                items[index].classList.add('selected');
-                items[index].scrollIntoView({ block: 'nearest' });
-            }
-        });
-
+        // START: Fix for Issue #11
         DOMElements.appDropdownPanel.addEventListener('click', (e) => {
             const target = e.target.closest('.search-dropdown-item');
-            if (target && target.dataset.id) {
-                const targetId = target.dataset.id;
-
-                if (checkFormDirty()) {
-                    SafeUI.showModal('Unsaved Changes', '<p>You have unsaved changes. Are you sure you want to discard them?</p>', [
-                        { label: 'Cancel', callback: () => {
-                            DOMElements.appDropdownPanel.classList.add('hidden');
-                            return false; 
-                        } },
-                        {
-                            label: 'Discard', class: 'button-danger',
-                            callback: () => {
-                                displayAppDetails(targetId);
-                                DOMElements.appDropdownPanel.classList.add('hidden');
-                            }
-                        }
-                    ]);
-                } else {
-                    displayAppDetails(targetId);
-                    DOMElements.appDropdownPanel.classList.add('hidden');
-                }
+            if (!target?.dataset.id) return;
+            
+            const targetId = target.dataset.id;
+            
+            const switchApp = () => {
+                displayAppDetails(targetId);
+                DOMElements.appDropdownPanel.classList.add('hidden');
+            };
+            
+            if (checkFormDirty()) {
+                SafeUI.showModal('Unsaved Changes', '<p>You have unsaved changes. Discard them?</p>', [
+                    { label: 'Cancel', callback: () => {
+                        DOMElements.appDropdownPanel.classList.add('hidden');
+                        return false;
+                    }},
+                    { label: 'Discard', class: 'button-danger', callback: switchApp }
+                ]);
+            } else {
+                switchApp();
             }
         });
+        // END: Fix for Issue #11
 
         DOMElements.appDropdownPanel.addEventListener('mouseover', (e) => {
             const target = e.target.closest('.search-dropdown-item');
@@ -605,16 +641,23 @@
                     }
                 }
 
+                // START: Fix for Issue #7
                 SafeUI.showModal('Confirm Restore', `<p>Overwrite dashboard data? This cannot be undone.</p>`, [
                     {label: 'Cancel'},
-                    {label: 'Restore', class: 'button-danger', callback: () => {
-                        state = { ...defaultState, ...restored };
-                        saveState();
-                        displayAppDetails(null);
-                        renderAll();
-                        SafeUI.showToast('Dashboard data restored.');
+                    {label: 'Restore', class: 'button-danger', callback: async () => {
+                        try {
+                            state = { ...defaultState, ...restored };
+                            saveState();
+                            displayAppDetails(null);
+                            renderAll();
+                            SafeUI.showToast('Dashboard data restored.');
+                        } catch (err) {
+                            console.error('Restore failed during save:', err);
+                            SafeUI.showModal('Restore Error', `<p>Failed to apply restore: ${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+                        }
                     }}
                 ]);
+                // END: Fix for Issue #7
             } catch(err) {
                 console.error("Restore failed:", err);
                 SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
@@ -762,5 +805,4 @@
     </script>
 </body>
 </html>
-
 
