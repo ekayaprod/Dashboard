@@ -29,9 +29,13 @@ const UIUtils = {
                     return false;
             }
         },
-        url: (value) => UIUtils.validators._validate(value, 'url'),
-        notEmpty: (value) => UIUtils.validators._validate(value, 'notEmpty'),
-        maxLength: (value, max) => UIUtils.validators._validate(value, 'maxLength', {max})
+        // --- THIS IS THE FIX ---
+        // Changed arrow functions to regular functions and `UIUtils.validators` to `this`
+        // to prevent a circular reference error during initialization.
+        url: function(value) { return this._validate(value, 'url'); },
+        notEmpty: function(value) { return this._validate(value, 'notEmpty'); },
+        maxLength: function(value, max) { return this._validate(value, 'maxLength', {max}); }
+        // --- END OF FIX ---
     },
     // END: Fix for Issue #17
 
