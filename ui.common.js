@@ -20,7 +20,21 @@ const UIUtils = {
             
             switch(type) {
                 case 'url':
-                    try { new URL(str); return true; } catch { return false; }
+                    // Check for a basic protocol or reasonable domain structure
+                    if (/^https?:\/\//.test(str) || /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/i.test(str)) {
+                        try {
+                            // Add a protocol if missing to satisfy the URL constructor
+                            let testUrl = str;
+                            if (!/^https?:\/\//.test(testUrl)) {
+                                testUrl = 'http://' + testUrl;
+                            }
+                            new URL(testUrl);
+                            return true;
+                        } catch {
+                            return false;
+                        }
+                    }
+                    return false;
                 case 'notEmpty':
                     return str.length > 0;
                 case 'maxLength':
@@ -29,19 +43,18 @@ const UIUtils = {
                     return false;
             }
         },
-        // --- THIS IS THE FIX ---
+        // --- FIX 1 (Issue 1) ---
         // Changed arrow functions to regular functions and `UIUtils.validators` to `this`
-        // to prevent a circular reference error during initialization.
         url: function(value) { return this._validate(value, 'url'); },
         notEmpty: function(value) { return this._validate(value, 'notEmpty'); },
         maxLength: function(value, max) { return this._validate(value, 'maxLength', {max}); }
-        // --- END OF FIX ---
     },
     // END: Fix for Issue #17
 
     /**
      * Dynamically loads the navigation bar from a file.
      * @param {string} containerId The ID of the element to inject the nav into.
+     *_nav.html
      * @param {string} currentPage The filename of the current page (e.g., "index.html").
      */
     loadNavbar: (() => {
@@ -63,7 +76,8 @@ const UIUtils = {
                 navContainer.innerHTML = await response.text();
                 
                 navContainer.querySelectorAll('.nav-link').forEach(link => {
-                    if (link.getAttribute('href') === currentPage) {
+                    // Use endsWith to robustly match the file name, even if the href is relative
+                    if (link.getAttribute('href').endsWith(currentPage)) {
                         link.classList.add('active');
                     }
                 });
@@ -148,7 +162,9 @@ const UIUtils = {
             return true;
         } catch (error) {
             console.error("Failed to download JSON:", error);
-            UIUtils.showModal("Download Error", "<p>Failed to create download.</p>", [{label: "OK"}]);
+            // --- FIX 2 (Issue 2) ---
+            // We call `this.showModal` because we are inside the UIUtils object
+            this.showModal("Download Error", "<p>Failed to create download.</p>", [{label: "OK"}]);
             return false;
         }
     },
@@ -240,7 +256,9 @@ const UIUtils = {
                 localStorage.setItem(key, JSON.stringify(state));
             } catch (err) {
                 console.error("Failed to save state:", err);
-                UIUtils.showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{label: 'OK'}]);
+                // --- FIX 3 (Issue 3) ---
+                // Call showModal via `this` (which is `UIUtils` in this context)
+                this.showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{label: 'OK'}]);
             }
         };
 
@@ -271,7 +289,9 @@ const UIUtils = {
             return;
         }
 
-        modalContent.innerHTML = `<h3>${UIUtils.escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
+        // --- FIX 4 (Issue 4) ---
+        // Use `this.escapeHTML` since we are inside the UIUtils object
+        modalContent.innerHTML = `<h3>${this.escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
         const actionsContainer = modalContent.querySelector('.modal-actions');
         
         actions.forEach(action => {
@@ -280,7 +300,8 @@ const UIUtils = {
             btn.textContent = action.label;
             btn.onclick = () => {
                 if (!action.callback || action.callback() !== false) {
-                    UIUtils.hideModal();
+                    // Call hideModal via `this`
+                    this.hideModal();
                 }
             };
             actionsContainer.appendChild(btn);
@@ -297,7 +318,8 @@ const UIUtils = {
      * @param {string} [focusElementId] Optional ID of the element to focus.
      */
     showValidationError: (title, message, focusElementId) => {
-        UIUtils.showModal(title, `<p>${message}</p>`, [{label: 'OK'}]);
+        // Call showModal via `this`
+        this.showModal(title, `<p>${message}</p>`, [{label: 'OK'}]);
         if (focusElementId) {
             setTimeout(() => document.getElementById(focusElementId)?.focus(), 100);
         }
@@ -312,13 +334,20 @@ const UIUtils = {
     // START: Fix for Issue #19
     showToast: (() => {
         let activeTimer = null;
+        
+        // --- FIX 5 (Issue 5) ---
+        // The IIFE runs when UIUtils is defined.
+        // We capture `this` (which is UIUtils) into a `self` variable.
+        const self = this; 
+        
         return (message) => {
             const toast = document.getElementById('toast');
             if (!toast) return;
             
             if (activeTimer) clearTimeout(activeTimer);
             
-            toast.innerHTML = `<span>${UIUtils.escapeHTML(message)}</span>`;
+            // Use `self.escapeHTML` instead of `UIUtils.escapeHTML`
+            toast.innerHTML = `<span>${self.escapeHTML(message)}</span>`;
             toast.classList.add('show');
             
             activeTimer = setTimeout(() => {
@@ -336,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // START: Fix for Issue #16 - Removed duplicate listener
         modalOverlay.addEventListener('click', (e) => {
             if (e.target.id === 'modal-overlay') {
+                // We must call UIUtils.hideModal here, as `this` refers to the wrong scope.
                 UIUtils.hideModal();
             }
         });
