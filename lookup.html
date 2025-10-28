@@ -61,7 +61,19 @@
                     openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
                     readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
                     createStateManager: (key, defaults, version, onCorruption) => isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null,
-                    validators: isReady ? UIUtils.validators : { notEmpty: (v) => v }
+                    // START: Fix for Issue #22 (Part 1)
+                    validators: isReady ? UIUtils.validators : { notEmpty: (v) => v },
+                    showValidationError: (title, message, focusId) => {
+                         if (isReady) {
+                            UIUtils.showModal(title, `<p>${message}</p>`, [{label: 'OK', callback: () => {
+                                const el = document.getElementById(focusId);
+                                if (el) el.focus();
+                            }}]);
+                         } else {
+                            console.error(title, message, focusId);
+                         }
+                    }
+                    // END: Fix for Issue #22 (Part 1)
                 };
             })();
 
@@ -399,16 +411,14 @@
                 const content = contentInput.value.trim();
                 const data = state[dataTypesConfig[type].dataKey];
 
+                // START: Fix for Issue #22 (Part 2)
                 if (!SafeUI.validators.notEmpty(keyword)) {
-                    SafeUI.showModal("Invalid Input", "<p>Error: Keyword cannot be blank.</p>", [{label: 'OK'}]);
-                    keywordInput.focus();
-                    return;
+                    return SafeUI.showValidationError("Invalid Input", "Keyword cannot be blank.", `edit-keyword-${id}`);
                 }
                 if (!SafeUI.validators.notEmpty(content)) {
-                    SafeUI.showModal("Invalid Input", "<p>Error: Content cannot be blank.</p>", [{label: 'OK'}]);
-                    contentInput.focus();
-                    return;
+                    return SafeUI.showValidationError("Invalid Input", "Content cannot be blank.", `edit-content-${id}`);
                 }
+                // END: Fix for Issue #22 (Part 2)
 
                 let itemToUpdate = null;
                 let isDuplicate = false;
@@ -423,11 +433,11 @@
                     if (itemToUpdate && isDuplicate) break;
                 }
 
+                // START: Fix for Issue #22 (Part 3)
                 if (isDuplicate) {
-                    SafeUI.showModal("Duplicate Keyword", `<p>Error: Keyword "${SafeUI.escapeHTML(keyword)}" already exists.</p>`, [{label: 'OK'}]);
-                    keywordInput.focus();
-                    return;
+                    return SafeUI.showValidationError("Duplicate Keyword", `Keyword "${SafeUI.escapeHTML(keyword)}" already exists.`, `edit-keyword-${id}`);
                 }
+                // END: Fix for Issue #22 (Part 3)
 
                 if (itemToUpdate) {
                     itemToUpdate.keyword = keyword;
@@ -457,46 +467,40 @@
                 renderAll();
             }
 
+            // START: Fix for Issue #28
             function processImportData(jsonData) {
                 SafeUI.showToast("Processing file...");
 
-                if (jsonData.appName === APP_NAME && jsonData.data) {
-                    SafeUI.showModal("Confirm Restore", "<p>This is a full backup file. Restoring will overwrite all current data.</p>", [
-                        { label: 'Cancel' },
-                        {
-                            label: 'Restore',
-                            class: 'button-danger',
-                            callback: () => {
-                                state = jsonData.data || { ...defaultState };
-                                if (!state.routingData) state.routingData = [];
-                                if (!state.snippetsData) state.snippetsData = [];
-                                saveState();
-                                currentEditState = { id: null, type: null };
-                                renderAll();
-                                SafeUI.showToast("Restore successful.");
-                            }
-                        }
-                    ]);
+                const performRestore = (data) => {
+                    state = data || { ...defaultState };
+                    if (!state.routingData) state.routingData = [];
+                    if (!state.snippetsData) state.snippetsData = [];
+                    saveState();
+                    currentEditState = { id: null, type: null };
+                    renderAll();
+                    SafeUI.showToast("Restore successful.");
+                };
 
-                } else if (jsonData.appName === 'assignment_tool' && jsonData.data) {
-                    SafeUI.showModal("Confirm Legacy Restore", "<p>This is a backup from the old 'Assignment Tool'. Restore it?</p>", [
+                const isFullBackup = jsonData.appName === APP_NAME && jsonData.data;
+                const isLegacyBackup = jsonData.appName === 'assignment_tool' && jsonData.data;
+
+                if (isFullBackup || isLegacyBackup) {
+                    const title = isLegacyBackup ? "Confirm Legacy Restore" : "Confirm Restore";
+                    const message = isLegacyBackup ? 
+                        "<p>This is a backup from the old 'Assignment Tool'. Restoring will overwrite all current data.</p>" : 
+                        "<p>This is a full backup file. Restoring will overwrite all current data.</p>";
+                    
+                    SafeUI.showModal(title, message, [
                         { label: 'Cancel' },
                         {
                             label: 'Restore',
-                            class: 'button-primary',
-                            callback: () => {
-                                state = jsonData.data || { ...defaultState };
-                                if (!state.routingData) state.routingData = [];
-                                if (!state.snippetsData) state.snippetsData = [];
-                                saveState();
-                                currentEditState = { id: null, type: null };
-                                renderAll();
-                                SafeUI.showToast("Restore successful.");
-                            }
+                            class: isLegacyBackup ? 'button-primary' : 'button-danger',
+                            callback: () => performRestore(jsonData.data)
                         }
                     ]);
 
                 } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
+                // END: Fix for Issue #28
                     // START: Fix for Issue #13
                     // Validate structure
                     const validateItems = (items, requiredKeys) => {
@@ -570,11 +574,10 @@
 
             function attachEventListeners() {
                 DOMElements.searchInput.addEventListener('input', renderAll);
-                DOMElements.btnAddTewEntry.addEventListener('click', handleAddNewEntry);
-
-                // START: Fix for Issue #14
-                // Removed dead code references
-                // END: Fix for Issue #14
+                DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
+                // START: Fix for Issue #29
+                // Removed dead code
+                // END: Fix for Issue #29
             }
 
             function init() {
