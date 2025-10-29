@@ -12,9 +12,6 @@ const BackupRestore = {
      * Creates and triggers download of a JSON backup file
      * @param {Object} state - The current application state object
      * @param {string} appName - A prefix for the backup filename (e.g., 'dashboard')
-     * * Example:
-     * BackupRestore.createBackup(state, 'myapp');
-     * // Triggers download for 'myapp-backup-2024-01-15.json'
      */
     createBackup: (state, appName = 'app') => {
         try {
@@ -39,17 +36,6 @@ const BackupRestore = {
     /**
      * Opens file picker and attempts to restore from JSON file
      * @param {Function} onRestore - Callback function(data) called on successful file read/parse
-     * * Example:
-     * BackupRestore.restoreBackup((backupData) => {
-     * // Validate and apply backup data
-     * if (backupData.appName === 'myapp') {
-     * state = backupData.data;
-     * saveState();
-     * SafeUI.showToast('Restore successful');
-     * } else {
-     * SafeUI.showModal('Error', '<p>Not a 'myapp' backup file.</p>', [{label: 'OK'}]);
-     * }
-     * });
      */
     restoreBackup: (onRestore) => {
         SafeUI.openFilePicker((file) => {
@@ -72,12 +58,6 @@ const BackupRestore = {
      * @param {Object} data - Parsed backup data
      * @param {Array<string>} [requiredKeys] - Optional array of keys to ensure exist in data.data
      * @returns {boolean} True if valid
-     * * Example:
-     * const data = JSON.parse(fileContent);
-     * if (!BackupRestore.validateBackup(data, ['apps', 'notes'])) {
-     * SafeUI.showModal('Error', '<p>Invalid backup file structure.</p>', [{label: 'OK'}]);
-     * return;
-     * }
      */
     validateBackup: (data, requiredKeys = []) => {
         if (!data || typeof data !== 'object' || !data.data || typeof data.data !== 'object') {
@@ -93,11 +73,6 @@ const BackupRestore = {
      * @param {Array} items - Array of items to check
      * @param {Array<string>} requiredFields - Keys that must exist in each item object
      * @returns {boolean} True if all items are valid
-     * * Example:
-     * if (!BackupRestore.validateItems(data.apps, ['id', 'name', 'url'])) {
-     * SafeUI.showModal('Invalid Data', '<p>Some items are corrupt.</p>', [{label: 'OK'}]);
-     * return;
-     * }
      */
     validateItems: (items, requiredFields) => {
         if (!Array.isArray(items)) return false;
@@ -105,6 +80,55 @@ const BackupRestore = {
         return items.every(item => {
             if (!item || typeof item !== 'object') return false;
             return requiredFields.every(field => field in item);
+        });
+    },
+
+    /**
+     * Handles the complete backup restore flow: file picking, reading, and validation.
+     * @param {Object} config - Configuration object
+     * - appName {string} - The expected appName in the backup (e.g., 'dashboard')
+     * - legacyAppName {string} - [Optional] A legacy appName to also accept (e.g., 'assignment_tool')
+     * - itemValidators {Object} - An object where keys are state properties (e.g., 'apps')
+     * and values are arrays of required fields (e.g., ['id', 'name'])
+     * - onRestore {Function} - Callback(dataToValidate, isLegacy) called on success
+     */
+    handleRestoreUpload: (config) => {
+        BackupRestore.restoreBackup((restoredData) => {
+            try {
+                // Handle new backup format (with metadata) or old format (just state)
+                const dataToValidate = restoredData.data ? restoredData.data : restoredData;
+                const isNewBackup = !!restoredData.data;
+                const appName = restoredData.appName;
+                
+                const isLegacy = config.legacyAppName && appName === config.legacyAppName;
+                const isCorrectApp = appName === config.appName;
+
+                // If it's the new backup format, it MUST have a matching appName (or legacy name)
+                if (isNewBackup && !isCorrectApp && !isLegacy) {
+                    throw new Error(`This file is not a valid '${config.appName}' backup.`);
+                }
+
+                // Validate that the main data keys exist (e.g., 'apps', 'notes')
+                const requiredDataKeys = Object.keys(config.itemValidators);
+                if (isNewBackup && !BackupRestore.validateBackup(restoredData, requiredDataKeys)) {
+                     throw new Error('Backup file is invalid or missing required data.');
+                }
+
+                // Validate the structure of items within each array
+                for (const [key, fields] of Object.entries(config.itemValidators)) {
+                    // It's ok if a key is missing (e.g., old backup), but if it exists, it must be valid
+                    if (dataToValidate[key] && !BackupRestore.validateItems(dataToValidate[key], fields)) {
+                        throw new Error(`Backup data for '${key}' contains corrupt items.`);
+                    }
+                }
+                
+                // All validations passed, call the page-specific restore handler
+                config.onRestore(dataToValidate, isLegacy);
+
+            } catch(err) {
+                console.error("Restore failed:", err);
+                SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+            }
         });
     }
 };
@@ -120,19 +144,9 @@ const DataValidator = {
      * @param {*} value - Value to check
      * @param {*} excludeId - ID to exclude from check (for updates)
      * @returns {boolean} True if duplicate found
-     * * Example:
-     * const isDuplicate = DataValidator.hasDuplicate(
-     * state.apps,
-     * 'name',
-     * 'Slack',
-     * currentApp.id  // Exclude current app when editing
-     * );
-     * * if (isDuplicate) {
-     * SafeUI.showValidationError('Duplicate Name', 'This name already exists.', 'app-name-input');
-     * return false;
-     * }
      */
     hasDuplicate: (items, field, value, excludeId = null) => {
+        if (!Array.isArray(items)) return false;
         const normalizedValue = String(value).toLowerCase().trim();
         
         return items.some(item => {
@@ -147,21 +161,6 @@ const DataValidator = {
      * @param {Object} fields - Object with field values to validate
      * @param {Object} rules - Validation rules for each field
      * @returns {Object} { valid: boolean, errors: Array }
-     * * Example:
-     * const result = DataValidator.validateFields(
-     * {
-     * name: document.getElementById('name').value,
-     * email: document.getElementById('email').value
-     * },
-     * {
-     * name: { required: true, maxLength: 50 },
-     * email: { required: true, pattern: /^.+@.+\..+$/ }
-     * }
-     * );
-     * * if (!result.valid) {
-     * SafeUI.showModal('Validation Error', `<p>${result.errors.join('<br>')}</p>`, [{label: 'OK'}]);
-     * return;
-     * }
      */
     validateFields: (fields, rules) => {
         const errors = [];
