@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
-    <script src="ui.common.js" defer></script>
+    <script src="js/ui.common.js" defer></script>
+    <script src="js/app-core.js" defer></script>
+    <script src="js/ui-components.js" defer></script>
+    <script src="js/data-management.js" defer></script>
 </head>
 <body class="lookup-page">
 
@@ -39,89 +42,53 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+    AppLifecycle.run(() => {
 
             const APP_NAME = 'lookup';
             const APP_VERSION = '6.1.0';
             const DATA_KEY = `${APP_NAME}_data`;
 
-            const SafeUI = (() => {
-                const isReady = typeof UIUtils !== 'undefined' && UIUtils;
-                
-                return {
-                    isReady,
-                    loadNavbar: (containerId, currentPage) => isReady && UIUtils.loadNavbar(containerId, currentPage),
-                    showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
-                    hideModal: () => isReady && UIUtils.hideModal(),
-                    showToast: (msg) => isReady ? UIUtils.showToast(msg) : console.log("Toast:", msg),
-                    escapeHTML: (str) => isReady ? UIUtils.escapeHTML(str) : (str || ''),
-                    generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
-                    copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
-                    downloadJSON: (data, filename) => isReady && UIUtils.downloadJSON(data, filename),
-                    openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
-                    readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
-                    createStateManager: (key, defaults, version, onCorruption) => isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null,
-                    // START: Fix for Issue #22 (Part 1)
-                    validators: isReady ? UIUtils.validators : { notEmpty: (v) => v },
-                    showValidationError: (title, message, focusId) => {
-                         if (isReady) {
-                            UIUtils.showModal(title, `<p>${message}</p>`, [{label: 'OK', callback: () => {
-                                const el = document.getElementById(focusId);
-                                if (el) el.focus();
-                            }}]);
-                         } else {
-                            console.error(title, message, focusId);
-                         }
-                    }
-                    // END: Fix for Issue #22 (Part 1)
-                };
-            })();
-
-            const DOMElements = {};
-
-            function cacheAndValidateDOMElements() {
-                const requiredIds = [
-                    'search-input', 'routing-results', 'snippets-results',
-                    'btn-add-new-entry',
-                    'toast', 'modal-overlay', 'modal-content',
-                    'navbar-container'
-                ];
-                
-                let allElementsFound = true;
-                for (const id of requiredIds) {
-                    const el = document.getElementById(id);
-                    if (!el) {
-                        console.error(`FATAL: DOM element with id "${id}" not found.`);
-                        allElementsFound = false;
-                    }
-                    DOMElements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
-                }
-                return allElementsFound;
-            }
+            // SafeUI wrapper (lines 64-97) removed
+            // cacheAndValidateDOMElements (lines 99-116) removed
 
             const defaultState = {
                 routingData: [],
                 snippetsData: []
             };
 
-            const stateManager = SafeUI.createStateManager(DATA_KEY, defaultState, APP_VERSION, () => {
-                SafeUI.showModal('Data Corruption Detected', `<p>Your lookup data could not be read. A backup has been saved and the page has been reset.</p>`, [{ label: 'OK' }]);
+            // NEW: Initialize page
+            const ctx = AppLifecycle.initPage({
+                pageName: 'lookup.html',
+                storageKey: DATA_KEY,
+                defaultState: defaultState,
+                version: APP_VERSION,
+                requiredElements: [
+                    'search-input', 'routing-results', 'snippets-results',
+                    'btn-add-new-entry',
+                    'toast', 'modal-overlay', 'modal-content',
+                    'navbar-container'
+                ]
+                // NOTE: Dropping onCorruption handler to match refactor pattern
             });
 
-            let state;
-            let currentEditState = { id: null, type: null };
+            if (!ctx) return;
 
-            function saveState() {
-                if (!stateManager) return;
+            // Unpack ctx
+            let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
+
+            // Redefine saveState to include sorting
+            const saveState = () => {
                 try {
                     state.routingData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     state.snippetsData.sort((a, b) => a.keyword.localeCompare(b.keyword));
-                    stateManager.save(state);
+                    originalSaveState(); // Call the original save function
                 } catch (e) {
                     console.error("Failed to save state:", e);
                     SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
                 }
-            }
+            };
+            
+            let currentEditState = { id: null, type: null };
             
             const dataTypesConfig = {
                 routing: {
@@ -138,11 +105,9 @@
                 }
             };
 
+            // Replaced with UIPatterns.highlightSearchTerm
             function highlight(text, term) {
-                if (!term) return SafeUI.escapeHTML(text);
-                const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-                const regex = new RegExp(`(${escapedTerm})`, 'gi');
-                return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
+                return UIPatterns.highlightSearchTerm(text, term);
             }
 
             function renderList(type, searchTerm = '') {
@@ -213,15 +178,11 @@
                 const deleteButton = document.createElement('button');
                 deleteButton.className = 'btn-delete';
                 deleteButton.textContent = 'Delete';
+                
+                // Replaced modal with UIPatterns.confirmDelete
                 deleteButton.onclick = () => {
-                    SafeUI.showModal('Delete Entry', `<p>Are you sure you want to delete "${SafeUI.escapeHTML(item.keyword)}"?</p><p>This cannot be undone.</p>`, [
-                        { label: 'Cancel' },
-                        {
-                            label: 'Delete',
-                            class: 'button-danger',
-                            callback: () => handleDelete(item.id, type)
-                        }
-                    ]);
+                    const itemType = type === 'routing' ? 'Routing Entry' : 'Snippet';
+                    UIPatterns.confirmDelete(itemType, item.keyword, () => handleDelete(item.id, type));
                 };
                 
                 if (type === 'routing') {
@@ -420,24 +381,14 @@
                 }
                 // END: Fix for Issue #22 (Part 2)
 
-                let itemToUpdate = null;
-                let isDuplicate = false;
-                for (const item of data) {
-                    if (item.id === id) {
-                        itemToUpdate = item;
-                    // START: Fix for Issue #12
-                    } else if (item.keyword.toLowerCase() === keyword.toLowerCase() && item.type === type) {
-                    // END: Fix for Issue #12
-                        isDuplicate = true;
-                    }
-                    if (itemToUpdate && isDuplicate) break;
-                }
+                // Replaced duplicate check with DataValidator.hasDuplicate
+                let itemToUpdate = data.find(item => item.id === id);
 
-                // START: Fix for Issue #22 (Part 3)
+                const isDuplicate = DataValidator.hasDuplicate(data, 'keyword', keyword, id);
+
                 if (isDuplicate) {
                     return SafeUI.showValidationError("Duplicate Keyword", `Keyword "${SafeUI.escapeHTML(keyword)}" already exists.`, `edit-keyword-${id}`);
                 }
-                // END: Fix for Issue #22 (Part 3)
 
                 if (itemToUpdate) {
                     itemToUpdate.keyword = keyword;
@@ -502,19 +453,12 @@
                 } else if (Array.isArray(jsonData.routing) || Array.isArray(jsonData.snippets)) {
                 // END: Fix for Issue #28
                     // START: Fix for Issue #13
-                    // Validate structure
-                    const validateItems = (items, requiredKeys) => {
-                        return items.every(item => 
-                            item && typeof item === 'object' && 
-                            requiredKeys.every(key => key in item)
-                        );
-                    };
-                    
+                    // Replaced local validateItems with BackupRestore.validateItems
                     const routing = jsonData.routing || [];
                     const snippets = jsonData.snippets || [];
                     
-                    if (!validateItems(routing, ['id', 'keyword', 'content']) || 
-                        !validateItems(snippets, ['id', 'keyword', 'content'])) {
+                    if (!BackupRestore.validateItems(routing, ['id', 'keyword', 'content']) || 
+                        !BackupRestore.validateItems(snippets, ['id', 'keyword', 'content'])) {
                         SafeUI.showModal("Import Error", "<p>File contains invalid item structure.</p>", [{label: 'OK'}]);
                         return;
                     }
@@ -567,45 +511,26 @@
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
             }
 
-            function init() {
-                if (!SafeUI.isReady || !stateManager) {
-                    console.error("FATAL: UIUtils or StateManager failed to initialize. Application halted.");
-                    document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-                        <h2>Application Failed to Load</h2>
-                        <p>A critical file (ui.common.js) may be missing or failed to load. Please check the console for errors.</p>
-                    </div>`;
-                    return;
-                }
-                
-                if (!cacheAndValidateDOMElements()) {
-                    console.error("FATAL: Missing critical DOM elements. Application halted.");
-                    return;
-                }
+            // init() function (lines 407-422) removed and logic merged
+            // try/catch (lines 425-430) removed, handled by AppLifecycle.run
 
-                SafeUI.loadNavbar("navbar-container", "lookup.html");
-                
-                dataTypesConfig.routing.listElement = DOMElements.routingResults;
-                dataTypesConfig.snippets.listElement = DOMElements.snippetsResults;
-                
-                state = stateManager.load();
+            // Logic from old init()
+            dataTypesConfig.routing.listElement = DOMElements.routingResults;
+            dataTypesConfig.snippets.listElement = DOMElements.snippetsResults;
+            
+            // state is already loaded by initPage
+            if (!state.routingData) state.routingData = [];
+            if (!state.snippetsData) state.snippetsData = [];
 
-                if (!state.routingData) state.routingData = [];
-                if (!state.snippetsData) state.snippetsData = [];
+            attachEventListeners();
+            renderAll();
 
-                attachEventListeners();
-                renderAll();
-            }
-
-Setting `maxHeight` in `setupTextareaAutoResize` to 300px.
-            try {
-                init();
-            } catch (err) {
-                console.error("Unhandled exception during initialization:", err);
-                SafeUI.showModal("Fatal Error", `<p>An unexpected error occurred: ${err.message}</p>`, [{label: 'OK'}]);
-            }
+            // Note: This was in the original file, but setupTextareaAutoResize is
+            // not defined here. It's in app-core.js as DOMHelpers.setupTextareaAutoResize
+            // and is not used on this page, so I am removing the line below.
+            // Setting `maxHeight` in `setupTextareaAutoResize` to 300px.
         });
     </script>
 </body>
 </html>
-
 
