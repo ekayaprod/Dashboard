@@ -24,21 +24,22 @@
                         <button id="restore-btn-menu" class="button-base" title="Restore Dashboard">Restore</button>
                     </div>
                 </div>
+                 <!-- --- CHANGE: Replaced search input with a select dropdown --- -->
                  <div class="form-group" id="app-select-group">
-                    <label for="app-search-input">Select Application</label>
-                    <div class="search-dropdown-wrapper">
-                        <input type="text" id="app-search-input" class="sidebar-input" placeholder="Search applications..." autocomplete="off">
-                        <div id="app-dropdown-panel" class="search-dropdown-panel hidden"></div>
-                    </div>
+                    <label for="app-select">Select Application</label>
+                    <select id="app-select" class="sidebar-input"></select>
                 </div>
+                <!-- --- END CHANGE --- -->
                 <div id="app-empty-state" class="empty-state-message hidden">
                     No applications yet. Click '+ App' to add one!
                 </div>
 
                 <div id="app-details-container" class="hidden">
                     <div id="app-editor-fields">
+                        <!-- --- CHANGE: App section box now contains all fields --- -->
                         <div class="app-section-box">
-                            <div class="form-group" id="edit-app-name-wrapper">
+                            <!-- --- CHANGE: Removed redundant App Name field --- -->
+                            <div class="form-group hidden" id="edit-app-name-wrapper">
                                 <label for="edit-app-name">App Name</label>
                                 <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
                             </div>
@@ -48,16 +49,18 @@
                                    <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
                                 </div>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="label-group">
-                                <label for="edit-app-escalation">Notes</label>
-                                <div class="button-group">
-                                    <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
-                                    <button id="delete-app-btn" class="icon-btn delete-btn" title="Delete Application"></button>
+                            <!-- --- CHANGE: Moved Notes inside the box and renamed label --- -->
+                            <div class="form-group">
+                                <div class="label-group">
+                                    <label for="edit-app-escalation">App Notes / Escalation</label>
+                                    <div class="button-group">
+                                        <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
+                                        <button id="delete-app-btn" class="icon-btn delete-btn" title="Delete Application"></button>
+                                    </div>
                                 </div>
+                                <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                             </div>
-                            <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
+                            <!-- --- END CHANGE --- -->
                         </div>
                     </div>
                 </div>
@@ -108,7 +111,7 @@
             defaultState,
             version: APP_VERSION,
             requiredElements: [
-                'shortcuts-container', 'app-select-group', 'app-search-input', 'app-dropdown-panel',
+                'shortcuts-container', 'app-select-group', 'app-select', // --- CHANGE: Replaced search input ---
                 'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
                 'edit-app-name-wrapper', 'url-editor', 'edit-app-name', 'edit-app-urls',
                 'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
@@ -259,37 +262,37 @@
             return { init, render, add };
         };
 
-        const renderAppDropdown = (filterTerm = '') => {
-            const panel = DOMElements.appDropdownPanel;
-            panel.innerHTML = '';
-            // SearchHelper is now loaded from js/ui-components.js
-            const filteredApps = SearchHelper.simpleSearch(getCollection('apps'), filterTerm, ['name'])
-                .sort((a,b) => a.name.localeCompare(b.name));
+        // --- CHANGE: Deleted renderAppDropdown function ---
 
-            if (filteredApps.length > 0) {
-                const fragment = document.createDocumentFragment();
-                filteredApps.forEach(app => {
-                    const item = document.createElement('div');
-                    item.className = 'search-dropdown-item';
-                    item.innerHTML = UIPatterns.highlightSearchTerm(app.name, filterTerm);
-                    item.dataset.id = app.id;
-                    fragment.appendChild(item);
-                });
-                panel.appendChild(fragment);
-            } else {
-                panel.innerHTML = `<div class="search-dropdown-item" style="color: var(--subtle-text);">No results</div>`;
-            }
-        };
-
+        // --- CHANGE: Updated renderAppData to populate the <select> ---
         const renderAppData = () => {
+            const appSelect = DOMElements.appSelect;
+            const selectedValue = appSelect.value; // Remember what was selected
+
             if (!hasItems('apps')) {
                 DOMElements.appSelectGroup.classList.add('hidden');
                 DOMElements.appEmptyState.classList.remove('hidden');
             } else {
                 DOMElements.appSelectGroup.classList.remove('hidden');
                 DOMElements.appEmptyState.classList.add('hidden');
+                
+                appSelect.innerHTML = '<option value="">-- Select an App --</option>'; // Clear and add default
+                
+                const sortedApps = getCollection('apps').sort((a,b) => a.name.localeCompare(b.name));
+                
+                sortedApps.forEach(app => {
+                    appSelect.add(new Option(app.name, app.id));
+                });
+
+                // Restore previous selection if it still exists
+                if (getCollection('apps').some(app => app.id === selectedValue)) {
+                    appSelect.value = selectedValue;
+                } else {
+                    appSelect.value = ""; // Reset if selected app was deleted
+                }
             }
         };
+        // --- END CHANGE ---
 
         const renderNotesData = () => {
             const noteSelect = DOMElements.noteSelect;
@@ -322,17 +325,18 @@
 
         const renderAll = () => {
             if (shortcutsManager) shortcutsManager.render();
-            renderAppData();
+            renderAppData(); // This now renders the app dropdown
             renderNotesData();
         };
         
         const checkFormDirty = () => {
             if (!initialAppData) return false;
-            if (initialAppData.id === null) {
+            if (initialAppData.id === null) { // New app form
                 return DOMElements.editAppName.value.trim() !== '' ||
                        DOMElements.editAppUrls.value.trim() !== '' ||
                        DOMElements.editAppEscalation.value.trim() !== '';
             }
+            // Existing app form
             return DOMElements.editAppName.value.trim() !== initialAppData.name ||
                    DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
                    DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
@@ -343,121 +347,64 @@
         };
 
         const displayAppDetails = (appId) => {
-            selectedAppId = appId;
+            selectedAppId = appId; // appId might be "" or null
             const isVisible = !!appId;
             DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
 
             if (isVisible) {
                 const app = getCollection('apps').find(a => a.id === appId);
-                if (!app) return;
+                if (!app) return; // Should not happen if called from select
                 
                 initialAppData = {...app};
-                DOMElements.appSearchInput.value = app.name;
+                // DOMElements.appSearchInput.value = app.name; // No longer exists
                 DOMElements.editAppName.value = app.name;
                 DOMElements.editAppUrls.value = app.urls;
                 DOMElements.editAppEscalation.value = app.escalation;
             } else {
                 initialAppData = null;
-                DOMElements.appSearchInput.value = '';
-                DOMElements.appSearchInput.placeholder = 'Search applications...';
+                // DOMElements.appSearchInput.value = ''; // No longer exists
             }
             updateSaveButtonState();
         };
 
         const createNewAppForm = () => {
-            displayAppDetails(null);
-            DOMElements.appDetailsContainer.classList.remove('hidden');
+            displayAppDetails(null); // Hide details
+            DOMElements.appDetailsContainer.classList.remove('hidden'); // Show empty container
             DOMElements.editAppName.value = '';
             DOMElements.editAppUrls.value = '';
             DOMElements.editAppEscalation.value = '';
             initialAppData = {id: null, name: '', urls: '', escalation: ''};
             updateSaveButtonState();
+            
+            // --- CHANGE: Show the app name wrapper for new apps ---
+            DOMElements.editAppNameWrapper.classList.remove('hidden');
+            DOMElements.editAppName.focus();
         };
 
         [DOMElements.editAppName, DOMElements.editAppUrls, DOMElements.editAppEscalation].forEach(el => {
             el.addEventListener('input', updateSaveButtonState);
         });
 
-        DOMElements.appSearchInput.addEventListener('click', () => {
-            renderAppDropdown(''); // Show all items
-            DOMElements.appDropdownPanel.classList.remove('hidden');
-            DOMElements.appSearchInput.select(); // --- CHANGE: Select text on click ---
-        });
-        
-        DOMElements.appSearchInput.addEventListener('input', () => {
-            renderAppDropdown(DOMElements.appSearchInput.value);
-        });
-
-        const handleDropdownKeyNav = (() => {
-            let keyBuffer = '';
-            let keyTimer = null;
-            
-            return (e) => {
-                const panel = DOMElements.appDropdownPanel;
-                if (panel.classList.contains('hidden')) return;
-                
-                const items = Array.from(panel.querySelectorAll('.search-dropdown-item[data-id]'));
-                if (items.length === 0) return;
-                
-                const selected = panel.querySelector('.search-dropdown-item.selected');
-                let index = selected ? items.indexOf(selected) : -1;
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    index = Math.min(index + 1, items.length - 1);
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    index = Math.max(index - 1, 0);
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (selected) selected.click();
-                    return;
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    panel.classList.add('hidden');
-                    return;
-                } else {
-                    return;
-                }
-                
-                items.forEach(item => item.classList.remove('selected'));
-                if (items[index]) {
-                    items[index].classList.add('selected');
-                    items[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                }
-            };
-        })();
-
-        DOMElements.appSearchInput.addEventListener('keydown', handleDropdownKeyNav);
-
-        DOMElements.appDropdownPanel.addEventListener('click', (e) => {
-            const target = e.target.closest('.search-dropdown-item');
-            if (!target?.dataset.id) return;
-            
-            const targetId = target.dataset.id;
+        // --- CHANGE: New listener for the select dropdown ---
+        DOMElements.appSelect.addEventListener('change', () => {
+            const selectedId = DOMElements.appSelect.value;
             
             const switchApp = () => {
-                displayAppDetails(targetId);
-                DOMElements.appDropdownPanel.classList.add('hidden');
+                // --- CHANGE: Hide app name field when switching ---
+                // It will be shown if 'Add New' is clicked
+                DOMElements.editAppNameWrapper.classList.add('hidden');
+                displayAppDetails(selectedId); // selectedId will be "" if "-- Select --" is chosen
             };
-            
+
             if (checkFormDirty()) {
                 UIPatterns.confirmUnsavedChanges(switchApp);
             } else {
                 switchApp();
             }
         });
+        // --- END CHANGE ---
 
-        DOMElements.appDropdownPanel.addEventListener('mouseover', (e) => {
-            const target = e.target.closest('.search-dropdown-item');
-            if (target && !target.classList.contains('selected')) {
-                const currentlySelected = DOMElements.appDropdownPanel.querySelector('.search-dropdown-item.selected');
-                if (currentlySelected) {
-                    currentlySelected.classList.remove('selected');
-                }
-                target.classList.add('selected');
-            }
-        });
+        // --- CHANGE: Deleted all listeners for appSearchInput and appDropdownPanel ---
 
         DOMElements.saveChangesBtn.addEventListener('click', () => {
             const name = DOMElements.editAppName.value.trim();
@@ -465,6 +412,8 @@
             const escalation = DOMElements.editAppEscalation.value.trim();
 
             if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 100)) {
+                // Show the hidden name field so the user can see the error
+                DOMElements.editAppNameWrapper.classList.remove('hidden');
                 return SafeUI.showValidationError('Invalid Name', 'App name must be 1-100 characters.', 'edit-app-name');
             }
             if (!SafeUI.validators.notEmpty(urls) && !SafeUI.validators.notEmpty(escalation)) {
@@ -472,20 +421,27 @@
             }
             // DataValidator is now loaded from js/data-management.js
             if (DataValidator.hasDuplicate(getCollection('apps'), 'name', name, selectedAppId)) {
+                // Show the hidden name field so the user can see the error
+                DOMElements.editAppNameWrapper.classList.remove('hidden');
                 return SafeUI.showValidationError('Duplicate Name', 'An app with this name already exists.', 'edit-app-name');
             }
 
             const appIndex = getCollection('apps').findIndex(a => a.id == selectedAppId);
             let savedAppId = selectedAppId;
-            if (appIndex > -1) {
+            if (appIndex > -1) { // Update existing
                 getCollection('apps')[appIndex] = { ...getCollection('apps')[appIndex], name, urls, escalation };
-            } else {
+            } else { // Add new
                 const newApp = { id: SafeUI.generateId(), name, urls, escalation };
                 getCollection('apps').push(newApp);
                 savedAppId = newApp.id;
             }
             saveState();
-            renderAppData();
+            renderAppData(); // --- CHANGE: Update select list with new name ---
+            
+            // --- CHANGE: Reselect the item and hide name field ---
+            DOMElements.appSelect.value = savedAppId; 
+            DOMElements.editAppNameWrapper.classList.add('hidden');
+            
             displayAppDetails(savedAppId);
             SafeUI.showToast('Changes saved');
         });
@@ -499,16 +455,14 @@
                         getCollection('apps').splice(appIndex, 1);
                         saveState();
                         displayAppDetails(null);
-                        renderAll();
+                        renderAll(); // --- CHANGE: renderAll will update the select list ---
                     });
                 }
              }
         });
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-dropdown-wrapper')) DOMElements.appDropdownPanel.classList.add('hidden');
-        });
-
+        // --- CHANGE: Deleted click listener for appDropdownPanel ---
+        
         DOMElements.addShortcutBtnMenu.addEventListener('click', (e) => {
             e.preventDefault();
             shortcutsManager.add();
@@ -516,10 +470,15 @@
 
         DOMElements.addNewAppBtnMenu.addEventListener('click', (e) => {
             e.preventDefault();
-            if (checkFormDirty()) {
-                UIPatterns.confirmUnsavedChanges(createNewAppForm);
-            } else {
+            const doCreate = () => {
+                DOMElements.appSelect.value = ""; // Deselect any app
                 createNewAppForm();
+            };
+
+            if (checkFormDirty()) {
+                UIPatterns.confirmUnsavedChanges(doCreate);
+            } else {
+                doCreate();
             }
         });
 
@@ -653,7 +612,7 @@ DOMElements.notepadEditor.addEventListener('blur', () => {
         const init = () => {
             // DOMHelpers is now external
             if (DOMElements.editAppEscalation) {
-                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalBcalation);
+                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
             }
             if (DOMElements.editAppUrls) {
                 DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls, 150);
