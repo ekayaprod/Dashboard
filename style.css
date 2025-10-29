@@ -349,6 +349,8 @@ body {
     line-height: 1.6; 
     box-sizing: border-box; 
     font-family: inherit; 
+    resize: none; /* --- CHANGE: Disabled manual resize --- */
+    overflow-y: hidden; /* --- CHANGE: Hide scrollbar, auto-resize will handle height --- */
 }
 .notepad-editor:focus { 
     outline: none; 
