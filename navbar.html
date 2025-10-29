@@ -7,4 +7,27 @@
     </div>
 </nav>
 
+<!-- This script now makes the navbar "smart" -->
+<script>
+    (function() {
+        // Find the <nav> element that this script is inside of.
+        // document.currentScript is a reference to the <script> tag itself.
+        const navElement = document.currentScript.closest('nav');
+        if (!navElement) return;
 
+        // Get the current page's filename (e.g., "index.html")
+        const currentPage = window.location.pathname.split('/').pop();
+        if (!currentPage) return;
+
+        // Find all links within this specific navbar
+        const links = navElement.querySelectorAll('.nav-link');
+        
+        // Loop through them and add the 'active' class to the matching link
+        links.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href.endsWith(currentPage)) {
+                link.classList.add('active');
+            }
+        });
+    })();
+</script>
