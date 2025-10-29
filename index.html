@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <script src="ui.common.js" defer></script>
+    <script src="js/ui.common.js" defer></script>
+    <script src="js/app-core.js" defer></script>
+    <script src="js/ui-components.js" defer></script>
+    <script src="js/data-management.js" defer></script>
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -84,45 +87,25 @@
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    AppLifecycle.run(() => {
         const APP_VERSION = '6.1.0';
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const DEBOUNCE_DELAY = 500;
-
-        const SafeUI = (() => {
-            const isReady = typeof UIUtils !== 'undefined' && UIUtils;
-            
-            const getSVGIcons = () => {
-                if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
-                return { plus: '+', pencil: '✎', trash: '🗑' }; // Removed copy/menu
-            };
-
-            return {
-                isReady,
-                SVGIcons: getSVGIcons(),
-                loadNavbar: (containerId, currentPage) => isReady && UIUtils.loadNavbar(containerId, currentPage),
-                showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
-                // START: Fix for Issue #22/27 (Twinned)
-                showValidationError: (title, msg, elId) => isReady ? UIUtils.showValidationError(title, msg, elId) : console.error("UIUtils not loaded", title),
-                // END: Fix for Issue #22/27 (Twinned)
-                hideModal: () => isReady && UIUtils.hideModal(),
-                showToast: (msg) => isReady ? UIUtils.showToast(msg) : console.log("Toast:", msg),
-                escapeHTML: (str) => isReady ? UIUtils.escapeHTML(str) : (str || ''),
-                generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
-                debounce: (func, delay) => isReady ? UIUtils.debounce(func, delay) : func,
-                copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
-                downloadJSON: (data, filename) => isReady && UIUtils.downloadJSON(data, filename),
-                openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
-                readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
-                createStateManager: (key, defaults, version, onCorruption) => isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null,
-                validators: isReady ? UIUtils.validators : { url: (v) => v, notEmpty: (v) => v, maxLength: (v, m) => v }
-            };
-        })();
-        
-        const DOMElements = {};
-
-        function cacheAndValidateDOMElements() {
-            const requiredIds = [
+    
+        const defaultState = {
+            apps: [],
+            notes: [],
+            shortcuts: [],
+            version: APP_VERSION
+        };
+    
+        // Initialize page using shared bootstrap
+        const ctx = AppLifecycle.initPage({
+            pageName: 'index.html',
+            storageKey: LOCAL_STORAGE_KEY,
+            defaultState,
+            version: APP_VERSION,
+            requiredElements: [
                 'shortcuts-container', 'app-select-group', 'app-search-input', 'app-dropdown-panel',
                 'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
                 'edit-app-name-wrapper', 'url-editor', 'edit-app-name', 'edit-app-urls',
@@ -130,40 +113,20 @@
                 'add-new-app-btn-menu', 'backup-btn-menu', 'restore-btn-menu', 'notepad-header',
                 'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
                 'navbar-container'
-            ];
-            
-            let allElementsFound = true;
-            for (const id of requiredIds) {
-                const el = document.getElementById(id);
-                if (!el) {
-                    console.error(`FATAL: DOM element with id "${id}" not found.`);
-                    allElementsFound = false;
-                }
-                DOMElements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
-            }
-            return allElementsFound;
-        }
+            ]
+        });
+    
+        if (!ctx) return;
+    
+        const { elements: DOMElements, state, saveState } = ctx;
 
-        const defaultState = {
-            apps: [],
-            notes: [],
-            shortcuts: [],
-            version: APP_VERSION
-        };
-
-        const stateManager = SafeUI.createStateManager(LOCAL_STORAGE_KEY, defaultState, APP_VERSION);
-
-        let state;
+        // Add back variables that were in the original block
         let shortcutsManager;
         let selectedAppId = null;
         let activeNoteId = null;
         let initialAppData = null;
 
-        const saveState = () => {
-            if (stateManager) {
-                stateManager.save(state);
-            }
-        };
+        // Original saveState (lines 171-175) is removed, as saveState now comes from ctx
 
         // START: Fix for Issue #21
         const getCollection = (type) => state[type];
@@ -173,10 +136,8 @@
         // START: Fix for Issue #23
         const confirmDelete = (type, itemName, onConfirm) => {
             const labels = {apps: 'Application', notes: 'Note', shortcuts: 'Shortcut'};
-            SafeUI.showModal(`Delete ${labels[type]}`, 
-                `<p>Are you sure you want to delete "${SafeUI.escapeHTML(itemName)}"?</p><p>This cannot be undone.</p>`,
-                [{label: 'Cancel'}, {label: 'Delete', class: 'button-danger', callback: onConfirm}]
-            );
+            const itemTypeLabel = labels[type] || 'Item'; // Use 'Item' as fallback
+            UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
         };
         // END: Fix for Issue #23
 
@@ -367,17 +328,8 @@
             DOMElements.renameNoteBtn.disabled = !hasItems('notes'); // Applied Issue #21
         };
         
-        // START: Fix for index.html (Line 343)
-        function setupTextareaAutoResize(textarea, maxHeight = 300) {
-            if (!textarea) return; // Safety check
-            const resize = () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
-            };
-        // END: Fix for index.html (Line 343)
-            textarea.addEventListener('input', resize);
-            resize();
-        }
+        // Original setupTextareaAutoResize function (lines 343-352) removed
+        // It is now in js/app-core.js
 
         const renderAll = () => {
             if (shortcutsManager) shortcutsManager.render();
@@ -506,13 +458,8 @@
             };
             
             if (checkFormDirty()) {
-                SafeUI.showModal('Unsaved Changes', '<p>You have unsaved changes. Discard them?</p>', [
-                    { label: 'Cancel', callback: () => {
-                        DOMElements.appDropdownPanel.classList.add('hidden');
-                        return false;
-                    }},
-                    { label: 'Discard', class: 'button-danger', callback: switchApp }
-                ]);
+                // Replaced SafeUI.showModal with UIPatterns.confirmUnsavedChanges
+                UIPatterns.confirmUnsavedChanges(switchApp);
             } else {
                 switchApp();
             }
@@ -541,7 +488,8 @@
             if (!SafeUI.validators.notEmpty(urls) && !SafeUI.validators.notEmpty(escalation)) {
                 return SafeUI.showValidationError('Invalid Data', 'App must have at least one URL or a note.');
             }
-            if (getCollection('apps').some(a => a.name.toLowerCase() === name.toLowerCase() && a.id != selectedAppId)) { // Applied Issue #21
+            // Replaced duplicate check with DataValidator.hasDuplicate
+            if (DataValidator.hasDuplicate(getCollection('apps'), 'name', name, selectedAppId)) {
                 return SafeUI.showValidationError('Duplicate Name', 'An app with this name already exists.', 'edit-app-name');
             }
             // END: Fix for Issue #22/27 (Twinned)
@@ -589,70 +537,52 @@
         DOMElements.addNewAppBtnMenu.addEventListener('click', (e) => {
             e.preventDefault();
             if (checkFormDirty()) {
-                SafeUI.showModal('Unsaved Changes', '<p>Discard unsaved changes?</p>', [
-                    { label: 'Cancel' },
-                    { label: 'Discard', class: 'button-danger', callback: () => createNewAppForm() }
-                ]);
-            } else createNewAppForm();
+                // Replaced SafeUI.showModal with UIPatterns.confirmUnsavedChanges
+                UIPatterns.confirmUnsavedChanges(createNewAppForm);
+            } else {
+                createNewAppForm();
+            }
         });
 
+        // Replaced backupBtnMenu listener with BackupRestore.createBackup
         DOMElements.backupBtnMenu.addEventListener('click', (e) => {
             e.preventDefault();
-            const dataStr = JSON.stringify(state, null, 2);
-            const filename = `dashboard-backup-${new Date().toISOString().split('T')[0]}.json`;
-            SafeUI.downloadJSON(dataStr, filename);
-            SafeUI.showToast('Backup created.');
+            BackupRestore.createBackup(state, 'dashboard');
         });
         
+        // Replaced restoreBtnMenu listener with BackupRestore.restoreBackup
         DOMElements.restoreBtnMenu.addEventListener('click', (e) => {
             e.preventDefault();
-            SafeUI.openFilePicker((file) => {
-                SafeUI.readJSONFile(file, 
-                    (restoredData) => handleRestore(restoredData), 
-                    (errorMsg) => SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{label: 'OK'}])
-                );
-            });
+            BackupRestore.restoreBackup(handleRestore);
         });
 
-        function handleRestore(restored) {
+        // Replaced handleRestore function with new version using shared validators
+        function handleRestore(restoredData) {
             try {
-                if (!restored || typeof restored !== 'object') {
-                    throw new Error('Backup file is not a valid object');
-                }
-                if (!Array.isArray(restored.apps)) {
-                    throw new Error('Backup missing "apps" array');
-                }
-                if (!Array.isArray(restored.notes)) {
-                    throw new Error('Backup missing "notes" array');
-                }
-                if (!Array.isArray(restored.shortcuts)) {
-                    throw new Error('Backup missing "shortcuts" array');
-                }
+                // Use new shared validation functions
+                const requiredDataKeys = ['apps', 'notes', 'shortcuts'];
+                
+                // Handle new backup format (with metadata) or old format (just state)
+                const dataToValidate = restoredData.data ? restoredData.data : restoredData;
+                const isNewBackup = !!restoredData.data;
 
-                for (let i = 0; i < restored.apps.length; i++) {
-                    const a = restored.apps[i];
-                    if (!a || !a.id || typeof a.name !== 'string' || typeof a.urls !== 'string' || typeof a.escalation !== 'string') {
-                        throw new Error(`Data for app at index ${i} is corrupt or missing fields.`);
-                    }
+                if (isNewBackup && !BackupRestore.validateBackup(restoredData, requiredDataKeys)) {
+                     throw new Error('Backup file is invalid or missing required data.');
                 }
-                for (let i = 0; i < restored.notes.length; i++) {
-                    const n = restored.notes[i];
-                    if (!n || !n.id || typeof n.title !== 'string' || typeof n.content !== 'string') {
-                        throw new Error(`Data for note at index ${i} is corrupt or missing fields.`);
-                    }
-                }
-                for (let i = 0; i < restored.shortcuts.length; i++) {
-                    const s = restored.shortcuts[i];
-                    if (!s || !s.id || typeof s.name !== 'string' || typeof s.url !== 'string') {
-                        throw new Error(`Data for shortcut at index ${i} is corrupt or missing fields.`);
-                    }
+                
+                // Validate items within each array
+                if (!BackupRestore.validateItems(dataToValidate.apps, ['id', 'name', 'urls', 'escalation']) ||
+                    !BackupRestore.validateItems(dataToValidate.notes, ['id', 'title', 'content']) ||
+                    !BackupRestore.validateItems(dataToValidate.shortcuts, ['id', 'name', 'url'])) {
+                    throw new Error('Backup data contains corrupt items.');
                 }
 
                 SafeUI.showModal('Confirm Restore', `<p>Overwrite dashboard data? This cannot be undone.</p>`, [
                     {label: 'Cancel'},
                     {label: 'Restore', class: 'button-danger', callback: async () => {
                         try {
-                            state = { ...defaultState, ...restored };
+                            // Ensure all default keys are present
+                            state = { ...defaultState, ...dataToValidate };
                             saveState();
                             displayAppDetails(null);
                             renderAll();
@@ -747,35 +677,23 @@
         });
 
         const init = () => {
-            if (!SafeUI.isReady || !stateManager) {
-                console.error("FATAL: UIUtils or StateManager failed to initialize. Application halted.");
-                document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-                    <h2>Application Failed to Load</h2>
-                    <p>A critical file (ui.common.js) may be missing or failed to load. Please check the console for errors.</p>
-                </div>`;
-                return;
-            }
-            
-            if (!cacheAndValidateDOMElements()) {
-                console.error("FATAL: Missing critical DOM elements. Application halted.");
-                return;
-            }
-
-            SafeUI.loadNavbar("navbar-container", "index.html");
+            // Removed SafeUI.isReady check (handled by AppLifecycle.run)
+            // Removed cacheAndValidateDOMElements (handled by AppLifecycle.initPage)
+            // Removed SafeUI.loadNavbar (handled by AppLifecycle.initPage)
 
             // START: CRITICAL FIX #1 - MOVED CODE BLOCK
             // Setup textarea auto-resize AFTER DOM elements are cached
-            const editAppEscalationTextarea = DOMElements.editAppEscalation;
-            if (editAppEscalationTextarea) {
-                setupTextareaAutoResize(editAppEscalationTextarea);
+            // Replaced with DOMHelpers call
+            if (DOMElements.editAppEscalation) {
+                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
             }
             
             if (DOMElements.editAppUrls) {
-                setupTextareaAutoResize(DOMElements.editAppUrls, 150);
+                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls, 150);
             }
             // END: CRITICAL FIX #1
 
-            state = stateManager.load();
+            // Removed state = stateManager.load() (handled by AppLifecycle.initPage)
 
             const services = {
                 showModal: SafeUI.showModal,
@@ -804,17 +722,10 @@
             renderAll();
         };
 
-        try {
-            init();
-        } catch (err) {
-            console.error("Unhandled exception during initialization:", err);
-            document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-                <h2>Application Error</h2>
-                <p>An unexpected error occurred during startup: ${err.message}</p>
-                <p>Please check the console for more details.</p>
-            </div>`;
-        }
-    });
+        // Removed try...catch wrapper, now handled by AppLifecycle.run
+        init();
+        
+    }); // End AppLifecycle.run
     </script>
 </body>
 </html>
