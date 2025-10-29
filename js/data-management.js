@@ -204,3 +204,4 @@ const DataValidator = {
         };
     }
 };
+// Removed the extra closing brace from here
