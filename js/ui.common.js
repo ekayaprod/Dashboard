@@ -49,7 +49,6 @@ const UIUtils = {
     /**
      * Dynamically loads the navigation bar from a file.
      * @param {string} containerId The ID of the element to inject the nav into.
-     *_nav.html
      * @param {string} currentPage The filename of the current page (e.g., "index.html").
      */
     loadNavbar: (() => {
@@ -66,8 +65,10 @@ const UIUtils = {
             }
 
             try {
-                const response = await fetch('_nav.html');
-                if (!response.ok) throw new Error(`Failed to fetch _nav.html: ${response.statusText}`);
+                // --- CHANGE: Renamed file to avoid GitHub Pages/Jekyll underscore issue ---
+                const response = await fetch('navbar.html');
+                if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
+                // --- END CHANGE ---
                 navContainer.innerHTML = await response.text();
                 
                 navContainer.querySelectorAll('.nav-link').forEach(link => {
@@ -77,8 +78,10 @@ const UIUtils = {
                     }
                 });
             } catch (error) {
+                // --- CHANGE: Updated error message ---
                 console.error('Failed to load navbar:', error);
-                navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
+                navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation. (Is navbar.html present?)</p>';
+                // --- END CHANGE ---
                 loaded.delete(containerId);
             }
         };
@@ -351,3 +354,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
