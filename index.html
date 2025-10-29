@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 
-      Removed script tags from here. They are now at the end of the <body> 
-      to ensure they load and execute before the inline script.
-    -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -86,15 +82,11 @@
         <div id="modal-content" class="modal-content"></div>
     </div>
 
-    <!-- 
-      All scripts are loaded here, in order. This ensures AppLifecycle 
-      and other objects are defined before the inline script runs.
-    -->
+    <!-- Scripts moved to end of body for correct loading order -->
     <script src="js/ui.common.js"></script>
     <script src="js/app-core.js"></script>
     <script src="js/ui-components.js"></script>
     <script src="js/data-management.js"></script>
-
     <script>
     AppLifecycle.run(async () => {
         const APP_VERSION = '6.1.0';
@@ -386,10 +378,12 @@
             el.addEventListener('input', updateSaveButtonState);
         });
 
-        DOMElements.appSearchInput.addEventListener('focus', () => {
-            renderAppDropdown(DOMElements.appSearchInput.value);
+        DOMElements.appSearchInput.addEventListener('click', () => {
+            renderAppDropdown(''); // Show all items
             DOMElements.appDropdownPanel.classList.remove('hidden');
+            DOMElements.appSearchInput.select(); // --- CHANGE: Select text on click ---
         });
+        
         DOMElements.appSearchInput.addEventListener('input', () => {
             renderAppDropdown(DOMElements.appSearchInput.value);
         });
@@ -642,6 +636,7 @@
             if(note) {
                 note.content = DOMElements.notepadEditor.value;
                 saveState();
+                SafeUI.showToast('Note saved'); // --- Added save feedback ---
             }
         }, DEBOUNCE_DELAY));
 
@@ -651,16 +646,20 @@ DOMElements.notepadEditor.addEventListener('blur', () => {
             if(note && note.content !== DOMElements.notepadEditor.value) {
                 note.content = DOMElements.notepadEditor.value;
                 saveState();
+                SafeUI.showToast('Note saved'); // --- Added save feedback on blur too ---
             }
         });
 
         const init = () => {
             // DOMHelpers is now external
             if (DOMElements.editAppEscalation) {
-                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
+                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalBcalation);
             }
             if (DOMElements.editAppUrls) {
                 DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls, 150);
+            }
+            if (DOMElements.notepadEditor) {
+                DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
             }
 
             const services = {
@@ -696,3 +695,4 @@ DOMElements.notepadEditor.addEventListener('blur', () => {
     </script>
 </body>
 </html>
+
