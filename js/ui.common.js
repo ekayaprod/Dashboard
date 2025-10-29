@@ -49,11 +49,11 @@ const UIUtils = {
     /**
      * Dynamically loads the navigation bar from a file.
      * @param {string} containerId The ID of the element to inject the nav into.
-     * @param {string} currentPage The filename of the current page (e.g., "index.html").
      */
     loadNavbar: (() => {
         const loaded = new Set();
-        return async (containerId, currentPage) => {
+        // --- CHANGE: Removed 'currentPage' argument ---
+        return async (containerId) => {
             if (loaded.has(containerId)) return;
             loaded.add(containerId);
             
@@ -65,23 +65,16 @@ const UIUtils = {
             }
 
             try {
-                // --- CHANGE: Renamed file to avoid GitHub Pages/Jekyll underscore issue ---
                 const response = await fetch('navbar.html');
                 if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
-                // --- END CHANGE ---
                 navContainer.innerHTML = await response.text();
                 
-                navContainer.querySelectorAll('.nav-link').forEach(link => {
-                    // Use endsWith to robustly match the file name, even if the href is relative
-                    if (link.getAttribute('href').endsWith(currentPage)) {
-                        link.classList.add('active');
-                    }
-                });
+                // --- CHANGE: Removed the logic for adding 'active' class. ---
+                // This logic is now inside navbar.html
+                
             } catch (error) {
-                // --- CHANGE: Updated error message ---
                 console.error('Failed to load navbar:', error);
                 navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation. (Is navbar.html present?)</p>';
-                // --- END CHANGE ---
                 loaded.delete(containerId);
             }
         };
