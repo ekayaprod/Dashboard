@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - New Page</title>
     <link rel="stylesheet" href="style.css">
-    <script src="js/ui.common.js" defer></script>
-    <script src="js/app-core.js" defer></script>
-    <script src="js/ui-components.js" defer></script>
-    <script src="js/data-management.js" defer></script>
+    <!-- 
+      Removed script tags from here. They are now at the end of the <body> 
+      to ensure they load and execute before the inline script.
+    -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -59,8 +59,17 @@
         <div id="modal-content" class="modal-content"></div>
     </div>
 
+    <!-- 
+      All scripts are loaded here, in order. This ensures AppLifecycle 
+      and other objects are defined before the inline script runs.
+    -->
+    <script src="js/ui.common.js"></script>
+    <script src="js/app-core.js"></script>
+    <script src="js/ui-components.js"></script>
+    <script src="js/data-management.js"></script>
+
     <script>
-    AppLifecycle.run(() => {
+    AppLifecycle.run(async () => {
         // ============================================================================
         // TEMPLATE.HTML - Demonstration of Shared Functions
         // ============================================================================
@@ -77,7 +86,7 @@
         // AppLifecycle.initPage() handles DOM caching, navbar loading, and state setup
         // This pattern is used by ALL pages
         
-        const ctx = AppLifecycle.initPage({
+        const ctx = await AppLifecycle.initPage({
             pageName: 'template.html',              // Current page filename
             storageKey: LOCAL_STORAGE_KEY,          // localStorage key for this page
             defaultState: {                         // Default state structure
@@ -364,25 +373,26 @@
         
         // Restore button
         elements.demoRestoreBtn.addEventListener('click', () => {
-            BackupRestore.restoreBackup((data) => {
-                if (!BackupRestore.validateBackup(data, ['exampleList'])) {
-                    SafeUI.showModal('Invalid Backup', '<p>File structure is incorrect.</p>', [{label: 'OK'}]);
-                    return;
-                }
-                
-                SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
-                    { label: 'Cancel' },
-                    {
-                        label: 'Restore',
-                        class: 'button-danger',
-                        callback: () => {
-                            state.exampleList = data.exampleList || [];
-                            saveState();
-                            renderList();
-                            SafeUI.showToast('Data restored successfully.');
+            BackupRestore.handleRestoreUpload({
+                appName: 'template',
+                itemValidators: {
+                    exampleList: ['id', 'name', 'created']
+                },
+                onRestore: (dataToRestore) => {
+                    SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
+                        { label: 'Cancel' },
+                        {
+                            label: 'Restore',
+                            class: 'button-danger',
+                            callback: () => {
+                                state.exampleList = dataToRestore.exampleList || [];
+                                saveState();
+                                renderList();
+                                SafeUI.showToast('Data restored successfully.');
+                            }
                         }
-                    }
-                ]);
+                    ]);
+                }
             });
         });
         
@@ -490,5 +500,3 @@
     </script>
 </body>
 </html>
-
-
