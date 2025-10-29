@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <script src="js/ui.common.js" defer></script>
-    <script src="js/app-core.js" defer></script>
-    <script src="js/ui-components.js" defer></script>
-    <script src="js/data-management.js" defer></script>
+    <!-- 
+      Removed script tags from here. They are now at the end of the <body> 
+      to ensure they load and execute before the inline script.
+    -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -85,6 +85,15 @@
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
+
+    <!-- 
+      All scripts are loaded here, in order. This ensures AppLifecycle 
+      and other objects are defined before the inline script runs.
+    -->
+    <script src="js/ui.common.js"></script>
+    <script src="js/app-core.js"></script>
+    <script src="js/ui-components.js"></script>
+    <script src="js/data-management.js"></script>
 
     <script>
     AppLifecycle.run(async () => {
@@ -687,4 +696,3 @@ DOMElements.notepadEditor.addEventListener('blur', () => {
     </script>
 </body>
 </html>
-
