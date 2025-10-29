@@ -6,11 +6,12 @@
 
 /**
  * SafeUI - Wrapper around UIUtils for graceful degradation
- * Eliminates ~30 lines of duplication per page
+ * Ensures app doesn't crash if ui.common.js fails to load.
  */
 const SafeUI = (() => {
     const isReady = typeof UIUtils !== 'undefined' && UIUtils;
     
+    // Fallback icons if SVGIcons object is not ready
     const getSVGIcons = () => {
         if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
         return { plus: '+', pencil: '✎', trash: '🗑' };
@@ -93,14 +94,15 @@ const AppLifecycle = {
     /**
      * Standard init wrapper with error handling
      * Wraps DOMContentLoaded and provides error boundaries
-     * @param {Function} initFn - Page-specific init function
+     * @param {Function} initFn - Page-specific async init function
      * * Example:
-     * AppLifecycle.run(() => {
+     * AppLifecycle.run(async () => {
      * // Your page initialization code here
+     * const ctx = await AppLifecycle.initPage({ ... });
      * });
      */
     run: (initFn) => {
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
                 // Validate SafeUI loaded
                 if (!SafeUI || !SafeUI.isReady) {
@@ -113,7 +115,7 @@ const AppLifecycle = {
                 }
                 
                 // Run page-specific init
-                initFn();
+                await initFn();
                 
             } catch (err) {
                 console.error("Unhandled exception during initialization:", err);
@@ -130,9 +132,9 @@ const AppLifecycle = {
      * Standard page initialization boilerplate
      * Handles DOM caching, navbar loading, and state initialization
      * @param {Object} config - Page configuration
-     * @returns {Object|null} Initialized context { elements, state, saveState } or null on failure
+     * @returns {Promise<Object|null>} Initialized context { elements, state, saveState } or null on failure
      * * Example:
-     * const ctx = AppLifecycle.initPage({
+     * const ctx = await AppLifecycle.initPage({
      * pageName: 'index.html',
      * storageKey: 'myapp_state_v1',
      * defaultState: { items: [] },
@@ -143,7 +145,7 @@ const AppLifecycle = {
      * * if (!ctx) return; // Init failed
      * const { elements, state, saveState } = ctx;
      */
-    initPage: (config) => {
+    initPage: async (config) => {
         const { pageName, storageKey, defaultState, version, requiredElements, onCorruption } = config;
 
         // Cache DOM elements
@@ -153,11 +155,10 @@ const AppLifecycle = {
             return null;
         }
 
-        // Load navbar
-        SafeUI.loadNavbar("navbar-container", pageName);
+        // Load navbar and wait for it to complete
+        await SafeUI.loadNavbar("navbar-container", pageName);
 
         // Initialize state
-        // Pass onCorruption callback to state manager
         const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
         if (!stateManager) {
             console.error("FATAL: StateManager failed to initialize.");
