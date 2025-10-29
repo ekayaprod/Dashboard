@@ -1,7 +1,7 @@
 /**
  * ui-components.js
  * Reusable UI patterns and components
- * Used by: index.html, lookup.html
+ * Used by: index.html, lookup.html, template.html
  */
 
 /**
@@ -116,6 +116,25 @@ const ListRenderer = {
             if (element) fragment.appendChild(element);
         });
         container.appendChild(fragment);
+    },
+
+    /**
+     * Filter items by search term using a custom matching function
+     * @param {Array} items - Items to filter
+     * @param {string} term - Search term
+     * @param {Function} matchFn - Function(item, lowerCaseTerm) => boolean
+     * @returns {Array} Filtered items
+     * * Example:
+     * const filtered = ListRenderer.filterItems(
+     * state.apps,
+     * 'slack',
+     * (app, term) => app.name.toLowerCase().includes(term)
+     * );
+     */
+    filterItems: (items, term, matchFn) => {
+        if (!term || !term.trim()) return items;
+        const lowerTerm = term.toLowerCase().trim();
+        return items.filter(item => matchFn(item, lowerTerm));
     }
 };
 
