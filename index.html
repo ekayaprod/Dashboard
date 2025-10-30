@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <!-- SCRIPTS MOVED TO END OF BODY -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -26,9 +27,7 @@
                 </div>
                  <div class="form-group" id="app-select-group">
                     <label for="app-select">Select Application</label>
-                    <select id="app-select" class="sidebar-input">
-                        <option value="">-- Select an App --</option>
-                    </select>
+                    <select id="app-select" class="sidebar-input"></select>
                 </div>
                 <div id="app-empty-state" class="empty-state-message hidden">
                     No applications yet. Click '+ App' to add one!
@@ -48,10 +47,12 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="edit-app-escalation">App Notes / Escalation</label>
-                                <div class="button-group" style="justify-content: flex-end;">
-                                    <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
-                                    <button id="delete-app-btn" class="icon-btn delete-btn" title="Delete Application"></button>
+                                <div class="label-group">
+                                    <label for="edit-app-escalation">App Notes / Escalation</label>
+                                    <div class="button-group">
+                                        <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
+                                        <button id="delete-app-btn" class="icon-btn delete-btn" title="Delete Application"></button>
+                                    </div>
                                 </div>
                                 <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                             </div>
@@ -71,18 +72,20 @@
                     <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing..."></textarea>
                 </div>
             </div>
-            <div id="toast" class="toast"></div>
+            <!-- Toast is now loaded from navbar.html -->
         </div>
     </div>
 
-    <div id="modal-overlay" class="modal-overlay">
-        <div id="modal-content" class="modal-content"></div>
-    </div>
-
-    <script src="js/ui.common.js"></script>
+    <!-- Modal overlay is now loaded from navbar.html -->
+    
+    <!-- 
+      CORRECT SCRIPT ORDER:
+      1. Load the 3 external library files.
+      2. Run the inline script that uses them.
+    -->
     <script src="js/app-core.js"></script>
-    <script src="js/ui-components.js"></script>
-    <script src="js/data-management.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-data.js"></script>
 
     <script>
     AppLifecycle.run(async () => {
@@ -97,37 +100,19 @@
             version: APP_VERSION
         };
     
+        // Initialize page using shared bootstrap
         const ctx = await AppLifecycle.initPage({
             pageName: 'index.html',
             storageKey: LOCAL_STORAGE_KEY,
             defaultState,
             version: APP_VERSION,
             requiredElements: [
-                'shortcuts-container', 
-                'app-select-group', 
-                'app-select',
-                'app-empty-state', 
-                'modal-overlay', 
-                'modal-content', 
-                'app-details-container',
-                'edit-app-name-wrapper', 
-                'url-editor', 
-                'edit-app-name', 
-                'edit-app-urls',
-                'edit-app-escalation', 
-                'save-changes-btn', 
-                'delete-app-btn', 
-                'add-shortcut-btn-menu',
-                'add-new-app-btn-menu', 
-                'backup-btn-menu', 
-                'restore-btn-menu', 
-                'notepad-header',
-                'note-select', 
-                'notepad-editor', 
-                'toast', 
-                'new-note-btn', 
-                'rename-note-btn', 
-                'delete-note-btn',
+                'shortcuts-container', 'app-select-group', 'app-select',
+                'app-empty-state', 'app-details-container',
+                'edit-app-name-wrapper', 'url-editor', 'edit-app-name', 'edit-app-urls',
+                'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
+                'add-new-app-btn-menu', 'backup-btn-menu', 'restore-btn-menu', 'notepad-header',
+                'note-select', 'notepad-editor', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
                 'navbar-container'
             ]
         });
@@ -276,19 +261,23 @@
             const appSelect = DOMElements.appSelect;
             const selectedValue = appSelect.value;
 
-            if (state.apps.length === 0) {
+            if (!hasItems('apps')) {
                 DOMElements.appSelectGroup.classList.add('hidden');
                 DOMElements.appEmptyState.classList.remove('hidden');
             } else {
                 DOMElements.appSelectGroup.classList.remove('hidden');
                 DOMElements.appEmptyState.classList.add('hidden');
-                appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-                const fragment = document.createDocumentFragment();
-                state.apps.sort((a,b) => a.name.localeCompare(b.name)).forEach(app => {
-                    fragment.appendChild(new Option(app.name, app.id));
-                });
-                appSelect.appendChild(fragment);
-                if (selectedValue) appSelect.value = selectedValue;
+            }
+            
+            appSelect.innerHTML = '<option value="">-- Select an App --</option>';
+            const fragment = document.createDocumentFragment();
+            getCollection('apps').sort((a,b) => a.name.localeCompare(b.name)).forEach(app => {
+                fragment.appendChild(new Option(app.name, app.id));
+            });
+            appSelect.appendChild(fragment);
+
+            if (selectedValue) {
+                appSelect.value = selectedValue;
             }
         };
 
@@ -347,13 +336,13 @@
             selectedAppId = appId;
             const isVisible = !!appId;
             DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
+            DOMElements.editAppNameWrapper.classList.add('hidden'); // Always hide name field by default
 
             if (isVisible) {
                 const app = getCollection('apps').find(a => a.id === appId);
                 if (!app) return;
                 
                 initialAppData = {...app};
-                DOMElements.editAppNameWrapper.classList.add('hidden'); 
                 DOMElements.editAppName.value = app.name;
                 DOMElements.editAppUrls.value = app.urls;
                 DOMElements.editAppEscalation.value = app.escalation;
@@ -366,6 +355,7 @@
 
         const createNewAppForm = () => {
             displayAppDetails(null);
+            DOMElements.appSelect.value = '';
             DOMElements.appDetailsContainer.classList.remove('hidden');
             DOMElements.editAppNameWrapper.classList.remove('hidden');
             DOMElements.editAppName.value = '';
@@ -373,6 +363,7 @@
             DOMElements.editAppEscalation.value = '';
             initialAppData = {id: null, name: '', urls: '', escalation: ''};
             updateSaveButtonState();
+            DOMElements.editAppName.focus();
         };
 
         [DOMElements.editAppName, DOMElements.editAppUrls, DOMElements.editAppEscalation].forEach(el => {
@@ -397,6 +388,8 @@
             const name = DOMElements.editAppName.value.trim();
             const urls = DOMElements.editAppUrls.value.trim();
             const escalation = DOMElements.editAppEscalation.value.trim();
+            
+            const isNewApp = initialAppData && initialAppData.id === null;
 
             if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 100)) {
                 return SafeUI.showValidationError('Invalid Name', 'App name must be 1-100 characters.', 'edit-app-name');
@@ -408,18 +401,23 @@
                 return SafeUI.showValidationError('Duplicate Name', 'An app with this name already exists.', 'edit-app-name');
             }
 
-            const appIndex = getCollection('apps').findIndex(a => a.id == selectedAppId);
             let savedAppId = selectedAppId;
-            if (appIndex > -1) {
-                getCollection('apps')[appIndex] = { ...getCollection('apps')[appIndex], name, urls, escalation };
-            } else {
+            if (isNewApp) {
                 const newApp = { id: SafeUI.generateId(), name, urls, escalation };
                 getCollection('apps').push(newApp);
                 savedAppId = newApp.id;
+            } else {
+                 const appIndex = getCollection('apps').findIndex(a => a.id == selectedAppId);
+                 if (appIndex > -1) {
+                    getCollection('apps')[appIndex] = { ...getCollection('apps')[appIndex], name, urls, escalation };
+                 } else {
+                     return SafeUI.showToast('Error: Could not find app to save.');
+                 }
             }
+
             saveState();
-            renderAppData();
-            DOMElements.appSelect.value = savedAppId; 
+            renderAppData(); // Re-render dropdown
+            DOMElements.appSelect.value = savedAppId; // Re-select the saved app
             displayAppDetails(savedAppId);
             SafeUI.showToast('Changes saved');
         });
@@ -472,16 +470,18 @@
                         {label: 'Cancel'},
                         {label: 'Restore', class: 'button-danger', callback: async () => {
                             try {
+                                // Ensure all default keys are present
                                 state.apps = dataToRestore.apps || [];
                                 state.notes = dataToRestore.notes || [];
                                 state.shortcuts = dataToRestore.shortcuts || [];
                                 
+                                // Re-check for scratchpad
                                 if (!hasItems('notes')) {
                                     getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
                                 }
                                 
                                 saveState();
-                                displayAppDetails(null);
+                                displayAppDetails(null); // Reset view
                                 renderAll();
                                 SafeUI.showToast('Dashboard data restored.');
                             } catch (err) {
@@ -515,14 +515,14 @@
                             if(SafeUI.validators.notEmpty(newTitle) && SafeUI.validators.maxLength(newTitle, 50)) {
                                 if (DataValidator.hasDuplicate(getCollection('notes'), 'title', newTitle, activeNoteId)) {
                                     SafeUI.showValidationError('Duplicate Title', 'A note with this title already exists.', 'rename-note-input');
-                                    return false; 
+                                    return false; // Keep modal open
                                 }
                                 note.title = newTitle;
                                 saveState();
                                 renderNotesData();
                             } else {
                                 SafeUI.showValidationError('Invalid Title', 'Title must be 1-50 characters.', 'rename-note-input');
-                                return false; 
+                                return false; // Keep modal open
                             }
                         }}
                     ]);
@@ -615,9 +615,8 @@
 
         init();
         
-    });
+    }); // End AppLifecycle.run
     </script>
 </body>
 </html>
-
 
