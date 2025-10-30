@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
+    <!-- SCRIPTS MOVED TO END OF BODY -->
 </head>
 <body class="lookup-page">
 
@@ -12,45 +13,57 @@
 
     <div class="container">
         <header class="lookup-header">
-            <!-- Main Search Input -->
             <div class="search-controls">
-                <input type="text" id="search-input" placeholder="Search KB and Local Database..." autocomplete="off">
-            </div>
-            
-            <!-- Global Page Actions -->
-            <div class="page-actions-bar">
-                <button id="btn-settings" class="button-base icon-btn" title="Settings">⚙️</button>
-                <button id="btn-toggle-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
-                <button id="btn-export" class="button-base" title="Export data to CSV">Export...</button>
-                <button id="btn-import" class="button-base" title="Import data from CSV">Import...</button>
+                <input type="text" id="search-input" class="sidebar-input" placeholder="Search KB & Local Database...">
+                <button id="settings-btn" class="button-base icon-btn" title="Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413-1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/>
+                    </svg>
+                </button>
+                <button id="edit-mode-btn" class="button-base icon-btn" title="Toggle Edit Mode">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/>
+                    </svg>
+                </button>
             </div>
         </header>
 
-        <main class="results-container-single-column">
-            <!-- Section 1: ServiceNow KB Search -->
-            <section class="column">
-                <h2>ServiceNow KnowledgeBase</h2>
-                <a href="#" id="kb-search-link" target="_blank" rel="noopener noreferrer" class="kb-search-link disabled">
-                    Search KB for "..."
-                </a>
-                <p class="kb-settings-prompt" id="kb-settings-prompt">
-                    No KB URL configured. Click the ⚙️ icon to set one up.
-                </p>
+        <div class="lookup-results-area">
+            <section class="column" id="kb-results-container">
+                <h2>KnowledgeBase Results</h2>
+                <div class="kb-results-content">
+                    <p>Start typing to see KB search links.</p>
+                </div>
             </section>
 
-            <!-- Section 2: Local Database (PowerShell Logic) -->
-            <section class="column">
-                <div class="section-header-wrapper" style="margin-bottom: 0.5rem;">
-                    <h2 id="local-db-header" style="margin: 0;">Local Database Results</h2>
-                    <button id="btn-add-new-entry" class="button-base button-primary hidden" style="font-size: 0.8rem;">+ Create Entry</button>
+            <section class="column" id="local-results-container">
+                <div class="section-header-wrapper">
+                    <h2 class="section-header">Local Database Results</h2>
+                    <div class="button-group">
+                        <button id="import-csv-btn" class="button-base" title="Import CSV">Import...</button>
+                        <button id="export-csv-btn" class="button-base" title="Export CSV">Export...</button>
+                    </div>
                 </div>
-                <ul id="local-results" class="result-list"></ul>
+                <div class="local-results-content">
+                    <ul id="local-results-list" class="result-list">
+                        <!-- Items will be rendered here -->
+                    </ul>
+                    <div id="local-empty-state" class="empty-state-message">
+                        No local items found.
+                    </div>
+                    <button id="btn-add-new-entry" class="button-base button-primary hidden" style="width: 100%; margin-top: 0.5rem;">+ Create New Entry</button>
+                </div>
             </section>
-        </main>
+        </div>
     </div>
 
-    <!-- Global UI (Toast/Modal) is now loaded via navbar.html -->
+    <!-- Global UI (Modal and Toast) is now loaded via navbar.html -->
 
+    <!-- 
+      CORRECT SCRIPT ORDER:
+      1. Load the 3 external library files.
+      2. Run the inline script that uses them.
+    -->
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
@@ -60,12 +73,12 @@
 
             const APP_NAME = 'lookup_v2';
             const APP_VERSION = '1.0.0';
-            const DATA_KEY = `${APP_NAME}_data`;
+            const DATA_KEY = 'lookup_v2_data';
 
             const defaultState = {
-                items: [], // Replaces routingData/snippetsData
+                items: [],
                 settings: {
-                    kbBaseUrl: '' // e.g., "https://copaprod.service-now.com/$knowledge.do?query="
+                    kbBaseUrl: 'https://<your-instance>.service-now.com/$knowledge.do?query=%SEARCH_TERM%'
                 }
             };
 
@@ -75,548 +88,399 @@
                 defaultState: defaultState,
                 version: APP_VERSION,
                 requiredElements: [
-                    'search-input',
-                    'local-results',
-                    'btn-add-new-entry',
-                    'btn-settings',
-                    'btn-toggle-edit-mode',
-                    'btn-export',
-                    'btn-import',
-                    'kb-search-link',
-                    'kb-settings-prompt',
-                    'local-db-header',
-                    'toast', 
-                    'modal-overlay', 
-                    'modal-content',
-                    'navbar-container'
+                    'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                    'search-input', 'settings-btn', 'edit-mode-btn',
+                    'kb-results-container', 'local-results-container',
+                    'local-results-list', 'local-empty-state', 'btn-add-new-entry',
+                    'import-csv-btn', 'export-csv-btn'
                 ]
             });
 
             if (!ctx) return;
 
-            let { elements: DOMElements, state, saveState } = ctx;
-            
+            let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
+
             let currentEditState = { id: null };
             let isEditMode = false;
-            
-            // --- Core Rendering -------------------------------------------
-            
-            function renderAll() {
-                const searchTerm = DOMElements.searchInput.value;
+            let currentSearchTerm = '';
+
+            const saveState = () => {
+                try {
+                    if (!state.items) state.items = [];
+                    state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                    originalSaveState();
+                } catch (e) {
+                    console.error("Failed to save state:", e);
+                    SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
+                }
+            };
+
+            const renderKBResults = (term) => {
+                const container = DOMElements.kbResultsContainer.querySelector('.kb-results-content');
+                if (!term) {
+                    container.innerHTML = '<p>Start typing to see KB search links.</p>';
+                    return;
+                }
                 
-                updateKbSearchLink(searchTerm);
+                let populatedUrl = state.settings.kbBaseUrl.replace('%SEARCH_TERM%', encodeURIComponent(term));
+                
+                container.innerHTML = `
+                    <a href="${SafeUI.escapeHTML(populatedUrl)}" target="_blank" class="button-base button-primary" style="width: 100%; text-decoration: none;">
+                        Search KnowledgeBase for "${SafeUI.escapeHTML(term)}"
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-left: 8px; flex-shrink: 0;">
+                            <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                            <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                        </svg>
+                    </a>`;
+            };
 
-                DOMElements.localDbHeader.textContent = isEditMode ? 'Edit Local Database' : 'Local Database Results';
-                DOMElements.btnToggleEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
-                DOMElements.btnToggleEditMode.classList.toggle('button-primary', isEditMode);
-
-                let itemsToRender = [];
+            const renderLocalResults = () => {
+                const searchTerm = currentSearchTerm;
+                const list = DOMElements.localResultsList;
+                
+                const itemsToRender = isEditMode 
+                    ? state.items 
+                    : SearchHelper.simpleSearch(state.items, searchTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                
+                DOMElements.editModeBtn.classList.toggle('active', isEditMode);
                 if (isEditMode) {
-                    itemsToRender = state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                    DOMElements.editModeBtn.style.backgroundColor = 'var(--primary-hover-bg-light)';
+                    DOMElements.editModeBtn.style.color = 'var(--primary-color)';
                 } else {
-                    itemsToRender = SearchHelper.simpleSearch(state.items, searchTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                    DOMElements.editModeBtn.style.backgroundColor = '';
+                    DOMElements.editModeBtn.style.color = '';
                 }
 
-                const showCreateButton = !isEditMode && searchTerm.trim() && itemsToRender.length === 0;
-                DOMElements.btnAddNewEntry.classList.toggle('hidden', !showCreateButton);
-                
                 ListRenderer.renderList({
-                    container: DOMElements.localResults,
+                    container: list,
                     items: itemsToRender,
-                    emptyMessage: getEmptyStateMessage(searchTerm),
+                    emptyMessage: isEditMode ? "No items in database. Click '+ Create Entry'." : "No local items found.",
+                    emptyElement: DOMElements.localEmptyState,
                     createItemElement: (item) => {
-                        if (isEditMode || (currentEditState.id && currentEditState.id === item.id)) {
+                        if (item.id === currentEditState.id || (isEditMode && currentEditState.id === null)) {
                             return createEditForm(item);
                         }
                         return createItemElement(item, searchTerm);
                     }
                 });
-            }
+                
+                const canAddNew = searchTerm && !isEditMode && itemsToRender.length === 0;
+                DOMElements.btnAddNewEntry.classList.toggle('hidden', !canAddNew);
+            };
 
-            function getEmptyStateMessage(searchTerm) {
-                if (isEditMode) {
-                    return "No entries in the database. Exit Edit Mode and search to add one.";
-                }
-                if (searchTerm.trim()) {
-                    return "No local results found.";
-                }
-                return "Type in the search bar to begin.";
-            }
-            
-            function updateKbSearchLink(term) {
-                const { kbBaseUrl } = state.settings;
-                const link = DOMElements.kbSearchLink;
-                const prompt = DOMElements.kbSettingsPrompt;
+            const renderAll = () => {
+                renderKBResults(currentSearchTerm);
+                renderLocalResults();
+            };
 
-                if (kbBaseUrl) {
-                    prompt.classList.add('hidden');
-                    if (term.trim()) {
-                        link.href = `${kbBaseUrl}${encodeURIComponent(term.trim())}`;
-                        link.textContent = `Search KB for "${SafeUI.escapeHTML(term)}"`;
-                        link.classList.remove('disabled');
-                    } else {
-                        link.href = '#';
-                        link.textContent = 'Search KB for "..."';
-                        link.classList.add('disabled');
-                    }
-                } else {
-                    prompt.classList.remove('hidden');
-                    link.href = '#';
-                    link.textContent = 'Search KB for "..."';
-                    link.classList.add('disabled');
-                }
-            }
-
-            // --- Read/Display Elements ------------------------------------
-
-            function createItemElement(item, searchTerm) {
+            const createItemElement = (item, searchTerm) => {
                 const li = document.createElement('li');
                 li.className = 'result-item';
                 li.dataset.id = item.id;
                 
+                const highlight = (text) => isEditMode ? SafeUI.escapeHTML(text) : UIPatterns.highlightSearchTerm(text, searchTerm);
+
                 li.innerHTML = `
                     <div class="item-header">
-                        <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
+                        <span class="item-keyword">${highlight(item.keyword)}</span>
                         <div class="item-actions">
-                            <button class="btn-edit button-base" title="Edit">Edit</button>
+                            <button class="button-base btn-edit" title="Edit">Edit</button>
                         </div>
                     </div>
-                    <div class="item-content-grid">
-                        <strong>Group:</strong>
-                        <div class="item-content" title="Click to copy">${SafeUI.escapeHTML(item.assignmentGroup)}</div>
-                        
-                        <strong>Notes:</strong>
-                        <div class="item-content" title="Click to copy">${SafeUI.escapeHTML(item.notes)}</div>
-                        
-                        <strong>Path:</strong>
-                        <div class="item-content" title="Click to copy">${SafeUI.escapeHTML(item.phoneLogPath)}</div>
+                    <div class="item-grid">
+                        <div class="grid-label">Group</div>
+                        <div class="grid-value">${highlight(item.assignmentGroup)}</div>
+                        <div class="grid-label">Notes</div>
+                        <div class="grid-value"><pre>${SafeUI.escapeHTML(item.notes)}</pre></div>
+                        <div class="grid-label">Path</div>
+                        <div class="grid-value">${highlight(item.phoneLogPath)}</div>
                     </div>
                 `;
 
                 li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id));
-
-                li.querySelectorAll('.item-content').forEach(el => {
-                    el.addEventListener('click', async () => {
-                        const success = await SafeUI.copyToClipboard(el.textContent);
-                        SafeUI.showToast(success ? "Copied!" : "Failed to copy.");
-                    });
-                });
                 return li;
-            }
+            };
 
-            // --- Edit/Form Elements ---------------------------------------
-
-            function createEditForm(item) {
+            const createEditForm = (item) => {
                 const li = document.createElement('li');
                 li.className = 'edit-form-li';
+                const formId = `form-${item.id}`;
 
-                const form = document.createElement('form');
-                form.className = 'edit-form';
-                form.dataset.id = item.id;
-
-                form.innerHTML = `
-                    <div class="form-group">
-                        <label for="edit-keyword-${item.id}">Keyword(s)</label>
-                        <input type="text" id="edit-keyword-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.keyword)}" placeholder="e.g., VPN, RSA, Password">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-group-${item.id}">Assignment Group</label>
-                        <input type="text" id="edit-group-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.assignmentGroup)}" placeholder="e.g., IT-NETWORK-SEC">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-notes-${item.id}">Notes</label>
-                        <textarea id="edit-notes-${item.id}" class="sidebar-textarea" placeholder="e.g., Check for MFA status first.">${SafeUI.escapeHTML(item.notes)}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-path-${item.id}">Phone Log Path</label>
-                        <input type="text" id="edit-path-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="e.g., IT > Security > VPN">
-                    </div>
-                    <div class="edit-form-actions">
-                        <button type="button" class="btn-delete button-base button-danger" title="Delete Entry">Delete</button>
-                        <div style="flex-grow: 1;"></div>
-                        <button type="button" class="btn-cancel button-base">Cancel</button>
-                        <button type="submit" class="btn-save button-base button-primary">Save</button>
-                    </div>
+                li.innerHTML = `
+                    <form id="${formId}" class="edit-form" data-id="${item.id}">
+                        <div class="form-group">
+                            <label for="${formId}-keyword">Keyword(s)</label>
+                            <input type="text" id="${formId}-keyword" class="sidebar-input" value="${SafeUI.escapeHTML(item.keyword)}" placeholder="e.g., vpn, outlook, teams">
+                        </div>
+                        <div class="form-group">
+                            <label for="${formId}-group">Assignment Group</label>
+                            <input type="text" id="${formId}-group" class="sidebar-input" value="${SafeUI.escapeHTML(item.assignmentGroup)}" placeholder="e.g., GRP-IT-NETOPS">
+                        </div>
+                        <div class="form-group">
+                            <label for="${formId}-notes">Notes</label>
+                            <textarea id="${formId}-notes" class="sidebar-textarea" placeholder="e.g., Check for MFA status first.">${SafeUI.escapeHTML(item.notes)}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="${formId}-path">Phone Log Path</label>
+                            <input type="text" id="${formId}-path" class="sidebar-input" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="e.g., IT > VPN > Connection Issue">
+                        </div>
+                        <div class="edit-form-actions">
+                            <button type="button" class="button-base button-danger btn-delete" title="Delete">Delete</button>
+                            <div style="flex-grow: 1;"></div>
+                            <button type="button" class="button-base btn-cancel">Cancel</button>
+                            <button type="submit" class="button-base button-primary btn-save">Save</button>
+                        </div>
+                    </form>
                 `;
+
+                const form = li.querySelector('form');
+                const textarea = li.querySelector('textarea');
+                DOMHelpers.setupTextareaAutoResize(textarea, 200);
 
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
                     handleSave(form, item.id);
                 });
-                
+
                 form.querySelector('.btn-cancel').addEventListener('click', () => {
-                    if (!item.keyword && !item.assignmentGroup) {
-                        handleDelete(item.id, true);
+                    if (item.keyword === '' && item.assignmentGroup === '') { // It's a new, unsaved item
+                        const index = state.items.findIndex(i => i.id === item.id);
+                        if (index > -1) state.items.splice(index, 1);
                     }
-                    currentEditState = { id: null };
+                    currentEditState.id = null;
                     renderAll();
                 });
-                
+
                 form.querySelector('.btn-delete').addEventListener('click', () => {
-                    UIPatterns.confirmDelete('Entry', item.keyword || 'New Entry', () => handleDelete(item.id, true));
+                    UIPatterns.confirmDelete('Entry', item.keyword || 'New Entry', () => {
+                        const index = state.items.findIndex(i => i.id === item.id);
+                        if (index > -1) state.items.splice(index, 1);
+                        saveState();
+                        currentEditState.id = null;
+                        renderAll();
+                        SafeUI.showToast('Entry deleted.');
+                    });
                 });
 
-                const textareas = form.querySelectorAll('.sidebar-textarea');
-                textareas.forEach(ta => DOMHelpers.setupTextareaAutoResize(ta, 200));
-
-                li.appendChild(form);
                 return li;
-            }
-
-            // --- CRUD Handlers (PowerShell Logic) -------------------------
-
-            function handleAddNewEntry(prefilledKeyword = '') {
-                if (currentEditState.id) {
-                    const el = document.querySelector('.edit-form-li');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    SafeUI.showToast("Please save or cancel your current edit first.");
-                    return;
-                }
-
-                const newItem = {
-                    id: SafeUI.generateId(),
-                    keyword: prefilledKeyword,
-                    assignmentGroup: '',
-                    notes: '',
-                    phoneLogPath: ''
-                };
-                
-                state.items.unshift(newItem);
-                currentEditState = { id: newItem.id };
-                
-                if (isEditMode) {
-                    renderAll();
-                } else {
-                    const formEl = createEditForm(newItem);
-                    DOMElements.localResults.prepend(formEl);
-                }
-
-                setTimeout(() => {
-                    document.getElementById(`edit-keyword-${newItem.id}`)?.focus();
-                }, 100);
-            }
-
-            function handleEdit(id) {
-                if (currentEditState.id) {
-                    SafeUI.showToast("Please save or cancel your other edit first.");
-                    return;
-                }
-                currentEditState = { id: id };
-                renderAll();
-                setTimeout(() => {
-                    document.getElementById(`edit-keyword-${id}`)?.focus();
-                }, 100);
-            }
-
-            function handleSave(form, id) {
-                const keyword = form.querySelector(`#edit-keyword-${id}`).value.trim();
-                const assignmentGroup = form.querySelector(`#edit-group-${id}`).value.trim();
-                const notes = form.querySelector(`#edit-notes-${id}`).value.trim();
-                const phoneLogPath = form.querySelector(`#edit-path-${id}`).value.trim();
+            };
+            
+            const handleSave = (form, id) => {
+                const formId = form.id;
+                const keyword = document.getElementById(`${formId}-keyword`).value.trim();
+                const assignmentGroup = document.getElementById(`${formId}-group`).value.trim();
+                const notes = document.getElementById(`${formId}-notes`).value.trim();
+                const phoneLogPath = document.getElementById(`${formId}-path`).value.trim();
                 
                 if (!keyword) {
-                    SafeUI.showValidationError('Invalid Input', 'Keyword cannot be blank.', `edit-keyword-${id}`);
-                    return;
+                    return SafeUI.showValidationError('Invalid Input', 'Keyword cannot be blank.', `${formId}-keyword`);
                 }
-                
-                const itemIndex = state.items.findIndex(i => i.id === id);
-                if (itemIndex === -1) return;
-                
+
                 const existingEntry = state.items.find(i => 
-                    i.id !== id && 
-                    i.assignmentGroup && 
-                    i.assignmentGroup.toLowerCase() === assignmentGroup.toLowerCase()
+                    i.assignmentGroup.toLowerCase() === assignmentGroup.toLowerCase() &&
+                    i.id !== id &&
+                    assignmentGroup !== ''
                 );
-                
+
                 const saveAction = () => {
-                    state.items[itemIndex] = { id, keyword, assignmentGroup, notes, phoneLogPath };
+                    const index = state.items.findIndex(i => i.id === id);
+                    if (index > -1) {
+                        state.items[index] = { id, keyword, assignmentGroup, notes, phoneLogPath };
+                    } else {
+                         state.items.push({ id, keyword, assignmentGroup, notes, phoneLogPath });
+                    }
                     saveState();
-                    currentEditState = { id: null };
+                    currentEditState.id = null;
                     renderAll();
-                    SafeUI.showToast("Entry saved.");
+                    SafeUI.showToast('Entry saved.');
                 };
-                
-                if (existingEntry && assignmentGroup) {
-                    SafeUI.showModal("Duplicate Assignment Group",
-                        `<p>An entry for "<strong>${SafeUI.escapeHTML(existingEntry.assignmentGroup)}</strong>" already exists. How do you want to save?</p>
-                         <p><strong>Existing Keywords:</strong> ${SafeUI.escapeHTML(existingEntry.keyword)}</p>`,
+
+                if (existingEntry) {
+                    const mergeAction = () => {
+                        const combinedKeywords = [...new Set([
+                            ...existingEntry.keyword.split(',').map(k => k.trim()),
+                            ...keyword.split(',').map(k => k.trim())
+                        ].filter(Boolean))].join(', ');
+                        
+                        existingEntry.keyword = combinedKeywords;
+
+                        const index = state.items.findIndex(i => i.id === id);
+                        if (index > -1) state.items.splice(index, 1);
+                        
+                        saveState();
+                        currentEditState.id = null;
+                        renderAll();
+                        SafeUI.showToast('Keywords merged.');
+                    };
+                    
+                    SafeUI.showModal(
+                        'Duplicate Assignment Group',
+                        `<p>An entry for "<strong>${SafeUI.escapeHTML(existingEntry.assignmentGroup)}</strong>" already exists with keyword(s) "<em>${SafeUI.escapeHTML(existingEntry.keyword)}</em>".</p>`,
                         [
-                            { label: 'Abort', class: '' },
-                            { label: 'Continue (Create New)', class: 'button-primary', callback: saveAction },
-                            {
-                                label: 'Merge Keywords',
-                                class: 'button-primary',
-                                callback: () => {
-                                    const combinedKeywords = [...new Set([
-                                        ...existingEntry.keyword.split(',').map(k => k.trim()),
-                                        ...keyword.split(',').map(k => k.trim())
-                                    ])].filter(Boolean).join(', ');
-                                    
-                                    existingEntry.keyword = combinedKeywords;
-                                    
-                                    state.items.splice(itemIndex, 1);
-                                    
-                                    saveState();
-                                    currentEditState = { id: null };
-                                    renderAll();
-                                    SafeUI.showToast("Keywords merged.");
-                                }
-                            }
+                            { label: '[A]bort' },
+                            { label: '[C]ontinue (Create New)', class: 'button-danger', callback: saveAction },
+                            { label: '[M]erge Keywords', class: 'button-primary', callback: mergeAction }
                         ]
                     );
                 } else {
                     saveAction();
                 }
-            }
+            };
 
-            function handleDelete(id, skipConfirm = false) {
-                const itemIndex = state.items.findIndex(i => i.id === id);
-                if (itemIndex === -1) return;
-
-                const deleteAction = () => {
-                    state.items.splice(itemIndex, 1);
-                    saveState();
-                    if (currentEditState.id === id) {
-                        currentEditState = { id: null };
-                    }
-                    renderAll();
-                    SafeUI.showToast("Entry deleted.");
-                };
-
-                if (skipConfirm) {
-                    deleteAction();
-                } else {
-                    UIPatterns.confirmDelete('Entry', state.items[itemIndex].keyword, deleteAction);
+            const handleEdit = (id) => {
+                if (currentEditState.id) {
+                    return SafeUI.showToast('Please save or cancel your other edit first.');
                 }
-            }
-            
-            // --- Settings & Data Management --------------------------------
-
-            function showSettingsModal() {
-                const modalId = "settings-modal-content";
-                SafeUI.showModal("Settings",
-                    `<div id="${modalId}">
-                        <div class="form-group">
-                            <label for="kb-base-url">ServiceNow KB Base URL</label>
-                            <input type="text" id="kb-base-url" class="sidebar-input" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}" placeholder="https.../$knowledge.do?query=">
-                            <p style="font-size: 0.8rem; color: var(--subtle-text); margin: 0;">Paste your KB search URL here, up to and including the <strong>query=</strong> part.</p>
-                        </div>
-                        <div class="divider"></div>
-                        <h4 style="margin-top: 0; margin-bottom: 0.5rem;">Advanced Settings</h4>
-                        <p style="font-size: 0.8rem; color: var(--subtle-text); margin-top: 0;">For disaster recovery. Use Import/Export for Excel-friendly data.</p>
-                        <div class="button-group">
-                            <button id="modal-btn-backup" class="button-base">Backup App State (JSON)</button>
-                            <button id="modal-btn-restore" class="button-base">Restore App State (JSON)</button>
-                        </div>
-                    </div>`,
-                    [
-                        { label: 'Cancel' },
-                        { 
-                            label: 'Save Settings', 
-                            class: 'button-primary', 
-                            callback: () => {
-                                const newUrl = document.getElementById('kb-base-url').value.trim();
-                                state.settings.kbBaseUrl = newUrl;
-                                saveState();
-                                renderAll();
-                                SafeUI.showToast("Settings saved.");
-                            }
-                        }
-                    ]
-                );
-                
-                // Add event listeners *after* the modal is shown
+                currentEditState.id = id;
+                renderLocalResults();
                 setTimeout(() => {
-                    const modalNode = document.getElementById(modalId);
-                    if (!modalNode) return;
-                    
-                    modalNode.querySelector("#modal-btn-backup").addEventListener('click', () => {
-                        handleBackup();
-                        SafeUI.hideModal();
-                    });
-                    modalNode.querySelector("#modal-btn-restore").addEventListener('click', () => {
-                        handleRestore();
-                        // Do not hide modal, wait for restore flow
-                    });
+                    document.getElementById(`form-${id}-keyword`)?.focus();
                 }, 0);
-            }
+            };
 
-            function handleBackup() {
-                BackupRestore.createBackup({ items: state.items, settings: state.settings }, 'lookup-db');
-            }
+            const handleAddNewEntry = () => {
+                if (currentEditState.id) {
+                    return SafeUI.showToast('Please save or cancel your other edit first.');
+                }
+                const newId = SafeUI.generateId();
+                const newItem = {
+                    id: newId,
+                    keyword: currentSearchTerm,
+                    assignmentGroup: '',
+                    notes: '',
+                    phoneLogPath: ''
+                };
+                state.items.unshift(newItem);
+                currentEditState.id = newId;
+                renderAll();
+                 setTimeout(() => {
+                    document.getElementById(`form-${newId}-group`)?.focus();
+                }, 0);
+            };
 
-            function handleRestore() {
-                BackupRestore.handleRestoreUpload({
-                    appName: 'lookup-db',
-                    itemValidators: {
-                        items: ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath'],
-                        settings: ['kbBaseUrl']
-                    },
-                    onRestore: (dataToRestore) => {
-                        SafeUI.showModal('Confirm Restore', 
-                            `<p>This will overwrite all local lookup data and settings. This cannot be undone.</p>`, 
-                            [
+            const handleShowSettings = () => {
+                const modalContent = `
+                    <div class="form-group">
+                        <label for="settings-kb-url">KnowledgeBase Search URL</label>
+                        <input type="text" id="settings-kb-url" class="sidebar-input" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}">
+                        <p style="font-size: 0.8rem; color: var(--subtle-text); margin-top: 0.25rem;">
+                            Use <strong>%SEARCH_TERM%</strong> as a placeholder for the query.
+                        </p>
+                    </div>
+                    <div class="divider"></div>
+                    <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Advanced</h4>
+                    <div class="button-group">
+                        <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
+                        <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
+                    </div>
+                `;
+                SafeUI.showModal('Settings', modalContent, [
+                    { label: 'Cancel' },
+                    { label: 'Save', class: 'button-primary', callback: () => {
+                        const newUrl = document.getElementById('settings-kb-url').value;
+                        if (!newUrl.includes('%SEARCH_TERM%')) {
+                            SafeUI.showValidationError('Invalid URL', 'The URL must include the %SEARCH_TERM% placeholder.', 'settings-kb-url');
+                            return false; // Keep modal open
+                        }
+                        state.settings.kbBaseUrl = newUrl;
+                        saveState();
+                        renderKBResults(currentSearchTerm);
+                        SafeUI.showToast('Settings saved.');
+                    }}
+                ]);
+
+                document.getElementById('modal-backup-btn').addEventListener('click', () => {
+                    BackupRestore.createBackup(state, 'lookup_v2');
+                });
+                document.getElementById('modal-restore-btn').addEventListener('click', () => {
+                     BackupRestore.handleRestoreUpload({
+                        appName: 'lookup_v2',
+                        itemValidators: {
+                            items: ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath'],
+                            settings: ['kbBaseUrl']
+                        },
+                        onRestore: (dataToRestore) => {
+                            SafeUI.showModal('Confirm Restore (JSON)', `<p>Overwrite all lookup data? This cannot be undone.</p>`, [
                                 {label: 'Cancel'},
                                 {label: 'Restore', class: 'button-danger', callback: () => {
                                     state.items = dataToRestore.items || [];
                                     state.settings = dataToRestore.settings || defaultState.settings;
                                     saveState();
                                     renderAll();
-                                    SafeUI.showToast('Database restored.');
+                                    SafeUI.hideModal();
+                                    SafeUI.showToast('Lookup data restored.');
                                 }}
-                            ]
-                        );
-                    }
-                });
-            }
-            
-            // --- CSV Import/Export Functions ------------------------------
-
-            function convertArrayOfObjectsToCSV(data) {
-                const headers = ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath'];
-                const csvRows = [];
-                
-                csvRows.push(headers.join(','));
-
-                for (const item of data) {
-                    const values = headers.map(header => {
-                        let value = item[header] || '';
-                        if (typeof value === 'string') {
-                            if (value.includes('"') || value.includes(',') || value.includes('\n')) {
-                                value = `"${value.replace(/"/g, '""')}"`;
-                            }
+                            ]);
                         }
-                        return value;
                     });
-                    csvRows.push(values.join(','));
-                }
-                return csvRows.join('\n');
-            }
-
-            function handleExportCSV() {
-                if (state.items.length === 0) {
-                    SafeUI.showToast("No data to export.");
-                    return;
-                }
+                });
+            };
+            
+            const handleExportCSV = () => {
                 try {
-                    const csvString = convertArrayOfObjectsToCSV(state.items);
-                    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'lookup-export.csv';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    SafeUI.showToast("CSV Exported successfully.");
+                    const headers = ['keyword', 'assignmentGroup', 'notes', 'phoneLogPath', 'id'];
+                    const csv = DataConverter.toCSV(state.items, headers);
+                    SafeUI.downloadJSON(csv, 'lookup_export.csv', 'text/csv');
                 } catch (err) {
-                    console.error("CSV Export failed:", err);
-                    SafeUI.showModal('Export Error', `<p>Failed to create CSV file: ${err.message}</p>`, [{label: 'OK'}]);
+                    console.error('CSV Export failed:', err);
+                    SafeUI.showModal('Export Error', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
                 }
-            }
-            
-            function parseCSV(csvText) {
-                const lines = csvText.split('\n');
-                if (lines.length < 1) return [];
-                
-                // Use a regex to find the headers, removing potential quotes
-                const headers = lines[0].trim().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-                const requiredHeaders = ['keyword', 'assignmentGroup', 'notes', 'phoneLogPath'];
-                
-                if (!requiredHeaders.every(h => headers.includes(h))) {
-                    throw new Error(`CSV must contain headers: ${requiredHeaders.join(', ')}`);
-                }
-                
-                const items = [];
-                for (let i = 1; i < lines.length; i++) {
-                    if (!lines[i].trim()) continue;
-                    
-                    // Basic CSV value parsing (handles values quoted with commas)
-                    const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/g);
-                    
-                    const item = {};
-                    let allValuesEmpty = true;
-                    
-                    headers.forEach((header, index) => {
-                        let value = (values[index] || '').trim();
-                        if (value.startsWith('"') && value.endsWith('"')) {
-                            value = value.substring(1, value.length - 1).replace(/""/g, '"');
+            };
+
+            const handleImportCSV = () => {
+                SafeUI.openFilePicker(async (file) => {
+                    try {
+                        const headers = ['keyword', 'assignmentGroup', 'notes', 'phoneLogPath', 'id'];
+                        const result = await DataConverter.fromCSV(file, headers);
+                        
+                        if (result.errors.length > 0) {
+                            console.warn('CSV parsing warnings:', result.errors);
                         }
-                        if (value) {
-                            allValuesEmpty = false;
-                        }
-                        item[header] = value;
-                    });
-                    
-                    if (allValuesEmpty) continue;
-                    
-                    if (!item.id) {
-                        item.id = SafeUI.generateId();
+                        
+                        const newItems = result.data.map(item => ({
+                            id: item.id || SafeUI.generateId(),
+                            keyword: item.keyword || '',
+                            assignmentGroup: item.assignmentGroup || '',
+                            notes: item.notes || '',
+                            phoneLogPath: item.phoneLogPath || ''
+                        }));
+
+                        SafeUI.showModal('Confirm Import (CSV)', `<p>Overwrite <strong>${state.items.length}</strong> local items with <strong>${newItems.length}</strong> items from the CSV?</p>`, [
+                            {label: 'Cancel'},
+                            {label: 'Overwrite', class: 'button-danger', callback: () => {
+                                state.items = newItems;
+                                saveState();
+                                renderAll();
+                                SafeUI.showToast('Import successful.');
+                            }}
+                        ]);
+
+                    } catch (err) {
+                        console.error('CSV Import failed:', err);
+                        SafeUI.showModal('Import Error', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
                     }
-                    items.push(item);
-                }
-                return items;
-            }
+                }, 'text/csv,.csv');
+            };
 
-            function handleImportCSV() {
-                UIUtils.openFilePicker((file) => {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        try {
-                            const csvText = event.target.result;
-                            const newItems = parseCSV(csvText);
-                            
-                            SafeUI.showModal('Confirm CSV Import',
-                                `<p>Found ${newItems.length} items. This will <strong>overwrite</strong> all local entries.</p>`,
-                                [
-                                    {label: 'Cancel'},
-                                    {
-                                        label: 'Import',
-                                        class: 'button-danger',
-                                        callback: () => {
-                                            state.items = newItems;
-                                            saveState();
-                                            renderAll();
-                                            SafeUI.showToast("CSV Import Successful.");
-                                        }
-                                    }
-                                ]
-                            );
-                            
-                        } catch (err) {
-                            console.error("CSV Import failed:", err);
-                            SafeUI.showModal('Import Error', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
-                        }
-                    };
-                    reader.onerror = () => {
-                        SafeUI.showModal('Import Error', `<p>Failed to read the file.</p>`, [{label: 'OK'}]);
-                    };
-                    reader.readAsText(file);
-                }, '.csv, text/csv');
-            }
+            // --- Init & Event Listeners ---
             
-            // --- Initial Load & Event Listeners ---------------------------
+            SearchHelper.setupDebouncedSearch(DOMElements.searchInput, (term) => {
+                currentSearchTerm = term;
+                renderAll();
+            }, 300);
             
-            function attachEventListeners() {
-                SearchHelper.setupDebouncedSearch(DOMElements.searchInput, (term) => {
-                    renderAll();
-                }, 250);
-                
-                DOMElements.btnAddNewEntry.addEventListener('click', () => {
-                    handleAddNewEntry(DOMElements.searchInput.value.trim());
-                });
+            DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
+            DOMElements.settingsBtn.addEventListener('click', handleShowSettings);
+            
+            DOMElements.editModeBtn.addEventListener('click', () => {
+                isEditMode = !isEditMode;
+                currentEditState.id = null; // Clear any active edit when toggling mode
+                renderAll();
+            });
 
-                DOMElements.btnSettings.addEventListener('click', showSettingsModal);
-                DOMElements.btnExport.addEventListener('click', handleExportCSV);
-                DOMElements.btnImport.addEventListener('click', handleImportCSV);
-                
-                DOMElements.btnToggleEditMode.addEventListener('click', () => {
-                    isEditMode = !isEditMode;
-                    currentEditState = { id: null };
-                    renderAll();
-                });
-            }
+            DOMElements.exportCsvBtn.addEventListener('click', handleExportCSV);
+            DOMElements.importCsvBtn.addEventListener('click', handleImportCSV);
 
-            attachEventListeners();
             renderAll();
         });
     </script>
