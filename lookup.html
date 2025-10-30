@@ -3,53 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - New Page</title>
+    <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="lookup-page">
+
     <div id="navbar-container"></div>
 
-    <div class="app-container">
-        <div class="panel">
-            <div class="main-content">
-                <div class="section-header-wrapper">
-                    <h3 class="section-header">Template Page - Shared Functions Demo</h3>
-                    <div class="button-group">
-                        <button id="demo-backup-btn" class="button-base">Backup</button>
-                        <button id="demo-restore-btn" class="button-base">Restore</button>
-                    </div>
-                </div>
-            
-                <div class="divider"></div>
-            
-                <div class="section-header-wrapper">
-                    <h3 class="section-header">Example List</h3>
-                    <button id="demo-add-item-btn" class="button-base button-primary">+ Add Item</button>
-                </div>
-            
-                <div class="form-group">
-                    <label for="demo-search-input">Search Items</label>
-                    <input type="text" id="demo-search-input" class="sidebar-input" placeholder="Type to search...">
-                </div>
-            
-                <div id="demo-list-container" class="empty-state-message">
-                    No items yet. Click '+ Add Item' to create one.
-                </div>
-            
-                <div class="divider"></div>
-            
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea id="demo-notes" class="sidebar-textarea" placeholder="Start typing... (auto-resize enabled)"></textarea>
-                </div>
-            
-                <p style="color: var(--subtle-text); font-size: 0.875rem; margin-top: 1rem;">
-                    💡 <strong>Tip:</strong> Open the browser console (F12) and uncomment example code in the inline script to see shared functions in action.
-                </p>
+    <div class="container">
+        <header class="lookup-header">
+            <!-- Main Search Input -->
+            <div class="search-controls">
+                <input type="text" id="search-input" placeholder="Search KB and Local Database..." autocomplete="off">
             </div>
-            <!-- Global UI (Toast/Modal) is now loaded via navbar.html -->
-        </div>
+            
+            <!-- Global Page Actions -->
+            <div class="page-actions-bar">
+                <button id="btn-settings" class="button-base icon-btn" title="Settings">⚙️</button>
+                <button id="btn-toggle-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
+                <button id="btn-export" class="button-base" title="Export data to CSV">Export...</button>
+                <button id="btn-import" class="button-base" title="Import data from CSV">Import...</button>
+            </div>
+        </header>
+
+        <main class="results-container-single-column">
+            <!-- Section 1: ServiceNow KB Search -->
+            <section class="column">
+                <h2>ServiceNow KnowledgeBase</h2>
+                <a href="#" id="kb-search-link" target="_blank" rel="noopener noreferrer" class="kb-search-link disabled">
+                    Search KB for "..."
+                </a>
+                <p class="kb-settings-prompt" id="kb-settings-prompt">
+                    No KB URL configured. Click the ⚙️ icon to set one up.
+                </p>
+            </section>
+
+            <!-- Section 2: Local Database (PowerShell Logic) -->
+            <section class="column">
+                <div class="section-header-wrapper" style="margin-bottom: 0.5rem;">
+                    <h2 id="local-db-header" style="margin: 0;">Local Database Results</h2>
+                    <button id="btn-add-new-entry" class="button-base button-primary hidden" style="font-size: 0.8rem;">+ Create Entry</button>
+                </div>
+                <ul id="local-results" class="result-list"></ul>
+            </section>
+        </main>
     </div>
+
+    <!-- Global UI (Toast/Modal) is now loaded via navbar.html -->
 
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
@@ -57,168 +57,568 @@
 
     <script>
     AppLifecycle.run(async () => {
-        // ============================================================================
-        // TEMPLATE.HTML - Demonstration of Shared Functions
-        // ============================================================================
-    
-        const APP_VERSION = '6.1.0';
-        const LOCAL_STORAGE_KEY = 'newpage_state_v5';
-    
-        const ctx = await AppLifecycle.initPage({
-            pageName: 'template.html',
-            storageKey: LOCAL_STORAGE_KEY,
-            defaultState: {
+
+            const APP_NAME = 'lookup_v2';
+            const APP_VERSION = '1.0.0';
+            const DATA_KEY = `${APP_NAME}_data`;
+
+            const defaultState = {
+                items: [], // Replaces routingData/snippetsData
+                settings: {
+                    kbBaseUrl: '' // e.g., "https://copaprod.service-now.com/$knowledge.do?query="
+                }
+            };
+
+            const ctx = await AppLifecycle.initPage({
+                pageName: 'lookup.html',
+                storageKey: DATA_KEY,
+                defaultState: defaultState,
                 version: APP_VERSION,
-                exampleList: []
-            },
-            version: APP_VERSION,
-            requiredElements: [
-                'navbar-container',
-                'toast',
-                'modal-overlay',
-                'modal-content',
-                'demo-backup-btn',
-                'demo-restore-btn',
-                'demo-add-item-btn',
-                'demo-search-input',
-                'demo-list-container',
-                'demo-notes'
-            ]
-        });
-    
-        if (!ctx) return;
-    
-        const { elements, state, saveState } = ctx;
-    
-        // ----------------------------------------------------------------------------
-        // WORKING EXAMPLES
-        // ----------------------------------------------------------------------------
-        
-        DOMHelpers.setupTextareaAutoResize(elements.demoNotes, 200);
-        
-        elements.demoBackupBtn.addEventListener('click', () => {
-            BackupRestore.createBackup(state, 'template');
-        });
-        
-        elements.demoRestoreBtn.addEventListener('click', () => {
-            BackupRestore.handleRestoreUpload({
-                appName: 'template',
-                itemValidators: {
-                    exampleList: ['id', 'name', 'created']
-                },
-                onRestore: (dataToRestore) => {
-                    SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
-                        { label: 'Cancel' },
-                        {
-                            label: 'Restore',
-                            class: 'button-danger',
-                            callback: () => {
-                                state.exampleList = dataToRestore.exampleList || [];
-                                saveState();
-                                renderList();
-                                SafeUI.showToast('Data restored successfully.');
-                            }
-                        }
-                    ]);
-                }
-            });
-        });
-        
-        elements.demoAddItemBtn.addEventListener('click', () => {
-            SafeUI.showModal('Add Item',
-                `<input type="text" id="new-item-name" class="sidebar-input" placeholder="Item name">`,
-                [
-                    { label: 'Cancel' },
-                    {
-                        label: 'Add',
-                        class: 'button-primary',
-                        callback: () => {
-                            const name = document.getElementById('new-item-name').value.trim();
-                            
-                            if (!SafeUI.validators.notEmpty(name)) {
-                                SafeUI.showValidationError('Invalid Input', 'Name cannot be empty.', 'new-item-name');
-                                return false;
-                            }
-                            
-                            if (DataValidator.hasDuplicate(state.exampleList, 'name', name)) {
-                                SafeUI.showValidationError('Duplicate Name', 'This name already exists.', 'new-item-name');
-                                return false;
-                            }
-                            
-                            state.exampleList.push({
-                                id: SafeUI.generateId(),
-                                name: name,
-                                created: new Date().toISOString()
-                            });
-                            saveState();
-                            renderList();
-                            SafeUI.showToast('Item added!');
-                        }
-                    }
+                requiredElements: [
+                    'search-input',
+                    'local-results',
+                    'btn-add-new-entry',
+                    'btn-settings',
+                    'btn-toggle-edit-mode',
+                    'btn-export',
+                    'btn-import',
+                    'kb-search-link',
+                    'kb-settings-prompt',
+                    'local-db-header',
+                    'toast', 
+                    'modal-overlay', 
+                    'modal-content',
+                    'navbar-container'
                 ]
-            );
-        });
-        
-        SearchHelper.setupDebouncedSearch(elements.demoSearchInput, (term) => {
-            renderList(term);
-        });
-        
-        const renderList = (searchTerm = '') => {
-            const filtered = SearchHelper.simpleSearch(state.exampleList, searchTerm, ['name']);
-            
-            ListRenderer.renderList({
-                container: elements.demoListContainer,
-                items: filtered,
-                emptyMessage: searchTerm 
-                    ? `No items match "${SafeUI.escapeHTML(searchTerm)}"`
-                    : 'No items yet. Click \'+ Add Item\' to create one.',
-                createItemElement: (item) => {
-                    const div = document.createElement('div');
-                    div.className = 'shortcut-item';
-                    div.style.marginBottom = '0.5rem';
-                    
-                    const nameSpan = document.createElement('span');
-                    nameSpan.style.flexGrow = '1';
-                    nameSpan.innerHTML = searchTerm 
-                        ? UIPatterns.highlightSearchTerm(item.name, searchTerm)
-                        : SafeUI.escapeHTML(item.name);
-                    
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'icon-btn delete-btn';
-                    deleteBtn.innerHTML = SafeUI.SVGIcons.trash;
-                    deleteBtn.title = 'Delete';
-                    deleteBtn.onclick = () => {
-                        UIPatterns.confirmDelete('Item', item.name, () => {
-                            const index = state.exampleList.findIndex(i => i.id === item.id);
-                            if (index !== -1) {
-                                state.exampleList.splice(index, 1);
-                                saveState();
-                                renderList(searchTerm);
-                                SafeUI.showToast('Item deleted.');
-                            }
-                        });
-                    };
-                    
-                    div.appendChild(nameSpan);
-                    div.appendChild(deleteBtn);
-                    return div;
-                }
             });
-        };
-        
-        elements.demoNotes.addEventListener('input', SafeUI.debounce(() => {
-            if (!state.notes) state.notes = '';
-            state.notes = elements.demoNotes.value;
-            saveState();
-            console.log('Notes auto-saved');
-        }, 500));
-        
-        if (state.notes) {
-            elements.demoNotes.value = state.notes;
-        }
-        
-        renderList();
-    });
+
+            if (!ctx) return;
+
+            let { elements: DOMElements, state, saveState } = ctx;
+            
+            let currentEditState = { id: null };
+            let isEditMode = false;
+            
+            // --- Core Rendering -------------------------------------------
+            
+            function renderAll() {
+                const searchTerm = DOMElements.searchInput.value;
+                
+                updateKbSearchLink(searchTerm);
+
+                DOMElements.localDbHeader.textContent = isEditMode ? 'Edit Local Database' : 'Local Database Results';
+                DOMElements.btnToggleEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
+                DOMElements.btnToggleEditMode.classList.toggle('button-primary', isEditMode);
+
+                let itemsToRender = [];
+                if (isEditMode) {
+                    itemsToRender = state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                } else {
+                    itemsToRender = SearchHelper.simpleSearch(state.items, searchTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                }
+
+                const showCreateButton = !isEditMode && searchTerm.trim() && itemsToRender.length === 0;
+                DOMElements.btnAddNewEntry.classList.toggle('hidden', !showCreateButton);
+                
+                ListRenderer.renderList({
+                    container: DOMElements.localResults,
+                    items: itemsToRender,
+                    emptyMessage: getEmptyStateMessage(searchTerm),
+                    createItemElement: (item) => {
+                        if (isEditMode || (currentEditState.id && currentEditState.id === item.id)) {
+                            return createEditForm(item);
+                        }
+                        return createItemElement(item, searchTerm);
+                    }
+                });
+            }
+
+            function getEmptyStateMessage(searchTerm) {
+                if (isEditMode) {
+                    return "No entries in the database. Exit Edit Mode and search to add one.";
+                }
+                if (searchTerm.trim()) {
+                    return "No local results found.";
+                }
+                return "Type in the search bar to begin.";
+            }
+            
+            function updateKbSearchLink(term) {
+                const { kbBaseUrl } = state.settings;
+                const link = DOMElements.kbSearchLink;
+                const prompt = DOMElements.kbSettingsPrompt;
+
+                if (kbBaseUrl) {
+                    prompt.classList.add('hidden');
+                    if (term.trim()) {
+                        link.href = `${kbBaseUrl}${encodeURIComponent(term.trim())}`;
+                        link.textContent = `Search KB for "${SafeUI.escapeHTML(term)}"`;
+                        link.classList.remove('disabled');
+                    } else {
+                        link.href = '#';
+                        link.textContent = 'Search KB for "..."';
+                        link.classList.add('disabled');
+                    }
+                } else {
+                    prompt.classList.remove('hidden');
+                    link.href = '#';
+                    link.textContent = 'Search KB for "..."';
+                    link.classList.add('disabled');
+                }
+            }
+
+            // --- Read/Display Elements ------------------------------------
+
+            function createItemElement(item, searchTerm) {
+                const li = document.createElement('li');
+                li.className = 'result-item';
+                li.dataset.id = item.id;
+                
+                li.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
+                        <div class="item-actions">
+                            <button class="btn-edit button-base" title="Edit">Edit</button>
+                        </div>
+                    </div>
+                    <div class="item-content-grid">
+                        <strong>Group:</strong>
+                        <div class="item-content" title="Click to copy">${SafeUI.escapeHTML(item.assignmentGroup)}</div>
+                        
+                        <strong>Notes:</strong>
+                        <div class="item-content" title="Click to copy">${SafeUI.escapeHTML(item.notes)}</div>
+                        
+                        <strong>Path:</strong>
+                        <div class="item-content" title="Click to copy">${SafeUI.escapeHTML(item.phoneLogPath)}</div>
+                    </div>
+                `;
+
+                li.querySelector('.btn-edit').addEventListener('click', () => handleEdit(item.id));
+
+                li.querySelectorAll('.item-content').forEach(el => {
+                    el.addEventListener('click', async () => {
+                        const success = await SafeUI.copyToClipboard(el.textContent);
+                        SafeUI.showToast(success ? "Copied!" : "Failed to copy.");
+                    });
+                });
+                return li;
+            }
+
+            // --- Edit/Form Elements ---------------------------------------
+
+            function createEditForm(item) {
+                const li = document.createElement('li');
+                li.className = 'edit-form-li';
+
+                const form = document.createElement('form');
+                form.className = 'edit-form';
+                form.dataset.id = item.id;
+
+                form.innerHTML = `
+                    <div class="form-group">
+                        <label for="edit-keyword-${item.id}">Keyword(s)</label>
+                        <input type="text" id="edit-keyword-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.keyword)}" placeholder="e.g., VPN, RSA, Password">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-group-${item.id}">Assignment Group</label>
+                        <input type="text" id="edit-group-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.assignmentGroup)}" placeholder="e.g., IT-NETWORK-SEC">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-notes-${item.id}">Notes</label>
+                        <textarea id="edit-notes-${item.id}" class="sidebar-textarea" placeholder="e.g., Check for MFA status first.">${SafeUI.escapeHTML(item.notes)}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-path-${item.id}">Phone Log Path</label>
+                        <input type="text" id="edit-path-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="e.g., IT > Security > VPN">
+                    </div>
+                    <div class="edit-form-actions">
+                        <button type="button" class="btn-delete button-base button-danger" title="Delete Entry">Delete</button>
+                        <div style="flex-grow: 1;"></div>
+                        <button type="button" class="btn-cancel button-base">Cancel</button>
+                        <button type="submit" class="btn-save button-base button-primary">Save</button>
+                    </div>
+                `;
+
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleSave(form, item.id);
+                });
+                
+                form.querySelector('.btn-cancel').addEventListener('click', () => {
+                    if (!item.keyword && !item.assignmentGroup) {
+                        handleDelete(item.id, true);
+                    }
+                    currentEditState = { id: null };
+                    renderAll();
+                });
+                
+                form.querySelector('.btn-delete').addEventListener('click', () => {
+                    UIPatterns.confirmDelete('Entry', item.keyword || 'New Entry', () => handleDelete(item.id, true));
+                });
+
+                const textareas = form.querySelectorAll('.sidebar-textarea');
+                textareas.forEach(ta => DOMHelpers.setupTextareaAutoResize(ta, 200));
+
+                li.appendChild(form);
+                return li;
+            }
+
+            // --- CRUD Handlers (PowerShell Logic) -------------------------
+
+            function handleAddNewEntry(prefilledKeyword = '') {
+                if (currentEditState.id) {
+                    const el = document.querySelector('.edit-form-li');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    SafeUI.showToast("Please save or cancel your current edit first.");
+                    return;
+                }
+
+                const newItem = {
+                    id: SafeUI.generateId(),
+                    keyword: prefilledKeyword,
+                    assignmentGroup: '',
+                    notes: '',
+                    phoneLogPath: ''
+                };
+                
+                state.items.unshift(newItem);
+                currentEditState = { id: newItem.id };
+                
+                if (isEditMode) {
+                    renderAll();
+                } else {
+                    const formEl = createEditForm(newItem);
+                    DOMElements.localResults.prepend(formEl);
+                }
+
+                setTimeout(() => {
+                    document.getElementById(`edit-keyword-${newItem.id}`)?.focus();
+                }, 100);
+            }
+
+            function handleEdit(id) {
+                if (currentEditState.id) {
+                    SafeUI.showToast("Please save or cancel your other edit first.");
+                    return;
+                }
+                currentEditState = { id: id };
+                renderAll();
+                setTimeout(() => {
+                    document.getElementById(`edit-keyword-${id}`)?.focus();
+                }, 100);
+            }
+
+            function handleSave(form, id) {
+                const keyword = form.querySelector(`#edit-keyword-${id}`).value.trim();
+                const assignmentGroup = form.querySelector(`#edit-group-${id}`).value.trim();
+                const notes = form.querySelector(`#edit-notes-${id}`).value.trim();
+                const phoneLogPath = form.querySelector(`#edit-path-${id}`).value.trim();
+                
+                if (!keyword) {
+                    SafeUI.showValidationError('Invalid Input', 'Keyword cannot be blank.', `edit-keyword-${id}`);
+                    return;
+                }
+                
+                const itemIndex = state.items.findIndex(i => i.id === id);
+                if (itemIndex === -1) return;
+                
+                const existingEntry = state.items.find(i => 
+                    i.id !== id && 
+                    i.assignmentGroup && 
+                    i.assignmentGroup.toLowerCase() === assignmentGroup.toLowerCase()
+                );
+                
+                const saveAction = () => {
+                    state.items[itemIndex] = { id, keyword, assignmentGroup, notes, phoneLogPath };
+                    saveState();
+                    currentEditState = { id: null };
+                    renderAll();
+                    SafeUI.showToast("Entry saved.");
+                };
+                
+                if (existingEntry && assignmentGroup) {
+                    SafeUI.showModal("Duplicate Assignment Group",
+                        `<p>An entry for "<strong>${SafeUI.escapeHTML(existingEntry.assignmentGroup)}</strong>" already exists. How do you want to save?</p>
+                         <p><strong>Existing Keywords:</strong> ${SafeUI.escapeHTML(existingEntry.keyword)}</p>`,
+                        [
+                            { label: 'Abort', class: '' },
+                            { label: 'Continue (Create New)', class: 'button-primary', callback: saveAction },
+                            {
+                                label: 'Merge Keywords',
+                                class: 'button-primary',
+                                callback: () => {
+                                    const combinedKeywords = [...new Set([
+                                        ...existingEntry.keyword.split(',').map(k => k.trim()),
+                                        ...keyword.split(',').map(k => k.trim())
+                                    ])].filter(Boolean).join(', ');
+                                    
+                                    existingEntry.keyword = combinedKeywords;
+                                    
+                                    state.items.splice(itemIndex, 1);
+                                    
+                                    saveState();
+                                    currentEditState = { id: null };
+                                    renderAll();
+                                    SafeUI.showToast("Keywords merged.");
+                                }
+                            }
+                        ]
+                    );
+                } else {
+                    saveAction();
+                }
+            }
+
+            function handleDelete(id, skipConfirm = false) {
+                const itemIndex = state.items.findIndex(i => i.id === id);
+                if (itemIndex === -1) return;
+
+                const deleteAction = () => {
+                    state.items.splice(itemIndex, 1);
+                    saveState();
+                    if (currentEditState.id === id) {
+                        currentEditState = { id: null };
+                    }
+                    renderAll();
+                    SafeUI.showToast("Entry deleted.");
+                };
+
+                if (skipConfirm) {
+                    deleteAction();
+                } else {
+                    UIPatterns.confirmDelete('Entry', state.items[itemIndex].keyword, deleteAction);
+                }
+            }
+            
+            // --- Settings & Data Management --------------------------------
+
+            function showSettingsModal() {
+                const modalId = "settings-modal-content";
+                SafeUI.showModal("Settings",
+                    `<div id="${modalId}">
+                        <div class="form-group">
+                            <label for="kb-base-url">ServiceNow KB Base URL</label>
+                            <input type="text" id="kb-base-url" class="sidebar-input" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}" placeholder="https.../$knowledge.do?query=">
+                            <p style="font-size: 0.8rem; color: var(--subtle-text); margin: 0;">Paste your KB search URL here, up to and including the <strong>query=</strong> part.</p>
+                        </div>
+                        <div class="divider"></div>
+                        <h4 style="margin-top: 0; margin-bottom: 0.5rem;">Advanced Settings</h4>
+                        <p style="font-size: 0.8rem; color: var(--subtle-text); margin-top: 0;">For disaster recovery. Use Import/Export for Excel-friendly data.</p>
+                        <div class="button-group">
+                            <button id="modal-btn-backup" class="button-base">Backup App State (JSON)</button>
+                            <button id="modal-btn-restore" class="button-base">Restore App State (JSON)</button>
+                        </div>
+                    </div>`,
+                    [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Save Settings', 
+                            class: 'button-primary', 
+                            callback: () => {
+                                const newUrl = document.getElementById('kb-base-url').value.trim();
+                                state.settings.kbBaseUrl = newUrl;
+                                saveState();
+                                renderAll();
+                                SafeUI.showToast("Settings saved.");
+                            }
+                        }
+                    ]
+                );
+                
+                // Add event listeners *after* the modal is shown
+                setTimeout(() => {
+                    const modalNode = document.getElementById(modalId);
+                    if (!modalNode) return;
+                    
+                    modalNode.querySelector("#modal-btn-backup").addEventListener('click', () => {
+                        handleBackup();
+                        SafeUI.hideModal();
+                    });
+                    modalNode.querySelector("#modal-btn-restore").addEventListener('click', () => {
+                        handleRestore();
+                        // Do not hide modal, wait for restore flow
+                    });
+                }, 0);
+            }
+
+            function handleBackup() {
+                BackupRestore.createBackup({ items: state.items, settings: state.settings }, 'lookup-db');
+            }
+
+            function handleRestore() {
+                BackupRestore.handleRestoreUpload({
+                    appName: 'lookup-db',
+                    itemValidators: {
+                        items: ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath'],
+                        settings: ['kbBaseUrl']
+                    },
+                    onRestore: (dataToRestore) => {
+                        SafeUI.showModal('Confirm Restore', 
+                            `<p>This will overwrite all local lookup data and settings. This cannot be undone.</p>`, 
+                            [
+                                {label: 'Cancel'},
+                                {label: 'Restore', class: 'button-danger', callback: () => {
+                                    state.items = dataToRestore.items || [];
+                                    state.settings = dataToRestore.settings || defaultState.settings;
+                                    saveState();
+                                    renderAll();
+                                    SafeUI.showToast('Database restored.');
+                                }}
+                            ]
+                        );
+                    }
+                });
+            }
+            
+            // --- CSV Import/Export Functions ------------------------------
+
+            function convertArrayOfObjectsToCSV(data) {
+                const headers = ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath'];
+                const csvRows = [];
+                
+                csvRows.push(headers.join(','));
+
+                for (const item of data) {
+                    const values = headers.map(header => {
+                        let value = item[header] || '';
+                        if (typeof value === 'string') {
+                            if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+                                value = `"${value.replace(/"/g, '""')}"`;
+                            }
+                        }
+                        return value;
+                    });
+                    csvRows.push(values.join(','));
+                }
+                return csvRows.join('\n');
+            }
+
+            function handleExportCSV() {
+                if (state.items.length === 0) {
+                    SafeUI.showToast("No data to export.");
+                    return;
+                }
+                try {
+                    const csvString = convertArrayOfObjectsToCSV(state.items);
+                    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'lookup-export.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    SafeUI.showToast("CSV Exported successfully.");
+                } catch (err) {
+                    console.error("CSV Export failed:", err);
+                    SafeUI.showModal('Export Error', `<p>Failed to create CSV file: ${err.message}</p>`, [{label: 'OK'}]);
+                }
+            }
+            
+            function parseCSV(csvText) {
+                const lines = csvText.split('\n');
+                if (lines.length < 1) return [];
+                
+                // Use a regex to find the headers, removing potential quotes
+                const headers = lines[0].trim().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const requiredHeaders = ['keyword', 'assignmentGroup', 'notes', 'phoneLogPath'];
+                
+                if (!requiredHeaders.every(h => headers.includes(h))) {
+                    throw new Error(`CSV must contain headers: ${requiredHeaders.join(', ')}`);
+                }
+                
+                const items = [];
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    
+                    // Basic CSV value parsing (handles values quoted with commas)
+                    const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/g);
+                    
+                    const item = {};
+                    let allValuesEmpty = true;
+                    
+                    headers.forEach((header, index) => {
+                        let value = (values[index] || '').trim();
+                        if (value.startsWith('"') && value.endsWith('"')) {
+                            value = value.substring(1, value.length - 1).replace(/""/g, '"');
+                        }
+                        if (value) {
+                            allValuesEmpty = false;
+                        }
+                        item[header] = value;
+                    });
+                    
+                    if (allValuesEmpty) continue;
+                    
+                    if (!item.id) {
+                        item.id = SafeUI.generateId();
+                    }
+                    items.push(item);
+                }
+                return items;
+            }
+
+            function handleImportCSV() {
+                UIUtils.openFilePicker((file) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const csvText = event.target.result;
+                            const newItems = parseCSV(csvText);
+                            
+                            SafeUI.showModal('Confirm CSV Import',
+                                `<p>Found ${newItems.length} items. This will <strong>overwrite</strong> all local entries.</p>`,
+                                [
+                                    {label: 'Cancel'},
+                                    {
+                                        label: 'Import',
+                                        class: 'button-danger',
+                                        callback: () => {
+                                            state.items = newItems;
+                                            saveState();
+                                            renderAll();
+                                            SafeUI.showToast("CSV Import Successful.");
+                                        }
+                                    }
+                                ]
+                            );
+                            
+                        } catch (err) {
+                            console.error("CSV Import failed:", err);
+                            SafeUI.showModal('Import Error', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+                        }
+                    };
+                    reader.onerror = () => {
+                        SafeUI.showModal('Import Error', `<p>Failed to read the file.</p>`, [{label: 'OK'}]);
+                    };
+                    reader.readAsText(file);
+                }, '.csv, text/csv');
+            }
+            
+            // --- Initial Load & Event Listeners ---------------------------
+            
+            function attachEventListeners() {
+                SearchHelper.setupDebouncedSearch(DOMElements.searchInput, (term) => {
+                    renderAll();
+                }, 250);
+                
+                DOMElements.btnAddNewEntry.addEventListener('click', () => {
+                    handleAddNewEntry(DOMElements.searchInput.value.trim());
+                });
+
+                DOMElements.btnSettings.addEventListener('click', showSettingsModal);
+                DOMElements.btnExport.addEventListener('click', handleExportCSV);
+                DOMElements.btnImport.addEventListener('click', handleImportCSV);
+                
+                DOMElements.btnToggleEditMode.addEventListener('click', () => {
+                    isEditMode = !isEditMode;
+                    currentEditState = { id: null };
+                    renderAll();
+                });
+            }
+
+            attachEventListeners();
+            renderAll();
+        });
     </script>
 </body>
 </html>
