@@ -3,35 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lookup</title>
+    <title>Dashboard - New Page</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="lookup-page">
-
+<body>
     <div id="navbar-container"></div>
 
-    <div class="container">
-        <header class="lookup-header">
-            <h1>Lookup</h1>
-            <div class="search-controls">
-                <input type="text" id="search-input" placeholder="Search keywords...">
-                <button id="btn-add-new-entry" class="btn-new-entry">+ New Entry</button>
+    <div class="app-container">
+        <div class="panel">
+            <div class="main-content">
+                <div class="section-header-wrapper">
+                    <h3 class="section-header">Template Page - Shared Functions Demo</h3>
+                    <div class="button-group">
+                        <button id="demo-backup-btn" class="button-base">Backup</button>
+                        <button id="demo-restore-btn" class="button-base">Restore</button>
+                    </div>
+                </div>
+            
+                <div class="divider"></div>
+            
+                <div class="section-header-wrapper">
+                    <h3 class="section-header">Example List</h3>
+                    <button id="demo-add-item-btn" class="button-base button-primary">+ Add Item</button>
+                </div>
+            
+                <div class="form-group">
+                    <label for="demo-search-input">Search Items</label>
+                    <input type="text" id="demo-search-input" class="sidebar-input" placeholder="Type to search...">
+                </div>
+            
+                <div id="demo-list-container" class="empty-state-message">
+                    No items yet. Click '+ Add Item' to create one.
+                </div>
+            
+                <div class="divider"></div>
+            
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="demo-notes" class="sidebar-textarea" placeholder="Start typing... (auto-resize enabled)"></textarea>
+                </div>
+            
+                <p style="color: var(--subtle-text); font-size: 0.875rem; margin-top: 1rem;">
+                    💡 <strong>Tip:</strong> Open the browser console (F12) and uncomment example code in the inline script to see shared functions in action.
+                </p>
             </div>
-        </header>
-
-        <main class="results-container">
-            <section class="column" id="routing-column">
-                <h2>Routing</h2>
-                <ul id="routing-results" class="result-list"></ul>
-            </section>
-            <section class="column" id="snippets-column">
-                <h2>Snippets</h2>
-                <ul id="snippets-results" class="result-list"></ul>
-            </section>
-        </main>
+            <!-- Global UI (Toast/Modal) is now loaded via navbar.html -->
+        </div>
     </div>
-
-    <!-- Global UI (Toast/Modal) is now loaded via navbar.html -->
 
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
@@ -39,386 +57,168 @@
 
     <script>
     AppLifecycle.run(async () => {
-
-            const APP_NAME = 'lookup';
-            const APP_VERSION = '6.1.0';
-            const DATA_KEY = `${APP_NAME}_data`;
-
-            const defaultState = {
-                routingData: [],
-                snippetsData: []
-            };
-
-            const ctx = await AppLifecycle.initPage({
-                pageName: 'lookup.html',
-                storageKey: DATA_KEY,
-                defaultState: defaultState,
+        // ============================================================================
+        // TEMPLATE.HTML - Demonstration of Shared Functions
+        // ============================================================================
+    
+        const APP_VERSION = '6.1.0';
+        const LOCAL_STORAGE_KEY = 'newpage_state_v5';
+    
+        const ctx = await AppLifecycle.initPage({
+            pageName: 'template.html',
+            storageKey: LOCAL_STORAGE_KEY,
+            defaultState: {
                 version: APP_VERSION,
-                requiredElements: [
-                    'search-input', 'routing-results', 'snippets-results',
-                    'btn-add-new-entry',
-                    'toast', 'modal-overlay', 'modal-content',
-                    'navbar-container'
-                ]
-            });
-
-            if (!ctx) return;
-
-            let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
-
-            const saveState = () => {
-                try {
-                    if (!state.routingData) state.routingData = [];
-                    if (!state.snippetsData) state.snippetsData = [];
-                    
-                    state.routingData.sort((a, b) => a.keyword.localeCompare(b.keyword));
-                    state.snippetsData.sort((a, b) => a.keyword.localeCompare(b.keyword));
-                    originalSaveState();
-                } catch (e) {
-                    console.error("Failed to save state:", e);
-                    SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
-                }
-            };
-            
-            let currentEditState = { id: null, type: null };
-            
-            const dataTypesConfig = {
-                routing: {
-                    listElement: null,
-                    dataKey: 'routingData',
-                    emptyState: 'No routing entries found.',
-                },
-                snippets: {
-                    listElement: null,
-                    dataKey: 'snippetsData',
-                    emptyState: 'No snippets found.',
-                }
-            };
-
-            function renderList(type, searchTerm = '') {
-                const config = dataTypesConfig[type];
-                if (!config || !config.listElement) return;
-
-                let data = state[config.dataKey] || [];
-                
-                let itemsToRender = SearchHelper.simpleSearch(data, searchTerm, ['keyword']);
-
-                if (currentEditState.id && currentEditState.type === type) {
-                    const isEditingItemInList = itemsToRender.some(item => item.id === currentEditState.id);
-                    if (!isEditingItemInList) {
-                        const editingItem = data.find(item => item.id === currentEditState.id);
-                        if (editingItem) {
-                            itemsToRender.unshift(editingItem);
-                        }
-                    }
-                }
-                
-                ListRenderer.renderList({
-                    container: config.listElement,
-                    items: itemsToRender,
-                    emptyMessage: searchTerm.trim() 
-                        ? `No results found for "<strong>${SafeUI.escapeHTML(searchTerm)}</strong>"`
-                        : config.emptyState,
-                    createItemElement: (item) => {
-                        if (item.id === currentEditState.id && type === currentEditState.type) {
-                            return createEditForm(type, item);
-                        }
-                        return createItemElement(item, searchTerm, type);
-                    }
-                });
-            }
-
-            function renderAll() {
-                const searchTerm = DOMElements.searchInput.value;
-                renderList('routing', searchTerm);
-                renderList('snippets', searchTerm);
-            }
-
-            function createItemElement(item, searchTerm, type) {
-                const li = document.createElement('li');
-                li.className = (type === 'routing') ? 'result-item' : 'snippet-item';
-                li.dataset.id = item.id;
-                li.dataset.type = type;
-                
-                const header = document.createElement('div');
-                header.className = 'item-header';
-                
-                const keywordSpan = document.createElement('span');
-                keywordSpan.className = 'item-keyword';
-                keywordSpan.innerHTML = UIPatterns.highlightSearchTerm(item.keyword, searchTerm);
-                
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'item-actions';
-                
-                const editButton = document.createElement('button');
-                editButton.className = 'btn-edit';
-                editButton.textContent = 'Edit';
-                editButton.onclick = () => handleEdit(item.id, type);
-                
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'btn-delete';
-                deleteButton.textContent = 'Delete';
-                
-                deleteButton.onclick = () => {
-                    const itemType = type === 'routing' ? 'Routing Entry' : 'Snippet';
-                    UIPatterns.confirmDelete(itemType, item.keyword, () => handleDelete(item.id, type));
-                };
-                
-                if (type === 'routing') {
-                    const copyKeywordBtn = document.createElement('button');
-                    copyKeywordBtn.className = 'btn-copy-keyword';
-                    copyKeywordBtn.textContent = 'Copy Keyword';
-                    setupCopyButton(copyKeywordBtn, item.keyword, "Keyword copied!");
-                    actionsDiv.appendChild(copyKeywordBtn);
-                }
-                
-                actionsDiv.appendChild(editButton);
-                actionsDiv.appendChild(deleteButton);
-                header.appendChild(keywordSpan);
-                header.appendChild(actionsDiv);
-                
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'item-content';
-                contentDiv.textContent = item.content;
-                
-                if (type === 'snippets') {
-                    contentDiv.title = 'Click to copy snippet';
-                    contentDiv.onclick = async (e) => {
-                        const success = await SafeUI.copyToClipboard(item.content);
-                        if (success) {
-                            SafeUI.showToast("Snippet copied!");
-                            e.target.style.transition = 'background-color 0.1s ease-in-out';
-                            e.target.style.backgroundColor = 'var(--color-success-bg)';
-                            setTimeout(() => { 
-                                if (e.target) e.target.style.backgroundColor = ''; 
-                            }, 200);
-                        } else {
-                            SafeUI.showToast("Failed to copy snippet.");
-                        }
-                    };
-                }
-                
-                li.appendChild(header);
-                li.appendChild(contentDiv);
-                
-                if (type === 'routing') {
-                    const footerActions = document.createElement('div');
-                    footerActions.className = 'item-actions';
-                    
-                    const copyContentBtn = document.createElement('button');
-                    copyContentBtn.className = 'btn-copy-content';
-                    copyContentBtn.textContent = 'Copy Content';
-                    setupCopyButton(copyContentBtn, item.content, "Content copied!");
-                    
-                    footerActions.appendChild(copyContentBtn);
-                    li.appendChild(footerActions);
-                }
-
-                return li;
-            }
-
-            function setupCopyButton(button, textToCopy, message) {
-                button.addEventListener('click', async (e) => {
-                    const success = await SafeUI.copyToClipboard(textToCopy);
-                    if (success && e.target) {
-                        const originalText = e.target.textContent;
-                        e.target.textContent = 'Copied!';
-                        e.target.disabled = true;
-                        setTimeout(() => {
-                            if (e.target) {
-                                e.target.textContent = originalText;
-                                e.target.disabled = false;
-                            }
-                        }, 1200);
-                    } else if (!success) {
-                        SafeUI.showToast("Failed to copy.");
-                    }
-                });
-            }
-
-            function createEditForm(type, item) {
-                const config = dataTypesConfig[type];
-
-                const li = document.createElement('li');
-                li.className = 'edit-form-li';
-
-                const form = document.createElement('form');
-                form.className = 'edit-form';
-                form.dataset.id = item.id;
-                form.dataset.type = type;
-                form.onsubmit = (e) => {
-                    e.preventDefault();
-                    handleSave(form, item.id, type);
-                };
-
-                const keywordLabel = type === 'routing' ? 'Keyword (e.g., "VPN")' : 'Keyword (e.g., "Greeting")';
-                const contentLabel = type === 'routing' ? 'Content (Assignment Group)' : 'Content (Snippet Text)';
-
-                const keywordInput = document.createElement('input');
-                keywordInput.type = 'text';
-                keywordInput.id = `edit-keyword-${item.id}`;
-                keywordInput.value = item.keyword;
-                keywordInput.placeholder = keywordLabel;
-
-                const contentTextarea = document.createElement('textarea');
-                contentTextarea.id = `edit-content-${item.id}`;
-                contentTextarea.textContent = item.content;
-                contentTextarea.placeholder = contentLabel;
-                
-                DOMHelpers.setupTextareaAutoResize(contentTextarea, 300);
-
-                const keywordLabelEl = document.createElement('label');
-                keywordLabelEl.htmlFor = keywordInput.id;
-                keywordLabelEl.textContent = 'Keyword';
-
-                const contentLabelEl = document.createElement('label');
-                contentLabelEl.htmlFor = contentTextarea.id;
-                contentLabelEl.textContent = 'Content';
-
-                form.appendChild(keywordLabelEl);
-                form.appendChild(keywordInput);
-                form.appendChild(contentLabelEl);
-                form.appendChild(contentTextarea);
-
-                form.innerHTML += `
-                    <div class="edit-form-actions">
-                        <button type="button" class="btn-cancel">Cancel</button>
-                        <button type="submit" class="btn-save">Save</button>
-                    </div>
-                `;
-
-                form.querySelector('.btn-cancel').addEventListener('click', () => {
-                    if (item.keyword.trim() === '' && item.content.trim() === '') {
-                        handleDelete(item.id, type, true);
-                    }
-                    currentEditState = { id: null, type: null };
-                    renderAll();
-                });
-
-                li.appendChild(form);
-                return li;
-            }
-
-            function handleAddNewEntry() {
-                if (currentEditState.id) {
-                    SafeUI.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
-                    return;
-                }
-
-                SafeUI.showModal("Add New Entry", 
-                    "<p>What do you want to add?</p>" +
-                    "<p style='font-size: 0.8rem; color: var(--subtle-text);'>You can also import/export data from the main Dashboard page.</p>", 
-                    [
-                        { label: 'Cancel' },
-                        { label: 'Snippet', callback: () => addNewItem('snippets') },
-                        { label: 'Routing', class: 'button-primary', callback: () => addNewItem('routing') }
-                    ]
-                );
-            }
-
-            function addNewItem(type) {
-                const config = dataTypesConfig[type];
-
-                const newItem = { id: SafeUI.generateId(), keyword: '', content: '' };
-                state[config.dataKey].unshift(newItem);
-
-                currentEditState = { id: newItem.id, type: type };
-                DOMElements.searchInput.value = '';
-                renderAll();
-
-                setTimeout(() => {
-                    const newEl = document.getElementById(`edit-keyword-${newItem.id}`);
-                    if (newEl) {
-                        newEl.focus();
-                    }
-                }, 0);
-            }
-
-            function handleEdit(id, type) {
-                if (currentEditState.id && currentEditState.id !== id) {
-                    SafeUI.showModal("Save Changes", "<p>Please save or cancel your current edit first.</p>", [{label: 'OK'}]);
-                    return;
-                }
-
-                currentEditState = { id: id, type: type };
-                renderAll();
-                
-                setTimeout(() => {
-                    const editInput = document.getElementById(`edit-keyword-${id}`);
-                    if (editInput) {
-                        editInput.focus();
-                        editInput.select();
-                    }
-                }, 0);
-            }
-
-            function handleSave(form, id, type) {
-                const keywordInput = form.querySelector(`#edit-keyword-${id}`);
-                const contentInput = form.querySelector(`#edit-content-${id}`);
-
-                const keyword = keywordInput.value.trim();
-                const content = contentInput.value.trim();
-                const data = state[dataTypesConfig[type].dataKey];
-
-                if (!SafeUI.validators.notEmpty(keyword)) {
-                    return SafeUI.showValidationError("Invalid Input", "Keyword cannot be blank.", `edit-keyword-${id}`);
-                }
-                if (!SafeUI.validators.notEmpty(content)) {
-                    return SafeUI.showValidationError("Invalid Input", "Content cannot be blank.", `edit-content-${id}`);
-                }
-
-                const isDuplicate = DataValidator.hasDuplicate(data, 'keyword', keyword, id);
-
-                if (isDuplicate) {
-                    return SafeUI.showValidationError("Duplicate Keyword", `Keyword "${SafeUI.escapeHTML(keyword)}" already exists.`, `edit-keyword-${id}`);
-                }
-                
-                let itemToUpdate = data.find(item => item.id === id);
-                if (itemToUpdate) {
-                    itemToUpdate.keyword = keyword;
-                    itemToUpdate.content = content;
-                }
-
-                saveState();
-
-                currentEditState = { id: null, type: null };
-                renderAll();
-            }
-
-            function handleDelete(id, type, skipConfirm = false) { 
-                if (currentEditState.id === id) {
-                    currentEditState = { id: null, type: null };
-                }
-
-                const config = dataTypesConfig[type];
-                const data = state[config.dataKey];
-                const index = data.findIndex(i => i.id === id);
-
-                if (index === -1) return;
-
-                data.splice(index, 1);
-
-                saveState();
-                renderAll();
-            }
-            
-            function attachEventListeners() {
-                SearchHelper.setupDebouncedSearch(DOMElements.searchInput, (term) => {
-                    renderAll();
-                }, 300);
-                
-                DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
-            }
-
-            dataTypesConfig.routing.listElement = DOMElements.routingResults;
-            dataTypesConfig.snippets.listElement = DOMElements.snippetsResults;
-            
-            if (!state.routingData) state.routingData = [];
-            if (!state.snippetsData) state.snippetsData = [];
-
-            attachEventListeners();
-            renderAll();
+                exampleList: []
+            },
+            version: APP_VERSION,
+            requiredElements: [
+                'navbar-container',
+                'toast',
+                'modal-overlay',
+                'modal-content',
+                'demo-backup-btn',
+                'demo-restore-btn',
+                'demo-add-item-btn',
+                'demo-search-input',
+                'demo-list-container',
+                'demo-notes'
+            ]
         });
+    
+        if (!ctx) return;
+    
+        const { elements, state, saveState } = ctx;
+    
+        // ----------------------------------------------------------------------------
+        // WORKING EXAMPLES
+        // ----------------------------------------------------------------------------
+        
+        DOMHelpers.setupTextareaAutoResize(elements.demoNotes, 200);
+        
+        elements.demoBackupBtn.addEventListener('click', () => {
+            BackupRestore.createBackup(state, 'template');
+        });
+        
+        elements.demoRestoreBtn.addEventListener('click', () => {
+            BackupRestore.handleRestoreUpload({
+                appName: 'template',
+                itemValidators: {
+                    exampleList: ['id', 'name', 'created']
+                },
+                onRestore: (dataToRestore) => {
+                    SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
+                        { label: 'Cancel' },
+                        {
+                            label: 'Restore',
+                            class: 'button-danger',
+                            callback: () => {
+                                state.exampleList = dataToRestore.exampleList || [];
+                                saveState();
+                                renderList();
+                                SafeUI.showToast('Data restored successfully.');
+                            }
+                        }
+                    ]);
+                }
+            });
+        });
+        
+        elements.demoAddItemBtn.addEventListener('click', () => {
+            SafeUI.showModal('Add Item',
+                `<input type="text" id="new-item-name" class="sidebar-input" placeholder="Item name">`,
+                [
+                    { label: 'Cancel' },
+                    {
+                        label: 'Add',
+                        class: 'button-primary',
+                        callback: () => {
+                            const name = document.getElementById('new-item-name').value.trim();
+                            
+                            if (!SafeUI.validators.notEmpty(name)) {
+                                SafeUI.showValidationError('Invalid Input', 'Name cannot be empty.', 'new-item-name');
+                                return false;
+                            }
+                            
+                            if (DataValidator.hasDuplicate(state.exampleList, 'name', name)) {
+                                SafeUI.showValidationError('Duplicate Name', 'This name already exists.', 'new-item-name');
+                                return false;
+                            }
+                            
+                            state.exampleList.push({
+                                id: SafeUI.generateId(),
+                                name: name,
+                                created: new Date().toISOString()
+                            });
+                            saveState();
+                            renderList();
+                            SafeUI.showToast('Item added!');
+                        }
+                    }
+                ]
+            );
+        });
+        
+        SearchHelper.setupDebouncedSearch(elements.demoSearchInput, (term) => {
+            renderList(term);
+        });
+        
+        const renderList = (searchTerm = '') => {
+            const filtered = SearchHelper.simpleSearch(state.exampleList, searchTerm, ['name']);
+            
+            ListRenderer.renderList({
+                container: elements.demoListContainer,
+                items: filtered,
+                emptyMessage: searchTerm 
+                    ? `No items match "${SafeUI.escapeHTML(searchTerm)}"`
+                    : 'No items yet. Click \'+ Add Item\' to create one.',
+                createItemElement: (item) => {
+                    const div = document.createElement('div');
+                    div.className = 'shortcut-item';
+                    div.style.marginBottom = '0.5rem';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.style.flexGrow = '1';
+                    nameSpan.innerHTML = searchTerm 
+                        ? UIPatterns.highlightSearchTerm(item.name, searchTerm)
+                        : SafeUI.escapeHTML(item.name);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'icon-btn delete-btn';
+                    deleteBtn.innerHTML = SafeUI.SVGIcons.trash;
+                    deleteBtn.title = 'Delete';
+                    deleteBtn.onclick = () => {
+                        UIPatterns.confirmDelete('Item', item.name, () => {
+                            const index = state.exampleList.findIndex(i => i.id === item.id);
+                            if (index !== -1) {
+                                state.exampleList.splice(index, 1);
+                                saveState();
+                                renderList(searchTerm);
+                                SafeUI.showToast('Item deleted.');
+                            }
+                        });
+                    };
+                    
+                    div.appendChild(nameSpan);
+                    div.appendChild(deleteBtn);
+                    return div;
+                }
+            });
+        };
+        
+        elements.demoNotes.addEventListener('input', SafeUI.debounce(() => {
+            if (!state.notes) state.notes = '';
+            state.notes = elements.demoNotes.value;
+            saveState();
+            console.log('Notes auto-saved');
+        }, 500));
+        
+        if (state.notes) {
+            elements.demoNotes.value = state.notes;
+        }
+        
+        renderList();
+    });
     </script>
 </body>
 </html>
