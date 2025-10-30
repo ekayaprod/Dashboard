@@ -90,7 +90,11 @@
             // This guard stops execution if initPage() fails (e.g., missing DOM elements)
             if (!ctx) return;
 
-            let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
+            // --- BUG FIX ---
+            // Removed destructuring of `elements` into `DOMElements`.
+            // We will now access all DOM elements directly from `ctx.elements`
+            // to prevent any variable shadowing or reassignment bugs.
+            let { state, saveState: originalSaveState } = ctx;
 
             const saveState = () => {
                 try {
@@ -137,10 +141,11 @@
                 }
 
                 // Show "+ Create Entry" button only if in search mode, a term is present, and no results were found
-                DOMElements.btnAddAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
+                // --- BUG FIX: Use ctx.elements ---
+                ctx.elements.btnAddAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
-                    container: DOMElements.localResults,
+                    container: ctx.elements.localResults, // --- BUG FIX: Use ctx.elements ---
                     items: itemsToRender,
                     emptyMessage: isEditMode ? 'No entries in the database. Click "+ Create Entry".' : (lowerTerm ? 'No local entries found.' : 'Search to see local results.'),
                     createItemElement: (item) => {
@@ -157,28 +162,29 @@
              * Renders the dynamic KnowledgeBase link
              */
             const renderKbLink = (term) => {
-                DOMElements.kbResultsList.innerHTML = '';
+                // --- BUG FIX: Use ctx.elements ---
+                ctx.elements.kbResultsList.innerHTML = '';
 
                 if (!term) {
-                    DOMElements.kbEmptyState.textContent = 'Search to generate a KnowledgeBase link.';
-                    DOMElements.kbEmptyState.classList.remove('hidden');
+                    ctx.elements.kbEmptyState.textContent = 'Search to generate a KnowledgeBase link.';
+                    ctx.elements.kbEmptyState.classList.remove('hidden');
                     return;
                 }
 
                 const baseUrl = state.settings.kbBaseUrl;
                 if (!baseUrl) {
-                    DOMElements.kbEmptyState.textContent = 'KB URL not set. Click ⚙️ to configure.';
-                    DOMElements.kbEmptyState.classList.remove('hidden');
+                    ctx.elements.kbEmptyState.textContent = 'KB URL not set. Click ⚙️ to configure.';
+                    ctx.elements.kbEmptyState.classList.remove('hidden');
                     return;
                 }
 
                 if (!baseUrl.includes('{query}')) {
-                    DOMElements.kbEmptyState.textContent = 'KB URL is invalid. It must contain {query}.';
-                    DOMElements.kbEmptyState.classList.remove('hidden');
+                    ctx.elements.kbEmptyState.textContent = 'KB URL is invalid. It must contain {query}.';
+                    ctx.elements.kbEmptyState.classList.remove('hidden');
                     return;
                 }
 
-                DOMElements.kbEmptyState.classList.add('hidden');
+                ctx.elements.kbEmptyState.classList.add('hidden');
 
                 // Create and inject the dynamic link
                 const finalUrl = baseUrl.replace('{query}', encodeURIComponent(term));
@@ -191,17 +197,18 @@
                 a.target = '_blank';
                 a.rel = 'noopener noreferrer';
                 li.appendChild(a);
-                DOMElements.kbResultsList.appendChild(li);
+                ctx.elements.kbResultsList.appendChild(li);
             };
             
             /**
              * Renders all data sections (local list + KB link)
              */
             const renderAll = () => {
-                const searchTerm = DOMElements.searchInput.value;
+                // --- BUG FIX: Use ctx.elements ---
+                const searchTerm = ctx.elements.searchInput.value;
                 if (isEditMode) {
                     // Make sure "+ Create Entry" is visible in edit mode
-                    DOMElements.btnAddAddNewEntry.classList.remove('hidden');
+                    ctx.elements.btnAddAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
             };
@@ -210,7 +217,8 @@
              * Handles the main search logic
              */
             const handleSearch = () => {
-                const term = DOMElements.searchInput.value.trim();
+                // --- BUG FIX: Use ctx.elements ---
+                const term = ctx.elements.searchInput.value.trim();
                 
                 // 1. Render local results immediately
                 renderLocalList(term);
@@ -330,7 +338,8 @@
                     return;
                 }
 
-                const searchTerm = DOMElements.searchInput.value.trim();
+                // --- BUG FIX: Use ctx.elements ---
+                const searchTerm = ctx.elements.searchInput.value.trim();
                 const newItem = { id: SafeUI.generateId(), keyword: searchTerm, assignmentGroup: '', notes: '', phoneLogPath: '' };
                 state.items.unshift(newItem); // Add to start of array
 
@@ -613,21 +622,23 @@
              */
             function attachEventListeners() {
                 // Search bar
-                SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
+                // --- BUG FIX: Use ctx.elements ---
+                SearchHelper.setupDebouncedSearch(ctx.elements.searchInput, handleSearch, 300);
                 
                 // Header buttons
-                DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
-                DOMElements.btnSettings.addEventListener('click', showSettingsModal);
-                DOMElements.btnEditMode.addEventListener('click', () => {
+                ctx.elements.btnAddAddNewEntry.addEventListener('click', handleAddNewEntry);
+                ctx.elements.btnSettings.addEventListener('click', showSettingsModal);
+                ctx.elements.btnEditMode.addEventListener('click', () => {
                     isEditMode = !isEditMode;
-                    DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
-                    DOMElements.btnEditMode.classList.toggle('button-primary', isEditMode);
+                    ctx.elements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
+                    ctx.elements.btnEditMode.classList.toggle('button-primary', isEditMode);
                     currentEditState = { id: null, type: null }; // Clear any active edit
                     renderAll();
                 });
 
                 // Event delegation for local results list (edit, delete, copy)
-                DOMElements.localResults.addEventListener('click', async (e) => {
+                // --- BUG FIX: Use ctx.elements ---
+                ctx.elements.localResults.addEventListener('click', async (e) => {
                     const editBtn = e.target.closest('.btn-edit');
                     if (editBtn) {
                         const id = e.target.closest('.result-item').dataset.id;
@@ -644,7 +655,8 @@
                 });
 
                 // Create and add Import/Export buttons
-                const headerActions = DOMElements.btnSettings.parentElement;
+                // --- BUG FIX: Use ctx.elements ---
+                const headerActions = ctx.elements.btnSettings.parentElement;
                 
                 const exportBtn = document.createElement('button');
                 exportBtn.id = 'btn-export-csv';
@@ -661,8 +673,9 @@
                 importBtn.addEventListener('click', handleImportCSV);
 
                 // Add Import/Export next to Settings button
-                headerActions.insertBefore(exportBtn, DOMElements.btnSettings);
-                headerActions.insertBefore(importBtn, DOMElements.btnSettings);
+                // --- BUG FIX: Use ctx.elements ---
+                headerActions.insertBefore(exportBtn, ctx.elements.btnSettings);
+                headerActions.insertBefore(importBtn, ctx.elements.btnSettings);
             }
             
             /**
@@ -670,7 +683,8 @@
              */
             function init() {
                 // Load settings icon
-                DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+                // --- BUG FIX: Use ctx.elements ---
+                ctx.elements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
                 
                 // Ensure state structure is valid
                 if (!state.items) state.items = [];
@@ -690,4 +704,3 @@
     </script>
 </body>
 </html>
-
