@@ -8,17 +8,15 @@
 </nav>
 
 <!-- 
-  Global UI elements are now part of the navbar component.
-  This simplifies all pages that load the navbar.
+  Global UI elements (toast, modal) have been REMOVED from this component.
+  They are correctly defined in the main HTML files (index.html, lookup.html) 
+  which load this navbar. This fixes a duplicate ID bug.
 -->
-<div id="toast" class="toast"></div>
-<div id="modal-overlay" class="modal-overlay">
-    <div id="modal-content" class="modal-content"></div>
-</div>
 
 <script>
     (() => {
         try {
+            // This script is self-contained and safe.
             const currentPage = window.location.pathname.split('/').pop();
             const links = document.querySelectorAll('.nav-link');
             links.forEach(link => {
@@ -31,5 +29,3 @@
         }
     })();
 </script>
-
-
