@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - New Page</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 
-      Removed script tags from here. They are now at the end of the <body> 
-      to ensure they load and execute before the inline script.
-    -->
+    <!-- SCRIPTS MOVED TO END OF BODY -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -51,22 +48,20 @@
                     💡 <strong>Tip:</strong> Open the browser console (F12) and uncomment example code in the inline script to see shared functions in action.
                 </p>
             </div>
-            <div id="toast" class="toast"></div>
+            <!-- Toast is now loaded from navbar.html -->
         </div>
     </div>
 
-    <div id="modal-overlay" class="modal-overlay">
-        <div id="modal-content" class="modal-content"></div>
-    </div>
+    <!-- Modal overlay is now loaded from navbar.html -->
 
     <!-- 
-      All scripts are loaded here, in order. This ensures AppLifecycle 
-      and other objects are defined before the inline script runs.
+      CORRECT SCRIPT ORDER:
+      1. Load the 3 external library files.
+      2. Run the inline script that uses them.
     -->
-    <script src="js/ui.common.js"></script>
     <script src="js/app-core.js"></script>
-    <script src="js/ui-components.js"></script>
-    <script src="js/data-management.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-data.js"></script>
 
     <script>
     AppLifecycle.run(async () => {
@@ -91,7 +86,8 @@
             storageKey: LOCAL_STORAGE_KEY,          // localStorage key for this page
             defaultState: {                         // Default state structure
                 version: APP_VERSION,
-                exampleList: []
+                exampleList: [],
+                notes: '' // Added notes to default state
             },
             version: APP_VERSION,                   // App version for state migration
             requiredElements: [                     // DOM elements this page needs
@@ -202,13 +198,6 @@
         //         return li;
         //     }
         // });
-        
-        // Example: Filter a list
-        // const filtered = ListRenderer.filterItems(
-        //     state.exampleList,
-        //     'search term',
-        //     (item, term) => item.name.toLowerCase().includes(term)
-        // );
 
         // ----------------------------------------------------------------------------
         // EXAMPLE 8: UI Components (SearchHelper)
@@ -230,35 +219,9 @@
         //     'test',
         //     ['name', 'description'] // fields to search
         // );
-
-        // ----------------------------------------------------------------------------
-        // EXAMPLE 9: UI Components (DropdownHelper)
-        // ----------------------------------------------------------------------------
-        // DropdownHelper manages search-as-you-type dropdowns
-        
-        // Example: Create a search dropdown
-        // const dropdown = DropdownHelper.create({
-        //     input: document.getElementById('my-search-input'),
-        //     panel: document.getElementById('my-dropdown-panel'),
-        //     itemSelector: '.dropdown-item',
-        //     onSelect: (selectedElement) => {
-        //         console.log('Item selected:', selectedElement.dataset.id);
-        //     },
-        //     onRender: (term) => {
-        //         // Function to render the dropdown panel items
-        //         const items = state.exampleList.filter(i => i.name.includes(term));
-        //         const panel = document.getElementById('my-dropdown-panel');
-        //         panel.innerHTML = items.map(item => 
-        //             `<div class="dropdown-item" data-id="${item.id}">${item.name}</div>`
-        //         ).join('');
-        //     }
-        // });
-        
-        // Call init() to attach all listeners
-        // dropdown.init();
     
         // ----------------------------------------------------------------------------
-        // EXAMPLE 10: Backup and Restore
+        // EXAMPLE 9: Backup and Restore
         // ----------------------------------------------------------------------------
         // BackupRestore provides data export/import functionality
         
@@ -275,33 +238,35 @@
         // const restoreBtn = document.getElementById('demo-restore-btn');
         // if (restoreBtn) {
         //     restoreBtn.addEventListener('click', () => {
-        //         BackupRestore.restoreBackup((data) => {
-        //             // Validate structure
-        //             if (!BackupRestore.validateBackup(data, ['exampleList'])) {
-        //                 SafeUI.showModal('Invalid Backup', '<p>File structure is incorrect.</p>', [{label: 'OK'}]);
-        //                 return;
-        //             }
-        //             
-        //             // Confirm before overwriting
-        //             SafeUI.showModal('Confirm Restore', '<p>Replace all data?</p>', [
-        //                 { label: 'Cancel' },
-        //                 {
-        //                     label: 'Restore',
-        //                     class: 'button-danger',
-        //                     callback: () => {
-        //                         state.exampleList = data.exampleList;
-        //                         saveState();
-        //                         SafeUI.showToast('Data restored successfully.');
-        //                         // Re-render your page here
+        //         BackupRestore.handleRestoreUpload({
+        //             appName: 'myapp',
+        //             itemValidators: {
+        //                 exampleList: ['id', 'name'], // Key 'exampleList' must exist and items must have id/name
+        //                 notes: [] // Key 'notes' must exist, but no item validation
+        //             },
+        //             onRestore: (dataToRestore) => {
+        //                 // Confirm before overwriting
+        //                 SafeUI.showModal('Confirm Restore', '<p>Replace all data?</p>', [
+        //                     { label: 'Cancel' },
+        //                     {
+        //                         label: 'Restore',
+        //                         class: 'button-danger',
+        //                         callback: () => {
+        //                             state.exampleList = dataToRestore.exampleList || [];
+        //                             state.notes = dataToRestore.notes || '';
+        //                             saveState();
+        //                             SafeUI.showToast('Data restored successfully.');
+        //                             // Re-render your page here
+        //                         }
         //                     }
-        //                 }
-        //             ]);
+        //                 ]);
+        //             }
         //         });
         //     });
         // }
     
         // ----------------------------------------------------------------------------
-        // EXAMPLE 11: Data Validation
+        // EXAMPLE 10: Data Validation
         // ----------------------------------------------------------------------------
         // DataValidator helps validate user input
         
@@ -326,19 +291,13 @@
         //     const result = DataValidator.validateFields(
         //         {
         //             name: document.getElementById('name-input').value,
-        //             email: document.getElementById('email-input').value,
-        //             age: document.getElementById('age-input').value
+        //             email: document.getElementById('email-input').value
         //         },
         //         {
         //             name: { required: true, maxLength: 50 },
         //             email: { 
         //                 required: true, 
         //                 pattern: /^.+@.+\..+$/ 
-        //             },
-        //             age: { 
-        //                 required: false,
-        //                 custom: (val) => !val || (Number(val) >= 0 && Number(val) <= 120),
-        //                 customMessage: 'Age must be between 0 and 120'
         //             }
         //         }
         //     );
@@ -376,7 +335,8 @@
             BackupRestore.handleRestoreUpload({
                 appName: 'template',
                 itemValidators: {
-                    exampleList: ['id', 'name', 'created']
+                    exampleList: ['id', 'name', 'created'],
+                    notes: [] // No item validation, just ensures key exists
                 },
                 onRestore: (dataToRestore) => {
                     SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
@@ -386,8 +346,10 @@
                             class: 'button-danger',
                             callback: () => {
                                 state.exampleList = dataToRestore.exampleList || [];
+                                state.notes = dataToRestore.notes || '';
                                 saveState();
                                 renderList();
+                                elements.demoNotes.value = state.notes;
                                 SafeUI.showToast('Data restored successfully.');
                             }
                         }
@@ -483,7 +445,7 @@
         
         // Auto-save notes
         elements.demoNotes.addEventListener('input', SafeUI.debounce(() => {
-            if (!state.notes) state.notes = '';
+            if (typeof state.notes === 'undefined') state.notes = '';
             state.notes = elements.demoNotes.value;
             saveState();
             console.log('Notes auto-saved');
@@ -500,3 +462,4 @@
     </script>
 </body>
 </html>
+
