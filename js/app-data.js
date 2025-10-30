@@ -1,13 +1,14 @@
 /**
- * ============================================================================
  * app-data.js
- * * Contains data-centric logic: backup/restore and validation.
- * (Formerly data-management.js)
- * * Depends on: app-core.js (for SafeUI)
- * ============================================================================
+ * (Was data-management.js)
+ * * State persistence, backup/restore, and validation logic
+ * Depends on: app-core.js
  */
 
 const BackupRestore = {
+    /**
+     * Creates and triggers download of a JSON backup file
+     */
     createBackup: (state, appName = 'app') => {
         try {
             const backupData = {
@@ -19,7 +20,7 @@ const BackupRestore = {
             const dataStr = JSON.stringify(backupData, null, 2);
             const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
             
-            SafeUI.downloadJSON(dataStr, filename);
+            SafeUI.downloadJSON(dataStr, filename, 'application/json');
             SafeUI.showToast('Backup created successfully.');
             
         } catch (err) {
@@ -28,6 +29,9 @@ const BackupRestore = {
         }
     },
 
+    /**
+     * Opens file picker and attempts to restore from JSON file
+     */
     restoreBackup: (onRestore) => {
         SafeUI.openFilePicker((file) => {
             SafeUI.readJSONFile(
@@ -42,6 +46,9 @@ const BackupRestore = {
         });
     },
 
+    /**
+     * Validates the high-level structure of a backup file
+     */
     validateBackup: (data, requiredKeys = []) => {
         if (!data || typeof data !== 'object' || !data.data || typeof data.data !== 'object') {
             return false;
@@ -50,6 +57,9 @@ const BackupRestore = {
         return requiredKeys.every(key => key in data.data);
     },
 
+    /**
+     * Validates an array of items, ensuring each item is an object with required fields
+     */
     validateItems: (items, requiredFields) => {
         if (!Array.isArray(items)) return false;
         
@@ -59,6 +69,9 @@ const BackupRestore = {
         });
     },
 
+    /**
+     * Handles the complete backup restore flow: file picking, reading, and validation.
+     */
     handleRestoreUpload: (config) => {
         BackupRestore.restoreBackup((restoredData) => {
             try {
@@ -95,6 +108,9 @@ const BackupRestore = {
 };
 
 const DataValidator = {
+    /**
+     * Check for duplicate values in array
+     */
     hasDuplicate: (items, field, value, excludeId = null) => {
         if (!Array.isArray(items)) return false;
         const normalizedValue = String(value).toLowerCase().trim();
@@ -106,6 +122,9 @@ const DataValidator = {
         });
     },
 
+    /**
+     * Validate form fields with common rules
+     */
     validateFields: (fields, rules) => {
         const errors = [];
         
@@ -143,3 +162,86 @@ const DataValidator = {
         };
     }
 };
+
+/**
+ * DataConverter - Handles CSV parsing and generation
+ */
+const DataConverter = {
+    /**
+     * Converts an array of objects to a CSV string.
+     */
+    toCSV: (data, headers) => {
+        if (!Array.isArray(data) || !Array.isArray(headers) || headers.length === 0) {
+            throw new Error("Invalid data or headers for CSV conversion.");
+        }
+
+        const escapeCell = (cell) => {
+            const str = String(cell == null ? '' : cell);
+            // If the cell contains a comma, a quote, or a newline, enclose it in quotes
+            if (str.includes('"') || str.includes(',') || str.includes('\n')) {
+                // Escape existing quotes by doubling them
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
+        const headerRow = headers.join(',');
+        const rows = data.map(obj => {
+            return headers.map(header => escapeCell(obj[header])).join(',');
+        });
+
+        return [headerRow, ...rows].join('\n');
+    },
+
+    /**
+     * Converts a CSV file object to an array of objects.
+     */
+    fromCSV: (file, requiredHeaders) => {
+        return new Promise((resolve, reject) => {
+            SafeUI.readTextFile(file,
+                (text) => {
+                    const lines = text.replace(/\r/g, '').split('\n').filter(Boolean);
+                    if (lines.length === 0) {
+                        return resolve({ data: [], errors: [] });
+                    }
+
+                    const headerLine = lines.shift();
+                    const headers = headerLine.split(',').map(h => h.trim());
+                    const errors = [];
+
+                    // Check if all required headers are present
+                    for (const reqHeader of requiredHeaders) {
+                        if (!headers.includes(reqHeader)) {
+                            errors.push(`Missing required CSV header: "${reqHeader}"`);
+                        }
+                    }
+                    if (errors.length > 0) {
+                        // If required headers are missing, we can't parse
+                        return reject(new Error(`CSV Import Failed: ${errors.join(', ')}`));
+                    }
+
+                    const data = lines.map((line, index) => {
+                        const obj = {};
+                        const values = line.split(','); // Simple split, no quote handling
+                        
+                        headers.forEach((header, i) => {
+                            obj[header] = values[i] || '';
+                        });
+                        return obj;
+                    });
+                    
+                    resolve({ data, errors });
+                },
+                (errorMsg) => {
+                    reject(new Error(errorMsg));
+                }
+            );
+        });
+    }
+};
+
+// --- FIX: Expose components to the global window scope ---
+window.BackupRestore = BackupRestore;
+window.DataValidator = DataValidator;
+window.DataConverter = DataConverter;
+
