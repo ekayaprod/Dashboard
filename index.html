@@ -25,37 +25,43 @@
                         <button id="restore-btn-menu" class="button-base" title="Restore Dashboard">Restore</button>
                     </div>
                 </div>
-                 <div class="form-group" id="app-select-group">
+                 
+                 <!-- This is the new <select> dropdown -->
+                <div class="form-group" id="app-select-group">
                     <label for="app-select">Select Application</label>
                     <select id="app-select" class="sidebar-input"></select>
                 </div>
+                
                 <div id="app-empty-state" class="empty-state-message hidden">
                     No applications yet. Click '+ App' to add one!
                 </div>
 
                 <div id="app-details-container" class="hidden">
-                    <div id="app-editor-fields">
-                        <div class="app-section-box">
-                            <div class="form-group hidden" id="edit-app-name-wrapper">
-                                <label for="edit-app-name">App Name</label>
-                                <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
+                    <!-- The app-section-box now contains all fields -->
+                    <div class="app-section-box">
+                        <!-- This App Name field is hidden unless adding a new app -->
+                        <div class="form-group hidden" id="edit-app-name-wrapper">
+                            <label for="edit-app-name">App Name</label>
+                            <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-app-urls">URLs (one per line)</label>
+                            <div id="url-editor">
+                               <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
                             </div>
-                            <div class="form-group">
-                                <label for="edit-app-urls">URLs (one per line)</label>
-                                <div id="url-editor">
-                                   <textarea id="edit-app-urls" class="sidebar-textarea"></textarea>
+                        </div>
+
+                        <!-- Notes field is now inside the box -->
+                        <div class="form-group">
+                            <div class="label-group">
+                                <label for="edit-app-escalation">App Notes / Escalation</label>
+                                <div class="button-group">
+                                    <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
+                                    <button id="delete-app-btn" class="icon-btn delete-btn" title="Delete Application"></button>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <div class="label-group">
-                                    <label for="edit-app-escalation">App Notes / Escalation</label>
-                                    <div class="button-group">
-                                        <button id="save-changes-btn" class="button-base button-primary save-btn">Save</button>
-                                        <button id="delete-app-btn" class="icon-btn delete-btn" title="Delete Application"></button>
-                                    </div>
-                                </div>
-                                <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
-                            </div>
+                            <textarea id="edit-app-escalation" class="sidebar-textarea"></textarea>
                         </div>
                     </div>
                 </div>
@@ -72,12 +78,10 @@
                     <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing..."></textarea>
                 </div>
             </div>
-            <!-- Toast is now loaded from navbar.html -->
+            <!-- Toast and Modal are now loaded from navbar.html -->
         </div>
     </div>
 
-    <!-- Modal overlay is now loaded from navbar.html -->
-    
     <!-- 
       CORRECT SCRIPT ORDER:
       1. Load the 3 external library files.
@@ -100,19 +104,19 @@
             version: APP_VERSION
         };
     
-        // Initialize page using shared bootstrap
         const ctx = await AppLifecycle.initPage({
             pageName: 'index.html',
             storageKey: LOCAL_STORAGE_KEY,
             defaultState,
             version: APP_VERSION,
             requiredElements: [
-                'shortcuts-container', 'app-select-group', 'app-select',
-                'app-empty-state', 'app-details-container',
+                'shortcuts-container', 
+                'app-select-group', 'app-select', // Use app-select (dropdown)
+                'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
                 'edit-app-name-wrapper', 'url-editor', 'edit-app-name', 'edit-app-urls',
                 'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
                 'add-new-app-btn-menu', 'backup-btn-menu', 'restore-btn-menu', 'notepad-header',
-                'note-select', 'notepad-editor', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
+                'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
                 'navbar-container'
             ]
         });
@@ -134,6 +138,17 @@
             const itemTypeLabel = labels[type] || 'Item';
             UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
         };
+
+        // --- Auto-Resize Helper ---
+        // Manually triggers a resize event for a textarea
+        const triggerResize = (element, maxHeight = 300) => {
+            if (element) {
+                element.style.height = 'auto'; // Reset height
+                // Set new height based on content, respecting max-height
+                element.style.height = Math.min(element.scrollHeight, maxHeight) + 'px';
+            }
+        };
+
 
         const createShortcutsManager = (state, dom, services) => {
             const container = dom.shortcutsContainer;
@@ -257,9 +272,10 @@
             return { init, render, add };
         };
 
-        const renderAppData = () => {
+        // Renders the <select> dropdown
+        const renderAppDropdown = () => {
             const appSelect = DOMElements.appSelect;
-            const selectedValue = appSelect.value;
+            const selectedValue = appSelect.value; // Preserve current selection
 
             if (!hasItems('apps')) {
                 DOMElements.appSelectGroup.classList.add('hidden');
@@ -267,19 +283,24 @@
             } else {
                 DOMElements.appSelectGroup.classList.remove('hidden');
                 DOMElements.appEmptyState.classList.add('hidden');
-            }
-            
-            appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-            const fragment = document.createDocumentFragment();
-            getCollection('apps').sort((a,b) => a.name.localeCompare(b.name)).forEach(app => {
-                fragment.appendChild(new Option(app.name, app.id));
-            });
-            appSelect.appendChild(fragment);
+                
+                appSelect.innerHTML = ''; // Clear existing options
+                const fragment = document.createDocumentFragment();
+                
+                // Add the placeholder
+                fragment.appendChild(new Option('-- Select an App --', ''));
 
-            if (selectedValue) {
-                appSelect.value = selectedValue;
+                // Add sorted apps
+                getCollection('apps')
+                    .sort((a,b) => a.name.localeCompare(b.name))
+                    .forEach(app => fragment.appendChild(new Option(app.name, app.id)));
+                
+                appSelect.appendChild(fragment);
+                appSelect.value = selectedValue; // Restore selection
             }
         };
+        
+        // (Replaced renderAppData with renderAppDropdown)
 
         const renderNotesData = () => {
             const noteSelect = DOMElements.noteSelect;
@@ -302,9 +323,11 @@
             if (activeNote) {
                 DOMElements.notepadEditor.value = activeNote.content;
                 DOMElements.notepadEditor.disabled = false;
+                triggerResize(DOMElements.notepadEditor, 400); // Auto-resize notepad
             } else {
                 DOMElements.notepadEditor.value = '';
                 DOMElements.notepadEditor.disabled = true;
+                triggerResize(DOMElements.notepadEditor, 400);
             }
             DOMElements.deleteNoteBtn.disabled = !hasItems('notes');
             DOMElements.renameNoteBtn.disabled = !hasItems('notes');
@@ -312,17 +335,19 @@
 
         const renderAll = () => {
             if (shortcutsManager) shortcutsManager.render();
-            renderAppData();
+            renderAppDropdown(); // Use new dropdown render
             renderNotesData();
         };
         
         const checkFormDirty = () => {
             if (!initialAppData) return false;
+            // If ID is null, we are in "new app" mode
             if (initialAppData.id === null) {
                 return DOMElements.editAppName.value.trim() !== '' ||
                        DOMElements.editAppUrls.value.trim() !== '' ||
                        DOMElements.editAppEscalation.value.trim() !== '';
             }
+            // Otherwise, check against the loaded app data
             return DOMElements.editAppName.value.trim() !== initialAppData.name ||
                    DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
                    DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
@@ -334,47 +359,71 @@
 
         const displayAppDetails = (appId) => {
             selectedAppId = appId;
-            const isVisible = !!appId;
-            DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
-            DOMElements.editAppNameWrapper.classList.add('hidden'); // Always hide name field by default
+            
+            // --- BUG FIX: Clear fields first (safe default) ---
+            DOMElements.editAppName.value = '';
+            DOMElements.editAppUrls.value = '';
+            DOMElements.editAppEscalation.value = '';
+            DOMElements.appDetailsContainer.classList.add('hidden');
+            DOMElements.editAppNameWrapper.classList.add('hidden');
+            initialAppData = null;
+            
+            // Trigger resize to collapse fields
+            triggerResize(DOMElements.editAppUrls, 150);
+            triggerResize(DOMElements.editAppEscalation, 300);
 
-            if (isVisible) {
+            if (appId) {
                 const app = getCollection('apps').find(a => a.id === appId);
-                if (!app) return;
                 
-                initialAppData = {...app};
-                DOMElements.editAppName.value = app.name;
-                DOMElements.editAppUrls.value = app.urls;
-                DOMElements.editAppEscalation.value = app.escalation;
-            } else {
-                initialAppData = null;
-                DOMElements.appSelect.value = '';
+                // --- BUG FIX: Only proceed if app is found ---
+                if (app) {
+                    initialAppData = {...app};
+                    DOMElements.editAppName.value = app.name;
+                    DOMElements.editAppUrls.value = app.urls;
+                    DOMElements.editAppEscalation.value = app.escalation;
+                    
+                    DOMElements.appDetailsContainer.classList.remove('hidden');
+                    
+                    // --- FEATURE: Trigger auto-resize on load ---
+                    triggerResize(DOMElements.editAppUrls, 150);
+                    triggerResize(DOMElements.editAppEscalation, 300);
+                }
             }
+            
             updateSaveButtonState();
         };
 
         const createNewAppForm = () => {
-            displayAppDetails(null);
-            DOMElements.appSelect.value = '';
+            DOMElements.appSelect.value = ''; // Deselect dropdown
+            selectedAppId = null; // Ensure we are in "new" mode
+            
             DOMElements.appDetailsContainer.classList.remove('hidden');
-            DOMElements.editAppNameWrapper.classList.remove('hidden');
+            DOMElements.editAppNameWrapper.classList.remove('hidden'); // Show the name field
+            
             DOMElements.editAppName.value = '';
             DOMElements.editAppUrls.value = '';
             DOMElements.editAppEscalation.value = '';
+            
             initialAppData = {id: null, name: '', urls: '', escalation: ''};
+            
+            // Resize fields to their default empty state
+            triggerResize(DOMElements.editAppUrls, 150);
+            triggerResize(DOMElements.editAppEscalation, 300);
+            
             updateSaveButtonState();
-            DOMElements.editAppName.focus();
+            DOMElements.editAppName.focus(); // Focus the app name field
         };
 
         [DOMElements.editAppName, DOMElements.editAppUrls, DOMElements.editAppEscalation].forEach(el => {
             el.addEventListener('input', updateSaveButtonState);
         });
 
+        // --- REFACTORED: Use <select> 'change' event ---
         DOMElements.appSelect.addEventListener('change', () => {
-            const targetId = DOMElements.appSelect.value;
+            const selectedId = DOMElements.appSelect.value;
             
             const switchApp = () => {
-                displayAppDetails(targetId);
+                displayAppDetails(selectedId);
             };
             
             if (checkFormDirty()) {
@@ -388,8 +437,6 @@
             const name = DOMElements.editAppName.value.trim();
             const urls = DOMElements.editAppUrls.value.trim();
             const escalation = DOMElements.editAppEscalation.value.trim();
-            
-            const isNewApp = initialAppData && initialAppData.id === null;
 
             if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 100)) {
                 return SafeUI.showValidationError('Invalid Name', 'App name must be 1-100 characters.', 'edit-app-name');
@@ -401,37 +448,38 @@
                 return SafeUI.showValidationError('Duplicate Name', 'An app with this name already exists.', 'edit-app-name');
             }
 
+            const appIndex = getCollection('apps').findIndex(a => a.id == selectedAppId);
             let savedAppId = selectedAppId;
-            if (isNewApp) {
+
+            if (appIndex > -1) { // Update existing app
+                getCollection('apps')[appIndex] = { ...getCollection('apps')[appIndex], name, urls, escalation };
+            } else { // Create new app
                 const newApp = { id: SafeUI.generateId(), name, urls, escalation };
                 getCollection('apps').push(newApp);
                 savedAppId = newApp.id;
-            } else {
-                 const appIndex = getCollection('apps').findIndex(a => a.id == selectedAppId);
-                 if (appIndex > -1) {
-                    getCollection('apps')[appIndex] = { ...getCollection('apps')[appIndex], name, urls, escalation };
-                 } else {
-                     return SafeUI.showToast('Error: Could not find app to save.');
-                 }
             }
-
+            
             saveState();
-            renderAppData(); // Re-render dropdown
-            DOMElements.appSelect.value = savedAppId; // Re-select the saved app
+            renderAppDropdown(); // Re-render the dropdown
+            
+            // Select the newly saved app in the dropdown and display it
+            DOMElements.appSelect.value = savedAppId;
             displayAppDetails(savedAppId);
+            
             SafeUI.showToast('Changes saved');
         });
 
         DOMElements.deleteAppBtn.addEventListener('click', () => {
-             if(selectedAppId) {
-                const appIndex = getCollection('apps').findIndex(item => item.id === selectedAppId);
+             const selectedId = DOMElements.appSelect.value; // Get ID from dropdown
+             if(selectedId) {
+                const appIndex = getCollection('apps').findIndex(item => item.id === selectedId);
                 if (appIndex > -1) {
                     const appName = getCollection('apps')[appIndex].name;
                     confirmDelete('apps', appName, () => {
                         getCollection('apps').splice(appIndex, 1);
                         saveState();
-                        displayAppDetails(null);
-                        renderAll();
+                        displayAppDetails(null); // Clear form
+                        renderAll(); // Re-render dropdown
                     });
                 }
              }
@@ -470,12 +518,10 @@
                         {label: 'Cancel'},
                         {label: 'Restore', class: 'button-danger', callback: async () => {
                             try {
-                                // Ensure all default keys are present
                                 state.apps = dataToRestore.apps || [];
                                 state.notes = dataToRestore.notes || [];
                                 state.shortcuts = dataToRestore.shortcuts || [];
                                 
-                                // Re-check for scratchpad
                                 if (!hasItems('notes')) {
                                     getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
                                 }
@@ -515,14 +561,14 @@
                             if(SafeUI.validators.notEmpty(newTitle) && SafeUI.validators.maxLength(newTitle, 50)) {
                                 if (DataValidator.hasDuplicate(getCollection('notes'), 'title', newTitle, activeNoteId)) {
                                     SafeUI.showValidationError('Duplicate Title', 'A note with this title already exists.', 'rename-note-input');
-                                    return false; // Keep modal open
+                                    return false; 
                                 }
                                 note.title = newTitle;
                                 saveState();
                                 renderNotesData();
                             } else {
                                 SafeUI.showValidationError('Invalid Title', 'Title must be 1-50 characters.', 'rename-note-input');
-                                return false; // Keep modal open
+                                return false; 
                             }
                         }}
                     ]);
@@ -555,7 +601,7 @@
             renderNotesData();
         });
 
-        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
+        const debouncedNotepadSave = SafeUI.debounce(() => {
             if (!activeNoteId) return;
             const note = getCollection('notes').find(n => n.id == activeNoteId);
             if(note) {
@@ -563,9 +609,12 @@
                 saveState();
                 SafeUI.showToast('Note saved');
             }
-        }, DEBOUNCE_DELAY));
+        }, DEBOUNCE_DELAY);
+
+        DOMElements.notepadEditor.addEventListener('input', debouncedNotepadSave);
 
         DOMElements.notepadEditor.addEventListener('blur', () => {
+            debouncedNotepadSave.cancel(); // Cancel any pending debounced save
             if (!activeNoteId) return;
             const note = getCollection('notes').find(n => n.id == activeNoteId);
             if(note && note.content !== DOMElements.notepadEditor.value) {
@@ -576,15 +625,10 @@
         });
 
         const init = () => {
-            if (DOMElements.editAppEscalation) {
-                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
-            }
-            if (DOMElements.editAppUrls) {
-                DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls, 150);
-            }
-            if (DOMElements.notepadEditor) {
-                DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
-            }
+            // --- FEATURE: Setup auto-resize on all textareas ---
+            DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation, 300);
+            DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls, 150);
+            DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor, 400);
 
             const services = {
                 showModal: SafeUI.showModal,
