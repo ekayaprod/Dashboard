@@ -1,19 +1,17 @@
 /**
  * app-core.js
  * (Was ui.common.js + app-core.js)
- * * Core application initialization, SafeUI wrapper, and DOM utilities
+ * Core application initialization, SafeUI wrapper, and DOM utilities
  */
 
-// ============================================================================
-// UIUtils (Low-level DOM, UI, and helper functions)
-// ============================================================================
+// --- Low-level UI Utilities ---
 const UIUtils = {
 
     SVGIcons: {
         plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>',
         pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
         trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>',
-        settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4.75A3.25 3.25 0 1 0 8 11.25 3.25 3.25 0 0 0 8 4.75zM5.75 8a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0z"/><path d="M9.78 1.47a.75.75 0 0 1 0 1.06L9.06 3.25a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L5.27 7.02a.75.75 0 0 1-1.06 0L1.47 6.28a.75.75 0 0 1 0-1.06L2.2 4.47a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L6.02 1.47a.75.75 0 0 1 1.06 0L8 2.25l.92-.78a.75.75 0 0 1 1.06 0l.92.78 1.77-1.77a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l.75-.75a.75.75 0 0 1 1.06 0l1.74 1.74a.75.75 0 0 1 0 1.06L12.98 5.27a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L8.98 9.78a.75.75 0 0 1-1.06 0L7.14 8.99a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L3.02 1.47a.75.75 0 0 1 0-1.06L1.28.67a.75.75 0 0 1-1.06 0L.67 1.28a.75.75 0 0 1 0 1.06l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L8 13.75l-.92.78a.75.75 0 0 1-1.06 0l-.92-.78-1.77 1.77a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-.75.75a.75.75 0 0 1-1.06 0L.67 14.72a.75.75 0 0 1 0-1.06l.78-.78a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L5.27 8.98a.75.75 0 0 1 1.06 0l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L9.78 14.53a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L1.47 7.02a.75.75 0 0 1 0-1.06L3.2 5.21a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L5.27 1.47a.75.75 0 0 1-1.06 0L3.43.67a.75.75 0 0 1-1.06 0L.67 2.37a.75.75 0 0 1 0 1.06l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L6.02 14.53a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L1.47 8.98a.75.75 0 0 1 0-1.06L3.2 6.17a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L5.27 2.53a.75.75 0 0 1-1.06 0L2.47.79a.75.75 0 0 1-1.06 0L.67 1.57A.75.75 0 0 1 0 2.1v11.8A.75.75 0 0 1 .67 14.72l.78-.78a.75.75 0 0 1 1.06 0l.75.75a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06l-1.74 1.74a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L1.47 9.78a.75.75 0 0 1 0-1.06l1.74-1.74a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35L8 13.75l.92.78a.75.75 0 0 1 1.06 0l.92-.78 1.77-1.77a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l.75-.75a.75.75 0 0 1 1.06 0l1.74 1.74a.75.75 0 0 1 0 1.06l-.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35L12.98 14.53a.75.75 0 0 1 0 1.06l-1.74 1.74a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L8 9.78l-.92-.78a.75.75 0 0 1-1.06 0l-.92.78-1.77 1.77a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-.75.75a.75.75 0 0 1-1.06 0L.67 13.94A.75.75 0 0 1 0 13.39V1.61A.75.75 0 0 1 .67.83l1.74 1.74a.75.75 0 0 1 0 1.06L1.62 4.41a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L.67 7.14a.75.75 0 0 1-1.06 0L.28 6.81a.75.75 0 0 1 0-1.06l1.74-1.74a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0L6.02.67A.75.75 0 0 1 7.08 0l.92.78a.75.75 0 0 1 1.06 0l.92-.78a.75.75 0 0 1 1.06 0l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06l-1.74 1.74a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-.75.75a.75.75 0 0 1-1.06 0l-1.74-1.74a.75.75 0 0 1 0-1.06l.78-.78a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l1.77-1.77a.75.75 0 0 1 0-1.06L13.72.83a.75.75 0 0 1 1.06 0l.78.78a.75.75 0 0 1 0 1.06l-.78.78a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-1.77 1.77a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L8.98 1.47a.75.75 0 0 1 0-1.06L7.24.67a.75.75 0 0 1-1.06 0L5.4 1.45a.75.75 0 0 1 0 1.06l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35L8 8.25l-.92-.78a.75.75 0 0 1-1.06 0l-.92.78L3.33 6.47a.25.25 0 0 0 0-.35l.28-.29c.3-.3.3-.79 0-1.09l-1.6-1.6c-.3-.3-.79-.3-1.09 0l-.29.28a.25.25 0 0 0-.35 0L.67 4.19a.75.75 0 0 1-1.06 0L.28 3.86a.75.75 0 0 1 0-1.06L2.02 1.06a.75.75 0 0 1 1.06 0l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L7.08 9.02a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L3.02 2.53a.75.75 0 0 1 0-1.06l.78-.78a.75.75 0 0 1 1.06 0l.75.75a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L9.78 8.25l.92-.78a.75.75 0 0 1 1.06 0l.92.78 1.77-1.77a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l.75-.75a.75.75 0 0 1 1.06 0l1.74 1.74a.75.75 0 0 1 0 1.06L14.72 6.28a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L9.78 7.14a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L3.02 1.47z"/></svg>'
+        settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4.75a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 4.75zM8 8a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 8zm0 3.25a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75zM4.75 8a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 4.75 8zm3.25 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 8zm3.25 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 11.25 8zm-6.5-3.25a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 4.75 4.75zm3.25 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 4.75zm3.25 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 11.25 4.75z"/></svg>'
     },
     
     validators: {
@@ -49,44 +47,49 @@ const UIUtils = {
         maxLength: function(value, max) { return this._validate(value, 'maxLength', {max}); }
     },
 
-    /**
-     * Dynamically loads the navigation bar.
-     */
     loadNavbar: (() => {
-        let loaded = false;
-        return async (containerId) => {
-            if (loaded) return;
-            loaded = true;
-            
+        const loadedNavbars = new Set();
+        return (containerId) => {
+            if (!containerId || loadedNavbars.has(containerId)) {
+                return;
+            }
+            loadedNavbars.add(containerId);
+
             const navContainer = document.getElementById(containerId);
             if (!navContainer) {
                 console.error(`Navbar container "${containerId}" not found.`);
                 return;
             }
 
-            try {
-                const response = await fetch('navbar.html');
-                if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
-                navContainer.innerHTML = await response.text();
-            } catch (error) {
-                console.error('Failed to load navbar:', error);
-                navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
-            }
+            fetch('navbar.html')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    navContainer.innerHTML = html;
+                    // Remove the self-activating script after it runs
+                    const scriptTag = navContainer.querySelector('#nav-active-script');
+                    if (scriptTag) {
+                        scriptTag.remove();
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to load navbar:', error);
+                    navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
+                    loadedNavbars.delete(containerId); // Allow retry
+                });
         };
     })(),
 
-    /**
-     * Escapes a string for safe insertion into HTML.
-     */
     escapeHTML: (str) => {
         const p = document.createElement('p');
         p.textContent = str ?? '';
         return p.innerHTML;
     },
 
-    /**
-     * Generates a unique ID with a fallback.
-     */
     generateId: () => {
         if (crypto.randomUUID) {
             return crypto.randomUUID();
@@ -94,9 +97,6 @@ const UIUtils = {
         return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     },
 
-    /**
-     * Debounces a function.
-     */
     debounce: (func, delay) => {
         let timeout;
         return (...args) => {
@@ -105,9 +105,6 @@ const UIUtils = {
         };
     },
 
-    /**
-     * Copies text to the clipboard.
-     */
     copyToClipboard: async (text) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -118,10 +115,7 @@ const UIUtils = {
         }
     },
 
-    /**
-     * Triggers a file download.
-     */
-    downloadJSON: function(dataStr, filename, mimeType = 'application/json') {
+    downloadJSON: (dataStr, filename, mimeType = 'application/json') => {
         try {
             if (typeof dataStr !== 'string' || !filename) {
                 throw new Error('Invalid parameters');
@@ -138,15 +132,12 @@ const UIUtils = {
             return true;
         } catch (error) {
             console.error("Failed to download file:", error);
-            this.showModal("Download Error", "<p>Failed to create download.</p>", [{label: "OK"}]);
+            UIUtils.showModal("Download Error", "<p>Failed to create download.</p>", [{label: "OK"}]);
             return false;
         }
     },
 
-    /**
-     * Programmatically opens a file picker.
-     */
-    openFilePicker: (callback, accept = "application/json,.json") => {
+    openFilePicker: (callback, accept) => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = accept;
@@ -159,9 +150,6 @@ const UIUtils = {
         input.click();
     },
 
-    /**
-     * Reads a file as JSON.
-     */
     readJSONFile: (file, onSuccess, onError) => {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -180,19 +168,11 @@ const UIUtils = {
         reader.readAsText(file);
     },
 
-    /**
-     * Reads a file as plain text.
-     */
+    // --- FIX: Added readTextFile for CSV import ---
     readTextFile: (file, onSuccess, onError) => {
         const reader = new FileReader();
         reader.onload = (event) => {
-            try {
-                const text = event.target.result;
-                onSuccess(text);
-            } catch (err) {
-                console.error("Failed to read text:", err);
-                onError("Failed to read file as text.");
-            }
+            onSuccess(event.target.result);
         };
         reader.onerror = () => {
             console.error("Failed to read file.");
@@ -201,9 +181,6 @@ const UIUtils = {
         reader.readAsText(file);
     },
 
-    /**
-     * Creates a state manager for localStorage.
-     */
     createStateManager: (key, defaults, version, onCorruption) => {
         if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
             console.error("createStateManager requires valid key (string), defaults (object), and version.");
@@ -232,7 +209,8 @@ const UIUtils = {
             } else {
                 data = { ...defaults };
             }
-            return data;
+            // Ensure all default keys are present even if loading valid data
+            return { ...defaults, ...data };
         };
 
         const save = (state) => {
@@ -248,9 +226,6 @@ const UIUtils = {
         return { load, save };
     },
 
-    /**
-     * Hides the global modal.
-     */
     hideModal: () => {
         const modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) {
@@ -258,9 +233,6 @@ const UIUtils = {
         }
     },
 
-    /**
-     * Shows the global modal with custom content and buttons.
-     */
     showModal: function(title, contentHtml, actions) {
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
@@ -269,7 +241,7 @@ const UIUtils = {
             return;
         }
 
-        modalContent.innerHTML = `<h3>${this.escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
+        modalContent.innerHTML = `<h3>${UIUtils.escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
         const actionsContainer = modalContent.querySelector('.modal-actions');
         
         actions.forEach(action => {
@@ -278,7 +250,7 @@ const UIUtils = {
             btn.textContent = action.label;
             btn.onclick = () => {
                 if (!action.callback || action.callback() !== false) {
-                    this.hideModal();
+                    UIUtils.hideModal();
                 }
             };
             actionsContainer.appendChild(btn);
@@ -287,9 +259,6 @@ const UIUtils = {
         modalOverlay.style.display = 'flex';
     },
 
-    /**
-     * Shows a standardized validation error modal and focuses the element.
-     */
     showValidationError: function(title, message, focusElementId) {
         this.showModal(title, `<p>${message}</p>`, [{label: 'OK'}]);
         if (focusElementId) {
@@ -298,9 +267,6 @@ const UIUtils = {
     },
 
 
-    /**
-     * Shows a simple feedback toast message.
-     */
     showToast: (function() {
         let activeTimer = null;
         
@@ -310,7 +276,7 @@ const UIUtils = {
             
             if (activeTimer) clearTimeout(activeTimer);
             
-            toast.innerHTML = `<span>${this.escapeHTML(message)}</span>`;
+            toast.innerHTML = `<span>${UIUtils.escapeHTML(message)}</span>`;
             toast.classList.add('show');
             
             activeTimer = setTimeout(() => {
@@ -321,15 +287,32 @@ const UIUtils = {
     })(),
 };
 
-// ============================================================================
-// SafeUI (Wrapper for graceful degradation)
-// ============================================================================
+// --- Modal Global Listeners ---
+document.addEventListener('DOMContentLoaded', () => {
+    // This listener is redundant if we ensure modal exists before use, but harmless
+    document.body.addEventListener('click', (e) => {
+        if (e.target.id === 'modal-overlay') {
+            UIUtils.hideModal();
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            UIUtils.hideModal();
+        }
+    });
+});
+
+
+/**
+ * SafeUI - Wrapper around UIUtils for graceful degradation
+ * Ensures app doesn't crash if ui.common.js fails to load.
+ */
 const SafeUI = (() => {
     const isReady = typeof UIUtils !== 'undefined' && UIUtils;
     
     const getSVGIcons = () => {
         if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
-        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙' };
+        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙️' };
     };
 
     return {
@@ -344,7 +327,7 @@ const SafeUI = (() => {
         generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
         debounce: (func, delay) => isReady ? UIUtils.debounce(func, delay) : func,
         copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
-        downloadJSON: (data, filename, mimeType) => isReady && UIUtils.downloadJSON(data, filename, mimeType),
+        downloadJSON: (data, filename, mime) => isReady && UIUtils.downloadJSON(data, filename, mime),
         openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
         readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
         readTextFile: (file, onSuccess, onError) => isReady ? UIUtils.readTextFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
@@ -353,12 +336,14 @@ const SafeUI = (() => {
     };
 })();
 
-// ============================================================================
-// DOMHelpers (Utilities for DOM manipulation)
-// ============================================================================
+/**
+ * DOMHelpers - DOM element utilities
+ */
 const DOMHelpers = {
     /**
      * Cache DOM elements and validate they exist
+     * @param {Array<string>} requiredIds - Array of element IDs to cache
+     * @returns {Object} { elements, allFound }
      */
     cacheElements: (requiredIds) => {
         const elements = {};
@@ -369,7 +354,15 @@ const DOMHelpers = {
             if (!el) {
                 console.error(`FATAL: DOM element with id "${id}" not found.`);
                 allFound = false;
+                // --- FIX: This was the bug. We must 'continue' here. ---
+                // If we don't, the line below adds a key with a 'null' value,
+                // but allFound is still false, initPage returns null,
+                // and ctx is null, leading to a *different* error.
+                // The user's log (undefined error) means the key was
+                // never added, which is what this 'continue' enforces.
+                continue;
             }
+            // Convert kebab-case to camelCase: 'app-search-input' → 'appSearchInput'
             elements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
         }
         
@@ -383,29 +376,21 @@ const DOMHelpers = {
         if (!textarea) return;
         
         const resize = () => {
-            textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+            textarea.style.height = 'auto'; // Reset height
+            const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+            textarea.style.height = newHeight + 'px';
         };
         
         textarea.addEventListener('input', resize);
-        // Store the resize function on the element so we can trigger it manually
-        textarea._autoResize = resize;
+        // Also trigger resize on 'change' which fires after data is set
+        textarea.addEventListener('change', resize); 
         resize(); // Initial sizing
-    },
-
-    /**
-     * Manually trigger a resize on a textarea
-     */
-    triggerTextareaResize: (textarea) => {
-        if (textarea && typeof textarea._autoResize === 'function') {
-            textarea._autoResize();
-        }
     }
 };
 
-// ============================================================================
-// AppLifecycle (Core initialization and error handling)
-// ============================================================================
+/**
+ * AppLifecycle - Application initialization and error handling
+ */
 const AppLifecycle = {
     /**
      * Standard init wrapper with error handling
@@ -413,6 +398,7 @@ const AppLifecycle = {
     run: (initFn) => {
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                // Validate SafeUI loaded
                 if (!SafeUI || !SafeUI.isReady) {
                     console.error("FATAL: UIUtils or SafeUI failed to initialize.");
                     document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
@@ -422,6 +408,7 @@ const AppLifecycle = {
                     return;
                 }
                 
+                // Run page-specific init
                 await initFn();
                 
             } catch (err) {
@@ -445,7 +432,7 @@ const AppLifecycle = {
         const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
         if (!allFound) {
             console.error("FATAL: Missing critical DOM elements. Application halted.");
-            return null;
+            return null; // This guard prevents the app from running in a broken state
         }
 
         // Initialize state
@@ -458,10 +445,12 @@ const AppLifecycle = {
         const state = stateManager.load();
         const saveState = () => stateManager.save(state);
 
-        // Make DOMHelpers globally available for inline scripts
-        window.DOMHelpers = DOMHelpers;
-        
         return { elements, state, saveState };
     }
 };
+
+// --- FIX: Expose global modules ---
+window.SafeUI = SafeUI;
+window.DOMHelpers = DOMHelpers;
+window.AppLifecycle = AppLifecycle;
 
