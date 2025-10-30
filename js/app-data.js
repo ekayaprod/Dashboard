@@ -177,7 +177,6 @@ const DataConverter = {
 
         const escapeCell = (cell) => {
             const str = String(cell == null ? '' : cell);
-            // If the cell contains a comma, a quote, or a newline, enclose it in quotes
             if (str.includes('"') || str.includes(',') || str.includes('\n')) {
                 // Escape existing quotes by doubling them
                 return `"${str.replace(/"/g, '""')}"`;
@@ -220,15 +219,51 @@ const DataConverter = {
                         return reject(new Error(`CSV Import Failed: ${errors.join(', ')}`));
                     }
 
-                    const data = lines.map((line, index) => {
+                    // --- FIX: Robust CSV line parser ---
+                    const data = lines.map((line, lineIndex) => {
                         const obj = {};
-                        const values = line.split(','); // Simple split, no quote handling
-                        
+                        const values = [];
+                        let currentVal = '';
+                        let inQuote = false;
+
+                        for (let i = 0; i < line.length; i++) {
+                            const char = line[i];
+
+                            if (char === '"') {
+                                if (inQuote && line[i + 1] === '"') {
+                                    // This is an escaped quote ""
+                                    currentVal += '"';
+                                    i++; // Skip the next quote
+                                } else {
+                                    // This is a real quote, toggle the inQuote flag
+                                    inQuote = !inQuote;
+                                }
+                            } else if (char === ',' && !inQuote) {
+                                // End of a value
+                                values.push(currentVal);
+                                currentVal = '';
+                            } else {
+                                // Regular character
+                                currentVal += char;
+                            }
+                        }
+                        // Add the last value in the line
+                        values.push(currentVal);
+
+                        if (values.length > headers.length) {
+                             errors.push(`Row ${lineIndex + 1}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating extra data.`);
+                        }
+
                         headers.forEach((header, i) => {
                             obj[header] = values[i] || '';
                         });
                         return obj;
                     });
+                    
+                    if (errors.length > 10) {
+                        errors.push(`... and ${errors.length - 10} more errors.`);
+                        errors.splice(10); // Show only first 10
+                    }
                     
                     resolve({ data, errors });
                 },
