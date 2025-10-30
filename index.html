@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <!-- SCRIPTS MOVED TO END OF BODY -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -78,15 +77,17 @@
                     <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing..."></textarea>
                 </div>
             </div>
-            <!-- Toast and Modal are now loaded from navbar.html -->
+            
+            <!-- REGRESSION FIX: Moved Modal and Toast HTML back into this file -->
+            <div id="toast" class="toast"></div>
         </div>
     </div>
 
-    <!-- 
-      CORRECT SCRIPT ORDER:
-      1. Load the 3 external library files.
-      2. Run the inline script that uses them.
-    -->
+    <!-- REGRESSION FIX: Moved Modal HTML back into this file -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
@@ -104,6 +105,7 @@
             version: APP_VERSION
         };
     
+        // REGRESSION FIX: initPage no longer loads navbar first, as it's not a critical dependency
         const ctx = await AppLifecycle.initPage({
             pageName: 'index.html',
             storageKey: LOCAL_STORAGE_KEY,
@@ -111,7 +113,7 @@
             version: APP_VERSION,
             requiredElements: [
                 'shortcuts-container', 
-                'app-select-group', 'app-select', // Use app-select (dropdown)
+                'app-select-group', 'app-select',
                 'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
                 'edit-app-name-wrapper', 'url-editor', 'edit-app-name', 'edit-app-urls',
                 'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
@@ -139,12 +141,9 @@
             UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
         };
 
-        // --- Auto-Resize Helper ---
-        // Manually triggers a resize event for a textarea
         const triggerResize = (element, maxHeight = 300) => {
             if (element) {
-                element.style.height = 'auto'; // Reset height
-                // Set new height based on content, respecting max-height
+                element.style.height = 'auto'; 
                 element.style.height = Math.min(element.scrollHeight, maxHeight) + 'px';
             }
         };
@@ -272,10 +271,9 @@
             return { init, render, add };
         };
 
-        // Renders the <select> dropdown
         const renderAppDropdown = () => {
             const appSelect = DOMElements.appSelect;
-            const selectedValue = appSelect.value; // Preserve current selection
+            const selectedValue = appSelect.value; 
 
             if (!hasItems('apps')) {
                 DOMElements.appSelectGroup.classList.add('hidden');
@@ -284,20 +282,17 @@
                 DOMElements.appSelectGroup.classList.remove('hidden');
                 DOMElements.appEmptyState.classList.add('hidden');
                 
-                appSelect.innerHTML = ''; // Clear existing options
+                appSelect.innerHTML = ''; 
                 const fragment = document.createDocumentFragment();
                 
-                // Add the placeholder
                 fragment.appendChild(new Option('-- Select an App --', ''));
 
-                // Add sorted apps
                 getCollection('apps')
                     .sort((a,b) => a.name.localeCompare(b.name))
                     .forEach(app => fragment.appendChild(new Option(app.name, app.id)));
                 
                 appSelect.appendChild(fragment);
                 
-                // Restore selection only if it's still a valid app
                 if (getCollection('apps').some(app => app.id === selectedValue)) {
                     appSelect.value = selectedValue;
                 } else {
@@ -327,7 +322,7 @@
             if (activeNote) {
                 DOMElements.notepadEditor.value = activeNote.content;
                 DOMElements.notepadEditor.disabled = false;
-                triggerResize(DOMElements.notepadEditor, 400); // Auto-resize notepad
+                triggerResize(DOMElements.notepadEditor, 400); 
             } else {
                 DOMElements.notepadEditor.value = '';
                 DOMElements.notepadEditor.disabled = true;
@@ -339,19 +334,17 @@
 
         const renderAll = () => {
             if (shortcutsManager) shortcutsManager.render();
-            renderAppDropdown(); // Use new dropdown render
+            renderAppDropdown(); 
             renderNotesData();
         };
         
         const checkFormDirty = () => {
             if (!initialAppData) return false;
-            // If ID is null, we are in "new app" mode
             if (initialAppData.id === null) {
                 return DOMElements.editAppName.value.trim() !== '' ||
                        DOMElements.editAppUrls.value.trim() !== '' ||
                        DOMElements.editAppEscalation.value.trim() !== '';
             }
-            // Otherwise, check against the loaded app data
             return DOMElements.editAppName.value.trim() !== initialAppData.name ||
                    DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
                    DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
@@ -364,7 +357,6 @@
         const displayAppDetails = (appId) => {
             selectedAppId = appId;
             
-            // --- BUG FIX: Clear fields first (safe default) ---
             DOMElements.editAppName.value = '';
             DOMElements.editAppUrls.value = '';
             DOMElements.editAppEscalation.value = '';
@@ -372,14 +364,12 @@
             DOMElements.editAppNameWrapper.classList.add('hidden');
             initialAppData = null;
             
-            // Trigger resize to collapse fields
             triggerResize(DOMElements.editAppUrls, 150);
             triggerResize(DOMElements.editAppEscalation, 300);
 
             if (appId) {
                 const app = getCollection('apps').find(a => a.id === appId);
                 
-                // --- BUG FIX: Only proceed if app is found ---
                 if (app) {
                     initialAppData = {...app};
                     DOMElements.editAppName.value = app.name;
@@ -388,7 +378,6 @@
                     
                     DOMElements.appDetailsContainer.classList.remove('hidden');
                     
-                    // --- FEATURE: Trigger auto-resize on load ---
                     triggerResize(DOMElements.editAppUrls, 150);
                     triggerResize(DOMElements.editAppEscalation, 300);
                 }
@@ -398,11 +387,11 @@
         };
 
         const createNewAppForm = () => {
-            DOMElements.appSelect.value = ''; // Deselect dropdown
-            selectedAppId = null; // Ensure we are in "new" mode
+            DOMElements.appSelect.value = ''; 
+            selectedAppId = null; 
             
             DOMElements.appDetailsContainer.classList.remove('hidden');
-            DOMElements.editAppNameWrapper.classList.remove('hidden'); // Show the name field
+            DOMElements.editAppNameWrapper.classList.remove('hidden'); 
             
             DOMElements.editAppName.value = '';
             DOMElements.editAppUrls.value = '';
@@ -410,19 +399,17 @@
             
             initialAppData = {id: null, name: '', urls: '', escalation: ''};
             
-            // Resize fields to their default empty state
             triggerResize(DOMElements.editAppUrls, 150);
             triggerResize(DOMElements.editAppEscalation, 300);
             
             updateSaveButtonState();
-            DOMElements.editAppName.focus(); // Focus the app name field
+            DOMElements.editAppName.focus(); 
         };
 
         [DOMElements.editAppName, DOMElements.editAppUrls, DOMElements.editAppEscalation].forEach(el => {
             el.addEventListener('input', updateSaveButtonState);
         });
 
-        // Use <select> 'change' event
         DOMElements.appSelect.addEventListener('change', () => {
             const selectedId = DOMElements.appSelect.value;
             
@@ -455,18 +442,17 @@
             const appIndex = getCollection('apps').findIndex(a => a.id == selectedAppId);
             let savedAppId = selectedAppId;
 
-            if (appIndex > -1) { // Update existing app
+            if (appIndex > -1) { 
                 getCollection('apps')[appIndex] = { ...getCollection('apps')[appIndex], name, urls, escalation };
-            } else { // Create new app
+            } else { 
                 const newApp = { id: SafeUI.generateId(), name, urls, escalation };
                 getCollection('apps').push(newApp);
                 savedAppId = newApp.id;
             }
             
             saveState();
-            renderAppDropdown(); // Re-render the dropdown
+            renderAppDropdown(); 
             
-            // Select the newly saved app in the dropdown and display it
             DOMElements.appSelect.value = savedAppId;
             displayAppDetails(savedAppId);
             
@@ -474,7 +460,7 @@
         });
 
         DOMElements.deleteAppBtn.addEventListener('click', () => {
-             const selectedId = DOMElements.appSelect.value; // Get ID from dropdown
+             const selectedId = DOMElements.appSelect.value; 
              if(selectedId) {
                 const appIndex = getCollection('apps').findIndex(item => item.id === selectedId);
                 if (appIndex > -1) {
@@ -482,8 +468,8 @@
                     confirmDelete('apps', appName, () => {
                         getCollection('apps').splice(appIndex, 1);
                         saveState();
-                        displayAppDetails(null); // Clear form
-                        renderAll(); // Re-render dropdown
+                        displayAppDetails(null); 
+                        renderAll(); 
                     });
                 }
              }
@@ -531,7 +517,7 @@
                                 }
                                 
                                 saveState();
-                                displayAppDetails(null); // Reset view
+                                displayAppDetails(null); 
                                 renderAll();
                                 SafeUI.showToast('Dashboard data restored.');
                             } catch (err) {
@@ -618,7 +604,7 @@
         DOMElements.notepadEditor.addEventListener('input', debouncedNotepadSave);
 
         DOMElements.notepadEditor.addEventListener('blur', () => {
-            if (debouncedNotepadSave.cancel) debouncedNotepadSave.cancel(); // Cancel any pending debounced save
+            if (debouncedNotepadSave.cancel) debouncedNotepadSave.cancel(); 
             if (!activeNoteId) return;
             const note = getCollection('notes').find(n => n.id == activeNoteId);
             if(note && note.content !== DOMElements.notepadEditor.value) {
@@ -629,7 +615,6 @@
         });
 
         const init = () => {
-            // Setup auto-resize on all textareas
             DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation, 300);
             DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls, 150);
             DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor, 400);
@@ -646,6 +631,9 @@
             };
             shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
+            
+            // REGRESSION FIX: Load navbar here, after initPage is done and ctx is valid
+            SafeUI.loadNavbar("navbar-container");
 
             DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
