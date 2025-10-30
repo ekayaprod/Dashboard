@@ -1,13 +1,14 @@
 /**
- * ============================================================================
  * app-ui.js
- * * Contains high-level, composite UI components and patterns.
- * (Formerly ui-components.js)
- * * Depends on: app-core.js (for SafeUI)
- * ============================================================================
+ * (Was ui-components.js)
+ * * Reusable high-level UI patterns and components
+ * Depends on: app-core.js
  */
 
 const UIPatterns = {
+    /**
+     * Show confirmation dialog before delete action
+     */
     confirmDelete: (itemType, itemName, onConfirm) => {
         SafeUI.showModal(
             `Delete ${itemType}`,
@@ -19,6 +20,9 @@ const UIPatterns = {
         );
     },
 
+    /**
+     * Show unsaved changes warning
+     */
     confirmUnsavedChanges: (onDiscard) => {
         SafeUI.showModal(
             'Unsaved Changes',
@@ -30,6 +34,9 @@ const UIPatterns = {
         );
     },
 
+    /**
+     * Highlight search term in text (for search results)
+     */
     highlightSearchTerm: (text, term) => {
         if (!term) return SafeUI.escapeHTML(text);
         const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -39,12 +46,16 @@ const UIPatterns = {
 };
 
 const ListRenderer = {
+    /**
+     * Render a list with empty state handling
+     */
     renderList: (config) => {
         const {
-            container,
-            items,
-            emptyMessage,
-            createItemElement
+            container,          // HTMLElement - Container to render into
+            items,             // Array - Items to render
+            emptyMessage,      // String - Message when no items
+            emptyElement,      // HTMLElement - Optional element to show/hide
+            createItemElement  // Function(item) => HTMLElement
         } = config;
 
         if (!container) {
@@ -55,8 +66,17 @@ const ListRenderer = {
         container.innerHTML = '';
 
         if (!items || items.length === 0) {
-            container.innerHTML = `<div class="empty-state-message">${emptyMessage}</div>`;
+            if (emptyElement) {
+                emptyElement.innerHTML = emptyMessage;
+                emptyElement.classList.remove('hidden');
+            } else {
+                container.innerHTML = `<div class="empty-state-message">${emptyMessage}</div>`;
+            }
             return;
+        }
+
+        if (emptyElement) {
+            emptyElement.classList.add('hidden');
         }
 
         const fragment = document.createDocumentFragment();
@@ -66,15 +86,12 @@ const ListRenderer = {
         });
         container.appendChild(fragment);
     },
-
-    filterItems: (items, term, matchFn) => {
-        if (!term || !term.trim()) return items;
-        const lowerTerm = term.toLowerCase().trim();
-        return items.filter(item => matchFn(item, lowerTerm));
-    }
 };
 
 const SearchHelper = {
+    /**
+     * Simple search - filter array of objects by term matching any string property
+     */
     simpleSearch: (items, term, searchFields) => {
         if (!term || !term.trim()) return items;
         
@@ -88,6 +105,9 @@ const SearchHelper = {
         });
     },
 
+    /**
+     * Setup debounced search on an input element
+     */
     setupDebouncedSearch: (inputElement, onSearch, delay = 300) => {
         if (!inputElement) {
             console.error("setupDebouncedSearch: inputElement is null.");
@@ -101,3 +121,9 @@ const SearchHelper = {
         });
     }
 };
+
+// --- FIX: Expose components to the global window scope ---
+window.UIPatterns = UIPatterns;
+window.ListRenderer = ListRenderer;
+window.SearchHelper = SearchHelper;
+
