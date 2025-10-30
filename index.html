@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <!-- SCRIPTS MOVED TO END OF BODY -->
@@ -296,11 +296,15 @@
                     .forEach(app => fragment.appendChild(new Option(app.name, app.id)));
                 
                 appSelect.appendChild(fragment);
-                appSelect.value = selectedValue; // Restore selection
+                
+                // Restore selection only if it's still a valid app
+                if (getCollection('apps').some(app => app.id === selectedValue)) {
+                    appSelect.value = selectedValue;
+                } else {
+                    appSelect.value = '';
+                }
             }
         };
-        
-        // (Replaced renderAppData with renderAppDropdown)
 
         const renderNotesData = () => {
             const noteSelect = DOMElements.noteSelect;
@@ -418,7 +422,7 @@
             el.addEventListener('input', updateSaveButtonState);
         });
 
-        // --- REFACTORED: Use <select> 'change' event ---
+        // Use <select> 'change' event
         DOMElements.appSelect.addEventListener('change', () => {
             const selectedId = DOMElements.appSelect.value;
             
@@ -614,7 +618,7 @@
         DOMElements.notepadEditor.addEventListener('input', debouncedNotepadSave);
 
         DOMElements.notepadEditor.addEventListener('blur', () => {
-            debouncedNotepadSave.cancel(); // Cancel any pending debounced save
+            if (debouncedNotepadSave.cancel) debouncedNotepadSave.cancel(); // Cancel any pending debounced save
             if (!activeNoteId) return;
             const note = getCollection('notes').find(n => n.id == activeNoteId);
             if(note && note.content !== DOMElements.notepadEditor.value) {
@@ -625,7 +629,7 @@
         });
 
         const init = () => {
-            // --- FEATURE: Setup auto-resize on all textareas ---
+            // Setup auto-resize on all textareas
             DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation, 300);
             DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls, 150);
             DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor, 400);
