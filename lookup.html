@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 
-      Removed script tags from here. They are now at the end of the <body> 
-      to ensure they load and execute before the inline script.
-    -->
 </head>
 <body class="lookup-page">
 
@@ -35,20 +31,11 @@
         </main>
     </div>
 
-    <div id="toast" class="toast"></div>
+    <!-- Global UI (Toast/Modal) is now loaded via navbar.html -->
 
-    <div id="modal-overlay" class="modal-overlay">
-        <div id="modal-content" class="modal-content"></div>
-    </div>
-
-    <!-- 
-      All scripts are loaded here, in order. This ensures AppLifecycle 
-      and other objects are defined before the inline script runs.
-    -->
-    <script src="js/ui.common.js"></script>
     <script src="js/app-core.js"></script>
-    <script src="js/ui-components.js"></script>
-    <script src="js/data-management.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-data.js"></script>
 
     <script>
     AppLifecycle.run(async () => {
@@ -62,8 +49,6 @@
                 snippetsData: []
             };
 
-            // Initialize page using shared bootstrap
-            // AppLifecycle, DOMHelpers, SafeUI are loaded from js/app-core.js
             const ctx = await AppLifecycle.initPage({
                 pageName: 'lookup.html',
                 storageKey: DATA_KEY,
@@ -81,16 +66,14 @@
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
 
-            // Redefine saveState to include sorting
             const saveState = () => {
                 try {
-                    // Ensure data exists before sorting
                     if (!state.routingData) state.routingData = [];
                     if (!state.snippetsData) state.snippetsData = [];
                     
                     state.routingData.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     state.snippetsData.sort((a, b) => a.keyword.localeCompare(b.keyword));
-                    originalSaveState(); // Call the original save function
+                    originalSaveState();
                 } catch (e) {
                     console.error("Failed to save state:", e);
                     SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
@@ -116,25 +99,23 @@
                 const config = dataTypesConfig[type];
                 if (!config || !config.listElement) return;
 
-                const data = state[config.dataKey] || [];
+                let data = state[config.dataKey] || [];
                 
-                // ListRenderer is now loaded from js/ui-components.js
-                // NOTE: The original code had a 'filter' property which is not
-                // supported by the ListRenderer.renderList I see. I am assuming
-                // you want to filter *before* passing to the renderer.
-                
-                const lowerTerm = searchTerm.toLowerCase().trim();
-                const filteredItems = data.filter(item => {
-                    if (item.id === currentEditState.id && type === currentEditState.type) {
-                       return true; // Always show item being edited
+                let itemsToRender = SearchHelper.simpleSearch(data, searchTerm, ['keyword']);
+
+                if (currentEditState.id && currentEditState.type === type) {
+                    const isEditingItemInList = itemsToRender.some(item => item.id === currentEditState.id);
+                    if (!isEditingItemInList) {
+                        const editingItem = data.find(item => item.id === currentEditState.id);
+                        if (editingItem) {
+                            itemsToRender.unshift(editingItem);
+                        }
                     }
-                    if (!lowerTerm) return true; // Show all if no search term
-                    return item.keyword.toLowerCase().includes(lowerTerm);
-                });
+                }
                 
                 ListRenderer.renderList({
                     container: config.listElement,
-                    items: filteredItems, // Pass the pre-filtered items
+                    items: itemsToRender,
                     emptyMessage: searchTerm.trim() 
                         ? `No results found for "<strong>${SafeUI.escapeHTML(searchTerm)}</strong>"`
                         : config.emptyState,
@@ -164,7 +145,6 @@
                 
                 const keywordSpan = document.createElement('span');
                 keywordSpan.className = 'item-keyword';
-                // UIPatterns is now loaded from js/ui-components.js
                 keywordSpan.innerHTML = UIPatterns.highlightSearchTerm(item.keyword, searchTerm);
                 
                 const actionsDiv = document.createElement('div');
@@ -285,8 +265,6 @@
                 contentTextarea.textContent = item.content;
                 contentTextarea.placeholder = contentLabel;
                 
-                // Setup auto-resize for the textarea
-                // DOMHelpers is now loaded from js/app-core.js
                 DOMHelpers.setupTextareaAutoResize(contentTextarea, 300);
 
                 const keywordLabelEl = document.createElement('label');
@@ -348,7 +326,6 @@
                 DOMElements.searchInput.value = '';
                 renderAll();
 
-                // Wait for the element to be in the DOM
                 setTimeout(() => {
                     const newEl = document.getElementById(`edit-keyword-${newItem.id}`);
                     if (newEl) {
@@ -390,7 +367,6 @@
                     return SafeUI.showValidationError("Invalid Input", "Content cannot be blank.", `edit-content-${id}`);
                 }
 
-                // DataValidator is now loaded from js/data-management.js
                 const isDuplicate = DataValidator.hasDuplicate(data, 'keyword', keyword, id);
 
                 if (isDuplicate) {
@@ -425,58 +401,18 @@
                 saveState();
                 renderAll();
             }
-
-            // This function is no longer needed, it will be handled by the main Dashboard
-            /*
-            function handleRestore() {
-                // BackupRestore is now loaded from js/data-management.js
-                BackupRestore.handleRestoreUpload({
-                    appName: APP_NAME,
-                    legacyAppName: 'assignment_tool',
-                    itemValidators: {
-                        routingData: ['id', 'keyword', 'content'],
-                        snippetsData: ['id', 'keyword', 'content']
-                    },
-                    onRestore: (dataToRestore, isLegacy) => {
-                        const title = isLegacy ? "Confirm Legacy Restore" : "Confirm Restore";
-                        const message = isLegacy ? 
-                            "<p>This is a backup from the old 'Assignment Tool'. Restoring will overwrite all current data.</p>" : 
-                            "<p>This is a full backup file. Restoring will overwrite all current data.</p>";
-
-                        SafeUI.showModal(title, message, [
-                            { label: 'Cancel' },
-                            {
-                                label: 'Restore',
-                                class: isLegacy ? 'button-primary' : 'button-danger',
-                                callback: () => {
-                                    state.routingData = dataToRestore.routingData || [];
-                                    state.snippetsData = dataToRestore.snippetsData || [];
-                                    saveState();
-                                    currentEditState = { id: null, type: null };
-                                    renderAll();
-                                    SafeUI.showToast("Restore successful.");
-                                }
-                            }
-                        ]);
-                    }
-                });
-            }
-            */
             
             function attachEventListeners() {
-                // SearchHelper is now loaded from js/ui-components.js
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, (term) => {
                     renderAll();
-                }, 300); // 300ms delay for search
+                }, 300);
                 
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
             }
 
-            // Logic from old init()
             dataTypesConfig.routing.listElement = DOMElements.routingResults;
             dataTypesConfig.snippets.listElement = DOMElements.snippetsResults;
             
-            // state is already loaded by initPage
             if (!state.routingData) state.routingData = [];
             if (!state.snippetsData) state.snippetsData = [];
 
@@ -486,3 +422,4 @@
     </script>
 </body>
 </html>
+
