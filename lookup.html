@@ -16,7 +16,7 @@
                 <h1>Lookup</h1>
                 <div class="header-actions">
                     <button id="btn-settings" class="icon-btn" title="Settings">
-                        <!-- Settings SVG Icon -->
+                        <!-- Settings SVG Icon will be loaded by script -->
                     </button>
                     <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
                 </div>
@@ -47,6 +47,10 @@
         </main>
     </div>
 
+    <!-- 
+      FIX: Re-added Toast and Modal HTML.
+      These elements are required by AppLifecycle.initPage to exist on load.
+    -->
     <div id="toast" class="toast"></div>
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
@@ -80,10 +84,10 @@
                     'toast', 'modal-overlay', 'modal-content',
                     'navbar-container',
                     'kb-results-container', 'kb-results-list', 'kb-empty-state'
-                    // Removed 'kb-loading'
                 ]
             });
 
+            // This guard stops execution if initPage() fails (e.g., missing DOM elements)
             if (!ctx) return;
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
@@ -91,6 +95,7 @@
             const saveState = () => {
                 try {
                     if (!state.items) state.items = [];
+                    // Sort by keyword on every save
                     state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
                     originalSaveState();
                 } catch (e) {
@@ -102,21 +107,27 @@
             let currentEditState = { id: null, type: null };
             let isEditMode = false;
 
+            /**
+             * Renders the list of local database items
+             */
             const renderLocalList = (searchTerm = '') => {
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
 
                 if (isEditMode) {
+                    // In Edit Mode, show all items, optionally filtered
                     itemsToRender = [...state.items];
                     if (lowerTerm) {
                         itemsToRender = SearchHelper.simpleSearch(itemsToRender, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
                     }
                 } else {
+                    // In Search Mode, only show items that match
                     if (lowerTerm) {
                         itemsToRender = SearchHelper.simpleSearch(state.items, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
                     }
                 }
                 
+                // Ensure the item being edited is always visible, even if filtered out
                 if (currentEditState.id) {
                     const isItemVisible = itemsToRender.some(item => item.id === currentEditState.id);
                     if (!isItemVisible) {
@@ -125,6 +136,7 @@
                     }
                 }
 
+                // Show "+ Create Entry" button only if in search mode, a term is present, and no results were found
                 DOMElements.btnAddAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
@@ -132,6 +144,7 @@
                     items: itemsToRender,
                     emptyMessage: isEditMode ? 'No entries in the database. Click "+ Create Entry".' : (lowerTerm ? 'No local entries found.' : 'Search to see local results.'),
                     createItemElement: (item) => {
+                        // Render as edit form if in Edit Mode OR if it's the specific item being edited
                         if (isEditMode || (currentEditState.id === item.id)) {
                             return createEditForm(item);
                         }
@@ -140,7 +153,9 @@
                 });
             };
 
-            // --- REFACTORED: Renders a single dynamic link ---
+            /**
+             * Renders the dynamic KnowledgeBase link
+             */
             const renderKbLink = (term) => {
                 DOMElements.kbResultsList.innerHTML = '';
 
@@ -165,6 +180,7 @@
 
                 DOMElements.kbEmptyState.classList.add('hidden');
 
+                // Create and inject the dynamic link
                 const finalUrl = baseUrl.replace('{query}', encodeURIComponent(term));
 
                 const li = document.createElement('li');
@@ -178,16 +194,21 @@
                 DOMElements.kbResultsList.appendChild(li);
             };
             
-            // --- REMOVED: `runKbSearch` (Gemini API function) ---
-
+            /**
+             * Renders all data sections (local list + KB link)
+             */
             const renderAll = () => {
                 const searchTerm = DOMElements.searchInput.value;
                 if (isEditMode) {
+                    // Make sure "+ Create Entry" is visible in edit mode
                     DOMElements.btnAddAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
             };
 
+            /**
+             * Handles the main search logic
+             */
             const handleSearch = () => {
                 const term = DOMElements.searchInput.value.trim();
                 
@@ -198,11 +219,15 @@
                 renderKbLink(term);
             };
 
+            /**
+             * Creates the HTML for a read-only local database item
+             */
             function createItemElement(item, searchTerm) {
                 const li = document.createElement('li');
                 li.className = 'result-item';
                 li.dataset.id = item.id;
                 
+                // Use innerHTML for efficient creation and highlighting
                 li.innerHTML = `
                     <div class="item-header">
                         <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
@@ -231,10 +256,9 @@
                 return li;
             }
 
-            function setupCopyButton(button, textToCopy, message) {
-                // This logic is now handled by the event listener on `local-results`
-            }
-
+            /**
+             * Creates the HTML for an in-line edit form
+             */
             function createEditForm(item) {
                 const li = document.createElement('li');
                 li.className = 'edit-form-li';
@@ -264,6 +288,7 @@
                     </div>
                 `;
 
+                // Attach event listeners to the new form
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
                     handleSave(form, item.id);
@@ -274,8 +299,9 @@
                 });
 
                 form.querySelector('.btn-cancel').addEventListener('click', () => {
+                    // If it's a new, unsaved entry, just delete it on cancel
                     if (item.keyword.trim() === '' && item.assignmentGroup.trim() === '') {
-                        handleDelete(item.id, true);
+                        handleDelete(item.id, true); // true = skip confirm
                     }
                     currentEditState = { id: null, type: null };
                     renderAll();
@@ -284,13 +310,18 @@
                 // Setup auto-resize for the textarea
                 setTimeout(() => {
                     const notesTextarea = form.querySelector(`#edit-notes-${item.id}`);
-                    DOMHelpers.setupTextareaAutoResize(notesTextarea, 200);
+                    if (notesTextarea) {
+                        DOMHelpers.setupTextareaAutoResize(notesTextarea, 200);
+                    }
                 }, 0);
 
                 li.appendChild(form);
                 return li;
             }
 
+            /**
+             * Handles click on "+ Create Entry"
+             */
             function handleAddNewEntry() {
                 if (currentEditState.id) {
                     const el = document.querySelector('.edit-form-li');
@@ -301,11 +332,12 @@
 
                 const searchTerm = DOMElements.searchInput.value.trim();
                 const newItem = { id: SafeUI.generateId(), keyword: searchTerm, assignmentGroup: '', notes: '', phoneLogPath: '' };
-                state.items.unshift(newItem);
+                state.items.unshift(newItem); // Add to start of array
 
                 currentEditState = { id: newItem.id, type: 'local' };
-                renderAll();
+                renderAll(); // Re-render to show the new form
 
+                // Focus and scroll to the new edit form
                 setTimeout(() => {
                     const newEl = document.getElementById(`edit-keyword-${newItem.id}`);
                     if (newEl) {
@@ -315,6 +347,9 @@
                 }, 0);
             }
 
+            /**
+             * Handles click on an item's "Edit" button
+             */
             function handleEdit(id) {
                 if (currentEditState.id && currentEditState.id !== id) {
                     const el = document.querySelector('.edit-form-li');
@@ -324,7 +359,7 @@
                 }
 
                 currentEditState = { id: id, type: 'local' };
-                renderAll();
+                renderAll(); // Re-render to show this item as an edit form
                 
                 setTimeout(() => {
                     const editInput = document.getElementById(`edit-keyword-${id}`);
@@ -335,19 +370,24 @@
                 }, 0);
             }
 
+            /**
+             * Handles saving an edit form (includes PowerShell merge logic)
+             */
             function handleSave(form, id) {
                 const keyword = form.querySelector(`#edit-keyword-${id}`).value.trim();
                 const assignmentGroup = form.querySelector(`#edit-group-${id}`).value.trim();
                 const notes = form.querySelector(`#edit-notes-${id}`).value.trim();
                 const phoneLogPath = form.querySelector(`#edit-path-${id}`).value.trim();
 
+                // Validation
                 if (!SafeUI.validators.notEmpty(keyword) || !SafeUI.validators.notEmpty(assignmentGroup)) {
                     return SafeUI.showValidationError("Invalid Input", "Keyword and Assignment Group cannot be blank.");
                 }
 
+                // Check for duplicates (PowerShell logic)
                 const existingEntry = state.items.find(item => 
                     item.assignmentGroup.toLowerCase() === assignmentGroup.toLowerCase() &&
-                    item.id !== id
+                    item.id !== id // Exclude self
                 );
 
                 const saveAction = () => {
@@ -364,6 +404,7 @@
                     SafeUI.showToast("Entry saved.");
                 };
 
+                // If duplicate found, show merge/continue/cancel modal
                 if (existingEntry) {
                     SafeUI.showModal("Duplicate Group", 
                         `<p>An entry for "<strong>${SafeUI.escapeHTML(existingEntry.assignmentGroup)}</strong>" already exists with keyword(s) "<strong>${SafeUI.escapeHTML(existingEntry.keyword)}</strong>".</p>`, 
@@ -374,13 +415,14 @@
                                 label: 'Merge Keywords', 
                                 class: 'button-primary', 
                                 callback: () => {
+                                    // Combine keywords, remove duplicates, and filter empty
                                     const combinedKeywords = [...new Set([
                                         ...existingEntry.keyword.split(','), 
                                         ...keyword.split(',')
                                     ].map(k => k.trim()).filter(Boolean))].join(', ');
                                     
                                     existingEntry.keyword = combinedKeywords;
-                                    handleDelete(id, true);
+                                    handleDelete(id, true); // Delete the new/edited entry
                                     saveState();
                                     currentEditState = { id: null, type: null };
                                     renderAll();
@@ -390,10 +432,14 @@
                         ]
                     );
                 } else {
+                    // No duplicate, just save
                     saveAction();
                 }
             }
 
+            /**
+             * Handles deleting an entry
+             */
             function handleDelete(id, skipConfirm = false) { 
                 if (currentEditState.id === id) {
                     currentEditState = { id: null, type: null };
@@ -418,6 +464,9 @@
                 }
             }
             
+            /**
+             * Handles Export to CSV
+             */
             function handleExportCSV() {
                 try {
                     const csvString = DataConverter.toCSV(state.items, CSV_HEADERS);
@@ -428,6 +477,9 @@
                 }
             }
 
+            /**
+             * Handles Import from CSV
+             */
             function handleImportCSV() {
                 SafeUI.openFilePicker(async (file) => {
                     try {
@@ -437,6 +489,7 @@
                             SafeUI.showModal("Import Warning", `<p>Import completed with some warnings:</p><ul style="font-size: 0.8rem; max-height: 100px; overflow-y: auto;">${errors.map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('')}</ul>`, [{label: 'OK'}]);
                         }
 
+                        // Sanitize data and assign new IDs if missing
                         const sanitizedData = data.map(item => ({
                             id: item.id || SafeUI.generateId(),
                             keyword: item.keyword || '',
@@ -469,7 +522,9 @@
                 }, '.csv');
             }
 
-            // --- REFACTORED: Updated Settings Modal ---
+            /**
+             * Shows the Settings modal
+             */
             function showSettingsModal() {
                 const modalContent = `
                     <div class="form-group">
@@ -496,11 +551,13 @@
                         callback: () => {
                             const newUrl = document.getElementById('kb-url-input').value.trim();
                             
+                            // Validate that {query} exists if the URL is not empty
                             if (newUrl && !newUrl.includes('{query}')) {
                                 SafeUI.showValidationError("Invalid URL", "The URL must contain the {query} placeholder.", "kb-url-input");
                                 return false; // Keep modal open
                             }
                             
+                            // Validate basic URL structure
                             if (newUrl && !SafeUI.validators.url(newUrl.replace('{query}', 'test'))) {
                                 SafeUI.showValidationError("Invalid URL", "The URL format appears invalid.", "kb-url-input");
                                 return false; // Keep modal open
@@ -509,10 +566,12 @@
                             state.settings.kbBaseUrl = newUrl;
                             saveState();
                             SafeUI.showToast("Settings saved.");
+                            handleSearch(); // Re-render KB link in case URL changed
                         }
                     }
                 ]);
 
+                // Attach listeners to modal buttons
                 document.getElementById('modal-backup-btn').addEventListener('click', () => {
                     BackupRestore.createBackup(state, 'lookup');
                 });
@@ -537,8 +596,9 @@
                                             state.settings = dataToRestore.settings || { kbBaseUrl: '' };
                                             saveState();
                                             renderAll();
+                                            handleSearch();
                                             SafeUI.showToast("Restore successful.");
-                                            SafeUI.hideModal();
+                                            SafeUI.hideModal(); // Close settings modal
                                         }
                                     }
                                 ]
@@ -548,12 +608,16 @@
                 });
             }
 
+            /**
+             * Attaches all primary event listeners
+             */
             function attachEventListeners() {
+                // Search bar
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
                 
+                // Header buttons
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
                 DOMElements.btnSettings.addEventListener('click', showSettingsModal);
-
                 DOMElements.btnEditMode.addEventListener('click', () => {
                     isEditMode = !isEditMode;
                     DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
@@ -562,6 +626,7 @@
                     renderAll();
                 });
 
+                // Event delegation for local results list (edit, delete, copy)
                 DOMElements.localResults.addEventListener('click', async (e) => {
                     const editBtn = e.target.closest('.btn-edit');
                     if (editBtn) {
@@ -578,7 +643,7 @@
                     }
                 });
 
-                // Add main Import/Export listeners (moved from settings)
+                // Create and add Import/Export buttons
                 const headerActions = DOMElements.btnSettings.parentElement;
                 
                 const exportBtn = document.createElement('button');
@@ -595,22 +660,31 @@
                 importBtn.title = 'Import data from CSV';
                 importBtn.addEventListener('click', handleImportCSV);
 
+                // Add Import/Export next to Settings button
                 headerActions.insertBefore(exportBtn, DOMElements.btnSettings);
                 headerActions.insertBefore(importBtn, DOMElements.btnSettings);
             }
             
+            /**
+             * Entry point
+             */
             function init() {
+                // Load settings icon
                 DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
                 
+                // Ensure state structure is valid
                 if (!state.items) state.items = [];
                 if (!state.settings) state.settings = { kbBaseUrl: '' };
 
                 attachEventListeners();
                 renderAll();
                 handleSearch(); // Run initial search (to render KB link state)
+                
+                // Load the navbar
                 SafeUI.loadNavbar("navbar-container");
             }
 
+            // Run the app
             init();
         });
     </script>
