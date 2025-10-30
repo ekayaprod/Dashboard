@@ -138,18 +138,27 @@
                 const searchTerm = currentSearchTerm;
                 const list = DOMElements.localResultsList;
                 
-                const itemsToRender = isEditMode 
-                    ? state.items 
-                    : SearchHelper.simpleSearch(state.items, searchTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                const allItems = state.items || [];
+                let itemsToRender = [];
+
+                if (isEditMode) {
+                    itemsToRender = allItems;
+                } else {
+                    // Always add the item being edited (if any)
+                    const itemInEdit = currentEditState.id ? allItems.find(i => i.id === currentEditState.id) : null;
+                    
+                    // Filter the list
+                    let filteredItems = SearchHelper.simpleSearch(allItems, searchTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                    
+                    // Add the itemInEdit if it's not already in the filtered list
+                    if (itemInEdit && !filteredItems.some(i => i.id === itemInEdit.id)) {
+                        itemsToRender = [itemInEdit, ...filteredItems];
+                    } else {
+                        itemsToRender = filteredItems;
+                    }
+                }
                 
                 DOMElements.editModeBtn.classList.toggle('active', isEditMode);
-                if (isEditMode) {
-                    DOMElements.editModeBtn.style.backgroundColor = 'var(--primary-hover-bg-light)';
-                    DOMElements.editModeBtn.style.color = 'var(--primary-color)';
-                } else {
-                    DOMElements.editModeBtn.style.backgroundColor = '';
-                    DOMElements.editModeBtn.style.color = '';
-                }
 
                 ListRenderer.renderList({
                     container: list,
@@ -157,7 +166,7 @@
                     emptyMessage: isEditMode ? "No items in database. Click '+ Create Entry'." : "No local items found.",
                     emptyElement: DOMElements.localEmptyState,
                     createItemElement: (item) => {
-                        if (item.id === currentEditState.id || (isEditMode && currentEditState.id === null)) {
+                        if (item.id === currentEditState.id ) {
                             return createEditForm(item);
                         }
                         return createItemElement(item, searchTerm);
@@ -368,7 +377,7 @@
                         </p>
                     </div>
                     <div class="divider"></div>
-                    <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Advanced</h4>
+                    <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Advanced (Technical Backup)</h4>
                     <div class="button-group">
                         <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
                         <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
