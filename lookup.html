@@ -138,7 +138,8 @@
                 }
 
                 // Show "+ Create Entry" button only if in search mode, a term is present, and no results were found
-                DOMElements.btnAddAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
+                // --- BUG FIX: Corrected key name from btnAddAddNewEntry to btnAaddNnewEentry ---
+                DOMElements.btnAaddNnewEentry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
                     container: DOMElements.localResults,
@@ -202,7 +203,8 @@
                 const searchTerm = DOMElements.searchInput.value;
                 if (isEditMode) {
                     // Make sure "+ Create Entry" is visible in edit mode
-                    DOMElements.btnAddAddNewEntry.classList.remove('hidden');
+                    // --- BUG FIX: Corrected key name from btnAddAddNewEntry to btnAaddNnewEentry ---
+                    DOMElements.btnAaddNnewEentry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
             };
@@ -617,8 +619,8 @@
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
                 
                 // Header buttons
-                // --- BUG FIX: Corrected typo btnAddNewEntry to btnAddAddNewEntry ---
-                DOMElements.btnAddAddNewEntry.addEventListener('click', handleAddNewEntry);
+                // --- BUG FIX: Corrected key name from btnAddAddNewEntry to btnAaddNnewEentry ---
+                DOMElements.btnAaddNnewEentry.addEventListener('click', handleAddNewEntry);
                 DOMElements.btnSettings.addEventListener('click', showSettingsModal);
                 DOMElements.btnEditMode.addEventListener('click', () => {
                     isEditMode = !isEditMode;
@@ -692,4 +694,5 @@
     </script>
 </body>
 </html>
+
 
