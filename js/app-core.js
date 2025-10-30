@@ -1,28 +1,19 @@
 /**
- * ============================================================================
  * app-core.js
- * * This is the foundational script for the application.
- * It merges the original ui.common.js and app-core.js.
- * * It MUST be loaded FIRST, as it defines:
- * 1. UIUtils: Low-level UI functions (modals, toasts, etc.)
- * 2. SafeUI: A wrapper for UIUtils.
- * 3. DOMHelpers: DOM utility functions.
- * 4. AppLifecycle: The main application bootstrap.
- * ============================================================================
+ * (Was ui.common.js + app-core.js)
+ * * Core application initialization, SafeUI wrapper, and DOM utilities
  */
 
-/**
- * ----------------------------------------------------------------------------
- * Section 1: UIUtils (from ui.common.js)
- * Defines low-level, dependency-free UI and utility functions.
- * ----------------------------------------------------------------------------
- */
+// ============================================================================
+// UIUtils (Low-level DOM, UI, and helper functions)
+// ============================================================================
 const UIUtils = {
 
     SVGIcons: {
         plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>',
         pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
-        trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>'
+        trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>',
+        settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4.75A3.25 3.25 0 1 0 8 11.25 3.25 3.25 0 0 0 8 4.75zM5.75 8a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0z"/><path d="M9.78 1.47a.75.75 0 0 1 0 1.06L9.06 3.25a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L5.27 7.02a.75.75 0 0 1-1.06 0L1.47 6.28a.75.75 0 0 1 0-1.06L2.2 4.47a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L6.02 1.47a.75.75 0 0 1 1.06 0L8 2.25l.92-.78a.75.75 0 0 1 1.06 0l.92.78 1.77-1.77a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l.75-.75a.75.75 0 0 1 1.06 0l1.74 1.74a.75.75 0 0 1 0 1.06L12.98 5.27a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L8.98 9.78a.75.75 0 0 1-1.06 0L7.14 8.99a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L3.02 1.47a.75.75 0 0 1 0-1.06L1.28.67a.75.75 0 0 1-1.06 0L.67 1.28a.75.75 0 0 1 0 1.06l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L8 13.75l-.92.78a.75.75 0 0 1-1.06 0l-.92-.78-1.77 1.77a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-.75.75a.75.75 0 0 1-1.06 0L.67 14.72a.75.75 0 0 1 0-1.06l.78-.78a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L5.27 8.98a.75.75 0 0 1 1.06 0l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L9.78 14.53a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L1.47 7.02a.75.75 0 0 1 0-1.06L3.2 5.21a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L5.27 1.47a.75.75 0 0 1-1.06 0L3.43.67a.75.75 0 0 1-1.06 0L.67 2.37a.75.75 0 0 1 0 1.06l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L6.02 14.53a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L1.47 8.98a.75.75 0 0 1 0-1.06L3.2 6.17a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6-1.6c.3-.3.3-.79 0-1.09l-.28-.29a.25.25 0 0 0 0-.35L5.27 2.53a.75.75 0 0 1-1.06 0L2.47.79a.75.75 0 0 1-1.06 0L.67 1.57A.75.75 0 0 1 0 2.1v11.8A.75.75 0 0 1 .67 14.72l.78-.78a.75.75 0 0 1 1.06 0l.75.75a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06l-1.74 1.74a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L1.47 9.78a.75.75 0 0 1 0-1.06l1.74-1.74a.25.25 0 0 0 .35 0l.29.28c.3.3.79.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35L8 13.75l.92.78a.75.75 0 0 1 1.06 0l.92-.78 1.77-1.77a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l.75-.75a.75.75 0 0 1 1.06 0l1.74 1.74a.75.75 0 0 1 0 1.06l-.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35L12.98 14.53a.75.75 0 0 1 0 1.06l-1.74 1.74a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L8 9.78l-.92-.78a.75.75 0 0 1-1.06 0l-.92.78-1.77 1.77a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-.75.75a.75.75 0 0 1-1.06 0L.67 13.94A.75.75 0 0 1 0 13.39V1.61A.75.75 0 0 1 .67.83l1.74 1.74a.75.75 0 0 1 0 1.06L1.62 4.41a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L.67 7.14a.75.75 0 0 1-1.06 0L.28 6.81a.75.75 0 0 1 0-1.06l1.74-1.74a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0L6.02.67A.75.75 0 0 1 7.08 0l.92.78a.75.75 0 0 1 1.06 0l.92-.78a.75.75 0 0 1 1.06 0l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06l-1.74 1.74a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-.75.75a.75.75 0 0 1-1.06 0l-1.74-1.74a.75.75 0 0 1 0-1.06l.78-.78a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l1.77-1.77a.75.75 0 0 1 0-1.06L13.72.83a.75.75 0 0 1 1.06 0l.78.78a.75.75 0 0 1 0 1.06l-.78.78a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0l-1.77 1.77a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L8.98 1.47a.75.75 0 0 1 0-1.06L7.24.67a.75.75 0 0 1-1.06 0L5.4 1.45a.75.75 0 0 1 0 1.06l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35L8 8.25l-.92-.78a.75.75 0 0 1-1.06 0l-.92.78L3.33 6.47a.25.25 0 0 0 0-.35l.28-.29c.3-.3.3-.79 0-1.09l-1.6-1.6c-.3-.3-.79-.3-1.09 0l-.29.28a.25.25 0 0 0-.35 0L.67 4.19a.75.75 0 0 1-1.06 0L.28 3.86a.75.75 0 0 1 0-1.06L2.02 1.06a.75.75 0 0 1 1.06 0l.78.78a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L7.08 9.02a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L3.02 2.53a.75.75 0 0 1 0-1.06l.78-.78a.75.75 0 0 1 1.06 0l.75.75a.25.25 0 0 0 .35 0l.29-.28c.3-.3.79-.3 1.09 0l1.6 1.6c.3.3.3.79 0 1.09l-.28.29a.25.25 0 0 0 0 .35l1.77 1.77a.75.75 0 0 1 0 1.06L9.78 8.25l.92-.78a.75.75 0 0 1 1.06 0l.92.78 1.77-1.77a.25.25 0 0 0 0-.35l-.28-.29c-.3-.3-.3-.79 0-1.09l1.6-1.6c.3-.3.79-.3 1.09 0l.29.28a.25.25 0 0 0 .35 0l.75-.75a.75.75 0 0 1 1.06 0l1.74 1.74a.75.75 0 0 1 0 1.06L14.72 6.28a.25.25 0 0 0 0 .35l.28.29c.3.3.3.79 0 1.09l-1.6 1.6c-.3.3-.79.3-1.09 0l-.29-.28a.25.25 0 0 0-.35 0L9.78 7.14a.75.75 0 0 1-1.06 0l-.78-.78a.25.25 0 0 0-.35 0l-.29.28c-.3.3-.79.3-1.09 0l-1.6-1.6c-.3-.3-.3-.79 0-1.09l.28-.29a.25.25 0 0 0 0-.35L3.02 1.47z"/></svg>'
     },
     
     validators: {
@@ -58,16 +49,18 @@ const UIUtils = {
         maxLength: function(value, max) { return this._validate(value, 'maxLength', {max}); }
     },
 
+    /**
+     * Dynamically loads the navigation bar.
+     */
     loadNavbar: (() => {
-        const loaded = new Set();
+        let loaded = false;
         return async (containerId) => {
-            if (loaded.has(containerId)) return;
-            loaded.add(containerId);
+            if (loaded) return;
+            loaded = true;
             
             const navContainer = document.getElementById(containerId);
             if (!navContainer) {
                 console.error(`Navbar container "${containerId}" not found.`);
-                loaded.delete(containerId);
                 return;
             }
 
@@ -78,17 +71,22 @@ const UIUtils = {
             } catch (error) {
                 console.error('Failed to load navbar:', error);
                 navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
-                loaded.delete(containerId);
             }
         };
     })(),
 
+    /**
+     * Escapes a string for safe insertion into HTML.
+     */
     escapeHTML: (str) => {
         const p = document.createElement('p');
         p.textContent = str ?? '';
         return p.innerHTML;
     },
 
+    /**
+     * Generates a unique ID with a fallback.
+     */
     generateId: () => {
         if (crypto.randomUUID) {
             return crypto.randomUUID();
@@ -96,6 +94,9 @@ const UIUtils = {
         return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     },
 
+    /**
+     * Debounces a function.
+     */
     debounce: (func, delay) => {
         let timeout;
         return (...args) => {
@@ -104,6 +105,9 @@ const UIUtils = {
         };
     },
 
+    /**
+     * Copies text to the clipboard.
+     */
     copyToClipboard: async (text) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -114,12 +118,15 @@ const UIUtils = {
         }
     },
 
-    downloadJSON: function(dataStr, filename) {
+    /**
+     * Triggers a file download.
+     */
+    downloadJSON: function(dataStr, filename, mimeType = 'application/json') {
         try {
             if (typeof dataStr !== 'string' || !filename) {
                 throw new Error('Invalid parameters');
             }
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const dataBlob = new Blob([dataStr], { type: mimeType });
             const url = URL.createObjectURL(dataBlob);
             const a = document.createElement('a');
             a.href = url;
@@ -130,12 +137,15 @@ const UIUtils = {
             URL.revokeObjectURL(url);
             return true;
         } catch (error) {
-            console.error("Failed to download JSON:", error);
+            console.error("Failed to download file:", error);
             this.showModal("Download Error", "<p>Failed to create download.</p>", [{label: "OK"}]);
             return false;
         }
     },
 
+    /**
+     * Programmatically opens a file picker.
+     */
     openFilePicker: (callback, accept = "application/json,.json") => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -149,6 +159,9 @@ const UIUtils = {
         input.click();
     },
 
+    /**
+     * Reads a file as JSON.
+     */
     readJSONFile: (file, onSuccess, onError) => {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -167,6 +180,30 @@ const UIUtils = {
         reader.readAsText(file);
     },
 
+    /**
+     * Reads a file as plain text.
+     */
+    readTextFile: (file, onSuccess, onError) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = event.target.result;
+                onSuccess(text);
+            } catch (err) {
+                console.error("Failed to read text:", err);
+                onError("Failed to read file as text.");
+            }
+        };
+        reader.onerror = () => {
+            console.error("Failed to read file.");
+            onError("Failed to read the file.");
+        };
+        reader.readAsText(file);
+    },
+
+    /**
+     * Creates a state manager for localStorage.
+     */
     createStateManager: (key, defaults, version, onCorruption) => {
         if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
             console.error("createStateManager requires valid key (string), defaults (object), and version.");
@@ -211,6 +248,9 @@ const UIUtils = {
         return { load, save };
     },
 
+    /**
+     * Hides the global modal.
+     */
     hideModal: () => {
         const modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) {
@@ -218,6 +258,9 @@ const UIUtils = {
         }
     },
 
+    /**
+     * Shows the global modal with custom content and buttons.
+     */
     showModal: function(title, contentHtml, actions) {
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
@@ -244,6 +287,9 @@ const UIUtils = {
         modalOverlay.style.display = 'flex';
     },
 
+    /**
+     * Shows a standardized validation error modal and focuses the element.
+     */
     showValidationError: function(title, message, focusElementId) {
         this.showModal(title, `<p>${message}</p>`, [{label: 'OK'}]);
         if (focusElementId) {
@@ -251,6 +297,10 @@ const UIUtils = {
         }
     },
 
+
+    /**
+     * Shows a simple feedback toast message.
+     */
     showToast: (function() {
         let activeTimer = null;
         
@@ -271,42 +321,21 @@ const UIUtils = {
     })(),
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    const modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay) {
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target.id === 'modal-overlay') {
-                UIUtils.hideModal();
-            }
-        });
-    }
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            UIUtils.hideModal();
-        }
-    });
-});
-
-
-/**
- * ----------------------------------------------------------------------------
- * Section 2: SafeUI, DOMHelpers, AppLifecycle (from app-core.js)
- * Defines the core bootstrap and safe wrappers that depend on UIUtils.
- * ----------------------------------------------------------------------------
- */
-
+// ============================================================================
+// SafeUI (Wrapper for graceful degradation)
+// ============================================================================
 const SafeUI = (() => {
     const isReady = typeof UIUtils !== 'undefined' && UIUtils;
     
     const getSVGIcons = () => {
         if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
-        return { plus: '+', pencil: '✎', trash: '🗑' };
+        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙' };
     };
 
     return {
         isReady,
         SVGIcons: getSVGIcons(),
-        loadNavbar: (containerId, currentPage) => isReady && UIUtils.loadNavbar(containerId, currentPage),
+        loadNavbar: (containerId) => isReady && UIUtils.loadNavbar(containerId),
         showModal: (title, content, actions) => isReady ? UIUtils.showModal(title, content, actions) : console.error("UIUtils not loaded", title),
         showValidationError: (title, msg, elId) => isReady ? UIUtils.showValidationError(title, msg, elId) : console.error("UIUtils not loaded", title),
         hideModal: () => isReady && UIUtils.hideModal(),
@@ -315,15 +344,22 @@ const SafeUI = (() => {
         generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
         debounce: (func, delay) => isReady ? UIUtils.debounce(func, delay) : func,
         copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
-        downloadJSON: (data, filename) => isReady && UIUtils.downloadJSON(data, filename),
+        downloadJSON: (data, filename, mimeType) => isReady && UIUtils.downloadJSON(data, filename, mimeType),
         openFilePicker: (cb, accept) => isReady && UIUtils.openFilePicker(cb, accept),
         readJSONFile: (file, onSuccess, onError) => isReady ? UIUtils.readJSONFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
+        readTextFile: (file, onSuccess, onError) => isReady ? UIUtils.readTextFile(file, onSuccess, onError) : onError("UI Framework not loaded."),
         createStateManager: (key, defaults, version, onCorruption) => isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null,
         validators: isReady ? UIUtils.validators : { url: (v) => v, notEmpty: (v) => v, maxLength: (v, m) => v }
     };
 })();
 
+// ============================================================================
+// DOMHelpers (Utilities for DOM manipulation)
+// ============================================================================
 const DOMHelpers = {
+    /**
+     * Cache DOM elements and validate they exist
+     */
     cacheElements: (requiredIds) => {
         const elements = {};
         let allFound = true;
@@ -340,6 +376,9 @@ const DOMHelpers = {
         return { elements, allFound };
     },
 
+    /**
+     * Setup auto-resize for textarea elements
+     */
     setupTextareaAutoResize: (textarea, maxHeight = 300) => {
         if (!textarea) return;
         
@@ -349,11 +388,28 @@ const DOMHelpers = {
         };
         
         textarea.addEventListener('input', resize);
-        resize();
+        // Store the resize function on the element so we can trigger it manually
+        textarea._autoResize = resize;
+        resize(); // Initial sizing
+    },
+
+    /**
+     * Manually trigger a resize on a textarea
+     */
+    triggerTextareaResize: (textarea) => {
+        if (textarea && typeof textarea._autoResize === 'function') {
+            textarea._autoResize();
+        }
     }
 };
 
+// ============================================================================
+// AppLifecycle (Core initialization and error handling)
+// ============================================================================
 const AppLifecycle = {
+    /**
+     * Standard init wrapper with error handling
+     */
     run: (initFn) => {
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -361,7 +417,7 @@ const AppLifecycle = {
                     console.error("FATAL: UIUtils or SafeUI failed to initialize.");
                     document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
                         <h2>Application Failed to Load</h2>
-                        <p>A critical file (ui.common.js) may be missing or failed to load. Please check the console for errors.</p>
+                        <p>A critical file (app-core.js) may be missing or failed to load. Please check the console for errors.</p>
                     </div>`;
                     return;
                 }
@@ -379,17 +435,20 @@ const AppLifecycle = {
         });
     },
 
+    /**
+     * Standard page initialization boilerplate
+     */
     initPage: async (config) => {
-        const { pageName, storageKey, defaultState, version, requiredElements, onCorruption } = config;
+        const { storageKey, defaultState, version, requiredElements, onCorruption } = config;
 
+        // Cache DOM elements
         const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
         if (!allFound) {
             console.error("FATAL: Missing critical DOM elements. Application halted.");
             return null;
         }
 
-        await SafeUI.loadNavbar("navbar-container");
-
+        // Initialize state
         const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
         if (!stateManager) {
             console.error("FATAL: StateManager failed to initialize.");
@@ -399,6 +458,10 @@ const AppLifecycle = {
         const state = stateManager.load();
         const saveState = () => stateManager.save(state);
 
+        // Make DOMHelpers globally available for inline scripts
+        window.DOMHelpers = DOMHelpers;
+        
         return { elements, state, saveState };
     }
 };
+
