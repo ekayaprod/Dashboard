@@ -409,17 +409,36 @@ const DOMHelpers = {
 // ============================================================================
 const AppLifecycle = {
     /**
+     * Creates a non-destructive error banner at the top of the page.
+     */
+    _showErrorBanner: (title, message) => {
+        const banner = document.createElement('div');
+        banner.id = 'app-startup-error';
+        banner.style.cssText = `position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;`;
+        banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
+        
+        if (document.body) {
+            document.body.prepend(banner);
+        } else {
+            // Fallback if body isn't ready
+            document.documentElement.prepend(banner);
+        }
+    },
+
+    /**
      * Standard init wrapper with error handling
      */
     run: (initFn) => {
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                // This check runs before AppLifecycle._showErrorBanner exists
                 if (!SafeUI || !SafeUI.isReady) {
                     console.error("FATAL: UIUtils or SafeUI failed to initialize.");
-                    document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-                        <h2>Application Failed to Load</h2>
-                        <p>A critical file (app-core.js) may be missing or failed to load. Please check the console for errors.</p>
-                    </div>`;
+                    const banner = document.createElement('div');
+                    banner.id = 'app-startup-error';
+                    banner.style.cssText = `position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;`;
+                    banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">A critical file (app-core.js) may be missing or failed to load. Please check the console for errors.</p>`;
+                    document.body.prepend(banner);
                     return;
                 }
                 
@@ -427,11 +446,11 @@ const AppLifecycle = {
                 
             } catch (err) {
                 console.error("Unhandled exception during initialization:", err);
-                document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-                    <h2>Application Error</h2>
-                    <p>An unexpected error occurred during startup: ${err.message}</p>
-                    <p>Please check the console for more details.</p>
-                </div>`;
+                // Now we can use the helper
+                AppLifecycle._showErrorBanner(
+                    'Application Runtime Error',
+                    `An unexpected error occurred during startup: ${err.message}. The app may be in a broken state. Please check the console.`
+                );
             }
         });
     },
@@ -446,6 +465,10 @@ const AppLifecycle = {
         const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
         if (!allFound) {
             console.error("FATAL: Missing critical DOM elements. Application halted.");
+            AppLifecycle._showErrorBanner(
+                'Application Startup Error',
+                'One or more critical HTML elements (e.g., "modal-overlay", "toast") are missing. The app cannot start.'
+            );
             return null;
         }
 
@@ -453,6 +476,10 @@ const AppLifecycle = {
         const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
         if (!stateManager) {
             console.error("FATAL: StateManager failed to initialize.");
+            AppLifecycle._showErrorBanner(
+                'Application Startup Error',
+                'Failed to initialize the state manager. The app cannot start.'
+            );
             return null;
         }
 
@@ -465,3 +492,4 @@ const AppLifecycle = {
         return { elements, state, saveState };
     }
 };
+
