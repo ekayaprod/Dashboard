@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailTo Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Custom styles for this page */
+        .upload-wrapper {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            background-color: var(--info-bg);
+            transition: background-color 0.2s;
+        }
+        .upload-wrapper.dragover {
+            background-color: var(--primary-hover-bg-light);
+            border-color: var(--primary-color);
+        }
+        .upload-wrapper input[type="file"] {
+            display: none;
+        }
+        .upload-wrapper .button-base {
+            cursor: pointer;
+        }
+        .upload-wrapper p {
+            color: var(--subtle-text);
+            margin: 0.5rem 0 0 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="app-container">
+        <div class="panel">
+            <div class="main-content">
+                <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;"></div>
+                
+                <div class="section-header-wrapper">
+                    <h3 class="section-header">MailTo Command Generator</h3>
+                </div>
+
+                <div id="upload-wrapper" class="upload-wrapper form-group">
+                    <input type="file" id="msg-upload" accept=".msg,.oft">
+                    <label for="msg-upload" class="button-base button-primary">
+                        Upload .msg or .oft file
+                    </label>
+                    <p>or drag and drop a file here</p>
+                </div>
+
+                <div class="divider"></div>
+
+                <div id="results-container" class="hidden">
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Phase 2: Review and Edit Fields</h3>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="result-to">To</label>
+                        <input type="text" id="result-to" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-cc">CC</label>
+                        <input type="text" id="result-cc" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-bcc">BCC</label>
+                        <input type="text" id="result-bcc" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-subject">Subject</label>
+                        <input type="text" id="result-subject" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-body">Body (Text)</label>
+                        <textarea id="result-body" class="sidebar-textarea"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                         <button id="btn-generate" class="button-base button-primary" style="width: 100%;">Generate Command</button>
+                    </div>
+
+                    <div id="output-wrapper" class="hidden">
+                        <div class="divider"></div>
+                        <div class="section-header-wrapper">
+                            <h3 class="section-header">Phase 3: Generated Output</h3>
+                            <a href="#" id="result-link" target="_blank" class="button-base button-primary">Open in Email Client</a>
+                        </div>
+                        <div class="form-group">
+                            <div class="label-group">
+                                <label for="result-mailto">MailTo Command</label>
+                                <button id="copy-mailto-btn" class="button-base">Copy</button>
+                            </div>
+                            <textarea id="result-mailto" class="sidebar-textarea" readonly placeholder="Generated command will appear here..."></textarea>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global UI Elements -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <!-- External Libs -->
+    <script src="https://cdn.jsdelivr.net/npm/msgreader@0.3.0/MsgReader.js"></script>
+    
+    <!-- App Libs -->
+    <script src="js/app-core.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-data.js"></script>
+
+    <script>
+    // Dependency Check
+    (() => {
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'MsgReader'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        if (missing.length > 0) {
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, msgreader.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+            
+            console.error(errorMessage);
+            
+            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+            } else {
+                const banner = document.getElementById('app-startup-error');
+                if(banner) {
+                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                    banner.classList.remove('hidden');
+                }
+            }
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
+
+
+    AppLifecycle.run(async () => {
+    
+        const ctx = await AppLifecycle.initPage({
+            storageKey: 'mailto_state_v1', // This page is stateless, but key is required by initPage
+            defaultState: { version: '1.0.0' },
+            version: '1.0.0',
+            requiredElements: [
+                'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                'upload-wrapper', 'msg-upload', 'results-container',
+                'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
+                'btn-generate', 'output-wrapper', // New/changed elements
+                'result-mailto', 'result-link', 'copy-mailto-btn'
+            ]
+        });
+    
+        if (!ctx) return;
+    
+        const { elements: DOMElements } = ctx;
+
+        // --- Drag and Drop Handlers ---
+        const uploadWrapper = DOMElements.uploadWrapper;
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadWrapper.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadWrapper.addEventListener(eventName, () => {
+                uploadWrapper.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadWrapper.addEventListener(eventName, () => {
+                uploadWrapper.classList.remove('dragover');
+            }, false);
+        });
+
+        uploadWrapper.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                handleFile(files[0]);
+            }
+        }, false);
+
+        // --- File Input Handler ---
+        DOMElements.msgUpload.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // --- File Parsing Logic ---
+        const handleFile = (file) => {
+            if (!file) {
+                SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const msgReader = new window.MsgReader(arrayBuffer);
+                    const fileData = msgReader.getFileData();
+
+                    if (fileData.error) {
+                        throw new Error(fileData.error);
+                    }
+
+                    // 1. Extract and display raw fields
+                    const recipients = fileData.recipients || [];
+                    const to = recipients.filter(r => r.type === 'to').map(r => r.email).join(', ');
+                    const cc = recipients.filter(r => r.type === 'cc').map(r => r.email).join(', ');
+                    const bcc = recipients.filter(r => r.type === 'bcc').map(r => r.email).join(', ');
+                    const subject = fileData.subject || '';
+                    const body = fileData.body || '';
+
+                    DOMElements.resultTo.value = to;
+                    DOMElements.resultCc.value = cc;
+                    DOMElements.resultBcc.value = bcc;
+                    DOMElements.resultSubject.value = subject;
+                    DOMElements.resultBody.value = body;
+                    
+                    // 2. Show results container for editing
+                    DOMElements.resultsContainer.classList.remove('hidden');
+                    // Hide output section until 'Generate' is clicked
+                    DOMElements.outputWrapper.classList.add('hidden');
+
+                    // 3. Trigger textarea resize (deferred)
+                    setTimeout(() => {
+                        DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
+                    }, 0);
+
+                } catch (err) {
+                    console.error('File parsing error:', err);
+                    SafeUI.showModal('Parsing Error', `<p>Failed to parse the file. It may be corrupt or an unsupported format.</p><p><small>${SafeUI.escapeHTML(err.message)}</small></p>`, [{label: 'OK'}]);
+                    // Clear results
+                    DOMElements.resultsContainer.classList.add('hidden');
+                }
+            };
+
+            reader.onerror = () => {
+                SafeUI.showModal('File Read Error', '<p>Could not read the selected file.</p>', [{label: 'OK'}]);
+            };
+
+            reader.readAsArrayBuffer(file);
+        };
+
+        // --- Generate Mailto Logic ---
+        const generateAndShowMailto = () => {
+            // 1. Read edited values from fields
+            const to = DOMElements.resultTo.value.trim();
+            const cc = DOMElements.resultCc.value.trim();
+            const bcc = DOMElements.resultBcc.value.trim();
+            const subject = DOMElements.resultSubject.value.trim();
+            const body = DOMElements.resultBody.value; // Don't trim body
+
+            // 2. Generate mailto: command
+            let mailto = 'mailto:';
+            if (to) {
+                mailto += encodeURIComponent(to);
+            }
+
+            const params = [];
+            if (cc) params.push('cc=' + encodeURIComponent(cc));
+            if (bcc) params.push('bcc=' + encodeURIComponent(bcc));
+            if (subject) params.push('subject=' + encodeURIComponent(subject));
+            
+            if (body) {
+                // Normalize newlines, then encode, THEN replace %0A with %0D%0A for Outlook
+                const normalizedBody = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
+                params.push('body=' + encodedBody);
+            }
+
+            if (params.length > 0) {
+                mailto += '?' + params.join('&');
+            }
+
+            // 3. Display results
+            DOMElements.resultMailto.value = mailto;
+            DOMElements.resultLink.href = mailto;
+            DOMElements.outputWrapper.classList.remove('hidden');
+
+            // 4. Trigger textarea resize (deferred)
+            setTimeout(() => {
+                DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
+            }, 0);
+        };
+
+        // --- Copy Button ---
+        DOMElements.copyMailtoBtn.addEventListener('click', async () => {
+            const mailto = DOMElements.resultMailto.value;
+            if (!mailto) return;
+            
+            const success = await SafeUI.copyToClipboard(mailto);
+            SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
+        });
+
+        // --- Init ---
+        const init = () => {
+            // Setup textarea auto-resize
+            DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
+            DOMHelpers.setupTextareaAutoResize(DOMElements.resultMailto, 150);
+            
+            // Attach listener for the new Generate button
+            DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
+            
+            SafeUI.loadNavbar("navbar-container");
+        };
+
+        init();
+    });
+    </script>
+</body>
+</html>
+
