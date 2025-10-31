@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -60,6 +60,23 @@
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
     <script>
+    // FIX: Issue #5 - Dependency Validation
+    if (typeof SafeUI === 'undefined' || 
+        typeof UIPatterns === 'undefined' || 
+        typeof ListRenderer === 'undefined' || 
+        typeof SearchHelper === 'undefined' || 
+        typeof BackupRestore === 'undefined' || 
+        typeof DataValidator === 'undefined' || 
+        typeof DataConverter === 'undefined') {
+        
+        document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
+            <h2>Application Failed to Load</h2>
+            <p>One or more required JavaScript files failed to load. Please refresh the page or check your connection.</p>
+            <p>Missing dependencies detected.</p>
+        </div>`;
+        throw new Error("Critical dependencies missing");
+    }
+
     AppLifecycle.run(async () => {
 
             const APP_NAME = 'lookup';
@@ -138,8 +155,8 @@
                 }
 
                 // Show "+ Create Entry" button only if in search mode, a term is present, and no results were found
-                // --- BUG FIX: Corrected key name from btnAddAddNewEntry to btnAaddNnewEentry ---
-                DOMElements.btnAaddNnewEentry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
+                // --- FIX: Issue #1 - Corrected key name from btnAaddNnewEentry to btnAddAddNewEntry ---
+                DOMElements.btnAddAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
                     container: DOMElements.localResults,
@@ -203,8 +220,8 @@
                 const searchTerm = DOMElements.searchInput.value;
                 if (isEditMode) {
                     // Make sure "+ Create Entry" is visible in edit mode
-                    // --- BUG FIX: Corrected key name from btnAddAddNewEntry to btnAaddNnewEentry ---
-                    DOMElements.btnAaddNnewEentry.classList.remove('hidden');
+                    // --- FIX: Issue #1 - Corrected key name from btnAaddNnewEentry to btnAddAddNewEntry ---
+                    DOMElements.btnAddAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
             };
@@ -619,8 +636,8 @@
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
                 
                 // Header buttons
-                // --- BUG FIX: Corrected key name from btnAddAddNewEntry to btnAaddNnewEentry ---
-                DOMElements.btnAaddNnewEentry.addEventListener('click', handleAddNewEntry);
+                // --- FIX: Issue #1 - Corrected key name from btnAaddNnewEentry to btnAddAddNewEntry ---
+                DOMElements.btnAddAddNewEntry.addEventListener('click', handleAddNewEntry);
                 DOMElements.btnSettings.addEventListener('click', showSettingsModal);
                 DOMElements.btnEditMode.addEventListener('click', () => {
                     isEditMode = !isEditMode;
@@ -694,5 +711,4 @@
     </script>
 </body>
 </html>
-
 
