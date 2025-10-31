@@ -105,22 +105,22 @@ const BackupRestore = {
             }
         });
     },
-
+    
     /**
-     * NEW: Consolidated helper for Backup/Restore button setup
+     * Consolidates logic for setting up JSON backup/restore buttons
      */
     setupBackupRestoreHandlers: (config) => {
-        const { 
-            state, 
-            appName, 
-            backupBtn, 
-            restoreBtn, 
-            itemValidators, 
-            restoreConfirmMessage, 
-            onRestoreCallback,
-            legacyAppName // Optional
+        const {
+            state,
+            appName,
+            backupBtn,
+            restoreBtn,
+            legacyAppName,
+            itemValidators,
+            restoreConfirmMessage,
+            onRestoreCallback
         } = config;
-        
+
         if (backupBtn) {
             backupBtn.addEventListener('click', () => {
                 BackupRestore.createBackup(state, appName);
@@ -135,15 +135,15 @@ const BackupRestore = {
                     itemValidators: itemValidators,
                     onRestore: (dataToRestore, isLegacy) => {
                         SafeUI.showModal("Confirm Restore (JSON)", 
-                            `<p>${restoreConfirmMessage}</p>`, 
+                            `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`, 
                             [
                                 { label: 'Cancel' },
                                 { 
                                     label: 'Restore', 
                                     class: 'button-danger', 
                                     callback: () => {
-                                        onRestoreCallback(dataToRestore, isLegacy);
-                                    } 
+                                        onRestoreCallback(dataToRestore);
+                                    }
                                 }
                             ]
                         );
@@ -242,7 +242,6 @@ const DataConverter = {
     /**
      * Converts a CSV file object to an array of objects.
      */
-    // FIX: Issue #17 - Replace with robust state-machine parser
     fromCSV: (file, requiredHeaders) => {
         return new Promise((resolve, reject) => {
             SafeUI.readTextFile(file,
@@ -381,23 +380,42 @@ const DataConverter = {
 };
 
 /**
- * CsvManager - NEW consolidated helper for CSV import/export
+ * CsvManager - Consolidates CSV import/export logic
  */
 const CsvManager = {
+    /**
+     * Wires up a CSV export button
+     */
     setupExport: (config) => {
-        const { exportBtn, dataGetter, headers, filename } = config;
-        
-        // FIX: Add guard clause to prevent crash
-        if (!exportBtn) {
-            // This page doesn't have an export button, so do nothing.
+        if (!config.exportBtn) {
+            // console.warn("CsvManager.setupExport: exportBtn is null. Skipping.");
             return;
         }
 
-        exportBtn.addEventListener('click', () => {
+        config.exportBtn.addEventListener('click', () => {
             try {
-                const data = dataGetter();
-                const csvString = DataConverter.toCSV(data, headers);
-                SafeUI.downloadJSON(csvString, filename, 'text/csv');
+                // Helper function to create a timestamp string
+                const getTimestamp = () => {
+                    const d = new Date();
+                    const Y = d.getFullYear();
+                    const M = String(d.getMonth() + 1).padStart(2, '0');
+                    const D = String(d.getDate()).padStart(2, '0');
+                    const h = String(d.getHours()).padStart(2, '0');
+                    const m = String(d.getMinutes()).padStart(2, '0');
+                    const s = String(d.getSeconds()).padStart(2, '0');
+                    return `${Y}${M}${D}_${h}${m}${s}`; // e.g., 20251031_162800
+                };
+                
+                const data = config.dataGetter();
+                const csvString = DataConverter.toCSV(data, config.headers);
+                
+                // FIX: Add timestamp to filename
+                const baseFilename = config.filename.replace(/\.csv$/, ''); // "lookup-export"
+                const timestamp = getTimestamp();
+                const finalFilename = `${baseFilename}_${timestamp}.csv`; // "lookup-export_20251031_162800.csv"
+                
+                SafeUI.downloadJSON(csvString, finalFilename, 'text/csv');
+                
             } catch (err) {
                 console.error("Export failed:", err);
                 SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
@@ -405,38 +423,48 @@ const CsvManager = {
         });
     },
 
+    /**
+     * Wires up a CSV import button
+     */
     setupImport: (config) => {
-        const { importBtn, headers, onValidate, onConfirm } = config;
-
-        // FIX: Add guard clause to prevent crash
-        if (!importBtn) {
-            // This page doesn't have an import button, so do nothing.
+        if (!config.importBtn) {
+            // console.warn("CsvManager.setupImport: importBtn is null. Skipping.");
             return;
         }
 
-        importBtn.addEventListener('click', () => {
+        config.importBtn.addEventListener('click', () => {
             SafeUI.openFilePicker(async (file) => {
                 try {
-                    const { data, errors } = await DataConverter.fromCSV(file, headers);
+                    const { data, errors: parseErrors } = await DataConverter.fromCSV(file, config.headers);
                     
                     const validatedData = [];
-                    const importErrors = [...errors]; // Include parsing errors
-
-                    data.forEach((item, index) => {
-                        const result = onValidate(item, index);
-                        if (result.error) {
-                            importErrors.push(result.error);
-                            return;
+                    const validationErrors = [...parseErrors];
+                    
+                    data.forEach((row, index) => {
+                        if (!config.onValidate) {
+                            console.error("CsvManager.setupImport: 'onValidate' function is missing.");
+                            throw new Error("Import validation is not configured.");
                         }
-                        validatedData.push(result.entry);
+                        
+                        const result = config.onValidate(row, index);
+                        if (result.error) {
+                            validationErrors.push(result.error);
+                        } else {
+                            validatedData.push(result.entry);
+                        }
                     });
 
-                    if (validatedData.length === 0 && importErrors.length === 0) {
-                        SafeUI.showModal("Import Failed", "<p>No valid rows found in the CSV file.</p>", [{label: 'OK'}]);
+                    if (validatedData.length === 0 && validationErrors.length === 0) {
+                        SafeUI.showModal("Import Failed", "<p>No valid data rows found in the CSV file.</p>", [{label: 'OK'}]);
                         return;
                     }
 
-                    onConfirm(validatedData, importErrors);
+                    if (!config.onConfirm) {
+                        console.error("CsvManager.setupImport: 'onConfirm' function is missing.");
+                        throw new Error("Import confirmation is not configured.");
+                    }
+                    
+                    config.onConfirm(validatedData, validationErrors);
 
                 } catch (err) {
                     console.error("Import failed:", err);
@@ -452,4 +480,5 @@ const CsvManager = {
 window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
-window.CsvManager = CsvManager; // Expose the new manager
+window.CsvManager = CsvManager;
+
