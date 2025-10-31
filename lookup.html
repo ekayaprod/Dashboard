@@ -48,8 +48,10 @@
     </div>
 
     <!-- 
-      FIX: Re-added Toast and Modal HTML.
-      These elements are required by AppLifecycle.initPage to exist on load.
+      FIX: Issue #9 - Update comment
+      Toast and Modal HTML.
+      These elements must be in the main HTML file (not in navbar.html)
+      to avoid duplicate ID issues and ensure they exist when AppLifecycle.initPage runs.
     -->
     <div id="toast" class="toast"></div>
     <div id="modal-overlay" class="modal-overlay">
@@ -60,7 +62,7 @@
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
     <script>
-    // FIX: Issue #5 - Dependency Validation
+    // FIX: Issue #5 - Add Dependency Validation
     if (typeof SafeUI === 'undefined' || 
         typeof UIPatterns === 'undefined' || 
         typeof ListRenderer === 'undefined' || 
@@ -107,7 +109,6 @@
             // This guard stops execution if initPage() fails (e.g., missing DOM elements)
             if (!ctx) return;
 
-            // Reverting to DOMElements destructuring to match working index.html
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
 
             const saveState = () => {
@@ -132,12 +133,10 @@
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
 
+                // FIX: Issue #23 - Option A: Edit Mode ignores search
                 if (isEditMode) {
-                    // In Edit Mode, show all items, optionally filtered
+                    // In Edit Mode, show ALL items (ignore search)
                     itemsToRender = [...state.items];
-                    if (lowerTerm) {
-                        itemsToRender = SearchHelper.simpleSearch(itemsToRender, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
-                    }
                 } else {
                     // In Search Mode, only show items that match
                     if (lowerTerm) {
@@ -155,8 +154,8 @@
                 }
 
                 // Show "+ Create Entry" button only if in search mode, a term is present, and no results were found
-                // --- FIX: Issue #1 - Corrected key name from btnAaddNnewEentry to btnAddAddNewEntry ---
-                DOMElements.btnAddAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
+                // FIX: Issue #1 (Critical) - Correct typo btnAaddNnewEentry -> btnAddNewEntry
+                DOMElements.btnAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
                     container: DOMElements.localResults,
@@ -220,8 +219,8 @@
                 const searchTerm = DOMElements.searchInput.value;
                 if (isEditMode) {
                     // Make sure "+ Create Entry" is visible in edit mode
-                    // --- FIX: Issue #1 - Corrected key name from btnAaddNnewEentry to btnAddAddNewEntry ---
-                    DOMElements.btnAddAddNewEntry.classList.remove('hidden');
+                    // FIX: Issue #1 (Critical) - Correct typo btnAaddNnewEentry -> btnAddNewEntry
+                    DOMElements.btnAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
             };
@@ -355,6 +354,10 @@
                 state.items.unshift(newItem); // Add to start of array
 
                 currentEditState = { id: newItem.id, type: 'local' };
+                
+                // FIX: Issue #7 - Clear search to avoid confusion
+                DOMElements.searchInput.value = '';
+                
                 renderAll(); // Re-render to show the new form
 
                 // Focus and scroll to the new edit form
@@ -399,9 +402,13 @@
                 const notes = form.querySelector(`#edit-notes-${id}`).value.trim();
                 const phoneLogPath = form.querySelector(`#edit-path-${id}`).value.trim();
 
-                // Validation
-                if (!SafeUI.validators.notEmpty(keyword) || !SafeUI.validators.notEmpty(assignmentGroup)) {
-                    return SafeUI.showValidationError("Invalid Input", "Keyword and Assignment Group cannot be blank.");
+                // FIX: Issue #3 & #21 - Validate trimmed values
+                if (!keyword || keyword.length === 0) {
+                    return SafeUI.showValidationError("Invalid Input", "Keyword cannot be blank or contain only spaces.", `edit-keyword-${id}`);
+                }
+                
+                if (!assignmentGroup || assignmentGroup.length === 0) {
+                    return SafeUI.showValidationError("Invalid Input", "Assignment Group cannot be blank or contain only spaces.", `edit-group-${id}`);
                 }
 
                 // Check for duplicates (PowerShell logic)
@@ -431,18 +438,33 @@
                         [
                             { label: 'Cancel' },
                             { label: 'Continue (Create New)', class: 'button-danger', callback: saveAction },
+                            // FIX: Issue #8 - Case-insensitive merge logic
                             { 
                                 label: 'Merge Keywords', 
                                 class: 'button-primary', 
                                 callback: () => {
-                                    // Combine keywords, remove duplicates, and filter empty
-                                    const combinedKeywords = [...new Set([
-                                        ...existingEntry.keyword.split(','), 
-                                        ...keyword.split(',')
-                                    ].map(k => k.trim()).filter(Boolean))].join(', ');
+                                    // Normalize to lowercase for deduplication, but preserve original case
+                                    const existingKeywords = existingEntry.keyword.split(',').map(k => k.trim()).filter(Boolean);
+                                    const newKeywords = keyword.split(',').map(k => k.trim()).filter(Boolean);
+                                    
+                                    const keywordMap = new Map();
+                                    
+                                    // Add existing keywords first (preserves original case)
+                                    existingKeywords.forEach(kw => {
+                                        keywordMap.set(kw.toLowerCase(), kw);
+                                    });
+                                    
+                                    // Add new keywords only if not already present (case-insensitive)
+                                    newKeywords.forEach(kw => {
+                                        if (!keywordMap.has(kw.toLowerCase())) {
+                                            keywordMap.set(kw.toLowerCase(), kw);
+                                        }
+                                    });
+                                    
+                                    const combinedKeywords = Array.from(keywordMap.values()).join(', ');
                                     
                                     existingEntry.keyword = combinedKeywords;
-                                    handleDelete(id, true); // Delete the new/edited entry
+                                    handleDelete(id, true);
                                     saveState();
                                     currentEditState = { id: null, type: null };
                                     renderAll();
@@ -505,18 +527,53 @@
                     try {
                         const { data, errors } = await DataConverter.fromCSV(file, CSV_HEADERS);
                         
-                        if (errors.length > 0) {
-                            SafeUI.showModal("Import Warning", `<p>Import completed with some warnings:</p><ul style="font-size: 0.8rem; max-height: 100px; overflow-y: auto;">${errors.map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('')}</ul>`, [{label: 'OK'}]);
+                        // FIX: Issue #4 & #12 - Robust CSV import validation
+                        // Sanitize and validate data
+                        const sanitizedData = [];
+                        const importErrors = [...errors]; // Include parsing errors
+
+                        data.forEach((item, index) => {
+                            const rowNum = index + 2; // +2 because row 1 is headers and arrays are 0-indexed
+                            
+                            // Validate required fields
+                            if (!item.keyword || !item.keyword.trim()) {
+                                importErrors.push(`Row ${rowNum}: Missing required field 'keyword'`);
+                                return; // Skip this row
+                            }
+                            if (!item.assignmentGroup || !item.assignmentGroup.trim()) {
+                                importErrors.push(`Row ${rowNum}: Missing required field 'assignmentGroup'`);
+                                return; // Skip this row
+                            }
+                            
+                            sanitizedData.push({
+                                id: item.id || SafeUI.generateId(),
+                                keyword: item.keyword.trim(),
+                                assignmentGroup: item.assignmentGroup.trim(),
+                                notes: (item.notes || '').trim(),
+                                phoneLogPath: (item.phoneLogPath || '').trim()
+                            });
+                        });
+
+                        if (importErrors.length > 0) {
+                            const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                            const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+                            
+                            SafeUI.showModal("Import Validation Errors", 
+                                `<p>The following rows have invalid data and were skipped:</p>
+                                <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
+                                    ${errorList}${moreErrors}
+                                </ul>
+                                <p><strong>${sanitizedData.length} valid rows found.</strong></p>`, 
+                                [{label: 'OK'}]
+                            );
                         }
 
-                        // Sanitize data and assign new IDs if missing
-                        const sanitizedData = data.map(item => ({
-                            id: item.id || SafeUI.generateId(),
-                            keyword: item.keyword || '',
-                            assignmentGroup: item.assignmentGroup || '',
-                            notes: item.notes || '',
-                            phoneLogPath: item.phoneLogPath || ''
-                        }));
+                        if (sanitizedData.length === 0) {
+                            if (importErrors.length === 0) { // Only show if no other modal was shown
+                                SafeUI.showModal("Import Failed", "<p>No valid rows found in the CSV file.</p>", [{label: 'OK'}]);
+                            }
+                            return;
+                        }
 
                         SafeUI.showModal("Confirm Import", 
                             `<p>This will <strong>overwrite all ${state.items.length} local entries</strong> with ${sanitizedData.length} entries from the file. This cannot be undone.</p>`, 
@@ -565,31 +622,56 @@
                 
                 SafeUI.showModal("Settings", modalContent, [
                     { label: 'Cancel' },
+                    // FIX: Issue #5 & #8 - Improve KB URL Validation
                     { 
                         label: 'Save', 
                         class: 'button-primary', 
                         callback: () => {
                             const newUrl = document.getElementById('kb-url-input').value.trim();
                             
-                            // Validate that {query} exists if the URL is not empty
                             if (newUrl && !newUrl.includes('{query}')) {
-                                SafeUI.showValidationError("Invalid URL", "The URL must contain the {query} placeholder.", "kb-url-input");
-                                return false; // Keep modal open
+                                SafeUI.showValidationError("Invalid URL", "The URL must contain the {query} placeholder (case-sensitive).", "kb-url-input");
+                                return false;
                             }
                             
-                            // Validate basic URL structure
-                            if (newUrl && !SafeUI.validators.url(newUrl.replace('{query}', 'test'))) {
-                                SafeUI.showValidationError("Invalid URL", "The URL format appears invalid.", "kb-url-input");
-                                return false; // Keep modal open
+                            // Test URL construction
+                            if (newUrl) {
+                                try {
+                                    const testUrl = newUrl.replace('{query}', 'test');
+                                    const urlObj = new URL(testUrl);
+                                    // Only allow http and https protocols
+                                    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                                        SafeUI.showValidationError("Invalid URL", "URL must use http:// or https:// protocol.", "kb-url-input");
+                                        return false;
+                                    }
+                                } catch (e) {
+                                    SafeUI.showValidationError("Invalid URL", "The URL format appears invalid. It must be a complete URL (e.g., https://...).", "kb-url-input");
+                                    return false;
+                                }
                             }
 
                             state.settings.kbBaseUrl = newUrl;
                             saveState();
                             SafeUI.showToast("Settings saved.");
-                            handleSearch(); // Re-render KB link in case URL changed
+                            handleSearch();
                         }
                     }
                 ]);
+
+                // FIX: Issue #5 - Add real-time validation feedback
+                setTimeout(() => {
+                    const input = document.getElementById('kb-url-input');
+                    if (input) {
+                        input.addEventListener('input', () => {
+                            const value = input.value.trim();
+                            if (value && !value.includes('{query}')) {
+                                input.style.borderColor = 'var(--danger-color)';
+                            } else {
+                                input.style.borderColor = '';
+                            }
+                        });
+                    }
+                }, 0);
 
                 // Attach listeners to modal buttons
                 document.getElementById('modal-backup-btn').addEventListener('click', () => {
@@ -636,15 +718,35 @@
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
                 
                 // Header buttons
-                // --- FIX: Issue #1 - Corrected key name from btnAaddNnewEentry to btnAddAddNewEntry ---
-                DOMElements.btnAddAddNewEntry.addEventListener('click', handleAddNewEntry);
+                // FIX: Issue #1 (Critical) - Correct typo btnAaddNnewEentry -> btnAddNewEntry
+                DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
                 DOMElements.btnSettings.addEventListener('click', showSettingsModal);
+                
+                // FIX: Issue #6 - Add unsaved changes warning for Edit Mode toggle
                 DOMElements.btnEditMode.addEventListener('click', () => {
-                    isEditMode = !isEditMode;
-                    DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
-                    DOMElements.btnEditMode.classList.toggle('button-primary', isEditMode);
-                    currentEditState = { id: null, type: null }; // Clear any active edit
-                    renderAll();
+                    // Check if there's an active edit with unsaved changes
+                    if (currentEditState.id) {
+                        const form = document.querySelector(`form[data-id="${currentEditState.id}"]`);
+                        if (form) {
+                            const item = state.items.find(i => i.id === currentEditState.id);
+                            if (item) {
+                                const hasChanges = 
+                                    form.querySelector(`#edit-keyword-${currentEditState.id}`).value.trim() !== item.keyword ||
+                                    form.querySelector(`#edit-group-${currentEditState.id}`).value.trim() !== item.assignmentGroup ||
+                                    form.querySelector(`#edit-notes-${currentEditState.id}`).value.trim() !== item.notes ||
+                                    form.querySelector(`#edit-path-${currentEditState.id}`).value.trim() !== item.phoneLogPath;
+                                
+                                if (hasChanges) {
+                                    UIPatterns.confirmUnsavedChanges(() => {
+                                        toggleEditMode();
+                                    });
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    
+                    toggleEditMode();
                 });
 
                 // Event delegation for local results list (edit, delete, copy)
@@ -686,6 +788,15 @@
                 headerActions.insertBefore(importBtn, DOMElements.btnSettings);
             }
             
+            // FIX: Issue #6 - Helper function for toggling edit mode
+            function toggleEditMode() {
+                isEditMode = !isEditMode;
+                DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
+                DOMElements.btnEditMode.classList.toggle('button-primary', isEditMode);
+                currentEditState = { id: null, type: null };
+                renderAll();
+            }
+
             /**
              * Entry point
              */
