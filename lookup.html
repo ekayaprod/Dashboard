@@ -195,9 +195,7 @@
                 if (!entry.keyword?.trim()) {
                     errors.push('Keyword is required');
                 }
-                if (!entry.assignmentGroup?.trim()) {
-                    errors.push('Assignment Group is required');
-                }
+                // FIX: Removed required check for assignmentGroup
                 
                 return {
                     valid: errors.length === 0,
@@ -377,7 +375,7 @@
                 const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
 
                 const li = document.createElement('li');
-                li.className = 'kb-result-item';
+li.className = 'kb-result-item';
                 const a = document.createElement('a');
                 a.href = finalUrl;
                 a.textContent = `Search "${SafeUI.escapeHTML(term)}" in KnowledgeBase`;
@@ -559,10 +557,11 @@
                 }
 
                 // Check for duplicates (PowerShell logic)
-                const existingEntry = state.items.find(item => 
+                // FIX: Only check for duplicates if assignmentGroup is not empty
+                const existingEntry = (assignmentGroup && state.items.find(item => 
                     item.assignmentGroup.toLowerCase() === assignmentGroup.toLowerCase() &&
                     item.id !== id // Exclude self
-                );
+                ));
 
                 const saveAction = () => {
                     let itemToUpdate = state.items.find(item => item.id === id);
@@ -655,11 +654,32 @@
                 const newEntries = [];
                 const updatedEntries = [];
                 
+                // FIX: Add smarter de-duplication logic
                 validatedData.forEach(item => {
-                    if (state.items.some(existing => existing.id === item.id)) {
+                    // FIX: Handle items that don't have an ID (e.g., from old CSVs)
+                    const entryId = item.id || null; 
+                    const existingById = entryId ? state.items.find(existing => existing.id === entryId) : null;
+                    
+                    if (existingById) {
                         updatedEntries.push(item);
                     } else {
-                        newEntries.push(item);
+                        // No ID match (or no ID given). Check for content duplicate (Keyword + Group)
+                        const isDuplicateByContent = state.items.some(existing => 
+                            existing.keyword.toLowerCase() === item.keyword.toLowerCase() &&
+                            existing.assignmentGroup.toLowerCase() === item.assignmentGroup.toLowerCase()
+                        );
+                        
+                        if (isDuplicateByContent) {
+                            // This is a duplicate. Skip it and add to error list.
+                            importErrors.push(`Row for "${item.keyword}" skipped: An entry with this keyword and group already exists.`);
+                        } else {
+                            // This is a genuinely new entry.
+                            // Ensure it has an ID if it didn't have one from the CSV.
+                            if (!item.id) {
+                                item.id = SafeUI.generateId();
+                            }
+                            newEntries.push(item);
+                        }
                     }
                 });
 
@@ -669,7 +689,7 @@
                 let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> entries and <strong>${updatedEntries.length} entries to overwrite</strong>.</p>`;
                 
                 if (importErrors.length > 0) {
-                    summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
+                    summaryHtml += `<p>The following ${importErrors.length} rows had errors or were skipped duplicates:</p>
                                     <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
                                         ${errorList}${moreErrors}
                                     </ul>`;
