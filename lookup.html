@@ -14,7 +14,6 @@
         <header class="lookup-header">
             <div class="header-top-row">
                 <h1>Lookup</h1>
-                <!-- FIX: Statically added Import/Export buttons -->
                 <div class="header-actions">
                     <button id="btn-import-csv" class="button-base" title="Import data from CSV">Import</button>
                     <button id="btn-export-csv" class="button-base" title="Export data to CSV">Export</button>
@@ -51,7 +50,6 @@
     </div>
 
     <!-- 
-      FIX: Issue #9 - Update comment
       Toast and Modal HTML.
       These elements must be in the main HTML file (not in navbar.html)
       to avoid duplicate ID issues and ensure they exist when AppLifecycle.initPage runs.
@@ -65,23 +63,34 @@
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
     <script>
-    // FIX: Issue #5 - Add Dependency Validation
-    if (typeof SafeUI === 'undefined' || 
-        typeof UIPatterns === 'undefined' || 
-        typeof ListRenderer === 'undefined' || 
-        typeof SearchHelper === 'undefined' || 
-        typeof BackupRestore === 'undefined' || 
-        typeof DataValidator === 'undefined' || 
-        typeof DataConverter === 'undefined' ||
-        typeof CsvManager === 'undefined') { // Added CsvManager
+    // FIX: Use non-destructive error banner instead of wiping DOM
+    (() => {
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
-        document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-            <h2>Application Failed to Load</h2>
-            <p>One or more required JavaScript files failed to load. Please refresh the page or check your connection.</p>
-            <p>Missing dependencies detected.</p>
-        </div>`;
-        throw new Error("Critical dependencies missing");
-    }
+        if (missing.length > 0) {
+            console.error("Critical dependencies missing:", missing);
+            const title = "Application Failed to Load";
+            const message = `One or more required JavaScript files (e.g., app-core.js, app-ui.js, app-data.js) failed to load. Missing: ${missing.join(', ')}`;
+            
+            // Create and inject a non-destructive banner
+            const banner = document.createElement('div');
+            banner.id = 'app-startup-error';
+            banner.style.cssText = `position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;`;
+            banner.innerHTML = `<strong>${title}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${message}</p>`;
+            
+            // Wait for DOM to be ready just in case, then prepend
+            if (document.body) {
+                document.body.prepend(banner);
+            } else {
+                document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
+            }
+            
+            // Throw error to stop further execution
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
+
 
     // FIX: Mode C, Issue 12 - Constants at top level
     const APP_CONFIG = {
@@ -113,7 +122,7 @@
                     'toast', 'modal-overlay', 'modal-content',
                     'navbar-container',
                     'kb-results-container', 'kb-results-list', 'kb-empty-state',
-                    'btn-import-csv', 'btn-export-csv' // Added CsvManager buttons
+                    'btn-import-csv', 'btn-export-csv'
                 ]
             });
 
@@ -122,7 +131,8 @@
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
 
-            // FIX: Mode F - Decouple sorting from saving
+            // FIX: Mode C, Issue 4 - Remove redundant state check
+            // FIX: Mode F - Create optimized save functions (sort vs. no-sort)
             const saveState = () => {
                 try {
                     originalSaveState();
@@ -132,10 +142,15 @@
                 }
             };
             
-            // FIX: Mode F - New save function for ops that require sorting
             const sortAndSaveState = () => {
-                state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
-                saveState();
+                try {
+                    // Sort by keyword on every save
+                    state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                    originalSaveState();
+                } catch (e) {
+                    console.error("Failed to save state:", e);
+                    SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
+                }
             };
             
             let currentEditState = { id: null, type: null };
@@ -236,7 +251,7 @@
                 
                 // Test URL construction
                 try {
-                    // FIX: Mode B - Use global regex replace
+                    // Use global replace for validation
                     const testUrl = url.replace(/{query}/g, 'test');
                     const urlObj = new URL(testUrl);
                     if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
@@ -310,10 +325,11 @@
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
 
-                // FIX: Mode B - Edit mode should ignore search term
-                if (isEditMode) {
-                    itemsToRender = [...state.items];
-                } else if (lowerTerm) {
+                // Start with all items in Edit Mode, or empty in Search Mode
+                itemsToRender = isEditMode ? [...state.items] : [];
+
+                // FIX: Mode B - Do not filter in Edit Mode
+                if (lowerTerm && !isEditMode) {
                     itemsToRender = SearchHelper.simpleSearch(state.items, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
                 }
                 
@@ -327,6 +343,7 @@
                 }
 
                 // Show "+ Create Entry" button
+                // FIX: Critical bug (typo)
                 DOMElements.btnAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
@@ -369,7 +386,7 @@
                 hideKbEmptyState();
 
                 // Create and inject the dynamic link
-                // FIX: Mode B - Use global regex replace
+                // FIX: Mode B - Use global replace for {query}
                 const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
 
                 const li = document.createElement('li');
@@ -389,6 +406,7 @@
             const renderAll = () => {
                 const searchTerm = DOMElements.searchInput.value;
                 if (isEditMode) {
+                    // FIX: Critical bug (typo)
                     DOMElements.btnAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
@@ -577,7 +595,7 @@
                     }
                     Object.assign(itemToUpdate, { keyword, assignmentGroup, notes, phoneLogPath });
                     
-                    saveState();
+                    saveState(); // Mode F: Use non-sorting save
                     // FIX: Mode D, Issue 17 - Use helper
                     clearEditStateAndRender("Entry saved.");
                 };
@@ -596,7 +614,7 @@
                                     // FIX: Mode D, Issue 19 - Use helper
                                     existingEntry.keyword = keywordUtils.merge(existingEntry.keyword, keyword);
                                     handleDelete(id, true);
-                                    saveState();
+                                    saveState(); // Mode F: Use non-sorting save
                                     // FIX: Mode D, Issue 17 - Use helper
                                     clearEditStateAndRender("Keywords merged.");
                                 }
@@ -624,7 +642,7 @@
 
                 const doDelete = () => {
                     state.items.splice(index, 1);
-                    saveState();
+                    saveState(); // Mode F: Use non-sorting save
                     // FIX: Mode D, Issue 17 - Use helper
                     clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
                 };
@@ -636,107 +654,89 @@
                 }
             }
             
-            // REFACTOR: Remove handleExportCSV()
-            // REFACTOR: Remove handleImportCSV()
-
-            // REFACTOR: Add validation callback for CsvManager
-            function validateCsvRow(item, index) {
-                const entry = createEntry(item);
-                const validation = validateEntry(entry);
+            // ====================================================================
+            // DATA MANAGEMENT (Refactored to use CsvManager)
+            // ====================================================================
+            
+            /**
+             * 1. Validation helper for CSV rows (used by CsvManager)
+             */
+            function validateCsvRow(row, index, allItems) {
+                const entry = createEntry(row);
                 
+                // FIX: Mode D, Issue 13 - Use consolidated validation
+                const validation = validateEntry(entry);
                 if (!validation.valid) {
-                    return { valid: false, error: validation.errors.join(', ') };
+                    return { valid: false, error: `Row ${index + 2}: ${validation.errors.join(', ')}` };
                 }
                 
+                // Check for duplicates *within the CSV file itself*
+                const duplicateInCsv = allItems.some(item => 
+                    item.assignmentGroup.toLowerCase() === entry.assignmentGroup.toLowerCase() && 
+                    item.id !== entry.id
+                );
+                if (duplicateInCsv) {
+                     return { valid: false, error: `Row ${index + 2}: Duplicate assignment group "${entry.assignmentGroup}" found in CSV.` };
+                }
+
                 return { valid: true, entry: entry };
             }
-
-            // REFACTOR: Add confirmation callback for CsvManager
+            
+            /**
+             * 2. Confirmation helper for CSV import (used by CsvManager)
+             */
             function confirmCsvImport(sanitizedData) {
                 state.items = sanitizedData;
-                sortAndSaveState(); // Use sorting save
+                sortAndSaveState(); // Mode F: Use sorting save
                 renderAll();
-                SafeUI.showToast(`Imported ${sanitizedData.length} entries.`);
+                SafeUI.showToast(`Imported ${state.items.length} entries.`);
             }
 
             /**
-             * Shows the Settings modal
+             * Shows the Settings modal (now only for JSON Backup/Restore)
              */
             function showSettingsModal() {
-                const modalContent = `
-                    <div class="form-group">
-                        <label for="kb-url-input">KnowledgeBase Search URL</label>
-                        <input type="text" id="kb-url-input" class="sidebar-input" placeholder="https://my-kb.com/search?q={query}" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}">
-                        <p class="form-help">Enter the full URL from a search on your KB. Use <strong>{query}</strong> as a placeholder for the search term.</p>
-                    </div>
-                    <div class="divider"></div>
-                    <div class="form-group">
-                        <label>Advanced Data Management</label>
-                        <p class="form-help">Use these tools for disaster recovery. "Import/Export" (on the main page) is for managing data via CSV.</p>
-                        <div class="button-group">
-                            <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
-                            <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
-                        </div>
-                    </div>
-                `;
-                
-                SafeUI.showModal("Settings", modalContent, [
-                    { label: 'Cancel' },
-                    { 
-                        label: 'Save', 
-                        class: 'button-primary', 
-                        callback: () => {
-                            const newUrl = document.getElementById('kb-url-input').value.trim();
-                            
-                            // FIX: Mode D, Issue 14 - Use consolidated validation
-                            const validation = validateKbUrl(newUrl);
-                            if (!validation.valid) {
-                                SafeUI.showValidationError("Invalid URL", validation.message, "kb-url-input");
-                                return false;
-                            }
-
-                            state.settings.kbBaseUrl = newUrl;
-                            saveState();
-                            SafeUI.showToast("Settings saved.");
-                            handleSearch();
-                        }
-                    }
-                ]);
-
-                setTimeout(() => {
-                    const input = document.getElementById('kb-url-input');
-                    if (input) {
-                        input.addEventListener('input', () => {
-                            const value = input.value.trim();
-                            // FIX: Mode D, Issue 14 - Use validation helper
-                            const validation = validateKbUrl(value);
-                            if (!validation.valid && value.length > 0) {
-                                input.style.borderColor = 'var(--danger-color)';
-                            } else {
-                                input.style.borderColor = '';
-                            }
-                        });
-                    }
-                }, 0);
-
-                // REFACTOR: Use setupBackupRestoreHandlers
+                // Setup JSON Backup/Restore
                 BackupRestore.setupBackupRestoreHandlers({
-                    backupBtn: document.getElementById('modal-backup-btn'),
-                    restoreBtn: document.getElementById('modal-restore-btn'),
+                    settingsBtn: DOMElements.btnSettings,
                     state: state,
                     appName: APP_CONFIG.NAME,
+                    legacyAppName: 'assignment_tool',
                     itemValidators: {
                         items: APP_CONFIG.CSV_HEADERS,
                         settings: ['kbBaseUrl']
                     },
-                    restoreConfirmMessage: 'This will overwrite all settings and data. This is for disaster recovery.',
-                    onRestore: (dataToRestore) => {
+                    restoreConfirmMessage: 'This will overwrite ALL settings and data with the JSON backup. This is for disaster recovery.',
+                    onRestore: (dataToRestore, isLegacy) => {
                         state.items = dataToRestore.items || [];
                         state.settings = dataToRestore.settings || { kbBaseUrl: '' };
-                        sortAndSaveState(); // Use sorting save
+                        sortAndSaveState(); // Mode F: Use sorting save after restore
                         renderAll();
                         handleSearch();
                         SafeUI.hideModal(); // Close settings modal
+                    },
+                    // Add the settings form as extra HTML content
+                    extraHtml: `
+                        <div class="form-group">
+                            <label for="kb-url-input">KnowledgeBase Search URL</label>
+                            <input type="text" id="kb-url-input" class="sidebar-input" placeholder="https://my-kb.com/search?q={query}" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}">
+                            <p class="form-help">Enter the full URL from a search on your KB. Use <strong>{query}</strong> as a placeholder for the search term.</p>
+                        </div>
+                    `,
+                    // Add save callback for the settings form
+                    onSave: () => {
+                        const newUrl = document.getElementById('kb-url-input').value.trim();
+                        
+                        // FIX: Mode D, Issue 14 - Use consolidated validation
+                        const validation = validateKbUrl(newUrl);
+                        if (!validation.valid) {
+                            SafeUI.showValidationError("Invalid URL", validation.message, "kb-url-input");
+                            return false; // Prevent modal from closing
+                        }
+
+                        state.settings.kbBaseUrl = newUrl;
+                        saveState(); // Mode F: Use non-sorting save for settings change
+                        handleSearch(); // Re-render KB link
                     }
                 });
             }
@@ -749,6 +749,7 @@
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
                 
                 // Header buttons
+                // FIX: Critical bug (typo)
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
                 DOMElements.btnSettings.addEventListener('click', showSettingsModal);
                 
@@ -782,7 +783,6 @@
 
                 // Event delegation for local results list (edit, delete, copy)
                 DOMElements.localResults.addEventListener('click', async (e) => {
-                    // BUG FIX: Corrected typo
                     const editBtn = e.target.closest('.btn-edit');
                     if (editBtn) {
                         const id = e.target.closest('.result-item').dataset.id;
@@ -798,20 +798,21 @@
                     }
                 });
 
-                // REFACTOR: Use CsvManager
+                // Wire up CSV Export
                 CsvManager.setupExport(
                     DOMElements.btnExportCsv,
-                    () => state.items, // getData function
+                    () => state.items, // Get data function
                     APP_CONFIG.CSV_HEADERS,
                     'lookup-export.csv'
                 );
                 
+                // Wire up CSV Import
                 CsvManager.setupImport({
                     importBtn: DOMElements.btnImportCsv,
                     headers: APP_CONFIG.CSV_HEADERS,
                     onValidateRow: validateCsvRow,
                     onConfirmImport: confirmCsvImport,
-                    confirmMessage: `This will overwrite all ${state.items.length} local entries with entries from the file. This cannot be undone.`
+                    confirmMessage: `This will overwrite ALL ${state.items.length} local entries with the entries from the file. This cannot be undone.`
                 });
             }
             
@@ -847,5 +848,4 @@
     </script>
 </body>
 </html>
-
 
