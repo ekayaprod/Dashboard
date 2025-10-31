@@ -495,3 +495,9 @@ const AppLifecycle = {
         return { elements, state, saveState };
     }
 };
+
+// --- FIX: Expose core components to the global window scope ---
+window.SafeUI = SafeUI;
+window.DOMHelpers = DOMHelpers;
+window.AppLifecycle = AppLifecycle;
+
