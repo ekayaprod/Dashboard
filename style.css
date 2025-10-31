@@ -436,6 +436,15 @@ body {
     margin-top: 1.5rem; 
 }
 
+/* FIX: Issue #19 - Add modal-open styles */
+body.modal-open {
+    overflow: hidden;
+}
+/* Disable pointer events on background content when modal is open */
+body.modal-open > *:not(.modal-overlay) {
+    pointer-events: none;
+}
+
 .toast {
     position: fixed;
     bottom: -100px;
@@ -808,9 +817,6 @@ body.lookup-page {
     .lookup-page .edit-form-li {
         background-color: var(--panel-bg); 
         border-color: var(--primary-color);
-    }
-    .lookup-page .edit-form-actions {
-        border-color: var(--border-color);
     }
 
 }
