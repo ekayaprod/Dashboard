@@ -195,74 +195,132 @@ const DataConverter = {
     /**
      * Converts a CSV file object to an array of objects.
      */
+    // FIX: Issue #17 - Replace with robust state-machine parser
     fromCSV: (file, requiredHeaders) => {
         return new Promise((resolve, reject) => {
             SafeUI.readTextFile(file,
                 (text) => {
-                    const lines = text.replace(/\r/g, '').split('\n').filter(Boolean);
+                    const lines = [];
+                    let currentLine = '';
+                    let inQuotes = false;
+                    
+                    // First pass: properly split lines respecting quoted newlines
+                    for (let i = 0; i < text.length; i++) {
+                        const char = text[i];
+                        const nextChar = text[i + 1];
+                        
+                        if (char === '"') {
+                            if (inQuotes && nextChar === '"') {
+                                // Escaped quote
+                                currentLine += '""';
+                                i++; // Skip next quote
+                            } else {
+                                // Toggle quote state
+                                inQuotes = !inQuotes;
+                                currentLine += char;
+                            }
+                        } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+                            // Line break outside quotes
+                            if (currentLine.trim() || lines.length > 0) { // Keep lines if they are not just whitespace, unless it's first line
+                                lines.push(currentLine);
+                            }
+                            currentLine = '';
+                            if (char === '\r') i++; // Skip \n in \r\n
+                        } else if (char !== '\r') {
+                            // Regular character (skip standalone \r)
+                            currentLine += char;
+                        }
+                    }
+                    
+                    // Add final line
+                    if (currentLine.trim() || lines.length > 0) {
+                        lines.push(currentLine);
+                    }
+                    
                     if (lines.length === 0) {
                         return resolve({ data: [], errors: [] });
                     }
 
                     const headerLine = lines.shift();
-                    const headers = headerLine.split(',').map(h => h.trim());
+                    const headers = [];
+                    let currentHeader = '';
+                    inQuotes = false;
+                    
+                    // Parse headers
+                    for (let i = 0; i < headerLine.length; i++) {
+                        const char = headerLine[i];
+                        const nextChar = headerLine[i + 1];
+                        
+                        if (char === '"') {
+                            if (inQuotes && nextChar === '"') {
+                                currentHeader += '"';
+                                i++;
+                            } else {
+                                inQuotes = !inQuotes;
+                            }
+                        } else if (char === ',' && !inQuotes) {
+                            headers.push(currentHeader.trim());
+                            currentHeader = '';
+                        } else {
+                            currentHeader += char;
+                        }
+                    }
+                    headers.push(currentHeader.trim());
+
                     const errors = [];
 
-                    // Check if all required headers are present
+                    // Validate required headers
                     for (const reqHeader of requiredHeaders) {
                         if (!headers.includes(reqHeader)) {
                             errors.push(`Missing required CSV header: "${reqHeader}"`);
                         }
                     }
                     if (errors.length > 0) {
-                        // If required headers are missing, we can't parse
                         return reject(new Error(`CSV Import Failed: ${errors.join(', ')}`));
                     }
 
-                    // --- FIX: Robust CSV line parser ---
-                    const data = lines.map((line, lineIndex) => {
+                    // Parse data rows
+                    const data = lines.filter(line => line.trim().length > 0).map((line, lineIndex) => {
                         const obj = {};
                         const values = [];
                         let currentVal = '';
-                        let inQuote = false;
+                        inQuotes = false;
 
                         for (let i = 0; i < line.length; i++) {
                             const char = line[i];
+                            const nextChar = line[i + 1];
 
                             if (char === '"') {
-                                if (inQuote && line[i + 1] === '"') {
-                                    // This is an escaped quote ""
+                                if (inQuotes && nextChar === '"') {
                                     currentVal += '"';
-                                    i++; // Skip the next quote
+                                    i++;
                                 } else {
-                                    // This is a real quote, toggle the inQuote flag
-                                    inQuote = !inQuote;
+                                    inQuotes = !inQuotes;
                                 }
-                            } else if (char === ',' && !inQuote) {
-                                // End of a value
-                                values.push(currentVal);
+                            } else if (char === ',' && !inQuotes) {
+                                // Unescape "" back to "
+                                values.push(currentVal.replace(/""/g, '"'));
                                 currentVal = '';
                             } else {
-                                // Regular character
                                 currentVal += char;
                             }
                         }
-                        // Add the last value in the line
-                        values.push(currentVal);
+                        // Unescape "" back to " for the last value
+                        values.push(currentVal.replace(/""/g, '"'));
 
                         if (values.length > headers.length) {
-                             errors.push(`Row ${lineIndex + 1}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating extra data.`);
+                            errors.push(`Row ${lineIndex + 2}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating.`);
                         }
 
                         headers.forEach((header, i) => {
                             obj[header] = values[i] || '';
                         });
+                        
                         return obj;
                     });
                     
                     if (errors.length > 10) {
-                        errors.push(`... and ${errors.length - 10} more errors.`);
-                        errors.splice(10); // Show only first 10
+                        errors.splice(10, errors.length - 10, `... and ${errors.length - 10} more errors.`);
                     }
                     
                     resolve({ data, errors });
