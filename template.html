@@ -52,16 +52,7 @@
         </div>
     </div>
 
-    <!-- 
-      FIX: Issue #9 - Update comment
-      Toast and Modal HTML.
-      These elements must be in the main HTML file (not in navbar.html)
-      to avoid duplicate ID issues and ensure they exist when AppLifecycle.initPage runs.
-    -->
-    <div id="toast" class="toast"></div>
-    <div id="modal-overlay" class="modal-overlay">
-        <div id="modal-content" class="modal-content"></div>
-    </div>
+    <!-- Modal overlay is now loaded from navbar.html -->
 
     <!-- 
       CORRECT SCRIPT ORDER:
@@ -108,6 +99,7 @@
         // This pattern is used by ALL pages
         
         const ctx = await AppLifecycle.initPage({
+            pageName: 'template.html',              // Current page filename
             storageKey: LOCAL_STORAGE_KEY,          // localStorage key for this page
             defaultState: {                         // Default state structure
                 version: APP_VERSION,
@@ -326,7 +318,7 @@
         //             }
         //         }
         //     );
-_
+        //     
         //     if (!result.valid) {
         //         SafeUI.showModal('Validation Error', 
         //             `<p>${result.errors.join('<br>')}</p>`, 
@@ -350,37 +342,25 @@ _
         // Enable textarea auto-resize
         DOMHelpers.setupTextareaAutoResize(elements.demoNotes, 200);
         
-        // Backup button
-        elements.demoBackupBtn.addEventListener('click', () => {
-            BackupRestore.createBackup(state, 'template');
-        });
-        
-        // Restore button
-        elements.demoRestoreBtn.addEventListener('click', () => {
-            BackupRestore.handleRestoreUpload({
-                appName: 'template',
-                itemValidators: {
-                    exampleList: ['id', 'name', 'created'],
-                    notes: [] // No item validation, just ensures key exists
-                },
-                onRestore: (dataToRestore) => {
-                    SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
-                        { label: 'Cancel' },
-                        {
-                            label: 'Restore',
-                            class: 'button-danger',
-                            callback: () => {
-                                state.exampleList = dataToRestore.exampleList || [];
-                                state.notes = dataToRestore.notes || '';
-                                saveState();
-                                renderList();
-                                elements.demoNotes.value = state.notes;
-                                SafeUI.showToast('Data restored successfully.');
-                            }
-                        }
-                    ]);
-                }
-            });
+        // FIX: Mode D - Consolidate backup/restore logic
+        BackupRestore.setupBackupRestoreHandlers({
+            backupBtn: elements.demoBackupBtn,
+            restoreBtn: elements.demoRestoreBtn,
+            state: state,
+            appName: 'template',
+            itemValidators: {
+                exampleList: ['id', 'name', 'created'],
+                notes: [] // No item validation, just ensures key exists
+            },
+            restoreConfirmMessage: 'Replace all data with backup?',
+            onRestore: (dataToRestore) => {
+                // This is the page-specific logic that runs *after* confirmation
+                state.exampleList = dataToRestore.exampleList || [];
+                state.notes = dataToRestore.notes || '';
+                saveState();
+                renderList(); // Re-render the page
+                elements.demoNotes.value = state.notes;
+            }
         });
         
         // Add item button
@@ -483,11 +463,9 @@ _
         
         // Initial render
         renderList();
-        
-        // Load the navbar
-        SafeUI.loadNavbar("navbar-container");
     });
     </script>
 </body>
 </html>
+
 
