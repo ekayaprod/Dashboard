@@ -71,6 +71,65 @@ const BackupRestore = {
 
     /**
      * Handles the complete backup restore flow: file picking, reading, and validation.
+     * This was added in Mode D refactoring.
+     */
+    setupBackupRestoreHandlers: (config) => {
+        const {
+            backupBtn,
+            restoreBtn,
+            state,
+            appName,
+            itemValidators,
+            restoreConfirmMessage,
+            onRestore
+        } = config;
+
+        if (!backupBtn || !restoreBtn) {
+            console.error('Backup/Restore buttons not provided to setup');
+            return;
+        }
+
+        // 1. Backup Button Handler
+        backupBtn.addEventListener('click', () => {
+            BackupRestore.createBackup(state, appName);
+        });
+
+        // 2. Restore Button Handler
+        restoreBtn.addEventListener('click', () => {
+            BackupRestore.handleRestoreUpload({
+                appName: appName,
+                itemValidators: itemValidators,
+                onRestore: (dataToRestore) => {
+                    // Show confirmation modal
+                    SafeUI.showModal('Confirm Restore (JSON)',
+                        `<p>${SafeUI.escapeHTML(restoreConfirmMessage)}</p>`,
+                        [
+                            { label: 'Cancel' },
+                            {
+                                label: 'Restore',
+                                class: 'button-danger',
+                                callback: async () => {
+                                    try {
+                                        // Call the page-specific restore logic
+                                        onRestore(dataToRestore);
+                                        // Save/render is handled by onRestore
+                                        SafeUI.showToast('Restore successful.');
+                                    } catch (err) {
+                                        console.error('Restore failed during save:', err);
+                                        SafeUI.showModal('Restore Error', `<p>Failed to apply restore: ${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                                    }
+                                }
+                            }
+                        ]
+                    );
+                }
+            });
+        });
+    },
+
+
+    /**
+     * Handles the complete backup restore flow: file picking, reading, and validation.
      */
     handleRestoreUpload: (config) => {
         BackupRestore.restoreBackup((restoredData) => {
@@ -104,65 +163,6 @@ const BackupRestore = {
                 SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
             }
         });
-    },
-
-    /**
-     * FIX: Mode D - Consolidated backup/restore UI logic
-     * Attaches backup/restore handlers and manages the confirmation modal flow.
-     */
-    setupBackupRestoreHandlers: (config) => {
-        const { 
-            backupBtn, 
-            restoreBtn, 
-            state, 
-            appName, 
-            itemValidators, 
-            onRestore, // This is the page-specific function to *apply* the state
-            legacyAppName = null,
-            restoreConfirmMessage = 'Overwrite all data with this backup?'
-        } = config;
-    
-        if (!backupBtn || !restoreBtn) {
-            console.error("setupBackupRestoreHandlers: Missing backup or restore button.");
-            return;
-        }
-    
-        // 1. Backup Button Handler
-        backupBtn.addEventListener('click', () => {
-            BackupRestore.createBackup(state, appName);
-        });
-    
-        // 2. Restore Button Handler
-        restoreBtn.addEventListener('click', () => {
-            BackupRestore.handleRestoreUpload({
-                appName: appName,
-                legacyAppName: legacyAppName,
-                itemValidators: itemValidators,
-                onRestore: (dataToRestore, isLegacy) => {
-                    // Handle the confirmation modal *inside* this helper
-                    SafeUI.showModal('Confirm Restore', 
-                        `<p>${SafeUI.escapeHTML(restoreConfirmMessage)}</p><p>This cannot be undone.</p>`, 
-                        [
-                            { label: 'Cancel' },
-                            { 
-                                label: 'Restore', 
-                                class: 'button-danger', 
-                                callback: () => {
-                                    try {
-                                        // Call the page-specific restore logic
-                                        onRestore(dataToRestore, isLegacy);
-                                        SafeUI.showToast('Data restored successfully.');
-                                    } catch (err) {
-                                        console.error('Restore failed during state update:', err);
-                                        SafeUI.showModal('Restore Error', `<p>Failed to apply restore: ${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
-                                    }
-                                }
-                            }
-                        ]
-                    );
-                }
-            });
-        });
     }
 };
 
@@ -176,7 +176,8 @@ const DataValidator = {
         
         return items.some(item => {
             if (excludeId && item.id === excludeId) return false;
-            const itemValue = String(item[field]).toLowerCase().trim();
+            // Use optional chaining for safety
+            const itemValue = String(item?.[field] || '').toLowerCase().trim();
             return itemValue === normalizedValue;
         });
     },
@@ -392,7 +393,107 @@ const DataConverter = {
     }
 };
 
+// NEW: Consolidated CSV Management
+const CsvManager = {
+    /**
+     * Attaches export logic to a button.
+     * @param {HTMLElement} exportBtn - The export button element.
+     * @param {function} getData - A function that returns the array of data to export.
+     * @param {string[]} headers - An array of header strings.
+     * @param {string} filename - The desired output filename.
+     */
+    setupExport: (exportBtn, getData, headers, filename) => {
+        if (!exportBtn) return;
+        exportBtn.addEventListener('click', () => {
+            try {
+                const data = getData();
+                const csvString = DataConverter.toCSV(data, headers);
+                SafeUI.downloadJSON(csvString, filename, 'text/csv');
+            } catch (err) {
+                console.error("Export failed:", err);
+                SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+            }
+        });
+    },
+
+    /**
+     * Attaches import logic to a button.
+     * @param {object} config - Configuration object.
+     * @param {HTMLElement} config.importBtn - The import button element.
+     * @param {string[]} config.headers - Required CSV headers.
+     * @param {function} config.onValidateRow - (row, index) => { valid: bool, error?: string, entry?: object }
+     * @param {function} config.onConfirmImport - (sanitizedData) => void
+     * @param {string} config.confirmMessage - The message for the confirmation modal.
+     */
+    setupImport: (config) => {
+        const { importBtn, headers, onValidateRow, onConfirmImport, confirmMessage } = config;
+        if (!importBtn) return;
+
+        importBtn.addEventListener('click', () => {
+            SafeUI.openFilePicker(async (file) => {
+                try {
+                    const { data, errors: parseErrors } = await DataConverter.fromCSV(file, headers);
+                    
+                    const sanitizedData = [];
+                    const importErrors = [...parseErrors];
+
+                    data.forEach((item, index) => {
+                        const result = onValidateRow(item, index);
+                        if (result.valid) {
+                            sanitizedData.push(result.entry);
+                        } else {
+                            importErrors.push(`Row ${index + 2}: ${result.error}`);
+                        }
+                    });
+
+                    if (importErrors.length > 0) {
+                        const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                        const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+                        
+                        SafeUI.showModal("Import Validation Errors", 
+                            `<p>Some rows had errors and were skipped:</p>
+                            <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
+                                ${errorList}${moreErrors}
+                            </ul>
+                            <p><strong>${sanitizedData.length} valid rows found.</strong></p>`, 
+                            [{ label: 'OK' }]
+                        );
+                    }
+
+                    if (sanitizedData.length === 0) {
+                        if (importErrors.length === 0) {
+                            SafeUI.showModal("Import Failed", "<p>No valid data found in the CSV file.</p>", [{ label: 'OK' }]);
+                        }
+                        return;
+                    }
+
+                    SafeUI.showModal("Confirm Import", 
+                        `<p>${SafeUI.escapeHTML(confirmMessage)}</p>`, 
+                        [
+                            { label: 'Cancel' },
+                            {
+                                label: 'Import', 
+                                class: 'button-danger', 
+                                callback: () => {
+                                    onConfirmImport(sanitizedData);
+                                    // Save/render is handled by the callback
+                                }
+                            }
+                        ]
+                    );
+
+                } catch (err) {
+                    console.error("Import failed:", err);
+                    SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                }
+            }, '.csv');
+        });
+    }
+};
+
+
 // --- FIX: Expose components to the global window scope ---
 window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
+window.CsvManager = CsvManager; // NEW
