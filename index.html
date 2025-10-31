@@ -479,47 +479,8 @@
             }
         });
 
-        DOMElements.backupBtnMenu.addEventListener('click', (e) => {
-            e.preventDefault();
-            BackupRestore.createBackup(state, 'dashboard');
-        });
-        
-        DOMElements.restoreBtnMenu.addEventListener('click', (e) => {
-            e.preventDefault();
-            BackupRestore.handleRestoreUpload({
-                appName: 'dashboard',
-                itemValidators: {
-                    apps: ['id', 'name', 'urls', 'escalation'],
-                    notes: ['id', 'title', 'content'],
-                    shortcuts: ['id', 'name', 'url']
-                },
-                onRestore: (dataToRestore) => {
-                    SafeUI.showModal('Confirm Restore', `<p>Overwrite dashboard data? This cannot be undone.</p>`, [
-                        {label: 'Cancel'},
-                        {label: 'Restore', class: 'button-danger', callback: async () => {
-                            try {
-                                state.apps = dataToRestore.apps || [];
-                                state.notes = dataToRestore.notes || [];
-                                state.shortcuts = dataToRestore.shortcuts || [];
-                                
-                                if (!hasItems('notes')) {
-                                    getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
-                                }
-                                
-                                saveState();
-                                DOMElements.appSelect.value = '';
-                                displayAppDetails(null);
-                                renderAll();
-                                SafeUI.showToast('Dashboard data restored.');
-                            } catch (err) {
-                                console.error('Restore failed during save:', err);
-                                SafeUI.showModal('Restore Error', `<p>Failed to apply restore: ${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
-                            }
-                        }}
-                    ]);
-                }
-            });
-        });
+        // FIX: Mode D - Remove redundant backup/restore listeners
+        // This logic is now handled by setupBackupRestoreHandlers in init()
 
         DOMElements.notepadHeader.addEventListener('click', (e) => {
              const button = e.target.closest('button');
@@ -631,6 +592,35 @@
             };
             shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
+
+            // FIX: Mode D - Consolidate backup/restore logic
+            BackupRestore.setupBackupRestoreHandlers({
+                backupBtn: DOMElements.backupBtnMenu,
+                restoreBtn: DOMElements.restoreBtnMenu,
+                state: state,
+                appName: 'dashboard',
+                itemValidators: {
+                    apps: ['id', 'name', 'urls', 'escalation'],
+                    notes: ['id', 'title', 'content'],
+                    shortcuts: ['id', 'name', 'url']
+                },
+                restoreConfirmMessage: 'Overwrite all dashboard data?',
+                onRestore: (dataToRestore) => {
+                    // This is the page-specific logic that runs *after* confirmation
+                    state.apps = dataToRestore.apps || [];
+                    state.notes = dataToRestore.notes || [];
+                    state.shortcuts = dataToRestore.shortcuts || [];
+                    
+                    if (!hasItems('notes')) {
+                        getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+                    }
+                    
+                    saveState();
+                    DOMElements.appSelect.value = '';
+                    displayAppDetails(null);
+                    renderAll();
+                }
+            });
 
             DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
