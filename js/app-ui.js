@@ -100,7 +100,9 @@ const SearchHelper = {
         return items.filter(item => {
             return searchFields.some(field => {
                 const value = item[field];
-                return value && String(value).toLowerCase().includes(lowerTerm);
+                // FIX: Issue #22 - Handle null/undefined values correctly
+                return value !== null && value !== undefined && 
+                       String(value).toLowerCase().includes(lowerTerm);
             });
         });
     },
