@@ -274,7 +274,15 @@
                 appSelect.add(new Option(app.name, app.id));
             });
             
-            if (selectedValue) appSelect.value = selectedValue;
+            // FIX: Issue #13 - Only restore selection if the app still exists
+            if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
+                appSelect.value = selectedValue;
+            } else {
+                appSelect.value = '';
+                if (selectedAppId && !sortedApps.some(app => app.id === selectedAppId)) {
+                    selectedAppId = null; // Clear stale reference
+                }
+            }
         };
 
         const renderAppData = () => {
@@ -565,6 +573,11 @@
                     }
                     saveState();
                     renderAll();
+                    
+                    // FIX: Issue #14 - Ensure textarea resizes after content is set
+                    setTimeout(() => {
+                        DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
+                    }, 0);
                  });
              }
         });
@@ -641,3 +654,4 @@
     </script>
 </body>
 </html>
+
