@@ -104,6 +104,65 @@ const BackupRestore = {
                 SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
             }
         });
+    },
+
+    /**
+     * FIX: Mode D - Consolidated backup/restore UI logic
+     * Attaches backup/restore handlers and manages the confirmation modal flow.
+     */
+    setupBackupRestoreHandlers: (config) => {
+        const { 
+            backupBtn, 
+            restoreBtn, 
+            state, 
+            appName, 
+            itemValidators, 
+            onRestore, // This is the page-specific function to *apply* the state
+            legacyAppName = null,
+            restoreConfirmMessage = 'Overwrite all data with this backup?'
+        } = config;
+    
+        if (!backupBtn || !restoreBtn) {
+            console.error("setupBackupRestoreHandlers: Missing backup or restore button.");
+            return;
+        }
+    
+        // 1. Backup Button Handler
+        backupBtn.addEventListener('click', () => {
+            BackupRestore.createBackup(state, appName);
+        });
+    
+        // 2. Restore Button Handler
+        restoreBtn.addEventListener('click', () => {
+            BackupRestore.handleRestoreUpload({
+                appName: appName,
+                legacyAppName: legacyAppName,
+                itemValidators: itemValidators,
+                onRestore: (dataToRestore, isLegacy) => {
+                    // Handle the confirmation modal *inside* this helper
+                    SafeUI.showModal('Confirm Restore', 
+                        `<p>${SafeUI.escapeHTML(restoreConfirmMessage)}</p><p>This cannot be undone.</p>`, 
+                        [
+                            { label: 'Cancel' },
+                            { 
+                                label: 'Restore', 
+                                class: 'button-danger', 
+                                callback: () => {
+                                    try {
+                                        // Call the page-specific restore logic
+                                        onRestore(dataToRestore, isLegacy);
+                                        SafeUI.showToast('Data restored successfully.');
+                                    } catch (err) {
+                                        console.error('Restore failed during state update:', err);
+                                        SafeUI.showModal('Restore Error', `<p>Failed to apply restore: ${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+                                    }
+                                }
+                            }
+                        ]
+                    );
+                }
+            });
+        });
     }
 };
 
@@ -337,4 +396,3 @@ const DataConverter = {
 window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
-
