@@ -88,7 +88,8 @@
         typeof SearchHelper === 'undefined' || 
         typeof BackupRestore === 'undefined' || 
         typeof DataValidator === 'undefined' || 
-        typeof DataConverter === 'undefined') {
+        typeof DataConverter === 'undefined' ||
+        typeof CsvManager === 'undefined') { // Added CsvManager
         
         document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
             <h2>Application Failed to Load</h2>
@@ -141,6 +142,7 @@
         let selectedAppId = null;
         let activeNoteId = null;
         let initialAppData = null;
+        let appFileNames = new Set(); // REFACTOR: For CSV validation
 
         const getCollection = (type) => state[type];
         const hasItems = (type) => getCollection(type).length > 0;
@@ -405,129 +407,66 @@
             updateSaveButtonState();
         };
 
-        // NEW: Add handleExportCSV function
-        const handleExportCSV = () => {
-            try {
-                // We only export the 'apps' collection
-                const csvString = DataConverter.toCSV(state.apps, APP_CONFIG.APP_CSV_HEADERS);
-                SafeUI.downloadJSON(csvString, 'dashboard-apps-export.csv', 'text/csv');
-            } catch (err) {
-                console.error("Export failed:", err);
-                SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+        // REFACTOR: Remove handleExportCSV()
+        // REFACTOR: Remove handleImportCSV()
+
+        // REFACTOR: Add validation callback for CsvManager
+        function validateCsvRow(item, index) {
+            const appEntry = {
+                id: item.id || SafeUI.generateId(),
+                name: (item.name || '').trim(),
+                urls: (item.urls || '').trim(),
+                escalation: (item.escalation || '').trim()
+            };
+
+            // Validate
+            if (!appEntry.name) {
+                return { valid: false, error: "'name' is required." };
             }
-        };
 
-        // NEW: Add handleImportCSV function (with OVERWRITE logic)
-        const handleImportCSV = () => {
-            SafeUI.openFilePicker(async (file) => {
-                try {
-                    const { data, errors } = await DataConverter.fromCSV(file, APP_CONFIG.APP_CSV_HEADERS);
-                    
-                    const sanitizedData = [];
-                    const importErrors = [...errors]; // Include parsing errors
-                    const fileNames = new Set();
+            const lowerName = appEntry.name.toLowerCase();
+            if (appFileNames.has(lowerName)) {
+                return { valid: false, error: `Duplicate app name "${appEntry.name}" within the file.` };
+            }
+            appFileNames.add(lowerName);
+            
+            return { valid: true, entry: appEntry };
+        }
 
+        // REFACTOR: Add confirmation callback for CsvManager
+        function confirmCsvImport(sanitizedData) {
+            // Build map from existing state using *lowercase name* as the key
+            const appMap = new Map(state.apps.map(app => [app.name.toLowerCase(), app]));
+            let overwriteCount = 0;
+            let newCount = 0;
 
-                    data.forEach((item, index) => {
-                        // Create a valid app object
-                        const appEntry = {
-                            id: item.id || SafeUI.generateId(),
-                            name: (item.name || '').trim(),
-                            urls: (item.urls || '').trim(),
-                            escalation: (item.escalation || '').trim()
-                        };
-
-                        // Validate
-                        if (!appEntry.name) {
-                            importErrors.push(`Row ${index + 2}: 'name' is required.`);
-                            return; // Skip this row
-                        }
-
-                        const lowerName = appEntry.name.toLowerCase();
-                        if (fileNames.has(lowerName)) {
-                            importErrors.push(`Row ${index + 2}: Duplicate app name "${appEntry.name}" within the file. Skipping.`);
-                            return; // Skip
-                        }
-                        fileNames.add(lowerName);
-
-                        // FIX: Removed skip check for existing names. Overwrite will be handled at merge.
-                        
-                        sanitizedData.push(appEntry);
-                    });
-
-                    if (importErrors.length > 0) {
-                        const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-                        const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
-                        
-                        SafeUI.showModal("Import Validation Errors", 
-                            `<p>Some rows had errors and were skipped:</p>
-                            <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
-                                ${errorList}${moreErrors}
-                            </ul>
-                            <p><strong>${sanitizedData.length} valid apps found.</strong></p>`, 
-                            [{label: 'OK'}]
-                        );
-                    }
-
-                    if (sanitizedData.length === 0) {
-                        if (importErrors.length === 0) {
-                            SafeUI.showModal("Import Failed", "<p>No valid app data found in the CSV file.</p>", [{label: 'OK'}]);
-                        }
-                        return;
-                    }
-
-                    // FIX: Updated modal text and merge logic
-                    SafeUI.showModal("Confirm Import", 
-                        `<p>This will <strong>merge ${sanitizedData.length} applications</strong> from the file into your existing ${state.apps.length} apps. This cannot be undone.</p>
-                         <p>Apps with matching names will be <strong>overwritten</strong>. Apps with new names will be added.</p>
-                         <p>Shortcuts and Notepads will not be affected.</p>`, 
-                        [
-                            { label: 'Cancel' },
-                            {
-                                label: 'Merge and Import', 
-                                class: 'button-danger', 
-                                callback: () => {
-                                    // Build map from existing state using *lowercase name* as the key
-                                    const appMap = new Map(state.apps.map(app => [app.name.toLowerCase(), app]));
-                                    let overwriteCount = 0;
-                                    let newCount = 0;
-
-                                    // Merge/overwrite apps from CSV
-                                    sanitizedData.forEach(newApp => {
-                                        const lowerName = newApp.name.toLowerCase();
-                                        if (appMap.has(lowerName)) {
-                                            // Overwrite existing app
-                                            const existingApp = appMap.get(lowerName);
-                                            // Update fields, but keep existing ID
-                                            existingApp.name = newApp.name; // Use casing from file
-                                            existingApp.urls = newApp.urls;
-                                            existingApp.escalation = newApp.escalation;
-                                            overwriteCount++;
-                                        } else {
-                                            // Add as new app (it already has an ID from validation step)
-                                            appMap.set(lowerName, newApp);
-                                            newCount++;
-                                        }
-                                    });
-
-                                    state.apps = Array.from(appMap.values());
-                                    
-                                    saveState();
-                                    renderAll(); // Re-render dropdown and clear details
-                                    displayAppDetails(null); 
-                                    
-                                    SafeUI.showToast(`Import complete: ${newCount} added, ${overwriteCount} overwritten.`);
-                                }
-                            }
-                        ]
-                    );
-
-                } catch (err) {
-                    console.error("Import failed:", err);
-                    SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+            // Merge/overwrite apps from CSV
+            sanitizedData.forEach(newApp => {
+                const lowerName = newApp.name.toLowerCase();
+                if (appMap.has(lowerName)) {
+                    // Overwrite existing app
+                    const existingApp = appMap.get(lowerName);
+                    // Update fields, but keep existing ID
+                    existingApp.name = newApp.name; // Use casing from file
+                    existingApp.urls = newApp.urls;
+                    existingApp.escalation = newApp.escalation;
+                    overwriteCount++;
+                } else {
+                    // Add as new app (it already has an ID from validation step)
+                    appMap.set(lowerName, newApp);
+                    newCount++;
                 }
-            }, '.csv');
-        };
+            });
+
+            state.apps = Array.from(appMap.values());
+            
+            saveState();
+            renderAll(); // Re-render dropdown and clear details
+            displayAppDetails(null); 
+            
+            SafeUI.showToast(`Import complete: ${newCount} added, ${overwriteCount} overwritten.`);
+        }
+
 
         // NEW: Add showSettingsModal function
         const showSettingsModal = () => {
@@ -780,10 +719,28 @@
             shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
 
-            // NEW: Add listeners for new buttons
+            // REFACTOR: Add listeners for new buttons using CsvManager
             DOMElements.btnSettings.addEventListener('click', showSettingsModal);
-            DOMElements.btnImportCsv.addEventListener('click', handleImportCSV);
-            DOMElements.btnExportCsv.addEventListener('click', handleExportCSV);
+            
+            CsvManager.setupExport(
+                DOMElements.btnExportCsv,
+                () => state.apps,
+                APP_CONFIG.APP_CSV_HEADERS,
+                'dashboard-apps-export.csv'
+            );
+
+            CsvManager.setupImport({
+                importBtn: DOMElements.btnImportCsv,
+                headers: APP_CONFIG.APP_CSV_HEADERS,
+                onValidateRow: (item, index) => {
+                    // Reset file-level duplicate check
+                    if (index === 0) appFileNames.clear(); 
+                    return validateCsvRow(item, index);
+                },
+                onConfirmImport: confirmCsvImport,
+                confirmMessage: `This will merge apps from the file. Apps with matching names will be overwritten. Apps with new names will be added. (${state.apps.length} apps currently).`
+            });
+
 
             // Load SVG icons
             DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
