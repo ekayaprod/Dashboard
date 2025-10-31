@@ -117,8 +117,18 @@
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
 
-            // FIX: Mode C, Issue 4 - Remove redundant state check
+            // FIX: Mode F - Remove sort-on-save from default saveState
             const saveState = () => {
+                try {
+                    originalSaveState();
+                } catch (e) {
+                    console.error("Failed to save state:", e);
+                    SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
+                }
+            };
+
+            // FIX: Mode F - Create new sortAndSaveState function
+            const sortAndSaveState = () => {
                 try {
                     // Sort by keyword on every save
                     state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
@@ -227,13 +237,15 @@
                 
                 // Test URL construction
                 try {
-                    const testUrl = url.replace(/{query}/g, 'test'); // Use global replace for test
-                    const urlObj = new URL(testUrl);
-                    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                        return { 
-                            valid: false, 
-                            message: 'URL must use http:// or https:// protocol.' 
-                        };
+                    // FIX: Mode B - Handle localhost URLs
+                    const testUrl = url.replace(/{query}/g, 'test');
+                    if (!testUrl.startsWith('http://') && !testUrl.startsWith('https://')) {
+                         // Allow localhost/intranet without protocol for URL constructor test
+                        if (!/^(localhost|[\w.-]+)(:\d+)?\//.test(testUrl)) {
+                            new URL('https://' + testUrl);
+                        }
+                    } else {
+                         new URL(testUrl);
                     }
                 } catch (e) {
                     return { 
@@ -311,12 +323,13 @@
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
 
-                // FIX: Mode B, Issue #2 - Correctly handle Edit Mode
+                // FIX: Mode C, Issue 1 - Simplify conditional logic
                 // Start with all items in Edit Mode, or empty in Search Mode
                 itemsToRender = isEditMode ? [...state.items] : [];
 
-                // Apply search filter if term exists AND we are NOT in edit mode
-                if (lowerTerm && !isEditMode) {
+                // FIX: Mode B - Don't filter in Edit Mode
+                // Apply search filter only if NOT in edit mode and term exists
+                if (!isEditMode && lowerTerm) {
                     itemsToRender = SearchHelper.simpleSearch(state.items, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
                 }
                 
@@ -371,7 +384,7 @@
 
                 hideKbEmptyState();
 
-                // FIX: Mode B, Issue #3 - Use global replace for {query}
+                // FIX: Mode B - Replace all instances of {query}
                 const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
 
                 const li = document.createElement('li');
@@ -579,7 +592,7 @@
                     }
                     Object.assign(itemToUpdate, { keyword, assignmentGroup, notes, phoneLogPath });
                     
-                    saveState();
+                    saveState(); // FIX: Mode F - Use non-sorting save
                     // FIX: Mode D, Issue 17 - Use helper
                     clearEditStateAndRender("Entry saved.");
                 };
@@ -598,7 +611,7 @@
                                     // FIX: Mode D, Issue 19 - Use helper
                                     existingEntry.keyword = keywordUtils.merge(existingEntry.keyword, keyword);
                                     handleDelete(id, true);
-                                    saveState();
+                                    saveState(); // FIX: Mode F - Use non-sorting save
                                     // FIX: Mode D, Issue 17 - Use helper
                                     clearEditStateAndRender("Keywords merged.");
                                 }
@@ -626,7 +639,7 @@
 
                 const doDelete = () => {
                     state.items.splice(index, 1);
-                    saveState();
+                    saveState(); // FIX: Mode F - Use non-sorting save
                     // FIX: Mode D, Issue 17 - Use helper
                     clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
                 };
@@ -702,7 +715,7 @@
                             `<p>This will <strong>overwrite all ${state.items.length} local entries</strong> with ${sanitizedData.length} entries from the file. This cannot be undone.</p>`, 
                             modalActions.cancelAndConfirm('Overwrite and Import', () => {
                                 state.items = sanitizedData;
-                                saveState();
+                                sortAndSaveState(); // FIX: Mode F - Use sorting save
                                 renderAll();
                                 SafeUI.showToast(`Imported ${sanitizedData.length} entries.`);
                             }, true)
@@ -752,7 +765,7 @@
                             }
 
                             state.settings.kbBaseUrl = newUrl;
-                            saveState();
+                            saveState(); // FIX: Mode F - Use non-sorting save
                             SafeUI.showToast("Settings saved.");
                             handleSearch();
                         }
@@ -775,34 +788,30 @@
                     }
                 }, 0);
 
-                // Attach listeners to modal buttons
-                document.getElementById('modal-backup-btn').addEventListener('click', () => {
-                    BackupRestore.createBackup(state, APP_CONFIG.NAME);
-                });
-                document.getElementById('modal-restore-btn').addEventListener('click', () => {
-                    BackupRestore.handleRestoreUpload({
-                        appName: APP_CONFIG.NAME,
-                        legacyAppName: 'assignment_tool',
-                        itemValidators: {
-                            items: APP_CONFIG.CSV_HEADERS,
-                            settings: ['kbBaseUrl']
-                        },
-                        onRestore: (dataToRestore, isLegacy) => {
-                            // FIX: Mode D, Issue 16 - Use modal helper
-                            SafeUI.showModal("Confirm Restore (JSON)", 
-                                `<p>This will overwrite all settings and data. This is for disaster recovery.</p>`, 
-                                modalActions.cancelAndConfirm('Restore', () => {
-                                    state.items = dataToRestore.items || [];
-                                    state.settings = dataToRestore.settings || { kbBaseUrl: '' };
-                                    saveState();
-                                    renderAll();
-                                    handleSearch();
-                                    SafeUI.showToast("Restore successful.");
-                                    SafeUI.hideModal(); // Close settings modal
-                                }, true)
-                            );
-                        }
-                    });
+                // FIX: Mode D - Use consolidated backup/restore helper
+                BackupRestore.setupBackupRestoreHandlers({
+                    backupBtn: document.getElementById('modal-backup-btn'),
+                    restoreBtn: document.getElementById('modal-restore-btn'),
+                    state: state,
+                    appName: APP_CONFIG.NAME,
+                    legacyAppName: 'assignment_tool',
+                    itemValidators: {
+                        items: APP_CONFIG.CSV_HEADERS,
+                        settings: ['kbBaseUrl']
+                    },
+                    restoreConfirmMessage: 'Overwrite all settings and data? This is for disaster recovery.',
+                    onRestore: (dataToRestore, isLegacy) => {
+                        // This is the page-specific logic that runs *after* confirmation
+                        state.items = dataToRestore.items || [];
+                        state.settings = dataToRestore.settings || { kbBaseUrl: '' };
+                        
+                        // FIX: Mode F - Use sorting save after restore
+                        sortAndSaveState(); 
+                        
+                        renderAll();
+                        handleSearch();
+                        SafeUI.hideModal(); // Close settings modal
+                    }
                 });
             }
 
@@ -903,6 +912,8 @@
             // Run the app
             init();
         });
-    </script></body>
+    </script>
+</body>
 </html>
+
 
