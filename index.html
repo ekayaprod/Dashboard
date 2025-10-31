@@ -79,6 +79,23 @@
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
     <script>
+    // FIX: Issue #5 - Dependency Validation
+    if (typeof SafeUI === 'undefined' || 
+        typeof UIPatterns === 'undefined' || 
+        typeof ListRenderer === 'undefined' || 
+        typeof SearchHelper === 'undefined' || 
+        typeof BackupRestore === 'undefined' || 
+        typeof DataValidator === 'undefined' || 
+        typeof DataConverter === 'undefined') {
+        
+        document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
+            <h2>Application Failed to Load</h2>
+            <p>One or more required JavaScript files failed to load. Please refresh the page or check your connection.</p>
+            <p>Missing dependencies detected.</p>
+        </div>`;
+        throw new Error("Critical dependencies missing");
+    }
+
     AppLifecycle.run(async () => {
         const APP_VERSION = '6.1.0';
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
@@ -624,4 +641,3 @@
     </script>
 </body>
 </html>
-
