@@ -48,11 +48,15 @@
                     💡 <strong>Tip:</strong> Open the browser console (F12) and uncomment example code in the inline script to see shared functions in action.
                 </p>
             </div>
-            <!-- Toast is now loaded from navbar.html -->
+            <!-- Toast and modal must be in the main file -->
         </div>
     </div>
+    
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+    <div id="toast" class="toast"></div>
 
-    <!-- Modal overlay is now loaded from navbar.html -->
 
     <!-- 
       CORRECT SCRIPT ORDER:
@@ -64,22 +68,34 @@
     <script src="js/app-data.js"></script>
 
     <script>
-    // FIX: Mode A - Add Dependency Validation Block
-    if (typeof SafeUI === 'undefined' || 
-        typeof UIPatterns === 'undefined' || 
-        typeof ListRenderer === 'undefined' || 
-        typeof SearchHelper === 'undefined' || 
-        typeof BackupRestore === 'undefined' || 
-        typeof DataValidator === 'undefined' || 
-        typeof DataConverter === 'undefined') {
+    // FIX: Use non-destructive error banner instead of wiping DOM
+    (() => {
+        // Note: CsvManager is not a dependency for this demo page
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
-        document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-            <h2>Application Failed to Load</h2>
-            <p>One or more required JavaScript files failed to load. Please refresh the page or check your connection.</p>
-            <p>Missing dependencies detected.</p>
-        </div>`;
-        throw new Error("Critical dependencies missing");
-    }
+        if (missing.length > 0) {
+            console.error("Critical dependencies missing:", missing);
+            const title = "Application Failed to Load";
+            const message = `One or more required JavaScript files (e.g., app-core.js, app-ui.js, app-data.js) failed to load. Missing: ${missing.join(', ')}`;
+            
+            // Create and inject a non-destructive banner
+            const banner = document.createElement('div');
+            banner.id = 'app-startup-error';
+            banner.style.cssText = `position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;`;
+            banner.innerHTML = `<strong>${title}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${message}</p>`;
+            
+            // Wait for DOM to be ready just in case, then prepend
+            if (document.body) {
+                document.body.prepend(banner);
+            } else {
+                document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
+            }
+            
+            // Throw error to stop further execution
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
 
     AppLifecycle.run(async () => {
         // ============================================================================
@@ -99,7 +115,6 @@
         // This pattern is used by ALL pages
         
         const ctx = await AppLifecycle.initPage({
-            pageName: 'template.html',              // Current page filename
             storageKey: LOCAL_STORAGE_KEY,          // localStorage key for this page
             defaultState: {                         // Default state structure
                 version: APP_VERSION,
@@ -336,31 +351,43 @@
         console.log('Template page initialized. Elements available:', Object.keys(elements));
         
         // ----------------------------------------------------------------------------
-        // WORKING EXAMPLES (Uncomment to test)
+        // WORKING EXAMPLES (From original file)
         // ----------------------------------------------------------------------------
         
         // Enable textarea auto-resize
         DOMHelpers.setupTextareaAutoResize(elements.demoNotes, 200);
         
-        // FIX: Mode D - Consolidate backup/restore logic
-        BackupRestore.setupBackupRestoreHandlers({
-            backupBtn: elements.demoBackupBtn,
-            restoreBtn: elements.demoRestoreBtn,
-            state: state,
-            appName: 'template',
-            itemValidators: {
-                exampleList: ['id', 'name', 'created'],
-                notes: [] // No item validation, just ensures key exists
-            },
-            restoreConfirmMessage: 'Replace all data with backup?',
-            onRestore: (dataToRestore) => {
-                // This is the page-specific logic that runs *after* confirmation
-                state.exampleList = dataToRestore.exampleList || [];
-                state.notes = dataToRestore.notes || '';
-                saveState();
-                renderList(); // Re-render the page
-                elements.demoNotes.value = state.notes;
-            }
+        // Backup button
+        elements.demoBackupBtn.addEventListener('click', () => {
+            BackupRestore.createBackup(state, 'template');
+        });
+        
+        // Restore button
+        elements.demoRestoreBtn.addEventListener('click', () => {
+            BackupRestore.handleRestoreUpload({
+                appName: 'template',
+                itemValidators: {
+                    exampleList: ['id', 'name', 'created'],
+                    notes: [] // No item validation, just ensures key exists
+                },
+                onRestore: (dataToRestore) => {
+                    SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
+                        { label: 'Cancel' },
+                        {
+                            label: 'Restore',
+                            class: 'button-danger',
+                            callback: () => {
+                                state.exampleList = dataToRestore.exampleList || [];
+                                state.notes = dataToRestore.notes || '';
+                                saveState();
+                                renderList();
+                                elements.demoNotes.value = state.notes;
+                                SafeUI.showToast('Data restored successfully.');
+                            }
+                        }
+                    ]);
+                }
+            });
         });
         
         // Add item button
@@ -463,9 +490,11 @@
         
         // Initial render
         renderList();
+
+        // Load navbar
+        SafeUI.loadNavbar("navbar-container");
     });
     </script>
 </body>
 </html>
-
 
