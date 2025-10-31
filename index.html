@@ -17,12 +17,13 @@
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
-                    <!-- FIX: Updated header buttons for CSV I/O and Settings Modal -->
                     <div class="actions-menu-wrapper button-group">
                         <button id="add-shortcut-btn-menu" class="button-base icon-btn" title="Add Shortcut"></button>
                         <button id="add-new-app-btn-menu" class="button-base icon-btn" title="Add App"></button>
+                        <!-- CSV Buttons -->
                         <button id="btn-import-csv" class="button-base" title="Import Apps from CSV">Import</button>
                         <button id="btn-export-csv" class="button-base" title="Export Apps to CSV">Export</button>
+                        <!-- Settings Button -->
                         <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
                     </div>
                 </div>
@@ -81,34 +82,40 @@
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
     <script>
-    // FIX: Issue #5 - Dependency Validation
-    if (typeof SafeUI === 'undefined' || 
-        typeof UIPatterns === 'undefined' || 
-        typeof ListRenderer === 'undefined' || 
-        typeof SearchHelper === 'undefined' || 
-        typeof BackupRestore === 'undefined' || 
-        typeof DataValidator === 'undefined' || 
-        typeof DataConverter === 'undefined' ||
-        typeof CsvManager === 'undefined') { // Added CsvManager
+    // FIX: Use non-destructive error banner instead of wiping DOM
+    (() => {
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
-        document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
-            <h2>Application Failed to Load</h2>
-            <p>One or more required JavaScript files failed to load. Please refresh the page or check your connection.</p>
-            <p>Missing dependencies detected.</p>
-        </div>`;
-        throw new Error("Critical dependencies missing");
-    }
+        if (missing.length > 0) {
+            console.error("Critical dependencies missing:", missing);
+            const title = "Application Failed to Load";
+            const message = `One or more required JavaScript files (e.g., app-core.js, app-ui.js, app-data.js) failed to load. Missing: ${missing.join(', ')}`;
+            
+            // Create and inject a non-destructive banner
+            const banner = document.createElement('div');
+            banner.id = 'app-startup-error';
+            banner.style.cssText = `position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;`;
+            banner.innerHTML = `<strong>${title}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${message}</p>`;
+            
+            // Wait for DOM to be ready just in case, then prepend
+            if (document.body) {
+                document.body.prepend(banner);
+            } else {
+                document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
+            }
+            
+            // Throw error to stop further execution
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
+
 
     AppLifecycle.run(async () => {
         const APP_VERSION = '6.1.0';
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const DEBOUNCE_DELAY = 500;
-        
-        // NEW: Add APP_CONFIG
-        const APP_CONFIG = {
-            NAME: 'dashboard',
-            APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
-        };
+        const CSV_HEADERS = ['id', 'name', 'urls', 'escalation'];
     
         const defaultState = {
             apps: [],
@@ -128,9 +135,7 @@
                 'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
                 'add-new-app-btn-menu', 'notepad-header',
                 'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
-                'navbar-container',
-                // NEW: Add buttons
-                'btn-settings', 'btn-import-csv', 'btn-export-csv'
+                'navbar-container', 'btn-import-csv', 'btn-export-csv', 'btn-settings'
             ]
         });
     
@@ -142,7 +147,6 @@
         let selectedAppId = null;
         let activeNoteId = null;
         let initialAppData = null;
-        let appFileNames = new Set(); // REFACTOR: For CSV validation
 
         const getCollection = (type) => state[type];
         const hasItems = (type) => getCollection(type).length > 0;
@@ -211,7 +215,7 @@
             const add = () => {
                 services.showModal('Add Shortcut',
                     `<input type="text" id="shortcut-name" placeholder="Name" class="sidebar-input">
-                     <input type="text" id="shortcut-url" placeholder="URL" class="sidebar-input">`,
+                     <input type="text" id="shortcut-url" placeholder="URL (e.g., localhost:3000)" class="sidebar-input">`,
                     [{ label: 'Cancel' }, {
                         label: 'Add', class: 'button-primary', callback: () => {
                             const nameInput = document.getElementById('shortcut-name');
@@ -223,7 +227,7 @@
                                 services.saveState();
                                 render();
                             } else {
-                                services.showToast('Invalid name or URL');
+                                SafeUI.showValidationError('Invalid Input', 'Name must be 1-50 characters and URL must be valid (e.g., http://... or localhost:3000).', 'shortcut-name');
                                 return false;
                             }
                         }
@@ -286,7 +290,6 @@
                 appSelect.add(new Option(app.name, app.id));
             });
             
-            // FIX: Issue #13 - Only restore selection if the app still exists
             if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
                 appSelect.value = selectedValue;
             } else {
@@ -364,12 +367,10 @@
             selectedAppId = appId;
             const isVisible = !!appId;
 
-            // --- FIX FOR STALE DATA ---
-            // Always clear and reset fields first.
             DOMElements.editAppName.value = '';
             DOMElements.editAppUrls.value = '';
             DOMElements.editAppEscalation.value = '';
-            DOMElements.editAppNameWrapper.classList.add('hidden'); // Hide app name field by default
+            DOMElements.editAppNameWrapper.classList.add('hidden');
 
             DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
 
@@ -377,141 +378,32 @@
                 const app = getCollection('apps').find(a => a.id === appId);
                 if (!app) {
                     console.error(`Failed to find app with ID: ${appId}`);
-                    DOMElements.appDetailsContainer.classList.add('hidden'); // Ensure it's hidden if app lookup fails
+                    DOMElements.appDetailsContainer.classList.add('hidden');
                     selectedAppId = null;
                     initialAppData = null;
-                    return; // Exit
+                    return;
                 }
                 
                 initialAppData = {...app};
-                DOMElements.editAppName.value = app.name; // Keep name field populated for save logic
-
-                // *** MULTI-LINE BUG FIX: Normalize newlines and check type ***
-                const appUrls = typeof app.urls === 'string' ? app.urls : '';
-                const appEscalation = typeof app.escalation === 'string' ? app.escalation : '';
+                DOMElements.editAppName.value = app.name;
                 
-                DOMElements.editAppUrls.value = appUrls.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-                DOMElements.editAppEscalation.value = appEscalation.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                // FIX: Normalize line breaks and set values
+                const urls = typeof app.urls === 'string' ? app.urls : '';
+                const escalation = typeof app.escalation === 'string' ? app.escalation : '';
+                DOMElements.editAppUrls.value = urls.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                DOMElements.editAppEscalation.value = escalation.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
             } else {
                 initialAppData = null;
             }
 
-            // *** MULTI-LINE BUG FIX: Defer resize call ***
-            // Trigger auto-resize AFTER populating or clearing the fields.
+            // FIX: Defer resize with setTimeout(0) to allow DOM to render
             setTimeout(() => {
                 DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
                 DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
             }, 0);
             
             updateSaveButtonState();
-        };
-
-        // REFACTOR: Remove handleExportCSV()
-        // REFACTOR: Remove handleImportCSV()
-
-        // REFACTOR: Add validation callback for CsvManager
-        function validateCsvRow(item, index) {
-            const appEntry = {
-                id: item.id || SafeUI.generateId(),
-                name: (item.name || '').trim(),
-                urls: (item.urls || '').trim(),
-                escalation: (item.escalation || '').trim()
-            };
-
-            // Validate
-            if (!appEntry.name) {
-                return { valid: false, error: "'name' is required." };
-            }
-
-            const lowerName = appEntry.name.toLowerCase();
-            if (appFileNames.has(lowerName)) {
-                return { valid: false, error: `Duplicate app name "${appEntry.name}" within the file.` };
-            }
-            appFileNames.add(lowerName);
-            
-            return { valid: true, entry: appEntry };
-        }
-
-        // REFACTOR: Add confirmation callback for CsvManager
-        function confirmCsvImport(sanitizedData) {
-            // Build map from existing state using *lowercase name* as the key
-            const appMap = new Map(state.apps.map(app => [app.name.toLowerCase(), app]));
-            let overwriteCount = 0;
-            let newCount = 0;
-
-            // Merge/overwrite apps from CSV
-            sanitizedData.forEach(newApp => {
-                const lowerName = newApp.name.toLowerCase();
-                if (appMap.has(lowerName)) {
-                    // Overwrite existing app
-                    const existingApp = appMap.get(lowerName);
-                    // Update fields, but keep existing ID
-                    existingApp.name = newApp.name; // Use casing from file
-                    existingApp.urls = newApp.urls;
-                    existingApp.escalation = newApp.escalation;
-                    overwriteCount++;
-                } else {
-                    // Add as new app (it already has an ID from validation step)
-                    appMap.set(lowerName, newApp);
-                    newCount++;
-                }
-            });
-
-            state.apps = Array.from(appMap.values());
-            
-            saveState();
-            renderAll(); // Re-render dropdown and clear details
-            displayAppDetails(null); 
-            
-            SafeUI.showToast(`Import complete: ${newCount} added, ${overwriteCount} overwritten.`);
-        }
-
-
-        // NEW: Add showSettingsModal function
-        const showSettingsModal = () => {
-            const modalContent = `
-                <div class="form-group">
-                    <label>Advanced Data Management</label>
-                    <p class="form-help">Backup or Restore the *entire* dashboard (Apps, Shortcuts, and Notepads) from a single JSON file. This is for disaster recovery.</p>
-                    <div class="button-group">
-                        <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
-                        <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
-                    </div>
-                </div>
-            `;
-            
-            SafeUI.showModal("Settings", modalContent, [{ label: 'Close' }]);
-
-            // Now, wire up the buttons *inside* the modal
-            BackupRestore.setupBackupRestoreHandlers({
-                backupBtn: document.getElementById('modal-backup-btn'),
-                restoreBtn: document.getElementById('modal-restore-btn'),
-                state: state,
-                appName: APP_CONFIG.NAME,
-                itemValidators: {
-                    apps: APP_CONFIG.APP_CSV_HEADERS,
-                    notes: ['id', 'title', 'content'],
-                    shortcuts: ['id', 'name', 'url']
-                },
-                restoreConfirmMessage: 'Overwrite *all* dashboard data (Apps, Shortcuts, Notepads)? This cannot be undone.',
-                onRestore: (dataToRestore) => {
-                    // This is the page-specific logic that runs *after* confirmation
-                    state.apps = dataToRestore.apps || [];
-                    state.notes = dataToRestore.notes || [];
-                    state.shortcuts = dataToRestore.shortcuts || [];
-                    
-                    if (!hasItems('notes')) {
-                        getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
-                    }
-                    
-                    saveState();
-                    DOMElements.appSelect.value = '';
-                    displayAppDetails(null);
-                    renderAll();
-                    SafeUI.hideModal(); // Close settings modal
-                }
-            });
         };
 
         const createNewAppForm = () => {
@@ -557,9 +449,7 @@
             const isNewApp = initialAppData && initialAppData.id === null;
             const appIndex = isNewApp ? -1 : getCollection('apps').findIndex(a => a.id == selectedAppId);
 
-            // FIX: Use lowercase for duplicate check
-            const hasDupe = DataValidator.hasDuplicate(getCollection('apps'), 'name', name, isNewApp ? null : selectedAppId);
-            if (hasDupe) {
+            if (DataValidator.hasDuplicate(getCollection('apps'), 'name', name, isNewApp ? null : selectedAppId)) {
                 return SafeUI.showValidationError('Duplicate Name', 'An app with this name already exists.', 'edit-app-name');
             }
             
@@ -608,6 +498,91 @@
             }
         });
         
+        // ====================================================================
+        // DATA MANAGEMENT (CSV and JSON)
+        // ====================================================================
+
+        // --- CSV Import/Export ---
+        
+        // 1. Validation helper for CSV rows
+        function validateCsvRow(row, index, allItems) {
+            const entry = {
+                id: (row.id || SafeUI.generateId()).trim(),
+                name: (row.name || '').trim(),
+                urls: (row.urls || '').trim(),
+                escalation: (row.escalation || '').trim()
+            };
+
+            if (!entry.name) {
+                return { valid: false, error: `Row ${index + 2}: 'name' is required.` };
+            }
+            
+            // Check for duplicates *within the CSV file itself*
+            if (allItems.some(item => item.name.toLowerCase() === entry.name.toLowerCase() && item.id !== entry.id)) {
+                 return { valid: false, error: `Row ${index + 2}: Duplicate name "${entry.name}" found in CSV.` };
+            }
+            
+            return { valid: true, entry: entry };
+        }
+        
+        // 2. Confirmation helper for CSV import
+        function confirmCsvImport(sanitizedData) {
+            let newCount = 0;
+            let overwrittenCount = 0;
+            
+            sanitizedData.forEach(entry => {
+                const existingApp = state.apps.find(app => app.name.toLowerCase() === entry.name.toLowerCase());
+                
+                if (existingApp) {
+                    // Overwrite existing
+                    existingApp.urls = entry.urls;
+                    existingApp.escalation = entry.escalation;
+                    overwrittenCount++;
+                } else {
+                    // Add new app
+                    state.apps.push(entry);
+                    newCount++;
+                }
+            });
+
+            saveState();
+            renderAll();
+            displayAppDetails(null); // Clear selection
+            SafeUI.showToast(`Import complete: ${newCount} new, ${overwrittenCount} overwritten.`);
+        }
+
+        // --- JSON Backup/Restore (in Settings Modal) ---
+        function showSettingsModal() {
+            // Setup JSON Backup/Restore
+            BackupRestore.setupBackupRestoreHandlers({
+                settingsBtn: DOMElements.btnSettings,
+                state: state,
+                appName: 'dashboard',
+                itemValidators: {
+                    apps: CSV_HEADERS,
+                    notes: ['id', 'title', 'content'],
+                    shortcuts: ['id', 'name', 'url']
+                },
+                restoreConfirmMessage: 'Overwrite ALL dashboard data (Apps, Notes, and Shortcuts)? This cannot be undone.',
+                onRestore: (dataToRestore) => {
+                    state.apps = dataToRestore.apps || [];
+                    state.notes = dataToRestore.notes || [];
+                    state.shortcuts = dataToRestore.shortcuts || [];
+                    
+                    if (!hasItems('notes')) {
+                        getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+                    }
+                    
+                    saveState();
+                    DOMElements.appSelect.value = '';
+                    displayAppDetails(null);
+                    renderAll();
+                    SafeUI.hideModal();
+                }
+            });
+        }
+
+
         DOMElements.notepadHeader.addEventListener('click', (e) => {
              const button = e.target.closest('button');
              if(!button) return;
@@ -661,7 +636,6 @@
                     saveState();
                     renderAll();
                     
-                    // FIX: Issue #14 - Ensure textarea resizes after content is set
                     setTimeout(() => {
                         DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
                     }, 0);
@@ -719,37 +693,34 @@
             shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
 
-            // REFACTOR: Add listeners for new buttons using CsvManager
-            DOMElements.btnSettings.addEventListener('click', showSettingsModal);
-            
-            CsvManager.setupExport(
-                DOMElements.btnExportCsv,
-                () => state.apps,
-                APP_CONFIG.APP_CSV_HEADERS,
-                'dashboard-apps-export.csv'
-            );
-
-            CsvManager.setupImport({
-                importBtn: DOMElements.btnImportCsv,
-                headers: APP_CONFIG.APP_CSV_HEADERS,
-                onValidateRow: (item, index) => {
-                    // Reset file-level duplicate check
-                    if (index === 0) appFileNames.clear(); 
-                    return validateCsvRow(item, index);
-                },
-                onConfirmImport: confirmCsvImport,
-                confirmMessage: `This will merge apps from the file. Apps with matching names will be overwritten. Apps with new names will be added. (${state.apps.length} apps currently).`
-            });
-
-
-            // Load SVG icons
+            // Load SVGs
             DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
             DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
             DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
-            DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings; // NEW
+            DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+
+            // Wire up CSV Export
+            CsvManager.setupExport(
+                DOMElements.btnExportCsv,
+                () => state.apps, // Get data function
+                CSV_HEADERS,
+                'dashboard-apps-export.csv'
+            );
+            
+            // Wire up CSV Import
+            CsvManager.setupImport({
+                importBtn: DOMElements.btnImportCsv,
+                headers: CSV_HEADERS,
+                onValidateRow: validateCsvRow,
+                onConfirmImport: confirmCsvImport,
+                confirmMessage: `This will import apps from the CSV. Existing apps with the same name will be overwritten.`
+            });
+            
+            // Wire up Settings Modal (for JSON Backup/Restore)
+            DOMElements.btnSettings.addEventListener('click', showSettingsModal);
 
             if (!hasItems('notes')) {
                 getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
@@ -766,5 +737,4 @@
     </script>
 </body>
 </html>
-
 
