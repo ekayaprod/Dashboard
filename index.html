@@ -17,11 +17,13 @@
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
+                    <!-- FIX: Updated header buttons for CSV I/O and Settings Modal -->
                     <div class="actions-menu-wrapper button-group">
                         <button id="add-shortcut-btn-menu" class="button-base icon-btn" title="Add Shortcut"></button>
                         <button id="add-new-app-btn-menu" class="button-base icon-btn" title="Add App"></button>
-                        <button id="backup-btn-menu" class="button-base" title="Backup Dashboard">Backup</button>
-                        <button id="restore-btn-menu" class="button-base" title="Restore Dashboard">Restore</button>
+                        <button id="btn-import-csv" class="button-base" title="Import Apps from CSV">Import</button>
+                        <button id="btn-export-csv" class="button-base" title="Export Apps to CSV">Export</button>
+                        <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
                     </div>
                 </div>
                  <div class="form-group" id="app-select-group">
@@ -100,6 +102,12 @@
         const APP_VERSION = '6.1.0';
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const DEBOUNCE_DELAY = 500;
+        
+        // NEW: Add APP_CONFIG
+        const APP_CONFIG = {
+            NAME: 'dashboard',
+            APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
+        };
     
         const defaultState = {
             apps: [],
@@ -117,9 +125,11 @@
                 'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
                 'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
                 'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
-                'add-new-app-btn-menu', 'backup-btn-menu', 'restore-btn-menu', 'notepad-header',
+                'add-new-app-btn-menu', 'notepad-header',
                 'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
-                'navbar-container'
+                'navbar-container',
+                // NEW: Add buttons
+                'btn-settings', 'btn-import-csv', 'btn-export-csv'
             ]
         });
     
@@ -373,18 +383,196 @@
                 
                 initialAppData = {...app};
                 DOMElements.editAppName.value = app.name; // Keep name field populated for save logic
-                DOMElements.editAppUrls.value = app.urls;
-                DOMElements.editAppEscalation.value = app.escalation;
+
+                // *** MULTI-LINE BUG FIX: Normalize newlines and check type ***
+                const appUrls = typeof app.urls === 'string' ? app.urls : '';
+                const appEscalation = typeof app.escalation === 'string' ? app.escalation : '';
+                
+                DOMElements.editAppUrls.value = appUrls.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                DOMElements.editAppEscalation.value = appEscalation.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
             } else {
                 initialAppData = null;
             }
 
-            // --- FIX FOR AUTO-GROW ---
+            // *** MULTI-LINE BUG FIX: Defer resize call ***
             // Trigger auto-resize AFTER populating or clearing the fields.
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
+            setTimeout(() => {
+                DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
+                DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
+            }, 0);
             
             updateSaveButtonState();
+        };
+
+        // NEW: Add handleExportCSV function
+        const handleExportCSV = () => {
+            try {
+                // We only export the 'apps' collection
+                const csvString = DataConverter.toCSV(state.apps, APP_CONFIG.APP_CSV_HEADERS);
+                SafeUI.downloadJSON(csvString, 'dashboard-apps-export.csv', 'text/csv');
+            } catch (err) {
+                console.error("Export failed:", err);
+                SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+            }
+        };
+
+        // NEW: Add handleImportCSV function (with OVERWRITE logic)
+        const handleImportCSV = () => {
+            SafeUI.openFilePicker(async (file) => {
+                try {
+                    const { data, errors } = await DataConverter.fromCSV(file, APP_CONFIG.APP_CSV_HEADERS);
+                    
+                    const sanitizedData = [];
+                    const importErrors = [...errors]; // Include parsing errors
+                    const fileNames = new Set();
+
+
+                    data.forEach((item, index) => {
+                        // Create a valid app object
+                        const appEntry = {
+                            id: item.id || SafeUI.generateId(),
+                            name: (item.name || '').trim(),
+                            urls: (item.urls || '').trim(),
+                            escalation: (item.escalation || '').trim()
+                        };
+
+                        // Validate
+                        if (!appEntry.name) {
+                            importErrors.push(`Row ${index + 2}: 'name' is required.`);
+                            return; // Skip this row
+                        }
+
+                        const lowerName = appEntry.name.toLowerCase();
+                        if (fileNames.has(lowerName)) {
+                            importErrors.push(`Row ${index + 2}: Duplicate app name "${appEntry.name}" within the file. Skipping.`);
+                            return; // Skip
+                        }
+                        fileNames.add(lowerName);
+
+                        // FIX: Removed skip check for existing names. Overwrite will be handled at merge.
+                        
+                        sanitizedData.push(appEntry);
+                    });
+
+                    if (importErrors.length > 0) {
+                        const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                        const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+                        
+                        SafeUI.showModal("Import Validation Errors", 
+                            `<p>Some rows had errors and were skipped:</p>
+                            <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
+                                ${errorList}${moreErrors}
+                            </ul>
+                            <p><strong>${sanitizedData.length} valid apps found.</strong></p>`, 
+                            [{label: 'OK'}]
+                        );
+                    }
+
+                    if (sanitizedData.length === 0) {
+                        if (importErrors.length === 0) {
+                            SafeUI.showModal("Import Failed", "<p>No valid app data found in the CSV file.</p>", [{label: 'OK'}]);
+                        }
+                        return;
+                    }
+
+                    // FIX: Updated modal text and merge logic
+                    SafeUI.showModal("Confirm Import", 
+                        `<p>This will <strong>merge ${sanitizedData.length} applications</strong> from the file into your existing ${state.apps.length} apps. This cannot be undone.</p>
+                         <p>Apps with matching names will be <strong>overwritten</strong>. Apps with new names will be added.</p>
+                         <p>Shortcuts and Notepads will not be affected.</p>`, 
+                        [
+                            { label: 'Cancel' },
+                            {
+                                label: 'Merge and Import', 
+                                class: 'button-danger', 
+                                callback: () => {
+                                    // Build map from existing state using *lowercase name* as the key
+                                    const appMap = new Map(state.apps.map(app => [app.name.toLowerCase(), app]));
+                                    let overwriteCount = 0;
+                                    let newCount = 0;
+
+                                    // Merge/overwrite apps from CSV
+                                    sanitizedData.forEach(newApp => {
+                                        const lowerName = newApp.name.toLowerCase();
+                                        if (appMap.has(lowerName)) {
+                                            // Overwrite existing app
+                                            const existingApp = appMap.get(lowerName);
+                                            // Update fields, but keep existing ID
+                                            existingApp.name = newApp.name; // Use casing from file
+                                            existingApp.urls = newApp.urls;
+                                            existingApp.escalation = newApp.escalation;
+                                            overwriteCount++;
+                                        } else {
+                                            // Add as new app (it already has an ID from validation step)
+                                            appMap.set(lowerName, newApp);
+                                            newCount++;
+                                        }
+                                    });
+
+                                    state.apps = Array.from(appMap.values());
+                                    
+                                    saveState();
+                                    renderAll(); // Re-render dropdown and clear details
+                                    displayAppDetails(null); 
+                                    
+                                    SafeUI.showToast(`Import complete: ${newCount} added, ${overwriteCount} overwritten.`);
+                                }
+                            }
+                        ]
+                    );
+
+                } catch (err) {
+                    console.error("Import failed:", err);
+                    SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+                }
+            }, '.csv');
+        };
+
+        // NEW: Add showSettingsModal function
+        const showSettingsModal = () => {
+            const modalContent = `
+                <div class="form-group">
+                    <label>Advanced Data Management</label>
+                    <p class="form-help">Backup or Restore the *entire* dashboard (Apps, Shortcuts, and Notepads) from a single JSON file. This is for disaster recovery.</p>
+                    <div class="button-group">
+                        <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
+                        <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
+                    </div>
+                </div>
+            `;
+            
+            SafeUI.showModal("Settings", modalContent, [{ label: 'Close' }]);
+
+            // Now, wire up the buttons *inside* the modal
+            BackupRestore.setupBackupRestoreHandlers({
+                backupBtn: document.getElementById('modal-backup-btn'),
+                restoreBtn: document.getElementById('modal-restore-btn'),
+                state: state,
+                appName: APP_CONFIG.NAME,
+                itemValidators: {
+                    apps: APP_CONFIG.APP_CSV_HEADERS,
+                    notes: ['id', 'title', 'content'],
+                    shortcuts: ['id', 'name', 'url']
+                },
+                restoreConfirmMessage: 'Overwrite *all* dashboard data (Apps, Shortcuts, Notepads)? This cannot be undone.',
+                onRestore: (dataToRestore) => {
+                    // This is the page-specific logic that runs *after* confirmation
+                    state.apps = dataToRestore.apps || [];
+                    state.notes = dataToRestore.notes || [];
+                    state.shortcuts = dataToRestore.shortcuts || [];
+                    
+                    if (!hasItems('notes')) {
+                        getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+                    }
+                    
+                    saveState();
+                    DOMElements.appSelect.value = '';
+                    displayAppDetails(null);
+                    renderAll();
+                    SafeUI.hideModal(); // Close settings modal
+                }
+            });
         };
 
         const createNewAppForm = () => {
@@ -430,7 +618,9 @@
             const isNewApp = initialAppData && initialAppData.id === null;
             const appIndex = isNewApp ? -1 : getCollection('apps').findIndex(a => a.id == selectedAppId);
 
-            if (DataValidator.hasDuplicate(getCollection('apps'), 'name', name, isNewApp ? null : selectedAppId)) {
+            // FIX: Use lowercase for duplicate check
+            const hasDupe = DataValidator.hasDuplicate(getCollection('apps'), 'name', name, isNewApp ? null : selectedAppId);
+            if (hasDupe) {
                 return SafeUI.showValidationError('Duplicate Name', 'An app with this name already exists.', 'edit-app-name');
             }
             
@@ -478,10 +668,7 @@
                 createNewAppForm();
             }
         });
-
-        // FIX: Mode D - Remove redundant backup/restore listeners
-        // This logic is now handled by setupBackupRestoreHandlers in init()
-
+        
         DOMElements.notepadHeader.addEventListener('click', (e) => {
              const button = e.target.closest('button');
              if(!button) return;
@@ -593,41 +780,19 @@
             shortcutsManager = createShortcutsManager(state, DOMElements, services);
             shortcutsManager.init();
 
-            // FIX: Mode D - Consolidate backup/restore logic
-            BackupRestore.setupBackupRestoreHandlers({
-                backupBtn: DOMElements.backupBtnMenu,
-                restoreBtn: DOMElements.restoreBtnMenu,
-                state: state,
-                appName: 'dashboard',
-                itemValidators: {
-                    apps: ['id', 'name', 'urls', 'escalation'],
-                    notes: ['id', 'title', 'content'],
-                    shortcuts: ['id', 'name', 'url']
-                },
-                restoreConfirmMessage: 'Overwrite all dashboard data?',
-                onRestore: (dataToRestore) => {
-                    // This is the page-specific logic that runs *after* confirmation
-                    state.apps = dataToRestore.apps || [];
-                    state.notes = dataToRestore.notes || [];
-                    state.shortcuts = dataToRestore.shortcuts || [];
-                    
-                    if (!hasItems('notes')) {
-                        getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
-                    }
-                    
-                    saveState();
-                    DOMElements.appSelect.value = '';
-                    displayAppDetails(null);
-                    renderAll();
-                }
-            });
+            // NEW: Add listeners for new buttons
+            DOMElements.btnSettings.addEventListener('click', showSettingsModal);
+            DOMElements.btnImportCsv.addEventListener('click', handleImportCSV);
+            DOMElements.btnExportCsv.addEventListener('click', handleExportCSV);
 
+            // Load SVG icons
             DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
             DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
             DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
             DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
+            DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings; // NEW
 
             if (!hasItems('notes')) {
                 getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
@@ -644,4 +809,5 @@
     </script>
 </body>
 </html>
+
 
