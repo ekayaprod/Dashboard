@@ -583,8 +583,18 @@ body.lookup-page {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    flex-basis: 50%; /* Each column tries to take half the space */
+    /* FIX: Default to 50% */
+    flex-basis: 50%;
 }
+/* FIX: Add specific overrides for the two columns */
+.lookup-page #kb-column {
+    flex-basis: 33.33%;
+    min-width: 250px; /* Ensure it doesn't get too small */
+}
+.lookup-page #local-column {
+    flex-basis: 66.67%;
+}
+
 .lookup-page .column h2 {
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
@@ -825,3 +835,4 @@ body.lookup-page {
     outline: none;
     box-shadow: 0 0 0 3px var(--primary-color);
 }
+
