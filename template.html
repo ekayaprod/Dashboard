@@ -48,14 +48,15 @@
                     💡 <strong>Tip:</strong> Open the browser console (F12) and uncomment example code in the inline script to see shared functions in action.
                 </p>
             </div>
-            <!-- Toast and modal must be in the main file -->
+            <!-- Toast is now loaded from navbar.html -->
         </div>
     </div>
-    
+
+    <!-- Modal overlay is now loaded from navbar.html -->
+    <div id="toast" class="toast"></div>
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
-    <div id="toast" class="toast"></div>
 
 
     <!-- 
@@ -63,6 +64,7 @@
       1. Load the 3 external library files.
       2. Run the inline script that uses them.
     -->
+    <!-- FIX: Correct path to js/ subfolder -->
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
@@ -70,8 +72,7 @@
     <script>
     // FIX: Use non-destructive error banner instead of wiping DOM
     (() => {
-        // Note: CsvManager is not a dependency for this demo page
-        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter'];
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
         if (missing.length > 0) {
@@ -97,6 +98,7 @@
         }
     })();
 
+
     AppLifecycle.run(async () => {
         // ============================================================================
         // TEMPLATE.HTML - Demonstration of Shared Functions
@@ -107,6 +109,10 @@
     
         const APP_VERSION = '6.1.0';
         const LOCAL_STORAGE_KEY = 'newpage_state_v5';
+        const APP_CONFIG = {
+            NAME: 'template',
+            CSV_HEADERS: ['id', 'name', 'created']
+        };
     
         // ----------------------------------------------------------------------------
         // EXAMPLE 1: Standard Page Initialization
@@ -115,6 +121,7 @@
         // This pattern is used by ALL pages
         
         const ctx = await AppLifecycle.initPage({
+            pageName: 'template.html',              // Current page filename
             storageKey: LOCAL_STORAGE_KEY,          // localStorage key for this page
             defaultState: {                         // Default state structure
                 version: APP_VERSION,
@@ -138,7 +145,28 @@
     
         if (!ctx) return; // Initialization failed - error already displayed
     
-        const { elements, state, saveState } = ctx;
+        const { elements, state, saveState: originalSaveState } = ctx;
+        
+        // --- Create a non-sorting saveState ---
+        const saveState = () => {
+             try {
+                originalSaveState();
+            } catch (e) {
+                console.error("Failed to save state:", e);
+                SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
+            }
+        }
+        // --- Create a sorting saveState (for imports/restores) ---
+        const sortAndSaveState = () => {
+            try {
+                state.exampleList.sort((a,b) => a.name.localeCompare(b.name));
+                originalSaveState();
+            } catch (e) {
+                console.error("Failed to save state:", e);
+                SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
+            }
+        };
+
         // 'elements' contains cached DOM elements (kebab-case IDs converted to camelCase)
         // 'state' is loaded from localStorage
         // 'saveState()' persists state back to localStorage
@@ -253,49 +281,39 @@
         // );
     
         // ----------------------------------------------------------------------------
-        // EXAMPLE 9: Backup and Restore
+        // EXAMPLE 9: Backup and Restore (Consolidated)
         // ----------------------------------------------------------------------------
-        // BackupRestore provides data export/import functionality
+        // BackupRestore.setupBackupRestoreHandlers provides data export/import
         
-        // Example: Create backup button
-        // const backupBtn = document.getElementById('demo-backup-btn');
-        // if (backupBtn) {
-        //     backupBtn.addEventListener('click', () => {
-        //         BackupRestore.createBackup(state, 'myapp');
-        //         // Downloads: myapp-backup-2024-01-15.json
-        //     });
-        // }
+        // Example: Set up Backup/Restore buttons
+        // BackupRestore.setupBackupRestoreHandlers({
+        //     settingsBtn: document.getElementById('demo-backup-btn'), // Button to *open* the modal
+        //     state: state,
+        //     appName: APP_CONFIG.NAME,
+        //     itemValidators: {
+        //         exampleList: ['id', 'name', 'created'],
+        //         notes: [] // No item validation, just ensures key exists
+        //     },
+        //     restoreConfirmMessage: 'Overwrite ALL template data?',
+        //     onRestore: (dataToRestore) => {
+        //         // Page-specific logic to apply the restore
+        //         state.exampleList = dataToRestore.exampleList || [];
+        //         state.notes = dataToRestore.notes || '';
+        //         sortAndSaveState(); // Use sorting save after restore
+        //         renderList();
+        //         elements.demoNotes.value = state.notes;
+        //         SafeUI.hideModal();
+        //     }
+        // });
         
-        // Example: Restore from backup
-        // const restoreBtn = document.getElementById('demo-restore-btn');
-        // if (restoreBtn) {
-        //     restoreBtn.addEventListener('click', () => {
-        //         BackupRestore.handleRestoreUpload({
-        //             appName: 'myapp',
-        //             itemValidators: {
-        //                 exampleList: ['id', 'name'], // Key 'exampleList' must exist and items must have id/name
-        //                 notes: [] // Key 'notes' must exist, but no item validation
-        //             },
-        //             onRestore: (dataToRestore) => {
-        //                 // Confirm before overwriting
-        //                 SafeUI.showModal('Confirm Restore', '<p>Replace all data?</p>', [
-        //                     { label: 'Cancel' },
-        //                     {
-        //                         label: 'Restore',
-        //                         class: 'button-danger',
-        //                         callback: () => {
-        //                             state.exampleList = dataToRestore.exampleList || [];
-        //                             state.notes = dataToRestore.notes || '';
-        //                             saveState();
-        //                             SafeUI.showToast('Data restored successfully.');
-        //                             // Re-render your page here
-        //                         }
-        //                     }
-        //                 ]);
-        //             }
-        //         });
-        //     });
-        // }
+        // // Example: Manually trigger modal buttons (if they are not in the modal)
+        // document.getElementById('demo-backup-btn').addEventListener('click', () => {
+        //     BackupRestore.createBackup(state, APP_CONFIG.NAME);
+        // });
+        // document.getElementById('demo-restore-btn').addEventListener('click', () => {
+        //     BackupRestore.handleRestoreUpload(); // Triggers the handler
+        // });
+
     
         // ----------------------------------------------------------------------------
         // EXAMPLE 10: Data Validation
@@ -351,44 +369,56 @@
         console.log('Template page initialized. Elements available:', Object.keys(elements));
         
         // ----------------------------------------------------------------------------
-        // WORKING EXAMPLES (From original file)
+        // WORKING EXAMPLES (Uncomment to test)
         // ----------------------------------------------------------------------------
         
         // Enable textarea auto-resize
         DOMHelpers.setupTextareaAutoResize(elements.demoNotes, 200);
         
-        // Backup button
-        elements.demoBackupBtn.addEventListener('click', () => {
-            BackupRestore.createBackup(state, 'template');
+        // --- Refactored Backup/Restore ---
+        // This wires up the restore button to *open* the settings/restore modal
+        BackupRestore.setupBackupRestoreHandlers({
+            settingsBtn: elements.demoRestoreBtn, // Use Restore button to open modal
+            state: state,
+            appName: APP_CONFIG.NAME,
+            itemValidators: {
+                exampleList: ['id', 'name', 'created'],
+                notes: [] // No item validation, just ensures key exists
+            },
+            restoreConfirmMessage: 'Overwrite all data with backup?',
+            onRestore: (dataToRestore) => {
+                state.exampleList = dataToRestore.exampleList || [];
+                state.notes = dataToRestore.notes || '';
+                sortAndSaveState(); // Use sorting save
+                renderList();
+                elements.demoNotes.value = state.notes;
+                SafeUI.hideModal(); // Close the settings modal
+                SafeUI.showToast('Data restored successfully.');
+            }
         });
         
-        // Restore button
-        elements.demoRestoreBtn.addEventListener('click', () => {
-            BackupRestore.handleRestoreUpload({
-                appName: 'template',
-                itemValidators: {
-                    exampleList: ['id', 'name', 'created'],
-                    notes: [] // No item validation, just ensures key exists
-                },
-                onRestore: (dataToRestore) => {
-                    SafeUI.showModal('Confirm Restore', '<p>Replace all data with backup?</p>', [
-                        { label: 'Cancel' },
-                        {
-                            label: 'Restore',
-                            class: 'button-danger',
-                            callback: () => {
-                                state.exampleList = dataToRestore.exampleList || [];
-                                state.notes = dataToRestore.notes || '';
-                                saveState();
-                                renderList();
-                                elements.demoNotes.value = state.notes;
-                                SafeUI.showToast('Data restored successfully.');
-                            }
-                        }
-                    ]);
-                }
-            });
+        // Backup button is now separate
+        elements.demoBackupBtn.addEventListener('click', () => {
+            BackupRestore.createBackup(state, APP_CONFIG.NAME);
         });
+        
+        // Restore button *also* needs a listener to trigger the file upload
+        // (since it's not the settingsBtn itself, it just opens the modal)
+        elements.demoRestoreBtn.addEventListener('click', () => {
+             // This shows the modal, which has its own "Restore (JSON)" button
+             SafeUI.showModal('Advanced Data Management', 
+                `<p class="form-help">Use these tools for disaster recovery.</p>
+                 <div class="button-group">
+                    <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
+                 </div>`,
+                [{label: 'Cancel'}]
+             );
+             // Wire up the button *inside* the new modal
+             document.getElementById('modal-restore-btn').addEventListener('click', () => {
+                BackupRestore.handleRestoreUpload(); // Triggers the logic set up by setupBackupRestoreHandlers
+             });
+        });
+        
         
         // Add item button
         elements.demoAddItemBtn.addEventListener('click', () => {
@@ -417,7 +447,7 @@
                                 name: name,
                                 created: new Date().toISOString()
                             });
-                            saveState();
+                            saveState(); // Use non-sorting save
                             renderList();
                             SafeUI.showToast('Item added!');
                         }
@@ -461,7 +491,7 @@
                             const index = state.exampleList.findIndex(i => i.id === item.id);
                             if (index !== -1) {
                                 state.exampleList.splice(index, 1);
-                                saveState();
+                                saveState(); // Use non-sorting save
                                 renderList(searchTerm);
                                 SafeUI.showToast('Item deleted.');
                             }
@@ -479,7 +509,7 @@
         elements.demoNotes.addEventListener('input', SafeUI.debounce(() => {
             if (typeof state.notes === 'undefined') state.notes = '';
             state.notes = elements.demoNotes.value;
-            saveState();
+            saveState(); // Use non-sorting save
             console.log('Notes auto-saved');
         }, 500));
         
