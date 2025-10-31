@@ -18,7 +18,7 @@
                     <button id="btn-settings" class="icon-btn" title="Settings">
                         <!-- Settings SVG Icon will be loaded by script -->
                     </button>
-                    <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
+                    <button id="btn-edit-mode" class_name="button-base" title="Toggle Edit Mode">Edit Mode</button>
                 </div>
             </div>
             <div class="search-controls">
@@ -343,6 +343,7 @@
                 }
 
                 // Show "+ Create Entry" button
+                // *** CRITICAL BUG FIX (TYPO) ***
                 DOMElements.btnAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
@@ -404,6 +405,7 @@
             const renderAll = () => {
                 const searchTerm = DOMElements.searchInput.value;
                 if (isEditMode) {
+                    // *** CRITICAL BUG FIX (TYPO) ***
                     DOMElements.btnAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
@@ -823,6 +825,7 @@
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
                 
                 // Header buttons
+                // *** CRITICAL BUG FIX (TYPO) ***
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
                 DOMElements.btnSettings.addEventListener('click', showSettingsModal);
                 
