@@ -227,7 +227,7 @@
                 
                 // Test URL construction
                 try {
-                    const testUrl = url.replace('{query}', 'test');
+                    const testUrl = url.replace(/{query}/g, 'test'); // Use global replace for test
                     const urlObj = new URL(testUrl);
                     if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
                         return { 
@@ -311,14 +311,13 @@
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
 
-                // FIX: Mode C, Issue 1 - Simplify conditional logic
+                // FIX: Mode B, Issue #2 - Correctly handle Edit Mode
                 // Start with all items in Edit Mode, or empty in Search Mode
                 itemsToRender = isEditMode ? [...state.items] : [];
 
-                // Apply search filter if term exists
-                if (lowerTerm) {
-                    const sourceItems = isEditMode ? itemsToRender : state.items;
-                    itemsToRender = SearchHelper.simpleSearch(sourceItems, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                // Apply search filter if term exists AND we are NOT in edit mode
+                if (lowerTerm && !isEditMode) {
+                    itemsToRender = SearchHelper.simpleSearch(state.items, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
                 }
                 
                 // Ensure the item being edited is always visible, even if filtered out
@@ -372,8 +371,8 @@
 
                 hideKbEmptyState();
 
-                // Create and inject the dynamic link
-                const finalUrl = baseUrl.replace('{query}', encodeURIComponent(term));
+                // FIX: Mode B, Issue #3 - Use global replace for {query}
+                const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
 
                 const li = document.createElement('li');
                 li.className = 'kb-result-item';
@@ -904,7 +903,6 @@
             // Run the app
             init();
         });
-    </script>
-</body>
+    </script></body>
 </html>
 
