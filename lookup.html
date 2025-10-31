@@ -14,11 +14,14 @@
         <header class="lookup-header">
             <div class="header-top-row">
                 <h1>Lookup</h1>
+                <!-- FIX: Statically added Import/Export buttons -->
                 <div class="header-actions">
+                    <button id="btn-import-csv" class="button-base" title="Import data from CSV">Import</button>
+                    <button id="btn-export-csv" class="button-base" title="Export data to CSV">Export</button>
                     <button id="btn-settings" class="icon-btn" title="Settings">
                         <!-- Settings SVG Icon will be loaded by script -->
                     </button>
-                    <button id="btn-edit-mode" class_name="button-base" title="Toggle Edit Mode">Edit Mode</button>
+                    <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
                 </div>
             </div>
             <div class="search-controls">
@@ -69,7 +72,8 @@
         typeof SearchHelper === 'undefined' || 
         typeof BackupRestore === 'undefined' || 
         typeof DataValidator === 'undefined' || 
-        typeof DataConverter === 'undefined') {
+        typeof DataConverter === 'undefined' ||
+        typeof CsvManager === 'undefined') { // Added CsvManager
         
         document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red; font-family: sans-serif;">
             <h2>Application Failed to Load</h2>
@@ -108,7 +112,8 @@
                     'btn-add-new-entry', 'btn-settings', 'btn-edit-mode',
                     'toast', 'modal-overlay', 'modal-content',
                     'navbar-container',
-                    'kb-results-container', 'kb-results-list', 'kb-empty-state'
+                    'kb-results-container', 'kb-results-list', 'kb-empty-state',
+                    'btn-import-csv', 'btn-export-csv' // Added CsvManager buttons
                 ]
             });
 
@@ -117,7 +122,7 @@
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
 
-            // FIX: Mode F - Remove sort-on-save from default saveState
+            // FIX: Mode F - Decouple sorting from saving
             const saveState = () => {
                 try {
                     originalSaveState();
@@ -126,17 +131,11 @@
                     SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
                 }
             };
-
-            // FIX: Mode F - Create new sortAndSaveState function
+            
+            // FIX: Mode F - New save function for ops that require sorting
             const sortAndSaveState = () => {
-                try {
-                    // Sort by keyword on every save
-                    state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
-                    originalSaveState();
-                } catch (e) {
-                    console.error("Failed to save state:", e);
-                    SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
-                }
+                state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                saveState();
             };
             
             let currentEditState = { id: null, type: null };
@@ -237,15 +236,14 @@
                 
                 // Test URL construction
                 try {
-                    // FIX: Mode B - Handle localhost URLs
+                    // FIX: Mode B - Use global regex replace
                     const testUrl = url.replace(/{query}/g, 'test');
-                    if (!testUrl.startsWith('http://') && !testUrl.startsWith('https://')) {
-                         // Allow localhost/intranet without protocol for URL constructor test
-                        if (!/^(localhost|[\w.-]+)(:\d+)?\//.test(testUrl)) {
-                            new URL('https://' + testUrl);
-                        }
-                    } else {
-                         new URL(testUrl);
+                    const urlObj = new URL(testUrl);
+                    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                        return { 
+                            valid: false, 
+                            message: 'URL must use http:// or https:// protocol.' 
+                        };
                     }
                 } catch (e) {
                     return { 
@@ -301,17 +299,6 @@
                 }, {});
             };
 
-            // FIX: Mode D, Issue 20 - Button factory
-            const createHeaderButton = (id, text, title, handler) => {
-                const btn = document.createElement('button');
-                btn.id = id;
-                btn.className = 'button-base';
-                btn.textContent = text;
-                btn.title = title;
-                btn.addEventListener('click', handler);
-                return btn;
-            };
-
             // ====================================================================
             // CORE FUNCTIONS
             // ====================================================================
@@ -323,13 +310,10 @@
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
 
-                // FIX: Mode C, Issue 1 - Simplify conditional logic
-                // Start with all items in Edit Mode, or empty in Search Mode
-                itemsToRender = isEditMode ? [...state.items] : [];
-
-                // FIX: Mode B - Don't filter in Edit Mode
-                // Apply search filter only if NOT in edit mode and term exists
-                if (!isEditMode && lowerTerm) {
+                // FIX: Mode B - Edit mode should ignore search term
+                if (isEditMode) {
+                    itemsToRender = [...state.items];
+                } else if (lowerTerm) {
                     itemsToRender = SearchHelper.simpleSearch(state.items, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
                 }
                 
@@ -343,7 +327,6 @@
                 }
 
                 // Show "+ Create Entry" button
-                // *** CRITICAL BUG FIX (TYPO) ***
                 DOMElements.btnAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
                 ListRenderer.renderList({
@@ -385,7 +368,8 @@
 
                 hideKbEmptyState();
 
-                // FIX: Mode B - Replace all instances of {query}
+                // Create and inject the dynamic link
+                // FIX: Mode B - Use global regex replace
                 const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
 
                 const li = document.createElement('li');
@@ -405,7 +389,6 @@
             const renderAll = () => {
                 const searchTerm = DOMElements.searchInput.value;
                 if (isEditMode) {
-                    // *** CRITICAL BUG FIX (TYPO) ***
                     DOMElements.btnAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
@@ -594,7 +577,7 @@
                     }
                     Object.assign(itemToUpdate, { keyword, assignmentGroup, notes, phoneLogPath });
                     
-                    saveState(); // FIX: Mode F - Use non-sorting save
+                    saveState();
                     // FIX: Mode D, Issue 17 - Use helper
                     clearEditStateAndRender("Entry saved.");
                 };
@@ -613,7 +596,7 @@
                                     // FIX: Mode D, Issue 19 - Use helper
                                     existingEntry.keyword = keywordUtils.merge(existingEntry.keyword, keyword);
                                     handleDelete(id, true);
-                                    saveState(); // FIX: Mode F - Use non-sorting save
+                                    saveState();
                                     // FIX: Mode D, Issue 17 - Use helper
                                     clearEditStateAndRender("Keywords merged.");
                                 }
@@ -641,7 +624,7 @@
 
                 const doDelete = () => {
                     state.items.splice(index, 1);
-                    saveState(); // FIX: Mode F - Use non-sorting save
+                    saveState();
                     // FIX: Mode D, Issue 17 - Use helper
                     clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
                 };
@@ -653,81 +636,27 @@
                 }
             }
             
-            /**
-             * Handles Export to CSV
-             */
-            function handleExportCSV() {
-                try {
-                    const csvString = DataConverter.toCSV(state.items, APP_CONFIG.CSV_HEADERS);
-                    SafeUI.downloadJSON(csvString, 'lookup-export.csv', 'text/csv');
-                } catch (err) {
-                    console.error("Export failed:", err);
-                    SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+            // REFACTOR: Remove handleExportCSV()
+            // REFACTOR: Remove handleImportCSV()
+
+            // REFACTOR: Add validation callback for CsvManager
+            function validateCsvRow(item, index) {
+                const entry = createEntry(item);
+                const validation = validateEntry(entry);
+                
+                if (!validation.valid) {
+                    return { valid: false, error: validation.errors.join(', ') };
                 }
+                
+                return { valid: true, entry: entry };
             }
 
-            /**
-             * Handles Import from CSV
-             */
-            function handleImportCSV() {
-                SafeUI.openFilePicker(async (file) => {
-                    try {
-                        const { data, errors } = await DataConverter.fromCSV(file, APP_CONFIG.CSV_HEADERS);
-                        
-                        const sanitizedData = [];
-                        const importErrors = [...errors]; // Include parsing errors
-
-                        data.forEach((item, index) => {
-                            // FIX: Mode D, Issue 15 - Use factory
-                            const entry = createEntry(item);
-                            
-                            // FIX: Mode D, Issue 13 - Use consolidated validation
-                            const validation = validateEntry(entry);
-                            if (!validation.valid) {
-                                importErrors.push(`Row ${index + 2}: ${validation.errors.join(', ')}`);
-                                return; // Skip this row
-                            }
-                            
-                            sanitizedData.push(entry);
-                        });
-
-                        if (importErrors.length > 0) {
-                            const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-                            const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
-                            
-                            SafeUI.showModal("Import Validation Errors", 
-                                `<p>The following rows have invalid data and were skipped:</p>
-                                <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
-                                    ${errorList}${moreErrors}
-                                </ul>
-                                <p><strong>${sanitizedData.length} valid rows found.</strong></p>`, 
-                                [{label: 'OK'}]
-                            );
-                        }
-
-                        if (sanitizedData.length === 0) {
-                            if (importErrors.length === 0) {
-                                SafeUI.showModal("Import Failed", "<p>No valid rows found in the CSV file.</p>", [{label: 'OK'}]);
-                            }
-                            return;
-                        }
-
-                        // FIX: Mode D, Issue 16 - Use modal helper
-                        SafeUI.showModal("Confirm Import", 
-                            `<p>This will <strong>overwrite all ${state.items.length} local entries</strong> with ${sanitizedData.length} entries from the file. This cannot be undone.</p>`, 
-                            modalActions.cancelAndConfirm('Overwrite and Import', () => {
-                                state.items = sanitizedData;
-                                sortAndSaveState(); // FIX: Mode F - Use sorting save
-                                renderAll();
-                                SafeUI.showToast(`Imported ${sanitizedData.length} entries.`);
-                            }, true)
-                        );
-
-                    } catch (err) {
-                        console.error("Import failed:", err);
-                        SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
-                    }
-                }, '.csv');
+            // REFACTOR: Add confirmation callback for CsvManager
+            function confirmCsvImport(sanitizedData) {
+                state.items = sanitizedData;
+                sortAndSaveState(); // Use sorting save
+                renderAll();
+                SafeUI.showToast(`Imported ${sanitizedData.length} entries.`);
             }
 
             /**
@@ -767,7 +696,7 @@
                             }
 
                             state.settings.kbBaseUrl = newUrl;
-                            saveState(); // FIX: Mode F - Use non-sorting save
+                            saveState();
                             SafeUI.showToast("Settings saved.");
                             handleSearch();
                         }
@@ -790,26 +719,21 @@
                     }
                 }, 0);
 
-                // FIX: Mode D - Use consolidated backup/restore helper
+                // REFACTOR: Use setupBackupRestoreHandlers
                 BackupRestore.setupBackupRestoreHandlers({
                     backupBtn: document.getElementById('modal-backup-btn'),
                     restoreBtn: document.getElementById('modal-restore-btn'),
                     state: state,
                     appName: APP_CONFIG.NAME,
-                    legacyAppName: 'assignment_tool',
                     itemValidators: {
                         items: APP_CONFIG.CSV_HEADERS,
                         settings: ['kbBaseUrl']
                     },
-                    restoreConfirmMessage: 'Overwrite all settings and data? This is for disaster recovery.',
-                    onRestore: (dataToRestore, isLegacy) => {
-                        // This is the page-specific logic that runs *after* confirmation
+                    restoreConfirmMessage: 'This will overwrite all settings and data. This is for disaster recovery.',
+                    onRestore: (dataToRestore) => {
                         state.items = dataToRestore.items || [];
                         state.settings = dataToRestore.settings || { kbBaseUrl: '' };
-                        
-                        // FIX: Mode F - Use sorting save after restore
-                        sortAndSaveState(); 
-                        
+                        sortAndSaveState(); // Use sorting save
                         renderAll();
                         handleSearch();
                         SafeUI.hideModal(); // Close settings modal
@@ -825,7 +749,6 @@
                 SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
                 
                 // Header buttons
-                // *** CRITICAL BUG FIX (TYPO) ***
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
                 DOMElements.btnSettings.addEventListener('click', showSettingsModal);
                 
@@ -859,6 +782,7 @@
 
                 // Event delegation for local results list (edit, delete, copy)
                 DOMElements.localResults.addEventListener('click', async (e) => {
+                    // BUG FIX: Corrected typo
                     const editBtn = e.target.closest('.btn-edit');
                     if (editBtn) {
                         const id = e.target.closest('.result-item').dataset.id;
@@ -874,16 +798,21 @@
                     }
                 });
 
-                // Create and add Import/Export buttons
-                const headerActions = DOMElements.btnSettings.parentElement;
+                // REFACTOR: Use CsvManager
+                CsvManager.setupExport(
+                    DOMElements.btnExportCsv,
+                    () => state.items, // getData function
+                    APP_CONFIG.CSV_HEADERS,
+                    'lookup-export.csv'
+                );
                 
-                // FIX: Mode D, Issue 20 - Use button factory
-                const exportBtn = createHeaderButton('btn-export-csv', 'Export', 'Export data to CSV', handleExportCSV);
-                const importBtn = createHeaderButton('btn-import-csv', 'Import', 'Import data from CSV', handleImportCSV);
-
-                // Add Import/Export next to Settings button
-                headerActions.insertBefore(exportBtn, DOMElements.btnSettings);
-                headerActions.insertBefore(importBtn, DOMElements.btnSettings);
+                CsvManager.setupImport({
+                    importBtn: DOMElements.btnImportCsv,
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    onValidateRow: validateCsvRow,
+                    onConfirmImport: confirmCsvImport,
+                    confirmMessage: `This will overwrite all ${state.items.length} local entries with entries from the file. This cannot be undone.`
+                });
             }
             
             function toggleEditMode() {
