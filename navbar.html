@@ -2,8 +2,46 @@
     <ul class="nav-links">
         <li><a href="index.html" class="nav-link">Dashboard</a></li>
         <li><a href="lookup.html" class="nav-link">Lookup</a></li>
+        <li><a href="passwords.html" class="nav-link"><nav class="navbar">
+    <ul class="nav-links">
+        <li><a href="index.html" class="nav-link">Dashboard</a></li>
+        <li><a href="lookup.html" class="nav-link">Lookup</a></li>
         <li><a href="passwords.html" class="nav-link">Passwords</a></li>
         <li><a href="mailto.html" class="nav-link">MailTo</a></li>
+    </ul>
+    <div class="nav-actions">
+    </div>
+</nav>
+
+<!-- 
+  Toast and modal elements are defined in individual page HTML files
+  (e.g., index.html) to avoid duplicate IDs.
+-->
+
+<script>
+    (() => {
+        try {
+            // This script is self-contained and safe.
+            const currentPath = window.location.pathname; // e.g., "/lookup.html" or "/"
+            const links = document.querySelectorAll('.nav-link');
+            
+            links.forEach(link => {
+                // Use URL object to get the pathname from the link's href
+                const linkPath = new URL(link.href).pathname;
+                
+                // Add 'active' class if the pathnames match
+                // OR if the current path is the root ('/') and the link is for 'index.html'
+                if (linkPath === currentPath || (currentPath === '/' && linkPath.endsWith('/index.html'))) {
+                    link.classList.add('active');
+                }
+            });
+        } catch (e) {
+            console.error('Failed to set active nav link:', e);
+        }
+    })();
+</script>
+
+" class="nav-link">MailTo</a></li>
     </ul>
     <div class="nav-actions">
     </div>
