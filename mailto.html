@@ -63,7 +63,6 @@
             color: var(--subtle-text);
         }
         
-        /* Style for the <a> link */
         .list-item a.list-item-name {
             color: var(--text-color);
             text-decoration: none;
@@ -144,8 +143,12 @@
                     <div class="section-header-wrapper">
                         <h3 class="section-header">Email Template Library</h3>
                         <div class="button-group">
-                            <button id="btn-import-json" class="button-base" title="Import Library (JSON)">Import</button>
-                            <button id="btn-export-json" class="button-base" title="Export Library (JSON)">Export</button>
+                            <!-- User-friendly CSV Buttons -->
+                            <button id="btn-import-csv" class="button-base" title="Import from CSV">Import (CSV)</button>
+                            <button id="btn-export-csv" class="button-base" title="Export to CSV">Export (CSV)</button>
+                            
+                            <!-- Actions -->
+                            <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
                             <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
                             <button id="btn-new-template" class="button-base button-primary">New Template</button>
                         </div>
@@ -259,7 +262,6 @@
     <script>
     // Dependency Check
     (() => {
-        // Add MsgReader to dependency check
         const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         if (missing.length > 0) {
@@ -284,19 +286,28 @@
 
     AppLifecycle.run(async () => {
     
+        const APP_CONFIG = {
+            NAME: 'mailto_library',
+            VERSION: '1.1.0', // Added CSV I/O and Settings Modal
+            DATA_KEY: 'mailto_library_v1',
+            CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
+        };
+
         const defaultState = {
-            version: '1.0.0',
+            version: APP_CONFIG.VERSION,
             library: [] // This will store our tree: [{id, type: 'folder', name, children: [...]}, {id, type: 'item', name, mailto: '...'}]
         };
     
         const ctx = await AppLifecycle.initPage({
-            storageKey: 'mailto_library_v1',
+            storageKey: APP_CONFIG.DATA_KEY,
             defaultState: defaultState,
-            version: '1.0.0',
+            version: APP_CONFIG.VERSION,
             requiredElements: [
                 'navbar-container', 'toast', 'modal-overlay', 'modal-content',
                 'catalogue-view', 'editor-view', // Main Views
-                'btn-new-template', 'btn-new-folder', 'btn-import-json', 'btn-export-json', // Catalogue buttons
+                'btn-new-template', 'btn-new-folder', // Catalogue buttons
+                'btn-settings', // Settings button
+                'btn-import-csv', 'btn-export-csv', // CSV I/O
                 'breadcrumb-container', 'tree-list-container', // Catalogue UI
                 'btn-editor-cancel', 'btn-generate', // Editor buttons
                 'upload-wrapper', 'msg-upload', // Editor Phase 1
@@ -312,9 +323,74 @@
         let currentFolderId = 'root'; // 'root' means the base of the library
         let currentMailtoCommand = null; // Holds the generated command before saving
 
+        // ===================================================================
+        // HELPER FUNCTIONS
+        // ===================================================================
+
+        /**
+         * Parses a mailto: string into its plain-text components.
+         */
+        const parseMailto = (mailtoStr) => {
+            const data = { to: '', cc: '', bcc: '', subject: '', body: '' };
+            if (!mailtoStr || !mailtoStr.startsWith('mailto:')) {
+                return data;
+            }
+
+            try {
+                // Use new URL() for robust parsing. Replace spaces to avoid errors.
+                const url = new URL(mailtoStr.replace(/ /g, '%20'));
+                
+                // pathname holds the 'to' address
+                data.to = decodeURIComponent(url.pathname || '');
+                
+                // searchParams handles all other fields
+                data.cc = decodeURIComponent(url.searchParams.get('cc') || '');
+                data.bcc = decodeURIComponent(url.searchParams.get('bcc') || '');
+                data.subject = decodeURIComponent(url.searchParams.get('subject') || '');
+                data.body = decodeURIComponent(url.searchParams.get('body') || '');
+                
+                return data;
+            } catch (e) {
+                console.warn("Could not parse mailto string:", mailtoStr, e);
+                // Fallback for simple mailto:email@example.com
+                if (mailtoStr.indexOf('?') === -1) {
+                     data.to = mailtoStr.substring(7);
+                }
+                return data;
+            }
+        };
+
+        /**
+         * Builds a mailto: string from plain-text components.
+         * Re-uses the exact same encoding logic as the "Generate" button.
+         */
+        const buildMailto = (data) => {
+            let mailto = 'mailto:';
+            if (data.to) {
+                mailto += encodeURIComponent(data.to);
+            }
+            
+            const params = [];
+            if (data.cc) params.push('cc=' + encodeURIComponent(data.cc));
+            if (data.bcc) params.push('bcc=' + encodeURIComponent(data.bcc));
+            if (data.subject) params.push('subject=' + encodeURIComponent(data.subject));
+            if (data.body) {
+                // Normalize line endings and encode for email clients
+                const normalizedBody = data.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
+                params.push('body=' + encodedBody);
+            }
+            
+            if (params.length > 0) {
+                mailto += '?' + params.join('&');
+            }
+            return mailto;
+        };
+
+
         // --- Recursive Helper to find an item/folder in the tree ---
         const findItemById = (id, items = state.library) => {
-            if (id === 'root') return { id: 'root', name: 'Root', children: state.library };
+            if (id === 'root') return { id: 'root', name: 'Root', children: state.library, path: '/' };
             for (const item of items) {
                 if (item.id === id) return item;
                 if (item.type === 'folder' && item.children) {
@@ -333,50 +409,33 @@
             const folder = findItemById(currentFolderId);
             return folder ? folder.children : [];
         };
-        
-        // --- Get parent container of an item ---
-        const getParentContainer = (id) => {
-             if (currentFolderId === 'root') return state.library;
-             const parent = findItemById(currentFolderId);
-             return parent ? parent.children : state.library;
-        };
-        
-        // --- Iterative helper to find the path to a folder ---
-        const findParentPathIterative = (items, targetId) => {
-            const stack = []; // Stack will hold [item, path] pairs
-            // Initialize stack with root items
-            for (const item of items) {
-                stack.push([item, [item]]);
-            }
+
+        // --- Generate breadcrumb path (iterative) ---
+        const getBreadcrumbPath = (folderId) => {
+            if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
+
+            const path = [];
+            let targetItem = null;
+            
+            // Stack for iterative depth-first search
+            // item: [item, parentPathArray]
+            const stack = state.library.map(item => [item, []]);
 
             while (stack.length > 0) {
-                const [currentItem, currentPath] = stack.pop();
+                const [currentItem, parentPath] = stack.pop();
+                const currentPath = [...parentPath, { id: currentItem.id, name: currentItem.name }];
 
-                if (currentItem.id === targetId) {
-                    return currentPath; // Found it
+                if (currentItem.id === folderId) {
+                    targetItem = currentItem;
+                    path.push(...currentPath);
+                    break; // Found it
                 }
 
                 if (currentItem.type === 'folder' && currentItem.children) {
-                    // Push children onto the stack
                     for (let i = currentItem.children.length - 1; i >= 0; i--) {
-                        const child = currentItem.children[i];
-                        stack.push([child, [...currentPath, child]]);
+                        stack.push([currentItem.children[i], currentPath]);
                     }
                 }
-            }
-            return null; // Not found
-        };
-
-
-        // --- Generate breadcrumb path ---
-        const getBreadcrumbPath = (folderId) => {
-            if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
-            let path = [];
-            
-            const fullPath = findParentPathIterative(state.library, folderId);
-            
-            if (fullPath) {
-                path = fullPath.map(item => ({ id: item.id, name: item.name }));
             }
             
             // Always prepend Root
@@ -384,6 +443,10 @@
             return path;
         };
 
+
+        // ===================================================================
+        // RENDER & VIEW FUNCTIONS
+        // ===================================================================
 
         // --- Main Render Function ---
         const renderCatalogue = () => {
@@ -438,7 +501,6 @@
                     if (item.type === 'folder') {
                         nameElement = `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>`;
                     } else {
-                        // Use <a> tag for launching mailto link
                         nameElement = `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name" title="Launch: ${SafeUI.escapeHTML(item.name)}">${SafeUI.escapeHTML(item.name)}</a>`;
                     }
 
@@ -461,14 +523,17 @@
             DOMElements.editorView.classList.toggle('active', viewName === 'editor');
         };
 
-        // --- Editor Functions (Upload & Generate) ---
+        // ===================================================================
+        // EDITOR FUNCTIONS (UPLOAD & GENERATE)
+        // ===================================================================
+
         const handleFile = (file) => {
-            if (!file) return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
-            
-            // File type validation
-            const fileName = file.name.toLowerCase();
-            if (!fileName.endsWith('.msg') && !fileName.endsWith('.oft')) {
-                return SafeUI.showModal('Invalid File', '<p>Please upload a valid .msg or .oft file.</p>', [{label: 'OK'}]);
+            if (!file) {
+                return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
+            }
+            // Validate file type
+            if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft')) {
+                return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg</strong> or <strong>.oft</strong> file.</p>', [{label: 'OK'}]);
             }
 
             const reader = new FileReader();
@@ -499,25 +564,15 @@
         };
 
         const generateAndShowMailto = () => {
-            const to = DOMElements.resultTo.value.trim();
-            const cc = DOMElements.resultCc.value.trim();
-            const bcc = DOMElements.resultBcc.value.trim();
-            const subject = DOMElements.resultSubject.value.trim();
-            const body = DOMElements.resultBody.value;
+            const mailtoData = {
+                to: DOMElements.resultTo.value.trim(),
+                cc: DOMElements.resultCc.value.trim(),
+                bcc: DOMElements.resultBcc.value.trim(),
+                subject: DOMElements.resultSubject.value.trim(),
+                body: DOMElements.resultBody.value
+            };
 
-            let mailto = 'mailto:';
-            if (to) mailto += encodeURIComponent(to);
-            const params = [];
-            if (cc) params.push('cc=' + encodeURIComponent(cc));
-            if (bcc) params.push('bcc=' + encodeURIComponent(bcc));
-            if (subject) params.push('subject=' + encodeURIComponent(subject));
-            if (body) {
-                // Normalize all line endings to \n, then encode and replace \n (%0A) with \r\n (%0D%0A)
-                const normalizedBody = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-                const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
-                params.push('body=' + encodedBody);
-            }
-            if (params.length > 0) mailto += '?' + params.join('&');
+            const mailto = buildMailto(mailtoData);
 
             currentMailtoCommand = mailto; // Save for library
             DOMElements.resultMailto.value = mailto;
@@ -526,13 +581,15 @@
             
             // Auto-fill template name if empty
             if (DOMElements.saveTemplateName.value.trim() === '') {
-                 DOMElements.saveTemplateName.value = subject || 'New Template';
+                 DOMElements.saveTemplateName.value = mailtoData.subject || 'New Template';
             }
 
             setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto), 0);
         };
         
-        // --- Library Action Handlers ---
+        // ===================================================================
+        // LIBRARY ACTION HANDLERS
+        // ===================================================================
         
         const handleNewTemplate = () => {
             // Reset editor
@@ -601,55 +658,182 @@
             renderCatalogue();
         };
 
-        // --- Data Management Handlers ---
-        const handleExportJson = () => {
-            if (state.library.length === 0) {
-                return SafeUI.showToast("Library is empty, nothing to export.");
-            }
-            const dataStr = JSON.stringify(state.library, null, 2);
-            // Get timestamp for filename
-            const now = new Date();
-            const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
-            SafeUI.downloadJSON(dataStr, `mailto-library-export_${timestamp}.json`);
-        };
+        // ===================================================================
+        // DATA MANAGEMENT HANDLERS (JSON & CSV)
+        // ===================================================================
         
-        const handleImportJson = () => {
-            SafeUI.openFilePicker((file) => {
-                SafeUI.readJSONFile(file, 
-                    (parsedData) => {
-                        if (!Array.isArray(parsedData)) {
-                             return SafeUI.showModal('Import Error', '<p>File is not a valid library export (must be a JSON array).</p>', [{label: 'OK'}]);
-                        }
-                        // Simple validation
-                        if (parsedData.length > 0 && (!parsedData[0].id || !parsedData[0].name || !parsedData[0].type)) {
-                             return SafeUI.showModal('Import Error', '<p>File does not seem to be a valid library export (missing id, name, or type).</p>', [{label: 'OK'}]);
-                        }
-                        
-                        SafeUI.showModal('Confirm Import', `<p>This will <b>overwrite your entire library</b> with ${parsedData.length} items from the file. This cannot be undone.</p>`, [
-                            {label: 'Cancel'},
-                            {label: 'Overwrite and Import', class: 'button-danger', callback: () => {
-                                state.library = parsedData;
-                                currentFolderId = 'root';
-                                saveState();
-                                renderCatalogue();
-                                SafeUI.showToast('Library imported successfully.');
-                            }}
-                        ]);
-                    },
-                    (errorMsg) => {
-                        SafeUI.showModal('Import Error', `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
-                    }
-                );
-            }, 'application/json,.json');
+        // --- Settings Modal ---
+        const showSettingsModal = () => {
+            const modalContent = `
+                <div class="form-group">
+                    <label>Advanced Data Management (Backup)</label>
+                    <p class="form-help">Use these tools for disaster recovery. This is a technical backup of the *entire* library in JSON format.</p>
+                    <div class="button-group">
+                        <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
+                        <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
+                    </div>
+                </div>
+            `;
+            
+            SafeUI.showModal("Settings", modalContent, [{ label: 'Close' }]);
+
+            // Attach listeners to modal buttons using consolidated helper
+            BackupRestore.setupBackupRestoreHandlers({
+                state: { library: state.library, version: state.version }, // Pass a snapshot of state
+                appName: APP_CONFIG.NAME,
+                backupBtn: document.getElementById('modal-backup-btn'),
+                restoreBtn: document.getElementById('modal-restore-btn'),
+                itemValidators: {
+                    library: [] // Just checks if 'library' key exists
+                },
+                restoreConfirmMessage: 'This will overwrite your entire mailto library with the JSON backup. This cannot be undone.',
+                onRestoreCallback: (dataToRestore) => {
+                    // dataToRestore is the 'data' object from the backup file
+                    state.library = dataToRestore.library || [];
+                    currentFolderId = 'root';
+                    saveState();
+                    renderCatalogue();
+                    SafeUI.showToast('Library restored successfully.');
+                    SafeUI.hideModal(); // Close settings modal
+                }
+            });
         };
 
-        // --- Event Listeners ---
+        // --- CSV "Human-Friendly" Export ---
+        const handleExportCsv = () => {
+            const csvData = [];
+            
+            // Recursive helper to flatten the library
+            function walk(items, currentPath) {
+                for (const item of items) {
+                    if (item.type === 'folder') {
+                        walk(item.children, currentPath + item.name + '/');
+                    } else if (item.type === 'item') {
+                        const mailtoParts = parseMailto(item.mailto);
+                        csvData.push({
+                            name: item.name,
+                            path: currentPath,
+                            to: mailtoParts.to,
+                            cc: mailtoParts.cc,
+                            bcc: mailtoParts.bcc,
+                            subject: mailtoParts.subject,
+                            body: mailtoParts.body
+                        });
+                    }
+                }
+            }
+            
+            walk(state.library, '/'); // Start walk at the root
+            
+            if (csvData.length === 0) {
+                return SafeUI.showToast("Library is empty, nothing to export.");
+            }
+            
+            try {
+                const csvString = DataConverter.toCSV(csvData, APP_CONFIG.CSV_HEADERS);
+                // Get timestamp for filename
+                const now = new Date();
+                const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+                SafeUI.downloadJSON(csvString, `mailto-library-export_${timestamp}.csv`, 'text/csv');
+            } catch (err) {
+                console.error("CSV Export failed:", err);
+                SafeUI.showModal('CSV Export Error', `<p>Failed to create CSV: ${err.message}</p>`, [{label: 'OK'}]);
+            }
+        };
+
+        // --- CSV "Human-Friendly" Import (Setup) ---
+        const setupCsvImport = () => {
+            // 1. Validation function for each row
+            const validateCsvRow = (row, index) => {
+                if (!row.name || !row.name.trim()) {
+                    return { error: `Row ${index + 2}: 'name' column is required.` };
+                }
+                if (!row.path || !row.path.trim().startsWith('/')) {
+                    return { error: `Row ${index + 2}: 'path' column must start with '/'.` };
+                }
+                return { entry: row };
+            };
+
+            // 2. Confirmation and processing function
+            const confirmCsvImport = (validatedData, importErrors) => {
+                const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library based on the CSV. It will not delete or overwrite existing templates, but it will skip duplicates (same name in the same path).</p>
+                                     ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
+                                     <p>Do you want to continue?</p>`;
+                
+                SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                    { label: 'Cancel' },
+                    { 
+                        label: 'Import', 
+                        class: 'button-primary', 
+                        callback: () => {
+                            let importedCount = 0;
+                            let skippedCount = 0;
+
+                            for (const row of validatedData) {
+                                const pathParts = row.path.split('/').filter(p => p.trim().length > 0); // e.g., ["/", "Projects", "TeamA"] -> ["Projects", "TeamA"]
+                                let currentContainer = state.library;
+
+                                // Find or create the folder path
+                                for (const part of pathParts) {
+                                    let folder = currentContainer.find(i => i.type === 'folder' && i.name.toLowerCase() === part.toLowerCase());
+                                    if (!folder) {
+                                        folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
+                                        currentContainer.push(folder);
+                                    }
+                                    currentContainer = folder.children;
+                                }
+
+                                // Now currentContainer is the target folder
+                                // Check for duplicate name in this folder
+                                if (DataValidator.hasDuplicate(currentContainer, 'name', row.name)) {
+                                    skippedCount++;
+                                } else {
+                                    // Re-build the mailto string and add the template
+                                    const newMailto = buildMailto(row);
+                                    const newTemplate = {
+                                        id: SafeUI.generateId(),
+                                        type: 'item',
+                                        name: row.name.trim(),
+                                        mailto: newMailto
+                                    };
+                                    currentContainer.push(newTemplate);
+                                    importedCount++;
+                                }
+                            }
+                            
+                            if (importedCount > 0) {
+                                saveState();
+                                renderCatalogue();
+                            }
+                            SafeUI.showToast(`Import complete. Added ${importedCount} templates, skipped ${skippedCount} duplicates.`);
+                        }
+                    }
+                ]);
+            };
+
+            // 3. Wire up the CsvManager
+            CsvManager.setupImport({
+                importBtn: DOMElements.btnImportCsv,
+                headers: APP_CONFIG.CSV_HEADERS,
+                onValidate: validateCsvRow,
+                onConfirm: confirmCsvImport
+            });
+        };
+
+
+        // ===================================================================
+        // EVENT LISTENERS
+        // ===================================================================
+
         const attachEventListeners = () => {
             // --- Catalogue View ---
             DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
             DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
-            DOMElements.btnImportJson.addEventListener('click', handleImportJson);
-            DOMElements.btnExportJson.addEventListener('click', handleExportJson);
+            DOMElements.btnSettings.addEventListener('click', showSettingsModal);
+            
+            // CSV I/O
+            DOMElements.btnExportCsv.addEventListener('click', handleExportCsv);
+            setupCsvImport(); // This wires up the btnImportCsv listener
             
             // --- Editor View ---
             DOMElements.btnEditorCancel.addEventListener('click', () => {
@@ -683,20 +867,19 @@
                 const itemEl = e.target.closest('.list-item');
                 if (!itemEl) return;
                 
-                // If user clicks the main link (<a> tag), let the browser handle it.
+                // If user clicks the main link, let the browser handle it.
                 if (e.target.closest('.list-item-name')) {
                     // This is an <a> tag, let the default behavior (launch mailto:) run.
                     return; 
                 }
                 
-                const id = itemEl.dataset.id;
-                const item = getItemsInCurrentFolder().find(i => i.id === id);
-                if (!item) return;
-                
                 // Handle folder name click
                 if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
                     e.preventDefault();
-                    if (item.type === 'folder') {
+                    const id = itemEl.dataset.id;
+                    // Find the item only in the *current* list, not recursively
+                    const item = getItemsInCurrentFolder().find(i => i.id === id);
+                    if (item && item.type === 'folder') {
                         currentFolderId = item.id;
                         renderCatalogue();
                     }
@@ -705,6 +888,10 @@
 
                 // For any other click (buttons, div padding), prevent default.
                 e.preventDefault();
+
+                const id = itemEl.dataset.id;
+                const item = getItemsInCurrentFolder().find(i => i.id === id);
+                if (!item) return;
 
                 // Handle Copy Button
                 const copyBtn = e.target.closest('.copy-btn');
@@ -741,6 +928,7 @@
         // --- Init ---
         const init = () => {
             // Setup icons
+            DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
             DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
 
             // Setup textareas
@@ -761,4 +949,5 @@
     </script>
 </body>
 </html>
+
 
