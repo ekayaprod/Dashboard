@@ -13,8 +13,8 @@ const UIUtils = {
         plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>',
         pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
         trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>',
-        // FIX: Replaced corrupted settings SVG with a clean one.
-        settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/></svg>'
+        settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311a1.464 1.464 0 0 1-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/></svg>',
+        copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 1.5A.5.5 0 0 1 1 1h1.5v1h-1a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-1h1v1a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 0 12.5v-10A1.5 1.5 0 0 1 1.5 1H2v.5z"/><path d="M12.5 1a.5.5 0 0 1 .5.5v1.5h1V1.5a1.5 1.5 0 0 0-1.5-1.5h-10A1.5 1.5 0 0 0 1 1.5V3h1V1.5a.5.5 0 0 1 .5-.5z M4 4a1.5 1.5 0 0 1 1.5-1.5h7A1.5 1.5 0 0 1 14 4v10a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 4 14zm.5 0a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V4.5a.5.5 0 0 0-.5-.5z"/></svg>'
     },
     
     validators: {
@@ -24,8 +24,8 @@ const UIUtils = {
             
             switch(type) {
                 case 'url':
-                    // FIX: Mode B - Allow localhost and hostnames by making TLD optional
-                    if (/^https?:\/\//.test(str) || /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*(\.[a-z]{2,})?(:[0-9]{1,5})?(\/.*)?$/i.test(str)) {
+                    // FIX: Allow localhost and hostnames without TLD
+                    if (/^https?:\/\//.test(str) || /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*(:[0-9]{1,5})?(\/.*)?$/i.test(str)) {
                         try {
                             let testUrl = str;
                             if (!/^https?:\/\//.test(testUrl)) {
@@ -67,8 +67,8 @@ const UIUtils = {
             }
 
             try {
-                // FIX: Add cache-busting query param
-                const response = await fetch(`navbar.html?t=${Date.now()}`);
+                // FIX: Add cache-busting query param to ensure fresh nav on updates
+                const response = await fetch(`navbar.html?t=${new Date().getTime()}`);
                 if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
                 navContainer.innerHTML = await response.text();
             } catch (error) {
@@ -258,8 +258,9 @@ const UIUtils = {
         const modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) {
             modalOverlay.style.display = 'none';
-            document.body.classList.remove('modal-open'); // FIX: Issue #19 - Remove class
         }
+        // FIX: Issue #19 - Remove modal-open class
+        document.body.classList.remove('modal-open');
     },
 
     /**
@@ -272,6 +273,9 @@ const UIUtils = {
             console.error('Modal DOM elements (modal-overlay, modal-content) not found.');
             return;
         }
+        
+        // FIX: Issue #19 - Add modal-open class
+        document.body.classList.add('modal-open');
 
         modalContent.innerHTML = `<h3>${this.escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
         const actionsContainer = modalContent.querySelector('.modal-actions');
@@ -289,7 +293,6 @@ const UIUtils = {
         });
         
         modalOverlay.style.display = 'flex';
-        document.body.classList.add('modal-open'); // FIX: Issue #19 - Add class
     },
 
     /**
@@ -334,7 +337,7 @@ const SafeUI = (() => {
     
     const getSVGIcons = () => {
         if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
-        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙' };
+        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋' };
     };
 
     return {
@@ -375,6 +378,7 @@ const DOMHelpers = {
                 console.error(`FATAL: DOM element with id "${id}" not found.`);
                 allFound = false;
             }
+            // Simple kebab-to-camel converter
             elements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
         }
         
@@ -388,7 +392,7 @@ const DOMHelpers = {
         if (!textarea) return;
         
         const resize = () => {
-            textarea.style.height = 'auto';
+            textarea.style.height = 'auto'; // Temporarily shrink to get correct scrollHeight
             textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
         };
         
@@ -412,21 +416,32 @@ const DOMHelpers = {
 // AppLifecycle (Core initialization and error handling)
 // ============================================================================
 const AppLifecycle = {
-    /**
-     * Helper to show a non-destructive error banner
-     */
+    
     _showErrorBanner: (title, message) => {
-        // Create and inject a non-destructive banner
-        const banner = document.createElement('div');
-        banner.id = 'app-startup-error';
-        banner.style.cssText = `position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;`;
-        banner.innerHTML = `<strong>${title}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${message}</p>`;
-        
-        // Wait for DOM to be ready just in case, then prepend
-        if (document.body) {
-            document.body.prepend(banner);
-        } else {
-            document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
+        try {
+            const bannerId = 'app-startup-error';
+            let banner = document.getElementById(bannerId);
+            
+            // Create banner if it doesn't exist (for dependency check)
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = bannerId;
+                Object.assign(banner.style, {
+                    position: 'sticky', top: '0', left: '0', width: '100%',
+                    padding: '1rem', backgroundColor: '#fef2f2', color: '#dc2626',
+                    borderBottom: '2px solid #fecaca', fontFamily: 'sans-serif',
+                    fontSize: '1rem', fontWeight: '600', zIndex: '10000',
+                    boxSizing: 'border-box'
+                });
+                document.body.prepend(banner);
+            }
+            
+            banner.innerHTML = `<strong>${title}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${message}</p>`;
+            banner.classList.remove('hidden');
+        } catch (e) {
+            console.error("Failed to show error banner:", e);
+            // Fallback if banner fails
+            document.body.innerHTML = `<p>${title}: ${message}</p>`; 
         }
     },
 
@@ -436,23 +451,23 @@ const AppLifecycle = {
     run: (initFn) => {
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                if (!SafeUI || !SafeUI.isReady) {
-                    console.error("FATAL: UIUtils or SafeUI failed to initialize.");
-                    AppLifecycle._showErrorBanner(
-                        "Application Failed to Load",
-                        "A critical file (app-core.js) may be missing or failed to load. Please check the console for errors."
-                    );
+                // Dependency check (for UIUtils itself)
+                if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
+                    const errorTitle = "Application Failed to Load";
+                    const errorMessage = "A critical file (app-core.js) may be missing, failed to load, or is corrupted. Please check the console for errors.";
+                    AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+                    console.error("FATAL: UIUtils, SafeUI, or DOMHelpers failed to initialize.");
                     return;
                 }
                 
+                // Run the page-specific initialization
                 await initFn();
                 
             } catch (err) {
                 console.error("Unhandled exception during initialization:", err);
-                AppLifecycle._showErrorBanner(
-                    "Application Error",
-                    `An unexpected error occurred during startup: ${err.message}. Please check the console for more details.`
-                );
+_               const errorTitle = "Application Error";
+                const errorMessage = `An unexpected error occurred during startup: ${err.message}. Please check the console for more details.`;
+                AppLifecycle._showErrorBanner(errorTitle, errorMessage);
             }
         });
     },
@@ -466,39 +481,35 @@ const AppLifecycle = {
         // Cache DOM elements
         const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
         if (!allFound) {
+            // This error is critical and should stop execution
+            const errorTitle = "Application Failed to Start";
+            const errorMessage = "One or more critical HTML elements are missing from the page. Application cannot continue. Check console for details.";
+            AppLifecycle._showErrorBanner(errorTitle, errorMessage);
             console.error("FATAL: Missing critical DOM elements. Application halted.");
-            // Error is already logged by cacheElements. The inline dependency check will also fail.
-            // We can show a banner here too for robustness.
-             AppLifecycle._showErrorBanner(
-                "Application Failed to Load",
-                "One or more critical HTML elements are missing from the page. The application cannot start."
-             );
             return null;
         }
 
         // Initialize state
         const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
         if (!stateManager) {
+            // This error is also critical
+            const errorTitle = "Application Failed to Start";
+            const errorMessage = "The StateManager (for localStorage) failed to initialize. Application cannot continue.";
+            AppLifecycle._showErrorBanner(errorTitle, errorMessage);
             console.error("FATAL: StateManager failed to initialize.");
-            AppLifecycle._showErrorBanner(
-                "Application Failed to Load",
-                "The StateManager failed to initialize. LocalStorage may be corrupt or unavailable."
-             );
             return null;
         }
 
         const state = stateManager.load();
         const saveState = () => stateManager.save(state);
-
-        // Make DOMHelpers globally available for inline scripts
-        window.DOMHelpers = DOMHelpers;
         
         return { elements, state, saveState };
     }
 };
 
-// --- FIX: Expose core components to the global window scope ---
+// --- FIX: Expose components to the global window scope ---
+// This makes them accessible to the inline scripts and dependency checkers
+window.UIUtils = UIUtils;
 window.SafeUI = SafeUI;
 window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
-
