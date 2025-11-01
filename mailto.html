@@ -63,7 +63,7 @@
             color: var(--subtle-text);
         }
         
-        /* --- FIX: Style for the new <a> link --- */
+        /* Style for the <a> link */
         .list-item a.list-item-name {
             color: var(--text-color);
             text-decoration: none;
@@ -259,7 +259,7 @@
     <script>
     // Dependency Check
     (() => {
-        // FIX: Add MsgReader to dependency check
+        // Add MsgReader to dependency check
         const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         if (missing.length > 0) {
@@ -340,28 +340,40 @@
              const parent = findItemById(currentFolderId);
              return parent ? parent.children : state.library;
         };
+        
+        // --- Iterative helper to find the path to a folder ---
+        const findParentPathIterative = (items, targetId) => {
+            const stack = []; // Stack will hold [item, path] pairs
+            // Initialize stack with root items
+            for (const item of items) {
+                stack.push([item, [item]]);
+            }
+
+            while (stack.length > 0) {
+                const [currentItem, currentPath] = stack.pop();
+
+                if (currentItem.id === targetId) {
+                    return currentPath; // Found it
+                }
+
+                if (currentItem.type === 'folder' && currentItem.children) {
+                    // Push children onto the stack
+                    for (let i = currentItem.children.length - 1; i >= 0; i--) {
+                        const child = currentItem.children[i];
+                        stack.push([child, [...currentPath, child]]);
+                    }
+                }
+            }
+            return null; // Not found
+        };
+
 
         // --- Generate breadcrumb path ---
         const getBreadcrumbPath = (folderId) => {
             if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
             let path = [];
             
-            // Recursive function to find the path
-            const findParentPath = (items, targetId, currentPath) => {
-                for (const item of items) {
-                    const newPath = [...currentPath, item];
-                    if (item.id === targetId) {
-                        return newPath; // Found it
-                    }
-                    if (item.type === 'folder' && item.children) {
-                        const foundPath = findParentPath(item.children, targetId, newPath);
-                        if (foundPath) return foundPath; // Found in subcommand
-                    }
-                }
-                return null; // Not in this branch
-            };
-
-            const fullPath = findParentPath(state.library, folderId, []);
+            const fullPath = findParentPathIterative(state.library, folderId);
             
             if (fullPath) {
                 path = fullPath.map(item => ({ id: item.id, name: item.name }));
@@ -426,7 +438,7 @@
                     if (item.type === 'folder') {
                         nameElement = `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>`;
                     } else {
-                        // --- FIX: Use <a> tag for launching ---
+                        // Use <a> tag for launching mailto link
                         nameElement = `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name" title="Launch: ${SafeUI.escapeHTML(item.name)}">${SafeUI.escapeHTML(item.name)}</a>`;
                     }
 
@@ -452,6 +464,13 @@
         // --- Editor Functions (Upload & Generate) ---
         const handleFile = (file) => {
             if (!file) return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
+            
+            // File type validation
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.msg') && !fileName.endsWith('.oft')) {
+                return SafeUI.showModal('Invalid File', '<p>Please upload a valid .msg or .oft file.</p>', [{label: 'OK'}]);
+            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
@@ -493,6 +512,7 @@
             if (bcc) params.push('bcc=' + encodeURIComponent(bcc));
             if (subject) params.push('subject=' + encodeURIComponent(subject));
             if (body) {
+                // Normalize all line endings to \n, then encode and replace \n (%0A) with \r\n (%0D%0A)
                 const normalizedBody = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
                 const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
                 params.push('body=' + encodedBody);
@@ -663,18 +683,20 @@
                 const itemEl = e.target.closest('.list-item');
                 if (!itemEl) return;
                 
-                // --- FIX: If user clicks the main link, let the browser handle it. ---
+                // If user clicks the main link (<a> tag), let the browser handle it.
                 if (e.target.closest('.list-item-name')) {
                     // This is an <a> tag, let the default behavior (launch mailto:) run.
                     return; 
                 }
                 
-                // --- FIX: Handle folder name click separately ---
+                const id = itemEl.dataset.id;
+                const item = getItemsInCurrentFolder().find(i => i.id === id);
+                if (!item) return;
+                
+                // Handle folder name click
                 if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
                     e.preventDefault();
-                    const id = itemEl.dataset.id;
-                    const item = findItemById(id, getItemsInCurrentFolder());
-                    if (item && item.type === 'folder') {
+                    if (item.type === 'folder') {
                         currentFolderId = item.id;
                         renderCatalogue();
                     }
@@ -684,11 +706,7 @@
                 // For any other click (buttons, div padding), prevent default.
                 e.preventDefault();
 
-                const id = itemEl.dataset.id;
-                const item = findItemById(id, getItemsInCurrentFolder());
-                if (!item) return;
-
-                // --- FIX: Handle Copy Button ---
+                // Handle Copy Button
                 const copyBtn = e.target.closest('.copy-btn');
                 if (copyBtn && copyBtn.dataset.mailto) {
                     SafeUI.copyToClipboard(copyBtn.dataset.mailto);
@@ -743,5 +761,4 @@
     </script>
 </body>
 </html>
-
 
