@@ -1,6 +1,5 @@
 /**
  * app-ui.js
- * (Was ui-components.js)
  * * Reusable high-level UI patterns and components
  * Depends on: app-core.js
  */
@@ -100,9 +99,11 @@ const SearchHelper = {
         return items.filter(item => {
             return searchFields.some(field => {
                 const value = item[field];
-                // FIX: Issue #22 - Handle null/undefined values correctly
-                return value !== null && value !== undefined && 
-                       String(value).toLowerCase().includes(lowerTerm);
+                // Handle null/undefined/Symbol field values
+                if (value === null || value === undefined || typeof value === 'symbol') {
+                    return false;
+                }
+                return String(value).toLowerCase().includes(lowerTerm);
             });
         });
     },
@@ -124,7 +125,7 @@ const SearchHelper = {
     }
 };
 
-// --- FIX: Expose components to the global window scope ---
+// --- Expose components to the global window scope ---
 window.UIPatterns = UIPatterns;
 window.ListRenderer = ListRenderer;
 window.SearchHelper = SearchHelper;
