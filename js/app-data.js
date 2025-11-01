@@ -1,7 +1,6 @@
 /**
  * app-data.js
- * (Was data-management.js)
- * * State persistence, backup/restore, and validation logic
+ * * State persistence, backup/restore, and data validation/conversion logic
  * Depends on: app-core.js
  */
 
@@ -18,6 +17,7 @@ const BackupRestore = {
                 data: state
             };
             const dataStr = JSON.stringify(backupData, null, 2);
+            // Uses YYYY-MM-DD format
             const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
             
             SafeUI.downloadJSON(dataStr, filename, 'application/json');
@@ -63,6 +63,7 @@ const BackupRestore = {
     validateItems: (items, requiredFields) => {
         if (!Array.isArray(items)) return false;
         
+        // Note: An empty requiredFields array will correctly return true for any array.
         return items.every(item => {
             if (!item || typeof item !== 'object') return false;
             return requiredFields.every(field => field in item);
@@ -224,8 +225,8 @@ const DataConverter = {
 
         const escapeCell = (cell) => {
             const str = String(cell == null ? '' : cell);
+            // Per RFC 4180, escape quotes by doubling them
             if (str.includes('"') || str.includes(',') || str.includes('\n')) {
-                // Escape existing quotes by doubling them
                 return `"${str.replace(/"/g, '""')}"`;
             }
             return str;
@@ -237,6 +238,43 @@ const DataConverter = {
         });
 
         return [headerRow, ...rows].join('\n');
+    },
+
+    /**
+     * Helper to parse a single line of CSV text, respecting quotes.
+     * Note: This implementation follows RFC 4180 (doubled quotes "" for escaping).
+     * It does not support non-standard backslash escapes (\").
+     */
+    _parseCsvLine: (line) => {
+        const values = [];
+        let currentVal = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    // Escaped quote
+                    currentVal += '"';
+                    i++; // Skip next quote
+                } else {
+                    // Toggle quote state
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                // End of a value
+                values.push(currentVal.replace(/""/g, '"'));
+                currentVal = '';
+            } else {
+                // Regular character
+                currentVal += char;
+            }
+        }
+        // Add the last value
+        values.push(currentVal.replace(/""/g, '"'));
+        return values;
     },
 
     /**
@@ -287,32 +325,10 @@ const DataConverter = {
                         return resolve({ data: [], errors: [] });
                     }
 
+                    // Parse header line
                     const headerLine = lines.shift();
-                    const headers = [];
-                    let currentHeader = '';
-                    inQuotes = false;
+                    const headers = DataConverter._parseCsvLine(headerLine).map(h => h.trim());
                     
-                    // Parse headers
-                    for (let i = 0; i < headerLine.length; i++) {
-                        const char = headerLine[i];
-                        const nextChar = headerLine[i + 1];
-                        
-                        if (char === '"') {
-                            if (inQuotes && nextChar === '"') {
-                                currentHeader += '"';
-                                i++;
-                            } else {
-                                inQuotes = !inQuotes;
-                            }
-                        } else if (char === ',' && !inQuotes) {
-                            headers.push(currentHeader.trim());
-                            currentHeader = '';
-                        } else {
-                            currentHeader += char;
-                        }
-                    }
-                    headers.push(currentHeader.trim());
-
                     const errors = [];
 
                     // Validate required headers
@@ -328,31 +344,7 @@ const DataConverter = {
                     // Parse data rows
                     const data = lines.filter(line => line.trim().length > 0).map((line, lineIndex) => {
                         const obj = {};
-                        const values = [];
-                        let currentVal = '';
-                        inQuotes = false;
-
-                        for (let i = 0; i < line.length; i++) {
-                            const char = line[i];
-                            const nextChar = line[i + 1];
-
-                            if (char === '"') {
-                                if (inQuotes && nextChar === '"') {
-                                    currentVal += '"';
-                                    i++;
-                                } else {
-                                    inQuotes = !inQuotes;
-                                }
-                            } else if (char === ',' && !inQuotes) {
-                                // Unescape "" back to "
-                                values.push(currentVal.replace(/""/g, '"'));
-                                currentVal = '';
-                            } else {
-                                currentVal += char;
-                            }
-                        }
-                        // Unescape "" back to " for the last value
-                        values.push(currentVal.replace(/""/g, '"'));
+                        const values = DataConverter._parseCsvLine(line);
 
                         if (values.length > headers.length) {
                             errors.push(`Row ${lineIndex + 2}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating.`);
@@ -407,9 +399,16 @@ const CsvManager = {
                 };
                 
                 const data = config.dataGetter();
+                
+                // Add validation check
+                if (!Array.isArray(data)) {
+                    console.error("CsvManager.setupExport: config.dataGetter() did not return an array.");
+                    throw new Error("Data for export is invalid.");
+                }
+                
                 const csvString = DataConverter.toCSV(data, config.headers);
                 
-                // FIX: Add timestamp to filename
+                // Add timestamp to filename
                 const baseFilename = config.filename.replace(/\.csv$/, ''); // "lookup-export"
                 const timestamp = getTimestamp();
                 const finalFilename = `${baseFilename}_${timestamp}.csv`; // "lookup-export_20251031_162800.csv"
@@ -476,9 +475,8 @@ const CsvManager = {
 };
 
 
-// --- FIX: Expose components to the global window scope ---
+// --- Expose components to the global window scope ---
 window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
 window.CsvManager = CsvManager;
-
