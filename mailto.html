@@ -6,7 +6,11 @@
     <title>MailTo Generator</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Custom styles for this page */
+        /* --- View Styles --- */
+        .view { display: none; }
+        .view.active { display: block; }
+
+        /* --- Upload Box --- */
         .upload-wrapper {
             border: 2px dashed var(--border-color);
             border-radius: var(--border-radius);
@@ -29,6 +33,100 @@
             color: var(--subtle-text);
             margin: 0.5rem 0 0 0;
         }
+        
+        /* --- Tree/List Styles --- */
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 0.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid transparent;
+            cursor: default; /* Changed from pointer */
+            transition: background-color 0.2s;
+            gap: 0.75rem;
+        }
+        .list-item:hover {
+            background-color: var(--info-bg);
+            border-color: var(--border-color);
+        }
+        .list-item-icon {
+            flex-shrink: 0;
+            color: var(--subtle-text);
+            width: 20px;
+            height: 20px;
+        }
+        .list-item-icon.folder {
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+        .list-item-icon.template {
+            color: var(--subtle-text);
+        }
+        
+        /* --- FIX: Style for the new <a> link --- */
+        .list-item a.list-item-name {
+            color: var(--text-color);
+            text-decoration: none;
+            cursor: pointer;
+            flex-grow: 1;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .list-item a.list-item-name:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+        .list-item .list-item-name-folder {
+            flex-grow: 1;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+         .list-item .list-item-name-folder:hover {
+            color: var(--primary-color);
+         }
+
+
+        .list-item-actions {
+            flex-shrink: 0;
+        }
+
+        /* --- Breadcrumb Styles --- */
+        .breadcrumb-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: center;
+            background-color: var(--info-bg);
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+        }
+        .breadcrumb-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .breadcrumb-link:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb-separator {
+            color: var(--subtle-text);
+            margin: 0 0.25rem;
+        }
+        .breadcrumb-current {
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
     </style>
 </head>
 <body>
@@ -39,21 +137,51 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;"></div>
                 
-                <div class="section-header-wrapper">
-                    <h3 class="section-header">MailTo Command Generator</h3>
+                <!-- =================================================================== -->
+                <!-- VIEW 1: CATALOGUE / LIBRARY (DEFAULT VIEW)                          -->
+                <!-- =================================================================== -->
+                <div id="catalogue-view" class="view active">
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Email Template Library</h3>
+                        <div class="button-group">
+                            <button id="btn-import-json" class="button-base" title="Import Library (JSON)">Import</button>
+                            <button id="btn-export-json" class="button-base" title="Export Library (JSON)">Export</button>
+                            <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
+                            <button id="btn-new-template" class="button-base button-primary">New Template</button>
+                        </div>
+                    </div>
+
+                    <div id="breadcrumb-container" class="breadcrumb-container">
+                        <!-- Breadcrumbs will be rendered here -->
+                    </div>
+
+                    <div id="tree-list-container">
+                        <!-- List of templates and folders will be rendered here -->
+                    </div>
                 </div>
 
-                <div id="upload-wrapper" class="upload-wrapper form-group">
-                    <input type="file" id="msg-upload" accept=".msg,.oft">
-                    <label for="msg-upload" class="button-base button-primary">
-                        Upload .msg or .oft file
-                    </label>
-                    <p>or drag and drop a file here</p>
-                </div>
+                <!-- =================================================================== -->
+                <!-- VIEW 2: TEMPLATE EDITOR (GENERATOR)                                 -->
+                <!-- =================================================================== -->
+                <div id="editor-view" class="view">
+                    
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Phase 1: Create or Upload</h3>
+                        <div class="button-group">
+                            <button id="btn-editor-cancel" class="button-base">Cancel</button>
+                        </div>
+                    </div>
 
-                <div class="divider"></div>
+                    <div id="upload-wrapper" class="upload-wrapper form-group">
+                        <input type="file" id="msg-upload" accept=".msg,.oft">
+                        <label for="msg-upload" class="button-base button-primary">
+                            Upload .msg or .oft file
+                        </label>
+                        <p>or drag and drop a file here</p>
+                    </div>
 
-                <div id="results-container" class="hidden">
+                    <div class="divider"></div>
+
                     <div class="section-header-wrapper">
                         <h3 class="section-header">Phase 2: Review and Edit Fields</h3>
                     </div>
@@ -83,6 +211,7 @@
                          <button id="btn-generate" class="button-base button-primary" style="width: 100%;">Generate Command</button>
                     </div>
 
+                    <!-- Phase 3: Output & Save -->
                     <div id="output-wrapper" class="hidden">
                         <div class="divider"></div>
                         <div class="section-header-wrapper">
@@ -96,8 +225,18 @@
                             </div>
                             <textarea id="result-mailto" class="sidebar-textarea" readonly placeholder="Generated command will appear here..."></textarea>
                         </div>
+                        
+                        <!-- Save to Library Section -->
+                        <div class="app-section-box">
+                             <div class="form-group">
+                                <label for="save-template-name">Template Name</label>
+                                <input type="text" id="save-template-name" class="sidebar-input" placeholder="e.g., Weekly Report Stub">
+                            </div>
+                            <div class="button-group">
+                                <button id="btn-save-to-library" class="button-base button-success">Save to Library</button>
+                            </div>
+                        </div>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -144,176 +283,446 @@
 
     AppLifecycle.run(async () => {
     
+        const defaultState = {
+            version: '1.0.0',
+            library: [] // This will store our tree: [{id, type: 'folder', name, children: [...]}, {id, type: 'item', name, mailto: '...'}]
+        };
+    
         const ctx = await AppLifecycle.initPage({
-            storageKey: 'mailto_state_v1', // This page is stateless, but key is required by initPage
-            defaultState: { version: '1.0.0' },
+            storageKey: 'mailto_library_v1',
+            defaultState: defaultState,
             version: '1.0.0',
             requiredElements: [
                 'navbar-container', 'toast', 'modal-overlay', 'modal-content',
-                'upload-wrapper', 'msg-upload', 'results-container',
-                'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
-                'btn-generate', 'output-wrapper', // New/changed elements
-                'result-mailto', 'result-link', 'copy-mailto-btn'
+                'catalogue-view', 'editor-view', // Main Views
+                'btn-new-template', 'btn-new-folder', 'btn-import-json', 'btn-export-json', // Catalogue buttons
+                'breadcrumb-container', 'tree-list-container', // Catalogue UI
+                'btn-editor-cancel', 'btn-generate', // Editor buttons
+                'upload-wrapper', 'msg-upload', // Editor Phase 1
+                'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', // Editor Phase 2
+                'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', // Editor Phase 3
+                'save-template-name', 'btn-save-to-library' // Editor Save
             ]
         });
     
         if (!ctx) return;
     
-        const { elements: DOMElements } = ctx;
+        const { elements: DOMElements, state, saveState } = ctx;
+        let currentFolderId = 'root'; // 'root' means the base of the library
+        let currentMailtoCommand = null; // Holds the generated command before saving
 
-        // --- Drag and Drop Handlers ---
-        const uploadWrapper = DOMElements.uploadWrapper;
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadWrapper.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, false);
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadWrapper.addEventListener(eventName, () => {
-                uploadWrapper.classList.add('dragover');
-            }, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadWrapper.addEventListener(eventName, () => {
-                uploadWrapper.classList.remove('dragover');
-            }, false);
-        });
-
-        uploadWrapper.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files && files.length > 0) {
-                handleFile(files[0]);
+        // --- Recursive Helper to find an item/folder in the tree ---
+        const findItemById = (id, items = state.library) => {
+            if (id === 'root') return { id: 'root', name: 'Root', children: state.library };
+            for (const item of items) {
+                if (item.id === id) return item;
+                if (item.type === 'folder' && item.children) {
+                    const found = findItemById(id, item.children);
+                    if (found) return found;
+                }
             }
-        }, false);
-
-        // --- File Input Handler ---
-        DOMElements.msgUpload.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
+            return null;
+        };
+        
+        // --- Get children of the current folder ---
+        const getItemsInCurrentFolder = () => {
+            if (currentFolderId === 'root') {
+                return state.library;
             }
-        });
+            const folder = findItemById(currentFolderId);
+            return folder ? folder.children : [];
+        };
+        
+        // --- Get parent container of an item ---
+        const getParentContainer = (id) => {
+             if (currentFolderId === 'root') return state.library;
+             const parent = findItemById(currentFolderId);
+             return parent ? parent.children : state.library;
+        };
 
-        // --- File Parsing Logic ---
-        const handleFile = (file) => {
-            if (!file) {
-                SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
-                return;
+        // --- Generate breadcrumb path ---
+        const getBreadcrumbPath = (folderId) => {
+            if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
+            let path = [];
+            let current = findItemById(folderId);
+
+            const findParentPath = (items, targetId, currentPath) => {
+                for (const item of items) {
+                    if (item.id === targetId) {
+                        return [...currentPath, item];
+                    }
+                    if (item.type === 'folder' && item.children) {
+                        const foundPath = findParentPath(item.children, targetId, [...currentPath, item]);
+                        if (foundPath) return foundPath;
+                    }
+                }
+                return null;
+            };
+
+            const fullPath = findParentPath(state.library, folderId, []);
+            if (fullPath) {
+                path = fullPath.map(item => ({ id: item.id, name: item.name }));
             }
-
-            const reader = new FileReader();
             
-            reader.onload = (e) => {
-                try {
-                    const arrayBuffer = e.target.result;
-                    const msgReader = new window.MsgReader(arrayBuffer);
-                    const fileData = msgReader.getFileData();
+            // Always prepend Root
+            path.unshift({ id: 'root', name: 'Root' });
+            return path;
+        };
 
-                    if (fileData.error) {
-                        throw new Error(fileData.error);
+
+        // --- Main Render Function ---
+        const renderCatalogue = () => {
+            // Render Breadcrumbs
+            DOMElements.breadcrumbContainer.innerHTML = '';
+            const path = getBreadcrumbPath(currentFolderId);
+            path.forEach((part, index) => {
+                if (index === path.length - 1) {
+                    const span = document.createElement('span');
+                    span.className = 'breadcrumb-current';
+                    span.textContent = part.name;
+                    DOMElements.breadcrumbContainer.appendChild(span);
+                } else {
+                    const a = document.createElement('a');
+                    a.className = 'breadcrumb-link';
+                    a.textContent = part.name;
+                    a.dataset.id = part.id;
+                    DOMElements.breadcrumbContainer.appendChild(a);
+                    
+                    const sep = document.createElement('span');
+                    sep.className = 'breadcrumb-separator';
+                    sep.innerHTML = '&gt;';
+                    DOMElements.breadcrumbContainer.appendChild(sep);
+                }
+            });
+
+            // Render List
+            const items = getItemsInCurrentFolder();
+            // Sort folders first, then items, alphabetically
+            const sortedItems = [...items].sort((a, b) => {
+                if (a.type === 'folder' && b.type !== 'folder') return -1;
+                if (a.type !== 'folder' && b.type === 'folder') return 1;
+                return a.name.localeCompare(b.name);
+            });
+            
+            ListRenderer.renderList({
+                container: DOMElements.treeListContainer,
+                items: sortedItems,
+                emptyMessage: "This folder is empty. Click 'New Template' to add one.",
+                createItemElement: (item) => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item';
+                    div.dataset.id = item.id;
+                    div.dataset.type = item.type;
+                    
+                    const iconType = item.type === 'folder' ? 'folder' : 'template';
+                    const iconSvg = item.type === 'folder' 
+                        ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>'
+                        : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>';
+                    
+                    let nameElement = '';
+                    if (item.type === 'folder') {
+                        nameElement = `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>`;
+                    } else {
+                        // --- FIX: Use <a> tag for launching, and data-mailto for copying ---
+                        nameElement = `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name" title="Launch: ${SafeUI.escapeHTML(item.name)}">${SafeUI.escapeHTML(item.name)}</a>`;
                     }
 
-                    // 1. Extract and display raw fields
+                    div.innerHTML = `
+                        <div class="list-item-icon ${iconType}">${iconSvg}</div>
+                        ${nameElement}
+                        <div class="list-item-actions">
+                            ${item.type === 'item' ? `<button class="icon-btn copy-btn" title="Copy mailto: command" data-mailto="${SafeUI.escapeHTML(item.mailto)}">${SafeUI.SVGIcons.copy}</button>` : ''}
+                            <button class="icon-btn delete-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                        </div>
+                    `;
+                    return div;
+                }
+            });
+        };
+
+        // --- View Switching ---
+        const showView = (viewName) => {
+            DOMElements.catalogueView.classList.toggle('active', viewName === 'catalogue');
+            DOMElements.editorView.classList.toggle('active', viewName === 'editor');
+        };
+
+        // --- Editor Functions (Upload & Generate) ---
+        const handleFile = (file) => {
+            if (!file) return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const msgReader = new window.MsgReader(e.target.result);
+                    const fileData = msgReader.getFileData();
+                    if (fileData.error) throw new Error(fileData.error);
+
                     const recipients = fileData.recipients || [];
-                    const to = recipients.filter(r => r.type === 'to').map(r => r.email).join(', ');
-                    const cc = recipients.filter(r => r.type === 'cc').map(r => r.email).join(', ');
-                    const bcc = recipients.filter(r => r.type === 'bcc').map(r => r.email).join(', ');
-                    const subject = fileData.subject || '';
-                    const body = fileData.body || '';
-
-                    DOMElements.resultTo.value = to;
-                    DOMElements.resultCc.value = cc;
-                    DOMElements.resultBcc.value = bcc;
-                    DOMElements.resultSubject.value = subject;
-                    DOMElements.resultBody.value = body;
+                    DOMElements.resultTo.value = recipients.filter(r => r.type === 'to').map(r => r.email).join(', ');
+                    DOMElements.resultCc.value = recipients.filter(r => r.type === 'cc').map(r => r.email).join(', ');
+                    DOMElements.resultBcc.value = recipients.filter(r => r.type === 'bcc').map(r => r.email).join(', ');
+                    DOMElements.resultSubject.value = fileData.subject || '';
+                    DOMElements.resultBody.value = fileData.body || '';
+                    DOMElements.saveTemplateName.value = fileData.subject || '';
                     
-                    // 2. Show results container for editing
-                    DOMElements.resultsContainer.classList.remove('hidden');
-                    // Hide output section until 'Generate' is clicked
-                    DOMElements.outputWrapper.classList.add('hidden');
-
-                    // 3. Trigger textarea resize (deferred)
-                    setTimeout(() => {
-                        DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
-                    }, 0);
-
+                    DOMElements.outputWrapper.classList.add('hidden'); // Hide output on new upload
+                    setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultBody), 0);
                 } catch (err) {
                     console.error('File parsing error:', err);
-                    SafeUI.showModal('Parsing Error', `<p>Failed to parse the file. It may be corrupt or an unsupported format.</p><p><small>${SafeUI.escapeHTML(err.message)}</small></p>`, [{label: 'OK'}]);
-                    // Clear results
-                    DOMElements.resultsContainer.classList.add('hidden');
+                    SafeUI.showModal('Parsing Error', `<p>Failed to parse the file.</p><p><small>${SafeUI.escapeHTML(err.message)}</small></p>`, [{label: 'OK'}]);
                 }
             };
-
-            reader.onerror = () => {
-                SafeUI.showModal('File Read Error', '<p>Could not read the selected file.</p>', [{label: 'OK'}]);
-            };
-
+            reader.onerror = () => SafeUI.showModal('File Read Error', '<p>Could not read the selected file.</p>', [{label: 'OK'}]);
             reader.readAsArrayBuffer(file);
         };
 
-        // --- Generate Mailto Logic ---
         const generateAndShowMailto = () => {
-            // 1. Read edited values from fields
             const to = DOMElements.resultTo.value.trim();
             const cc = DOMElements.resultCc.value.trim();
             const bcc = DOMElements.resultBcc.value.trim();
             const subject = DOMElements.resultSubject.value.trim();
-            const body = DOMElements.resultBody.value; // Don't trim body
+            const body = DOMElements.resultBody.value;
 
-            // 2. Generate mailto: command
             let mailto = 'mailto:';
-            if (to) {
-                mailto += encodeURIComponent(to);
-            }
-
+            if (to) mailto += encodeURIComponent(to);
             const params = [];
             if (cc) params.push('cc=' + encodeURIComponent(cc));
             if (bcc) params.push('bcc=' + encodeURIComponent(bcc));
             if (subject) params.push('subject=' + encodeURIComponent(subject));
-            
             if (body) {
-                // Normalize newlines, then encode, THEN replace %0A with %0D%0A for Outlook
                 const normalizedBody = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
                 const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
                 params.push('body=' + encodedBody);
             }
+            if (params.length > 0) mailto += '?' + params.join('&');
 
-            if (params.length > 0) {
-                mailto += '?' + params.join('&');
-            }
-
-            // 3. Display results
+            currentMailtoCommand = mailto; // Save for library
             DOMElements.resultMailto.value = mailto;
             DOMElements.resultLink.href = mailto;
             DOMElements.outputWrapper.classList.remove('hidden');
+            
+            // Auto-fill template name if empty
+            if (DOMElements.saveTemplateName.value.trim() === '') {
+                 DOMElements.saveTemplateName.value = subject || 'New Template';
+            }
 
-            // 4. Trigger textarea resize (deferred)
-            setTimeout(() => {
-                DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
-            }, 0);
+            setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto), 0);
+        };
+        
+        // --- Library Action Handlers ---
+        
+        const handleNewTemplate = () => {
+            // Reset editor
+            currentMailtoCommand = null;
+            DOMElements.resultTo.value = '';
+            DOMElements.resultCc.value = '';
+            DOMElements.resultBcc.value = '';
+            DOMElements.resultSubject.value = '';
+            DOMElements.resultBody.value = '';
+            DOMElements.saveTemplateName.value = '';
+            DOMElements.outputWrapper.classList.add('hidden');
+            DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
+            showView('editor');
+        };
+        
+        const handleNewFolder = () => {
+            SafeUI.showModal('New Folder', '<input id="folder-name-input" class="sidebar-input" placeholder="Folder Name">', [
+                {label: 'Cancel'},
+                {label: 'Create', class: 'button-primary', callback: () => {
+                    const nameInput = document.getElementById('folder-name-input');
+                    const name = nameInput.value.trim();
+                    if (!SafeUI.validators.notEmpty(name)) {
+                        return SafeUI.showValidationError('Invalid Name', 'Folder name cannot be empty.', 'folder-name-input');
+                    }
+                    
+                    const container = getItemsInCurrentFolder();
+                    if (DataValidator.hasDuplicate(container, 'name', name)) {
+                         return SafeUI.showValidationError('Duplicate Name', 'A folder or item with this name already exists here.', 'folder-name-input');
+                    }
+                    
+                    container.push({
+                        id: SafeUI.generateId(),
+                        type: 'folder',
+                        name: name,
+                        children: []
+                    });
+                    saveState();
+                    renderCatalogue();
+                }}
+            ]);
+        };
+        
+        const handleSaveToLibrary = () => {
+            const name = DOMElements.saveTemplateName.value.trim();
+            if (!currentMailtoCommand) {
+                return SafeUI.showToast('Error: Please generate a command first.');
+            }
+            if (!SafeUI.validators.notEmpty(name)) {
+                return SafeUI.showValidationError('Invalid Name', 'Template name cannot be empty.', 'save-template-name');
+            }
+            
+            const container = getItemsInCurrentFolder();
+            if (DataValidator.hasDuplicate(container, 'name', name)) {
+                 return SafeUI.showValidationError('Duplicate Name', 'An item with this name already exists in this folder.', 'save-template-name');
+            }
+            
+            container.push({
+                id: SafeUI.generateId(),
+                type: 'item',
+                name: name,
+                mailto: currentMailtoCommand
+            });
+            saveState();
+            SafeUI.showToast('Template saved!');
+            showView('catalogue');
+            renderCatalogue();
         };
 
-        // --- Copy Button ---
-        DOMElements.copyMailtoBtn.addEventListener('click', async () => {
-            const mailto = DOMElements.resultMailto.value;
-            if (!mailto) return;
+        // --- Data Management Handlers ---
+        const handleExportJson = () => {
+            const dataStr = JSON.stringify(state.library, null, 2);
+            const timestamp = new Date().toISOString().split('T')[0];
+            SafeUI.downloadJSON(dataStr, `mailto-library-export-${timestamp}.json`);
+        };
+        
+        const handleImportJson = () => {
+            SafeUI.openFilePicker((file) => {
+                SafeUI.readJSONFile(file, 
+                    (parsedData) => {
+                        if (!Array.isArray(parsedData)) {
+                             return SafeUI.showModal('Import Error', '<p>File is not a valid library export (must be a JSON array).</p>', [{label: 'OK'}]);
+                        }
+                        // Simple validation
+                        if (parsedData.length > 0 && (!parsedData[0].id || !parsedData[0].name || !parsedData[0].type)) {
+                             return SafeUI.showModal('Import Error', '<p>File does not seem to be a valid library export (missing id, name, or type).</p>', [{label: 'OK'}]);
+                        }
+                        
+                        SafeUI.showModal('Confirm Import', `<p>This will <b>overwrite your entire library</b> with ${parsedData.length} items from the file. This cannot be undone.</p>`, [
+                            {label: 'Cancel'},
+                            {label: 'Overwrite and Import', class: 'button-danger', callback: () => {
+                                state.library = parsedData;
+                                currentFolderId = 'root';
+                                saveState();
+                                renderCatalogue();
+                                SafeUI.showToast('Library imported successfully.');
+                            }}
+                        ]);
+                    },
+                    (errorMsg) => {
+                        SafeUI.showModal('Import Error', `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
+                    }
+                );
+            }, 'application/json,.json');
+        };
+
+        // --- Event Listeners ---
+        const attachEventListeners = () => {
+            // --- Catalogue View ---
+            DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
+            DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
+            DOMElements.btnImportJson.addEventListener('click', handleImportJson);
+            DOMElements.btnExportJson.addEventListener('click', handleExportJson);
             
-            const success = await SafeUI.copyToClipboard(mailto);
-            SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
-        });
+            // --- Editor View ---
+            DOMElements.btnEditorCancel.addEventListener('click', () => {
+                showView('catalogue');
+                renderCatalogue();
+            });
+            DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
+            DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
+            DOMElements.copyMailtoBtn.addEventListener('click', async () => {
+                if (!currentMailtoCommand) return;
+                const success = await SafeUI.copyToClipboard(currentMailtoCommand);
+                SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
+            });
+            
+            // --- Drag and Drop (Editor) ---
+            const uploadWrapper = DOMElements.uploadWrapper; // Cache for frequent use
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, (ev) => ev.preventDefault()));
+            ['dragenter', 'dragover'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.add('dragover')));
+            ['dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.remove('dragover')));
+            uploadWrapper.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) handleFile(files[0]);
+            });
+            DOMElements.msgUpload.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
+            });
+
+            // --- Event Delegation for Lists ---
+            DOMElements.treeListContainer.addEventListener('click', (e) => {
+                const itemEl = e.target.closest('.list-item');
+                if (!itemEl) return;
+                
+                // --- FIX: If user clicks the main link, let the browser handle it. ---
+                if (e.target.closest('.list-item-name')) {
+                    return; // Do nothing, let default <a> behavior run.
+                }
+                
+                // --- FIX: Handle folder name click separately ---
+                if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
+                    e.preventDefault();
+                    const id = itemEl.dataset.id;
+                    const item = findItemById(id, getItemsInCurrentFolder());
+                    if (item && item.type === 'folder') {
+                        currentFolderId = item.id;
+                        renderCatalogue();
+                    }
+                    return;
+                }
+
+                // For any other click (buttons, div padding), prevent default.
+                e.preventDefault();
+
+                const id = itemEl.dataset.id;
+                const item = findItemById(id, getItemsInCurrentFolder());
+                if (!item) return;
+
+                // --- FIX: Handle Copy Button ---
+                if (e.target.closest('.copy-btn')) {
+                    SafeUI.copyToClipboard(item.mailto);
+                    SafeUI.showToast(`Copied "${item.name}" to clipboard!`);
+                    return;
+                }
+                
+                // Handle Delete Button
+                if (e.target.closest('.delete-btn')) {
+                    UIPatterns.confirmDelete(item.type, item.name, () => {
+                        const container = getItemsInCurrentFolder();
+                        const index = container.findIndex(i => i.id === id);
+                        if (index > -1) {
+                            container.splice(index, 1);
+                            saveState();
+                            renderCatalogue();
+                        }
+                    });
+                    return; 
+                }
+            });
+            
+            DOMElements.breadcrumbContainer.addEventListener('click', (e) => {
+                 const link = e.target.closest('.breadcrumb-link');
+                 if (link && link.dataset.id) {
+                     currentFolderId = link.dataset.id;
+                     renderCatalogue();
+                 }
+            });
+        };
 
         // --- Init ---
         const init = () => {
-            // Setup textarea auto-resize
+            // Setup icons
+            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
+
+            // Setup textareas
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultMailto, 150);
             
-            // Attach listener for the new Generate button
-            DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
+            attachEventListeners();
+            
+            // Initial render
+            showView('catalogue');
+            renderCatalogue();
             
             SafeUI.loadNavbar("navbar-container");
         };
@@ -323,4 +732,5 @@
     </script>
 </body>
 </html>
+
 
