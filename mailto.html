@@ -249,7 +249,7 @@
     <div id="toast" class="toast"></div>
 
     <!-- External Libs -->
-    <script src="https://cdn.jsdelivr.net/npm/msgreader@0.3.0/MsgReader.js"></script>
+    <script src="js/msgreader.js"></script>
     
     <!-- App Libs -->
     <script src="js/app-core.js"></script>
@@ -259,6 +259,7 @@
     <script>
     // Dependency Check
     (() => {
+        // FIX: Add MsgReader to dependency check
         const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         if (missing.length > 0) {
@@ -344,22 +345,24 @@
         const getBreadcrumbPath = (folderId) => {
             if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
             let path = [];
-            let current = findItemById(folderId);
-
+            
+            // Recursive function to find the path
             const findParentPath = (items, targetId, currentPath) => {
                 for (const item of items) {
+                    const newPath = [...currentPath, item];
                     if (item.id === targetId) {
-                        return [...currentPath, item];
+                        return newPath; // Found it
                     }
                     if (item.type === 'folder' && item.children) {
-                        const foundPath = findParentPath(item.children, targetId, [...currentPath, item]);
-                        if (foundPath) return foundPath;
+                        const foundPath = findParentPath(item.children, targetId, newPath);
+                        if (foundPath) return foundPath; // Found in subcommand
                     }
                 }
-                return null;
+                return null; // Not in this branch
             };
 
             const fullPath = findParentPath(state.library, folderId, []);
+            
             if (fullPath) {
                 path = fullPath.map(item => ({ id: item.id, name: item.name }));
             }
@@ -417,13 +420,13 @@
                     const iconType = item.type === 'folder' ? 'folder' : 'template';
                     const iconSvg = item.type === 'folder' 
                         ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>'
-                        : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>';
+                        : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.I-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>';
                     
                     let nameElement = '';
                     if (item.type === 'folder') {
                         nameElement = `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>`;
                     } else {
-                        // --- FIX: Use <a> tag for launching, and data-mailto for copying ---
+                        // --- FIX: Use <a> tag for launching ---
                         nameElement = `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name" title="Launch: ${SafeUI.escapeHTML(item.name)}">${SafeUI.escapeHTML(item.name)}</a>`;
                     }
 
@@ -452,6 +455,7 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
+                    // Use window.MsgReader explicitly
                     const msgReader = new window.MsgReader(e.target.result);
                     const fileData = msgReader.getFileData();
                     if (fileData.error) throw new Error(fileData.error);
@@ -579,9 +583,14 @@
 
         // --- Data Management Handlers ---
         const handleExportJson = () => {
+            if (state.library.length === 0) {
+                return SafeUI.showToast("Library is empty, nothing to export.");
+            }
             const dataStr = JSON.stringify(state.library, null, 2);
-            const timestamp = new Date().toISOString().split('T')[0];
-            SafeUI.downloadJSON(dataStr, `mailto-library-export-${timestamp}.json`);
+            // Get timestamp for filename
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+            SafeUI.downloadJSON(dataStr, `mailto-library-export_${timestamp}.json`);
         };
         
         const handleImportJson = () => {
@@ -656,7 +665,8 @@
                 
                 // --- FIX: If user clicks the main link, let the browser handle it. ---
                 if (e.target.closest('.list-item-name')) {
-                    return; // Do nothing, let default <a> behavior run.
+                    // This is an <a> tag, let the default behavior (launch mailto:) run.
+                    return; 
                 }
                 
                 // --- FIX: Handle folder name click separately ---
@@ -679,8 +689,9 @@
                 if (!item) return;
 
                 // --- FIX: Handle Copy Button ---
-                if (e.target.closest('.copy-btn')) {
-                    SafeUI.copyToClipboard(item.mailto);
+                const copyBtn = e.target.closest('.copy-btn');
+                if (copyBtn && copyBtn.dataset.mailto) {
+                    SafeUI.copyToClipboard(copyBtn.dataset.mailto);
                     SafeUI.showToast(`Copied "${item.name}" to clipboard!`);
                     return;
                 }
