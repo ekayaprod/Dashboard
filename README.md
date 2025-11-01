@@ -1,125 +1,190 @@
-Dashboard & Tools Suite
+# Dashboard & Tools Suite
 
-1. Project Overview
+## 1. Project Overview
 
-This is a multi-page browser application designed for use in a sidebar environment. It provides two primary tools, "Dashboard" and "Lookup," which run as independent, stateful applications. All data is stored locally in the browser's localStorage.
+This is a multi-page browser application designed for use in a sidebar environment. It provides four primary tools: Dashboard, Lookup, MailTo Generator, and Password Generator. All data is stored locally in the browser's localStorage. The project includes a developer template (template.html) for scaffolding new pages.
 
-The project also includes a developer template (template.html) for scaffolding new pages.
+## 2. Core Architecture
 
-2. Core Architecture
+The entire project is built on a shared, modular foundation consisting of three JavaScript libraries and a reusable navigation component.
 
-The entire project is built on a shared, modular foundation.
-
-3-File JavaScript Library
+### 3-File JavaScript Library
 
 All shared logic is modularized into three files, which are loaded on every page:
 
-js/app-core.js: The application foundation. It contains all low-level utilities (DOM helpers, modal/toast UI, validators, debounce functions) and the AppLifecycle bootstrap module.
+**js/app-core.js**: The application foundation containing low-level utilities (DOM helpers, modal/toast UI, validators, debounce functions) and the AppLifecycle bootstrap module.
 
-js/app-ui.js: Contains high-level, reusable UI patterns, such as UIPatterns.confirmDelete and components like ListRenderer and SearchHelper.
+**js/app-ui.js**: High-level, reusable UI patterns including UIPatterns.confirmDelete and components like ListRenderer and SearchHelper.
 
-js/app-data.js: Handles all data persistence logic, including the BackupRestore module (for JSON backups) and DataValidator (for checks like hasDuplicate).
+**js/app-data.js**: Data persistence logic including the BackupRestore module (for JSON backups), DataValidator (duplicate checking), DataConverter (CSV parsing), and CsvManager (CSV import/export workflow).
 
-"Smart" Navbar (navbar.html)
+### Smart Navbar Component (navbar.html)
 
-The navbar.html file is loaded via fetch() on every page and acts as a self-contained component.
+The navbar.html file is loaded via fetch() on every page and acts as a self-contained component with a self-activating script that checks window.location.pathname and automatically applies the .active class to the correct navigation link.
 
-Global UI Provider: It contains the master HTML for all global UI elements, specifically the modal overlay (#modal-overlay) and the toast notification (#toast). This prevents code duplication on every page.
+## 3. Page-Specific Architecture
 
-Self-Activating Links: It includes an inline script that checks the window's current URL (window.location.pathname) and automatically applies the .active class to the correct navigation link.
+### index.html (Dashboard)
 
-3. Page-Specific Architecture
+Multi-purpose dashboard for managing application links, shortcuts, and notes.
 
-index.html (Dashboard)
+**Storage Key**: dashboard_state_v5
 
-This page is a multi-purpose dashboard for managing application links, shortcuts, and notes.
+**Features**:
+- **Applications**: Managed via dropdown selector. Each app contains URLs and notes. The app name field only appears when creating new apps.
+- **Shortcuts**: Quick-access URL list with drag-and-drop reordering.
+- **Notepad**: Multi-document notepad with create, rename, and delete capabilities. Functionally separate from app notes.
 
-State: All data is saved to localStorage under the dashboard_state_v5 key.
+**Data Management**: Two-tier system with CSV (user-friendly bulk editing) and JSON (technical disaster recovery) import/export.
 
-Features:
+### lookup.html (Lookup)
 
-Applications: A list of applications managed via a <select> dropdown. Each app can have "App Notes / Escalation" and a list of URLs. New apps can be created, which dynamically shows an "App Name" field.
+Dual-search tool that queries an external KnowledgeBase and an internal database simultaneously.
 
-Shortcuts: A separate list of quick-access URLs, which supports drag-and-drop reordering.
+**Storage Key**: lookup_v2_data
 
-Notepad: A standalone, multi-document notepad with its own UI for creating, renaming, and deleting notes. This is a core feature and is functionally separate from the "App Notes".
+**State Model**:
+- `state.settings`: Configuration object containing kbBaseUrl
+- `state.items`: Array of database entries (schema: id, keyword, assignmentGroup, notes, phoneLogPath)
 
-lookup.html (Lookup)
+**Core Functions**:
+- **KB Search**: Inserts search term into kbBaseUrl template (configured in Settings modal) to generate dynamic search link
+- **Local DB Search**: Filters state.items array by search term
 
-This is a "dual-search" tool that searches both an external KnowledgeBase and an internal database simultaneously.
+**UI Modes**:
+- **Search Mode** (Default): Filters results by search term. Shows "+ Create Entry" button when no results found, pre-filling keyword field with search term.
+- **Edit Mode**: Displays all items as inline edit forms, ignoring search filter. Activated via "Edit Mode" button.
 
-Storage & State
+**Data Integrity Logic**:
 
-Storage: All data is stored in localStorage under the lookup_v2_data key.
+Implements "Merge on Duplicate" workflow inherited from original PowerShell script:
+- When saving an entry, handleSave() checks if assignmentGroup already exists
+- If duplicate found, shows modal with three options:
+  - Cancel: Abort save
+  - Continue (Create New): Allow duplicate entry
+  - Merge Keywords: Combine keywords with existing entry and discard new entry
 
-State Model:
+**Data Management**: Two-tier system with CSV (primary method for bulk editing) and JSON (disaster recovery via Settings modal).
 
-state.settings: An object holding the user-configured kbBaseUrl.
+### mailto.html (MailTo Generator)
 
-state.items: An array of objects representing the local database (schema: id, keyword, assignmentGroup, notes, phoneLogPath).
+Email template library with drag-and-drop .msg/.oft file upload.
 
-Core Functions
+**Storage Key**: mailto_library_v1
 
-KB Search: Takes the search term and inserts it into the kbBaseUrl template (configured in the ⚙️ Settings modal) to generate a dynamic "Search KB" link.
+**State Model**:
+- `state.library`: Hierarchical tree structure containing folders and template items
+- Each folder: `{id, type: 'folder', name, children: []}`
+- Each template: `{id, type: 'item', name, mailto: '...'}`
 
-Local DB Search: Searches the state.items array for the term.
+**Core Workflow**:
+1. **Phase 1**: Upload .msg/.oft file or manually enter email fields
+2. **Phase 2**: Review and edit extracted fields (To, CC, BCC, Subject, Body)
+3. **Phase 3**: Generate mailto: command, test in email client, save to library
 
-UI Modes: "Search" vs. "Edit"
+**Library Features**:
+- Folder organization with breadcrumb navigation
+- Templates launch directly via mailto: links
+- JSON import/export for library backup
 
-The UI has two distinct modes controlled by the isEditMode flag:
+**Dependencies**: Requires msgreader.js library for parsing Outlook message files.
 
-Search Mode (Default):
+### passwords.html (Password Generator)
 
-The local results list is filtered by the search term.
+Dual-mode password generator with customizable wordbanks.
 
-If a search yields zero results, a + Create Entry button appears, which pre-fills the new item's keyword with the search term (replicating the PowerShell script's "create on not found" logic).
+**Storage Key**: passwords_v1_data
 
-Edit Mode ("Override"):
+**State Model**:
+- `state.wordBank`: Categorized word lists for passphrase generation (Adjective, Animal, Object, Verb, Color, Seasonal)
+- `state.phraseStructures`: Template rules for word combinations
+- `state.symbolRules`: Symbol placement rules
+- `state.tempWordList`: Word list for temporary password generation
 
-The search term is ignored.
+**Generator Modes**:
+1. **Secure Passphrase**: Generates memorable passphrases with configurable structure (word count, separator, capitalization, digits, symbols, seasonal themes)
+2. **Temporary Password**: Generates simple compound words with optional symbols and numbers
 
-The local results list displays every single item from state.items, sorted alphabetically, rendered as in-line edit forms (createEditForm).
+**Seasonal Logic**: Passphrase generator can incorporate seasonal words (Winter, Spring, Summer, Autumn) based on current date with custom Memorial Day and Labor Day calculations.
 
-Data Integrity (PowerShell Logic Adaptation)
+**Data Management**: JSON import/export for wordbank customization.
 
-The page replicates the core data-integrity logic from the AssignmentGroupTool.ps1 script:
+## 4. Key Design Patterns & Technical Notes
 
-"Merge on Duplicate" Workflow: When a user saves an entry, the handleSave() function checks if the assignmentGroup already exists in another entry.
+### AppLifecycle.initPage
 
-If it does, the save is stopped, and a modal is shown with three choices:
+Core bootstrap function in app-core.js responsible for:
+- Caching all required DOM elements (converts kebab-case IDs to camelCase properties)
+- Loading the navbar.html component via fetch()
+- Loading page state from localStorage via createStateManager
 
-[Abort]: Cancels the save.
+### State Management
 
-[Continue (Create New)]: Saves the form as a new, separate entry (allowing duplicates).
+Each page manages its own isolated state under a unique localStorage key:
+- `dashboard_state_v5`: Dashboard data
+- `lookup_v2_data`: Lookup tool data
+- `mailto_library_v1`: MailTo library data
+- `passwords_v1_data`: Password generator data
 
-[Merge Keywords]: The smart default. It merges the new keywords with the existing entry's keywords and then discards the new entry.
+### Textarea Auto-Resize
 
-Data Management (Two-Tier System)
+All textarea elements have `resize: none` in CSS and are controlled by `DOMHelpers.setupTextareaAutoResize()` for consistent, automatic height adjustment based on content.
 
-User-Friendly (CSV): The main "Import..." and "Export..." buttons. This is the primary method for bulk editing (the "open in Excel" workflow).
+### CSV Import/Export Pattern
 
-handleExportCSV: Converts the state.items array to a .csv file.
+Implemented via CsvManager module:
+- **Export**: Converts state array to CSV with RFC 4180 compliant escaping
+- **Import**: Parses CSV with quoted field support, validates headers, handles duplicates based on page-specific logic
 
-handleImportCSV: Parses a .csv file and overwrites the state.items array.
+### Error Handling
 
-Technical (JSON): Hidden inside the "Settings" (⚙️) modal.
+Dependency checks at page startup display non-destructive error banners without wiping DOM content. Critical failures are logged to console and prevent further execution.
 
-handleBackup: Creates a JSON snapshot of the entire state (items + settings) for disaster recovery.
+### Jekyll Compatibility
 
-handleRestore: Restores the application from a JSON backup.
+Navigation file is named `navbar.html` (not `_nav.html`) to prevent GitHub Pages from ignoring it during Jekyll builds.
 
-4. Key Design Patterns & Workarounds
+## 5. Development Guidelines
 
-AppLifecycle.initPage: This is the core bootstrap function in app-core.js. It is called by every page and is responsible for:
+### Adding a New Page
 
-Caching all required DOM elements.
+1. Copy `template.html` as starting point
+2. Define unique `LOCAL_STORAGE_KEY` and `defaultState`
+3. List all required DOM elements in `requiredElements` array
+4. Implement page-specific logic using shared utilities from app-core.js, app-ui.js, and app-data.js
+5. Add navigation link to navbar.html
 
-Loading the navbar.html component.
+### Shared Utility Usage
 
-Loading the page's state from localStorage (via createStateManager).
+All pages have access to:
+- **SafeUI**: Safe wrappers for UI operations (modals, toasts, validation, clipboard, file I/O)
+- **DOMHelpers**: DOM manipulation utilities (element caching, textarea auto-resize)
+- **UIPatterns**: Confirmation dialogs, search highlighting
+- **ListRenderer**: List rendering with empty state handling
+- **SearchHelper**: Debounced search, array filtering
+- **BackupRestore**: JSON backup/restore workflow
+- **DataValidator**: Duplicate checking, field validation
+- **CsvManager**: CSV import/export setup
 
-"Jekyll-Proof" Filename: The navigation bar file is named navbar.html (not _nav.html). This prevents GitHub Pages (which uses Jekyll) from ignoring the file during its build process.
+### Code Standards
 
-localStorage Isolation: Each page (index.html, lookup.html) manages its own state under its own unique localStorage key. This prevents data corruption between the tools.
+- Use `SafeUI` wrapper instead of direct `UIUtils` calls for graceful degradation
+- Always validate user input before state mutations
+- Use `SaveState()` after non-sorting operations; use `sortAndSaveState()` after imports/restores
+- Handle null/undefined values in search filters and data accessors
+- Implement proper error recovery for file operations and localStorage
 
-CSS resize: none: All textarea elements have manual resizing disabled in style.css and are controlled by the DOMHelpers.setupTextareaAutoResize function for a cleaner UI.
+## 6. Browser Requirements
+
+- Modern browser with ES6 support
+- localStorage enabled
+- Clipboard API for copy operations
+- File API for import/export
+- Crypto API for secure random number generation (passwords page)
+
+## 7. Known Limitations
+
+- No backend synchronization (all data stored locally)
+- CSV import limited to ~5MB per file (browser-dependent)
+- mailto: URL length limited by email client (typically 2000 characters)
+- No collaborative editing support
