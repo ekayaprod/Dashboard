@@ -1,0 +1,56 @@
+{
+    "Noun": [
+        "Acorn",
+        "Apple",
+        "Cider",
+        "Corn",
+        "Fall",
+        "Foliage",
+        "Gourd",
+        "Harvest",
+        "Hay",
+        "Leaf",
+        "Maple",
+        "Orchard",
+        "Pumpkin",
+        "Spice",
+        "Sweater",
+        "Wood"
+    ],
+    "Adjective": [
+        "Blustery",
+        "Chilly",
+        "Cool",
+        "Cozy",
+        "Crimson",
+        "Dim",
+        "Dry",
+        "Golden",
+        "Mellow",
+        "Orange",
+        "Quiet",
+        "Rustic",
+        "Leafy"
+    ],
+    "Verb": [
+        "Bake",
+        "Change",
+        "Chill",
+        "Cool",
+        "Crunch",
+        "Fade",
+        "Gather",
+        "Glow",
+        "Rustle"
+    ],
+    "Concept": [
+        "Calm",
+        "Change",
+        "Comfort",
+        "Cycle",
+        "Dusk",
+        "Memory",
+        "Thought",
+        "Joy"
+    ]
+}
