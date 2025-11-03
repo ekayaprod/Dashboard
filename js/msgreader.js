@@ -723,7 +723,7 @@ var Reader = function () {
       var recipientType = recipient.recipientType;
       recipients.push({
         name: recipient.recipientSmtpAddress || recipient.recipientName || recipient.recipientEmail || recipient.recipientDisplayName,
-        email: recipient.recipientSmtpAddress || recipient.recipientEmail || recipient.recipientEmailAddress,
+        email: recipient.recipientSmtgAddress || recipient.recipientEmail || recipient.recipientEmailAddress,
         type: recipientType === 1 ? 'to' : recipientType === 2 ? 'cc' : recipientType === 3 ? 'bcc' : undefined
       });
     });
@@ -734,4 +734,36 @@ var Reader = function () {
 }();
 
 var MsgReader = function () {
-  function 
+  function MsgReader(arrayBuffer) {
+    this.reader = new Reader(arrayBuffer);
+    this.fields = this.reader.read();
+  }
+
+  var _proto = MsgReader.prototype;
+
+  _proto.getFileData = function getFileData() {
+    var body = this.fields.getField('body');
+    var html = this.fields.getField('html');
+    return {
+      senderName: this.fields.getField('senderName') ? this.fields.getField('senderName').value : undefined,
+      senderEmail: this.fields.getField('senderEmail') ? this.fields.getField('senderEmail').value : undefined,
+      senderSmtpAddress: this.fields.getField('senderSmtpAddress') ? this.fields.getField('senderSmtpAddress').value : undefined,
+      subject: this.fields.getField('subject') ? this.fields.getField('subject').value : undefined,
+      normalizedSubject: this.fields.getField('normalizedSubject') ? this.fields.getField('normalizedSubject').value : undefined,
+      subjectPrefix: this.fields.getField('subjectPrefix') ? this.fields.getField('subjectPrefix').value : undefined,
+      body: body ? body.value : undefined,
+      html: html ? html.value : undefined,
+      headers: this.fields.getField('headers') ? this.fields.getField('headers').value : undefined,
+      attachments: this.fields.getField('attachments') ? this.fields.getField('attachments').value : [],
+      recipients: this.fields.getField('recipients') ? this.fields.getField('recipients').value : []
+    };
+  };
+
+  return MsgReader;
+}();
+
+exports.default = MsgReader;
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+})));
