@@ -1,6 +1,6 @@
 /**
  * app-data.js
- * * State persistence, backup/restore, and data validation/conversion logic
+ * State persistence, backup/restore, and validation logic
  * Depends on: app-core.js
  */
 
@@ -17,7 +17,6 @@ const BackupRestore = {
                 data: state
             };
             const dataStr = JSON.stringify(backupData, null, 2);
-            // Uses YYYY-MM-DD format
             const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
             
             SafeUI.downloadJSON(dataStr, filename, 'application/json');
@@ -59,11 +58,13 @@ const BackupRestore = {
 
     /**
      * Validates an array of items, ensuring each item is an object with required fields
+     * Note: An empty requiredFields array will always return true, which is intended
+     * if the array just needs to be validated as an array (e.g., 'notes': [])
      */
     validateItems: (items, requiredFields) => {
         if (!Array.isArray(items)) return false;
+        if (requiredFields.length === 0) return true; // Empty check means just ensure it's an array
         
-        // Note: An empty requiredFields array will correctly return true for any array.
         return items.every(item => {
             if (!item || typeof item !== 'object') return false;
             return requiredFields.every(field => field in item);
@@ -76,28 +77,34 @@ const BackupRestore = {
     handleRestoreUpload: (config) => {
         BackupRestore.restoreBackup((restoredData) => {
             try {
+                // Handle both new backup format {data: {...}} and legacy format {...}
                 const dataToValidate = restoredData.data ? restoredData.data : restoredData;
                 const isNewBackup = !!restoredData.data;
                 const appName = restoredData.appName;
                 
+                // Check for app name match, allowing for a legacy name
                 const isLegacy = config.legacyAppName && appName === config.legacyAppName;
                 const isCorrectApp = appName === config.appName;
 
+                // Only enforce app name check on new-style backups
                 if (isNewBackup && !isCorrectApp && !isLegacy) {
                     throw new Error(`This file is not a valid '${config.appName}' backup.`);
                 }
 
+                // Validate that all required top-level keys exist in the data
                 const requiredDataKeys = Object.keys(config.itemValidators);
                 if (isNewBackup && !BackupRestore.validateBackup(restoredData, requiredDataKeys)) {
-                     throw new Error('Backup file is invalid or missing required data.');
+                     throw new Error('Backup file is invalid or missing required data keys.');
                 }
 
+                // Validate the contents of each item array
                 for (const [key, fields] of Object.entries(config.itemValidators)) {
                     if (dataToValidate[key] && !BackupRestore.validateItems(dataToValidate[key], fields)) {
                         throw new Error(`Backup data for '${key}' contains corrupt items.`);
                     }
                 }
                 
+                // If all checks passed, call the onRestore function
                 config.onRestore(dataToValidate, isLegacy);
 
             } catch(err) {
@@ -114,14 +121,68 @@ const BackupRestore = {
         const {
             state,
             appName,
-            backupBtn,
-            restoreBtn,
+            backupBtn,   // Button to trigger backup
+            restoreBtn,  // Button to trigger restore
+            settingsBtn, // Button that *opens* the modal (if backup/restore are inside)
             legacyAppName,
             itemValidators,
             restoreConfirmMessage,
             onRestoreCallback
         } = config;
 
+        // If settingsBtn is provided, it means the backup/restore buttons
+        // are inside a modal that this button opens.
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                // This function is defined inside mailto.html, lookup.html, etc.
+                // It's expected to show a modal that contains
+                // elements with IDs 'modal-backup-btn' and 'modal-restore-btn'
+                if (typeof config.showSettingsModal === 'function') {
+                    config.showSettingsModal(); // This modal HTML must contain the buttons
+                }
+                
+                // We have to find the buttons *after* the modal is created
+                // We use setTimeout to give the modal time to render
+                setTimeout(() => {
+                    const modalBackupBtn = document.getElementById(config.backupBtnId || 'modal-backup-btn');
+                    const modalRestoreBtn = document.getElementById(config.restoreBtnId || 'modal-restore-btn');
+                    
+                    if (modalBackupBtn) {
+                        modalBackupBtn.onclick = () => {
+                            BackupRestore.createBackup(state, appName);
+                        };
+                    }
+                    if (modalRestoreBtn) {
+                         modalRestoreBtn.onclick = () => {
+                            BackupRestore.handleRestoreUpload({
+                                appName: appName,
+                                legacyAppName: legacyAppName,
+                                itemValidators: itemValidators,
+                                onRestore: (dataToRestore, isLegacy) => {
+                                    SafeUI.showModal("Confirm Restore (JSON)", 
+                                        `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`, 
+                                        [
+                                            { label: 'Cancel' },
+                                            { 
+                                                label: 'Restore', 
+                                                class: 'button-danger', 
+                                                callback: () => {
+                                                    onRestoreCallback(dataToRestore);
+                                                }
+                                            }
+                                        ]
+                                    );
+                                }
+                            });
+                        };
+                    }
+                }, 0);
+            });
+            return; // Exit, as the main buttons aren't the triggers
+        }
+
+        // --- Standard flow: backupBtn and restoreBtn are the triggers ---
+        
         if (backupBtn) {
             backupBtn.addEventListener('click', () => {
                 BackupRestore.createBackup(state, appName);
@@ -225,8 +286,10 @@ const DataConverter = {
 
         const escapeCell = (cell) => {
             const str = String(cell == null ? '' : cell);
-            // Per RFC 4180, escape quotes by doubling them
-            if (str.includes('"') || str.includes(',') || str.includes('\n')) {
+            // RFC 4180: Fields containing line breaks (CRLF), double quotes,
+            // and commas should be enclosed in double-quotes.
+            if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+                // Escape existing quotes by doubling them
                 return `"${str.replace(/"/g, '""')}"`;
             }
             return str;
@@ -241,9 +304,8 @@ const DataConverter = {
     },
 
     /**
-     * Helper to parse a single line of CSV text, respecting quotes.
-     * Note: This implementation follows RFC 4180 (doubled quotes "" for escaping).
-     * It does not support non-standard backslash escapes (\").
+     * Internal helper to parse a single CSV line according to RFC 4180.
+     * This is a state machine.
      */
     _parseCsvLine: (line) => {
         const values = [];
@@ -252,28 +314,35 @@ const DataConverter = {
 
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
-            const nextChar = line[i + 1];
 
-            if (char === '"') {
-                if (inQuotes && nextChar === '"') {
-                    // Escaped quote
-                    currentVal += '"';
-                    i++; // Skip next quote
+            if (inQuotes) {
+                // We are inside quotes
+                if (char === '"') {
+                    if (i + 1 < line.length && line[i + 1] === '"') {
+                        // This is an escaped quote ("")
+                        currentVal += '"';
+                        i++; // Skip the next quote
+                    } else {
+                        // This is the closing quote
+                        inQuotes = false;
+                    }
                 } else {
-                    // Toggle quote state
-                    inQuotes = !inQuotes;
+                    currentVal += char;
                 }
-            } else if (char === ',' && !inQuotes) {
-                // End of a value
-                values.push(currentVal.replace(/""/g, '"'));
-                currentVal = '';
             } else {
-                // Regular character
-                currentVal += char;
+                // We are outside quotes
+                if (char === '"') {
+                    inQuotes = true;
+                } else if (char === ',') {
+                    values.push(currentVal);
+                    currentVal = '';
+                } else {
+                    currentVal += char;
+                }
             }
         }
-        // Add the last value
-        values.push(currentVal.replace(/""/g, '"'));
+        
+        values.push(currentVal); // Add the last value
         return values;
     },
 
@@ -288,30 +357,23 @@ const DataConverter = {
                     let currentLine = '';
                     let inQuotes = false;
                     
+                    // Normalize line endings to \n
+                    const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
                     // First pass: properly split lines respecting quoted newlines
-                    for (let i = 0; i < text.length; i++) {
-                        const char = text[i];
-                        const nextChar = text[i + 1];
+                    for (let i = 0; i < normalizedText.length; i++) {
+                        const char = normalizedText[i];
                         
                         if (char === '"') {
-                            if (inQuotes && nextChar === '"') {
-                                // Escaped quote
-                                currentLine += '""';
-                                i++; // Skip next quote
-                            } else {
-                                // Toggle quote state
-                                inQuotes = !inQuotes;
-                                currentLine += char;
-                            }
-                        } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
-                            // Line break outside quotes
-                            if (currentLine.trim() || lines.length > 0) { // Keep lines if they are not just whitespace, unless it's first line
+                            inQuotes = !inQuotes;
+                        }
+                        
+                        if (char === '\n' && !inQuotes) {
+                            if (currentLine.trim() || lines.length > 0) {
                                 lines.push(currentLine);
                             }
                             currentLine = '';
-                            if (char === '\r') i++; // Skip \n in \r\n
-                        } else if (char !== '\r') {
-                            // Regular character (skip standalone \r)
+                        } else {
                             currentLine += char;
                         }
                     }
@@ -328,7 +390,7 @@ const DataConverter = {
                     // Parse header line
                     const headerLine = lines.shift();
                     const headers = DataConverter._parseCsvLine(headerLine).map(h => h.trim());
-                    
+
                     const errors = [];
 
                     // Validate required headers
@@ -351,7 +413,10 @@ const DataConverter = {
                         }
 
                         headers.forEach((header, i) => {
-                            obj[header] = values[i] || '';
+                            // Only map headers we care about
+                            if (requiredHeaders.includes(header)) {
+                                obj[header] = values[i] || '';
+                            }
                         });
                         
                         return obj;
@@ -376,42 +441,41 @@ const DataConverter = {
  */
 const CsvManager = {
     /**
+     * Helper function to create a timestamp string
+     */
+    _getTimestamp: () => {
+        const d = new Date();
+        const Y = d.getFullYear();
+        const M = String(d.getMonth() + 1).padStart(2, '0');
+        const D = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const m = String(d.getMinutes()).padStart(2, '0');
+        const s = String(d.getSeconds()).padStart(2, '0');
+        return `${Y}${M}${D}_${h}${m}${s}`; // e.g., 20251031_162800
+    },
+
+    /**
      * Wires up a CSV export button
      */
     setupExport: (config) => {
         if (!config.exportBtn) {
-            // console.warn("CsvManager.setupExport: exportBtn is null. Skipping.");
             return;
         }
 
         config.exportBtn.addEventListener('click', () => {
             try {
-                // Helper function to create a timestamp string
-                const getTimestamp = () => {
-                    const d = new Date();
-                    const Y = d.getFullYear();
-                    const M = String(d.getMonth() + 1).padStart(2, '0');
-                    const D = String(d.getDate()).padStart(2, '0');
-                    const h = String(d.getHours()).padStart(2, '0');
-                    const m = String(d.getMinutes()).padStart(2, '0');
-                    const s = String(d.getSeconds()).padStart(2, '0');
-                    return `${Y}${M}${D}_${h}${m}${s}`; // e.g., 20251031_162800
-                };
-                
                 const data = config.dataGetter();
                 
-                // Add validation check
+                // Add validation that data is an array
                 if (!Array.isArray(data)) {
-                    console.error("CsvManager.setupExport: config.dataGetter() did not return an array.");
-                    throw new Error("Data for export is invalid.");
+                    throw new Error("Data getter did not return an array.");
                 }
-                
+
                 const csvString = DataConverter.toCSV(data, config.headers);
                 
-                // Add timestamp to filename
-                const baseFilename = config.filename.replace(/\.csv$/, ''); // "lookup-export"
-                const timestamp = getTimestamp();
-                const finalFilename = `${baseFilename}_${timestamp}.csv`; // "lookup-export_20251031_162800.csv"
+                const baseFilename = config.filename.replace(/\.csv$/, '');
+                const timestamp = CsvManager._getTimestamp();
+                const finalFilename = `${baseFilename}_${timestamp}.csv`;
                 
                 SafeUI.downloadJSON(csvString, finalFilename, 'text/csv');
                 
@@ -427,7 +491,6 @@ const CsvManager = {
      */
     setupImport: (config) => {
         if (!config.importBtn) {
-            // console.warn("CsvManager.setupImport: importBtn is null. Skipping.");
             return;
         }
 
@@ -439,12 +502,12 @@ const CsvManager = {
                     const validatedData = [];
                     const validationErrors = [...parseErrors];
                     
+                    if (typeof config.onValidate !== 'function') {
+                         console.error("CsvManager.setupImport: 'onValidate' function is missing.");
+                         throw new Error("Import validation is not configured.");
+                    }
+
                     data.forEach((row, index) => {
-                        if (!config.onValidate) {
-                            console.error("CsvManager.setupImport: 'onValidate' function is missing.");
-                            throw new Error("Import validation is not configured.");
-                        }
-                        
                         const result = config.onValidate(row, index);
                         if (result.error) {
                             validationErrors.push(result.error);
@@ -458,7 +521,7 @@ const CsvManager = {
                         return;
                     }
 
-                    if (!config.onConfirm) {
+                    if (typeof config.onConfirm !== 'function') {
                         console.error("CsvManager.setupImport: 'onConfirm' function is missing.");
                         throw new Error("Import confirmation is not configured.");
                     }
@@ -475,7 +538,7 @@ const CsvManager = {
 };
 
 
-// --- Expose components to the global window scope ---
+// Expose components to the global window scope
 window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
