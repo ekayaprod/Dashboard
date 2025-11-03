@@ -2,10 +2,6 @@
     <ul class="nav-links">
         <li><a href="index.html" class="nav-link">Dashboard</a></li>
         <li><a href="lookup.html" class="nav-link">Lookup</a></li>
-        <li><a href="passwords.html" class="nav-link"><nav class="navbar">
-    <ul class="nav-links">
-        <li><a href="index.html" class="nav-link">Dashboard</a></li>
-        <li><a href="lookup.html" class="nav-link">Lookup</a></li>
         <li><a href="passwords.html" class="nav-link">Passwords</a></li>
         <li><a href="mailto.html" class="nav-link">MailTo</a></li>
     </ul>
@@ -14,8 +10,9 @@
 </nav>
 
 <!-- 
-  Toast and modal elements are defined in individual page HTML files
-  (e.g., index.html) to avoid duplicate IDs.
+  This component is intentionally minimal. 
+  Global UI elements (toast, modal) are defined in the main HTML 
+  files (e.g., index.html) to prevent duplicate element IDs.
 -->
 
 <script>
@@ -27,40 +24,11 @@
             
             links.forEach(link => {
                 // Use URL object to get the pathname from the link's href
-                const linkPath = new URL(link.href).pathname;
+                const linkPath = new URL(link.href, window.location.origin).pathname;
                 
                 // Add 'active' class if the pathnames match
                 // OR if the current path is the root ('/') and the link is for 'index.html'
                 if (linkPath === currentPath || (currentPath === '/' && linkPath.endsWith('/index.html'))) {
-                    link.classList.add('active');
-                }
-            });
-        } catch (e) {
-            console.error('Failed to set active nav link:', e);
-        }
-    })();
-</script>
-
-" class="nav-link">MailTo</a></li>
-    </ul>
-    <div class="nav-actions">
-    </div>
-</nav>
-
-<!-- 
-  Global UI elements (toast, modal) have been REMOVED from this component.
-  They are correctly defined in the main HTML files (index.html, lookup.html) 
-  which load this navbar. This fixes a duplicate ID bug.
--->
-
-<script>
-    (() => {
-        try {
-            // This script is self-contained and safe.
-            const currentPage = window.location.pathname.split('/').pop();
-            const links = document.querySelectorAll('.nav-link');
-            links.forEach(link => {
-                if (link.href.endsWith(currentPage)) {
                     link.classList.add('active');
                 }
             });
