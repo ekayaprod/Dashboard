@@ -372,8 +372,20 @@ AppLifecycle.run(async () => {
      * Confirms and processes the CSV import data
      */
     const confirmCsvImport = (validatedData, importErrors) => {
-        const newEntries = validatedData.newEntries;
-        const updatedEntries = validatedData.updatedEntries;
+        // --- FIX: This logic was split incorrectly in the original file ---
+        // Logic to categorize entries
+        const newEntries = [];
+        const updatedEntries = [];
+        const existingIds = new Set(state.apps.map(app => app.id));
+
+        validatedData.forEach(entry => {
+            if (existingIds.has(entry.id)) {
+                updatedEntries.push(entry);
+            } else {
+                newEntries.push(entry);
+            }
+        });
+        // --- End Fix ---
 
         const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
         const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
@@ -464,4 +476,218 @@ AppLifecycle.run(async () => {
                 }
                 
                 saveState();
-             
+                
+                // --- FIX: This was missing in the original file ---
+                // After restoring, we must reset the UI
+                selectedAppId = null;
+                activeNoteId = null;
+                displayAppDetails(null); // Hide details panel
+                renderAll(); // Re-render dropdowns and lists
+                SafeUI.showToast('Dashboard data restored.');
+                SafeUI.hideModal();
+                // --- End Fix ---
+            }
+        });
+    };
+
+    // --- FIX: Add the missing init() function wrapper and loadNavbar() call ---
+    /**
+     * Entry point for the application
+     */
+    async function init() {
+        // Setup textareas
+        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
+        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
+        DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
+
+        // Setup icons
+        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
+        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
+        DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
+        DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
+        DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
+        DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
+
+        // Initialize shortcuts
+        shortcutsManager = createShortcutsManager(state, DOMElements, {
+            escapeHTML: SafeUI.escapeHTML,
+            confirmDelete,
+            saveState,
+            showModal: SafeUI.showModal,
+            showToast: SafeUI.showToast,
+            validators: SafeUI.validators,
+            generateId: SafeUI.generateId,
+            SVGIcons: SafeUI.SVGIcons
+        });
+        shortcutsManager.init();
+
+        // Setup CSV listeners
+        CsvManager.setupExport({
+            exportBtn: DOMElements.btnExportCsv,
+            dataGetter: () => state.apps,
+            headers: APP_CONFIG.APP_CSV_HEADERS,
+            filename: `${APP_CONFIG.NAME}-export.csv`
+        });
+        
+        CsvManager.setupImport({
+            importBtn: DOMElements.btnImportCsv,
+            headers: APP_CONFIG.APP_CSV_HEADERS,
+            onValidate: validateCsvRow,
+            onConfirm: confirmCsvImport
+        });
+
+        // Add main event listeners
+        DOMElements.appSelect.addEventListener('change', () => {
+            const appId = DOMElements.appSelect.value;
+            displayAppDetails(appId || null);
+        });
+
+        const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
+        DOMElements.editAppName.addEventListener('input', debouncedSave);
+        DOMElements.editAppUrls.addEventListener('input', debouncedSave);
+        DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
+
+        DOMElements.saveChangesBtn.addEventListener('click', () => {
+            const newName = DOMElements.editAppName.value.trim();
+            if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
+                return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
+            }
+
+            // Check for duplicate name ONLY if it's a new app or the name has changed
+            const isNewApp = initialAppData.id === null;
+            const nameChanged = !isNewApp && newName !== initialAppData.name;
+            
+            if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName)) {
+                return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
+            }
+
+            const appData = {
+                name: newName,
+                urls: DOMElements.editAppUrls.value.trim(),
+                escalation: DOMElements.editAppEscalation.value.trim()
+            };
+
+            if (isNewApp) {
+                // Creating a new app
+                appData.id = SafeUI.generateId();
+                getCollection('apps').push(appData);
+                SafeUI.showToast('Application created');
+            } else {
+                // Updating an existing app
+                const app = findById('apps', selectedAppId);
+                if (app) {
+                    app.name = appData.name;
+                    app.urls = appData.urls;
+                    app.escalation = appData.escalation;
+                    SafeUI.showToast('Application updated');
+                }
+            }
+            
+            saveState();
+            renderAppData(); // Re-render dropdown
+            DOMElements.appSelect.value = appData.id || selectedAppId;
+            displayAppDetails(appData.id || selectedAppId); // Reload data into form
+        });
+
+        DOMElements.deleteAppBtn.addEventListener('click', () => {
+            if (!selectedAppId) return;
+            const app = findById('apps', selectedAppId);
+            if (!app) return;
+            
+            confirmDelete('apps', app.name, () => {
+                state.apps = state.apps.filter(a => a.id !== selectedAppId);
+                saveState();
+                selectedAppId = null;
+                displayAppDetails(null);
+                renderAppData();
+            });
+        });
+
+        DOMElements.addShortcutBtnMenu.addEventListener('click', () => shortcutsManager.add());
+        DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
+        DOMElements.btnSettings.addEventListener('click', showSettingsModal);
+
+        // Notepad listeners
+        DOMElements.noteSelect.addEventListener('change', () => {
+            activeNoteId = DOMElements.noteSelect.value;
+            const note = findById('notes', activeNoteId);
+            DOMElements.notepadEditor.value = note ? note.content : '';
+            DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
+        });
+
+        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
+            if (!activeNoteId) return;
+            const note = findById('notes', activeNoteId);
+            if (note) {
+                note.content = DOMElements.notepadEditor.value;
+                saveState();
+            }
+        }, DEBOUNCE_DELAY));
+        
+        DOMElements.newNoteBtn.addEventListener('click', () => {
+            SafeUI.showModal('New Note', '<input id="new-note-title" class="sidebar-input" placeholder="Note title">', [
+                {label: 'Cancel'},
+                {label: 'Create', class: 'button-primary', callback: () => {
+                    const titleInput = document.getElementById('new-note-title');
+                    const title = titleInput.value.trim() || 'Untitled Note';
+                    const newNote = { id: SafeUI.generateId(), title, content: '' };
+                    getCollection('notes').push(newNote);
+                    saveState();
+                    activeNoteId = newNote.id;
+                    renderNotesData();
+                }}
+            ]);
+        });
+        
+        DOMElements.renameNoteBtn.addEventListener('click', () => {
+            if (!activeNoteId) return;
+            const note = findById('notes', activeNoteId);
+            if (!note) return;
+            
+            SafeUI.showModal('Rename Note', `<input id="rename-note-title" class="sidebar-input" value="${SafeUI.escapeHTML(note.title)}">`, [
+                {label: 'Cancel'},
+                {label: 'Rename', class: 'button-primary', callback: () => {
+                    const titleInput = document.getElementById('rename-note-title');
+                    const newTitle = titleInput.value.trim();
+                    if (newTitle) {
+                        note.title = newTitle;
+                        saveState();
+                        renderNotesData();
+                    } else {
+                        return SafeUI.showValidationError('Invalid Title', 'Title cannot be empty.', 'rename-note-title');
+                    }
+                }}
+            ]);
+        });
+        
+        DOMElements.deleteNoteBtn.addEventListener('click', () => {
+            if (!activeNoteId || !hasItems('notes')) return;
+            const note = findById('notes', activeNoteId);
+            if (!note) return;
+            
+            confirmDelete('notes', note.title, () => {
+                state.notes = state.notes.filter(n => n.id !== activeNoteId);
+                saveState();
+                activeNoteId = null; // Reset
+                renderNotesData();
+            });
+        });
+
+        // First-run check for notes
+        if (!hasItems('notes')) {
+            getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+            saveState();
+        }
+
+        // Initial render
+        renderAll();
+        
+        // --- CRITICAL FIX: Load the navbar ---
+        SafeUI.loadNavbar("navbar-container");
+    }
+
+    // Run the initialization function
+    init();
+    
+});
