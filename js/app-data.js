@@ -2,312 +2,293 @@
  * app-data.js
  * State persistence, backup/restore, and validation logic
  * Depends on: app-core.js
+ *
+ * Refactored using IIFEs (Immediately Invoked Function Expressions)
+ * to modularize concerns.
  */
 
-const BackupRestore = {
-    /**
-     * Creates and triggers download of a JSON backup file
-     */
-    createBackup: (state, appName = 'app') => {
-        try {
-            const backupData = {
-                appName: appName,
-                version: state.version || 'unknown',
-                timestamp: new Date().toISOString(),
-                data: state
-            };
-            const dataStr = JSON.stringify(backupData, null, 2);
-            const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
-            
-            SafeUI.downloadJSON(dataStr, filename, 'application/json');
-            SafeUI.showToast('Backup created successfully.');
-            
-        } catch (err) {
-            console.error("Backup failed:", err);
-            SafeUI.showModal('Backup Error', `<p>Failed to create backup: ${err.message}</p>`, [{label: 'OK'}]);
-        }
-    },
-
-    /**
-     * Opens file picker and attempts to restore from JSON file
-     */
-    restoreBackup: (onRestore) => {
-        SafeUI.openFilePicker((file) => {
-            SafeUI.readJSONFile(
-                file,
-                (parsedData) => {
-                    onRestore(parsedData);
-                },
-                (errorMsg) => {
-                    SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
-                }
-            );
-        });
-    },
-
-    /**
-     * Validates the high-level structure of a backup file
-     */
-    validateBackup: (data, requiredKeys = []) => {
-        if (!data || typeof data !== 'object' || !data.data || typeof data.data !== 'object') {
-            return false;
-        }
-        
-        return requiredKeys.every(key => key in data.data);
-    },
-
-    /**
-     * Validates an array of items, ensuring each item is an object with required fields
-     * Note: An empty requiredFields array will always return true, which is intended
-     * if the array just needs to be validated as an array (e.g., 'notes': [])
-     */
-    validateItems: (items, requiredFields) => {
-        if (!Array.isArray(items)) return false;
-        if (requiredFields.length === 0) return true; // Empty check means just ensure it's an array
-        
-        return items.every(item => {
-            if (!item || typeof item !== 'object') return false;
-            return requiredFields.every(field => field in item);
-        });
-    },
-
-    /**
-     * Handles the complete backup restore flow: file picking, reading, and validation.
-     */
-    handleRestoreUpload: (config) => {
-        BackupRestore.restoreBackup((restoredData) => {
+const BackupRestore = (() => {
+    return {
+        /**
+         * Creates and triggers download of a JSON backup file
+         */
+        createBackup: (state, appName = 'app') => {
             try {
-                // Handle both new backup format {data: {...}} and legacy format {...}
-                const dataToValidate = restoredData.data ? restoredData.data : restoredData;
-                const isNewBackup = !!restoredData.data;
-                const appName = restoredData.appName;
-                
-                // Check for app name match, allowing for a legacy name
-                const isLegacy = config.legacyAppName && appName === config.legacyAppName;
-                const isCorrectApp = appName === config.appName;
-
-                // Only enforce app name check on new-style backups
-                if (isNewBackup && !isCorrectApp && !isLegacy) {
-                    throw new Error(`This file is not a valid '${config.appName}' backup.`);
-                }
-
-                // Validate that all required top-level keys exist in the data
-                const requiredDataKeys = Object.keys(config.itemValidators);
-                if (isNewBackup && !BackupRestore.validateBackup(restoredData, requiredDataKeys)) {
-                     throw new Error('Backup file is invalid or missing required data keys.');
-                }
-
-                // Validate the contents of each item array
-                for (const [key, fields] of Object.entries(config.itemValidators)) {
-                    if (dataToValidate[key] && !BackupRestore.validateItems(dataToValidate[key], fields)) {
-                        throw new Error(`Backup data for '${key}' contains corrupt items.`);
-                    }
-                }
-                
-                // If all checks passed, call the onRestore function
-                config.onRestore(dataToValidate, isLegacy);
-
-            } catch(err) {
-                console.error("Restore failed:", err);
-                SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
-            }
-        });
-    },
-    
-    /**
-     * Consolidates logic for setting up JSON backup/restore buttons
-     */
-    setupBackupRestoreHandlers: (config) => {
-        const {
-            state,
-            appName,
-            backupBtn,   // Button to trigger backup
-            restoreBtn,  // Button to trigger restore
-            settingsBtn, // Button that *opens* the modal (if backup/restore are inside)
-            legacyAppName,
-            itemValidators,
-            restoreConfirmMessage,
-            onRestoreCallback
-        } = config;
-
-        // If settingsBtn is provided, it means the backup/restore buttons
-        // are inside a modal that this button opens.
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                // This function is defined inside mailto.html, lookup.html, etc.
-                // It's expected to show a modal that contains
-                // elements with IDs 'modal-backup-btn' and 'modal-restore-btn'
-                if (typeof config.showSettingsModal === 'function') {
-                    config.showSettingsModal(); // This modal HTML must contain the buttons
-                }
-                
-                // We have to find the buttons *after* the modal is created
-                // We use setTimeout to give the modal time to render
-                setTimeout(() => {
-                    const modalBackupBtn = document.getElementById(config.backupBtnId || 'modal-backup-btn');
-                    const modalRestoreBtn = document.getElementById(config.restoreBtnId || 'modal-restore-btn');
-                    
-                    if (modalBackupBtn) {
-                        modalBackupBtn.onclick = () => {
-                            BackupRestore.createBackup(state, appName);
-                        };
-                    }
-                    if (modalRestoreBtn) {
-                         modalRestoreBtn.onclick = () => {
-                            BackupRestore.handleRestoreUpload({
-                                appName: appName,
-                                legacyAppName: legacyAppName,
-                                itemValidators: itemValidators,
-                                onRestore: (dataToRestore, isLegacy) => {
-                                    SafeUI.showModal("Confirm Restore (JSON)", 
-                                        `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`, 
-                                        [
-                                            { label: 'Cancel' },
-                                            { 
-                                                label: 'Restore', 
-                                                class: 'button-danger', 
-                                                callback: () => {
-                                                    onRestoreCallback(dataToRestore);
-                                                }
-                                            }
-                                        ]
-                                    );
-                                }
-                            });
-                        };
-                    }
-                }, 0);
-            });
-            return; // Exit, as the main buttons aren't the triggers
-        }
-
-        // --- Standard flow: backupBtn and restoreBtn are the triggers ---
-        
-        if (backupBtn) {
-            backupBtn.addEventListener('click', () => {
-                BackupRestore.createBackup(state, appName);
-            });
-        }
-        
-        if (restoreBtn) {
-            restoreBtn.addEventListener('click', () => {
-                BackupRestore.handleRestoreUpload({
+                const backupData = {
                     appName: appName,
-                    legacyAppName: legacyAppName,
-                    itemValidators: itemValidators,
-                    onRestore: (dataToRestore, isLegacy) => {
-                        SafeUI.showModal("Confirm Restore (JSON)", 
-                            `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`, 
-                            [
-                                { label: 'Cancel' },
-                                { 
-                                    label: 'Restore', 
-                                    class: 'button-danger', 
-                                    callback: () => {
-                                        onRestoreCallback(dataToRestore);
-                                    }
-                                }
-                            ]
-                        );
+                    version: state.version || 'unknown',
+                    timestamp: new Date().toISOString(),
+                    data: state
+                };
+                const dataStr = JSON.stringify(backupData, null, 2);
+                const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
+
+                SafeUI.downloadJSON(dataStr, filename, 'application/json');
+                SafeUI.showToast('Backup created successfully.');
+
+            } catch (err) {
+                console.error("Backup failed:", err);
+                SafeUI.showModal('Backup Error', `<p>Failed to create backup: ${err.message}</p>`, [{ label: 'OK' }]);
+            }
+        },
+
+        /**
+         * Opens file picker and attempts to restore from JSON file
+         */
+        restoreBackup: (onRestore) => {
+            SafeUI.openFilePicker((file) => {
+                SafeUI.readJSONFile(
+                    file,
+                    (parsedData) => {
+                        onRestore(parsedData);
+                    },
+                    (errorMsg) => {
+                        SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{ label: 'OK' }]);
                     }
-                });
+                );
             });
-        }
-    }
-};
+        },
 
-const DataValidator = {
-    /**
-     * Check for duplicate values in array
-     */
-    hasDuplicate: (items, field, value, excludeId = null) => {
-        if (!Array.isArray(items)) return false;
-        const normalizedValue = String(value).toLowerCase().trim();
-        
-        return items.some(item => {
-            if (excludeId && item.id === excludeId) return false;
-            const itemValue = String(item[field]).toLowerCase().trim();
-            return itemValue === normalizedValue;
-        });
-    },
+        /**
+         * Validates the high-level structure of a backup file
+         */
+        validateBackup: (data, requiredKeys = []) => {
+            if (!data || typeof data !== 'object' || !data.data || typeof data.data !== 'object') {
+                return false;
+            }
 
-    /**
-     * Validate form fields with common rules
-     */
-    validateFields: (fields, rules) => {
-        const errors = [];
-        
-        for (const [fieldName, value] of Object.entries(fields)) {
-            const fieldRules = rules[fieldName];
-            if (!fieldRules) continue;
-            
-            const trimmedValue = String(value).trim();
-            
-            if (fieldRules.required && !trimmedValue) {
-                errors.push(`${fieldName} is required`);
-                continue;
+            return requiredKeys.every(key => key in data.data);
+        },
+
+        /**
+         * Validates an array of items, ensuring each item is an object with required fields
+         * Note: An empty requiredFields array will always return true, which is intended
+         * if the array just needs to be validated as an array (e.g., 'notes': [])
+         */
+        validateItems: (items, requiredFields) => {
+            if (!Array.isArray(items)) return false;
+            if (requiredFields.length === 0) return true; // Empty check means just ensure it's an array
+
+            return items.every(item => {
+                if (!item || typeof item !== 'object') return false;
+                return requiredFields.every(field => field in item);
+            });
+        },
+
+        /**
+         * Handles the complete backup restore flow: file picking, reading, and validation.
+         */
+        handleRestoreUpload: (config) => {
+            BackupRestore.restoreBackup((restoredData) => {
+                try {
+                    // Handle both new backup format {data: {...}} and legacy format {...}
+                    const dataToValidate = restoredData.data ? restoredData.data : restoredData;
+                    const isNewBackup = !!restoredData.data;
+                    const appName = restoredData.appName;
+
+                    // Check for app name match, allowing for a legacy name
+                    const isLegacy = config.legacyAppName && appName === config.legacyAppName;
+                    const isCorrectApp = appName === config.appName;
+
+                    // Only enforce app name check on new-style backups
+                    if (isNewBackup && !isCorrectApp && !isLegacy) {
+                        throw new Error(`This file is not a valid '${config.appName}' backup.`);
+                    }
+
+                    // Validate that all required top-level keys exist in the data
+                    const requiredDataKeys = Object.keys(config.itemValidators);
+                    if (isNewBackup && !BackupRestore.validateBackup(restoredData, requiredDataKeys)) {
+                        throw new Error('Backup file is invalid or missing required data keys.');
+                    }
+
+                    // Validate the contents of each item array
+                    for (const [key, fields] of Object.entries(config.itemValidators)) {
+                        if (dataToValidate[key] && !BackupRestore.validateItems(dataToValidate[key], fields)) {
+                            throw new Error(`Backup data for '${key}' contains corrupt items.`);
+                        }
+                    }
+
+                    // If all checks passed, call the onRestore function
+                    config.onRestore(dataToValidate, isLegacy);
+
+                } catch (err) {
+                    console.error("Restore failed:", err);
+                    SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                }
+            });
+        },
+
+        /**
+         * Consolidates logic for setting up JSON backup/restore buttons
+         */
+        setupBackupRestoreHandlers: (config) => {
+            const {
+                state,
+                appName,
+                backupBtn,   // Button to trigger backup
+                restoreBtn,  // Button to trigger restore
+                settingsBtn, // Button that *opens* the modal (if backup/restore are inside)
+                legacyAppName,
+                itemValidators,
+                restoreConfirmMessage,
+                onRestoreCallback
+            } = config;
+
+            // If settingsBtn is provided, it means the backup/restore buttons
+            // are inside a modal that this button opens.
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', () => {
+                    // This function is defined inside mailto.html, lookup.html, etc.
+                    // It's expected to show a modal that contains
+                    // elements with IDs 'modal-backup-btn' and 'modal-restore-btn'
+                    if (typeof config.showSettingsModal === 'function') {
+                        config.showSettingsModal(); // This modal HTML must contain the buttons
+                    }
+
+                    // We have to find the buttons *after* the modal is created
+                    // We use setTimeout to give the modal time to render
+                    setTimeout(() => {
+                        const modalBackupBtn = document.getElementById(config.backupBtnId || 'modal-backup-btn');
+                        const modalRestoreBtn = document.getElementById(config.restoreBtnId || 'modal-restore-btn');
+
+                        if (modalBackupBtn) {
+                            modalBackupBtn.onclick = () => {
+                                BackupRestore.createBackup(state, appName);
+                            };
+                        }
+                        if (modalRestoreBtn) {
+                            modalRestoreBtn.onclick = () => {
+                                BackupRestore.handleRestoreUpload({
+                                    appName: appName,
+                                    legacyAppName: legacyAppName,
+                                    itemValidators: itemValidators,
+                                    onRestore: (dataToRestore, isLegacy) => {
+                                        SafeUI.showModal("Confirm Restore (JSON)",
+                                            `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`,
+                                            [
+                                                { label: 'Cancel' },
+                                                {
+                                                    label: 'Restore',
+                                                    class: 'button-danger',
+                                                    callback: () => {
+                                                        onRestoreCallback(dataToRestore);
+                                                    }
+                                                }
+                                            ]
+                                        );
+                                    }
+                                });
+                            };
+                        }
+                    }, 0);
+                });
+                return; // Exit, as the main buttons aren't the triggers
             }
-            
-            if (fieldRules.maxLength && trimmedValue.length > fieldRules.maxLength) {
-                errors.push(`${fieldName} must be ${fieldRules.maxLength} characters or less`);
+
+            // --- Standard flow: backupBtn and restoreBtn are the triggers ---
+
+            if (backupBtn) {
+                backupBtn.addEventListener('click', () => {
+                    BackupRestore.createBackup(state, appName);
+                });
             }
-            
-            if (fieldRules.minLength && trimmedValue.length < fieldRules.minLength) {
-                errors.push(`${fieldName} must be at least ${fieldRules.minLength} characters`);
-            }
-            
-            if (fieldRules.pattern && trimmedValue && !fieldRules.pattern.test(trimmedValue)) {
-                errors.push(`${fieldName} format is invalid`);
-            }
-            
-            if (fieldRules.custom && !fieldRules.custom(trimmedValue)) {
-                errors.push(fieldRules.customMessage || `${fieldName} is invalid`);
+
+            if (restoreBtn) {
+                restoreBtn.addEventListener('click', () => {
+                    BackupRestore.handleRestoreUpload({
+                        appName: appName,
+                        legacyAppName: legacyAppName,
+                        itemValidators: itemValidators,
+                        onRestore: (dataToRestore, isLegacy) => {
+                            SafeUI.showModal("Confirm Restore (JSON)",
+                                `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`,
+                                [
+                                    { label: 'Cancel' },
+                                    {
+                                        label: 'Restore',
+                                        class: 'button-danger',
+                                        callback: () => {
+                                            onRestoreCallback(dataToRestore);
+                                        }
+                                    }
+                                ]
+                            );
+                        }
+                    });
+                });
             }
         }
-        
-        return {
-            valid: errors.length === 0,
-            errors
-        };
-    }
-};
+    };
+})();
+
+const DataValidator = (() => {
+    return {
+        /**
+         * Check for duplicate values in array
+         */
+        hasDuplicate: (items, field, value, excludeId = null) => {
+            if (!Array.isArray(items)) return false;
+            const normalizedValue = String(value).toLowerCase().trim();
+
+            return items.some(item => {
+                if (excludeId && item.id === excludeId) return false;
+                const itemValue = String(item[field]).toLowerCase().trim();
+                return itemValue === normalizedValue;
+            });
+        },
+
+        /**
+         * Validate form fields with common rules
+         */
+        validateFields: (fields, rules) => {
+            const errors = [];
+
+            for (const [fieldName, value] of Object.entries(fields)) {
+                const fieldRules = rules[fieldName];
+                if (!fieldRules) continue;
+
+                const trimmedValue = String(value).trim();
+
+                if (fieldRules.required && !trimmedValue) {
+                    errors.push(`${fieldName} is required`);
+                    continue;
+                }
+
+                if (fieldRules.maxLength && trimmedValue.length > fieldRules.maxLength) {
+                    errors.push(`${fieldName} must be ${fieldRules.maxLength} characters or less`);
+                }
+
+                if (fieldRules.minLength && trimmedValue.length < fieldRules.minLength) {
+                    errors.push(`${fieldName} must be at least ${fieldRules.minLength} characters`);
+                }
+
+                if (fieldRules.pattern && trimmedValue && !fieldRules.pattern.test(trimmedValue)) {
+                    errors.push(`${fieldName} format is invalid`);
+                }
+
+                if (fieldRules.custom && !fieldRules.custom(trimmedValue)) {
+                    errors.push(fieldRules.customMessage || `${fieldName} is invalid`);
+                }
+            }
+
+            return {
+                valid: errors.length === 0,
+                errors
+            };
+        }
+    };
+})();
 
 /**
  * DataConverter - Handles CSV parsing and generation
  */
-const DataConverter = {
-    /**
-     * Converts an array of objects to a CSV string.
-     */
-    toCSV: (data, headers) => {
-        if (!Array.isArray(data) || !Array.isArray(headers) || headers.length === 0) {
-            throw new Error("Invalid data or headers for CSV conversion.");
-        }
-
-        const escapeCell = (cell) => {
-            const str = String(cell == null ? '' : cell);
-            // RFC 4180: Fields containing line breaks (CRLF), double quotes,
-            // and commas should be enclosed in double-quotes.
-            if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
-                // Escape existing quotes by doubling them
-                return `"${str.replace(/"/g, '""')}"`;
-            }
-            return str;
-        };
-
-        const headerRow = headers.join(',');
-        const rows = data.map(obj => {
-            return headers.map(header => escapeCell(obj[header])).join(',');
-        });
-
-        return [headerRow, ...rows].join('\n');
-    },
+const DataConverter = (() => {
 
     /**
      * Internal helper to parse a single CSV line according to RFC 4180.
      * This is a state machine.
      */
-    _parseCsvLine: (line) => {
+    const _parseCsvLine = (line) => {
         const values = [];
         let currentVal = '';
         let inQuotes = false;
@@ -341,109 +322,138 @@ const DataConverter = {
                 }
             }
         }
-        
+
         values.push(currentVal); // Add the last value
         return values;
-    },
+    };
 
-    /**
-     * Converts a CSV file object to an array of objects.
-     */
-    fromCSV: (file, requiredHeaders) => {
-        return new Promise((resolve, reject) => {
-            SafeUI.readTextFile(file,
-                (text) => {
-                    const lines = [];
-                    let currentLine = '';
-                    let inQuotes = false;
-                    
-                    // Normalize line endings to \n
-                    const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    return {
+        /**
+         * Converts an array of objects to a CSV string.
+         */
+        toCSV: (data, headers) => {
+            if (!Array.isArray(data) || !Array.isArray(headers) || headers.length === 0) {
+                throw new Error("Invalid data or headers for CSV conversion.");
+            }
 
-                    // First pass: properly split lines respecting quoted newlines
-                    for (let i = 0; i < normalizedText.length; i++) {
-                        const char = normalizedText[i];
-                        
-                        if (char === '"') {
-                            inQuotes = !inQuotes;
-                        }
-                        
-                        if (char === '\n' && !inQuotes) {
-                            if (currentLine.trim() || lines.length > 0) {
-                                lines.push(currentLine);
-                            }
-                            currentLine = '';
-                        } else {
-                            currentLine += char;
-                        }
-                    }
-                    
-                    // Add final line
-                    if (currentLine.trim() || lines.length > 0) {
-                        lines.push(currentLine);
-                    }
-                    
-                    if (lines.length === 0) {
-                        return resolve({ data: [], errors: [] });
-                    }
-
-                    // Parse header line
-                    const headerLine = lines.shift();
-                    const headers = DataConverter._parseCsvLine(headerLine).map(h => h.trim());
-
-                    const errors = [];
-
-                    // Validate required headers
-                    for (const reqHeader of requiredHeaders) {
-                        if (!headers.includes(reqHeader)) {
-                            errors.push(`Missing required CSV header: "${reqHeader}"`);
-                        }
-                    }
-                    if (errors.length > 0) {
-                        return reject(new Error(`CSV Import Failed: ${errors.join(', ')}`));
-                    }
-
-                    // Parse data rows
-                    const data = lines.filter(line => line.trim().length > 0).map((line, lineIndex) => {
-                        const obj = {};
-                        const values = DataConverter._parseCsvLine(line);
-
-                        if (values.length > headers.length) {
-                            errors.push(`Row ${lineIndex + 2}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating.`);
-                        }
-
-                        headers.forEach((header, i) => {
-                            // Only map headers we care about
-                            if (requiredHeaders.includes(header)) {
-                                obj[header] = values[i] || '';
-                            }
-                        });
-                        
-                        return obj;
-                    });
-                    
-                    if (errors.length > 10) {
-                        errors.splice(10, errors.length - 10, `... and ${errors.length - 10} more errors.`);
-                    }
-                    
-                    resolve({ data, errors });
-                },
-                (errorMsg) => {
-                    reject(new Error(errorMsg));
+            const escapeCell = (cell) => {
+                const str = String(cell == null ? '' : cell);
+                // RFC 4180: Fields containing line breaks (CRLF), double quotes,
+                // and commas should be enclosed in double-quotes.
+                if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+                    // Escape existing quotes by doubling them
+                    return `"${str.replace(/"/g, '""')}"`;
                 }
-            );
-        });
-    }
-};
+                return str;
+            };
+
+            const headerRow = headers.join(',');
+            const rows = data.map(obj => {
+                return headers.map(header => escapeCell(obj[header])).join(',');
+            });
+
+            return [headerRow, ...rows].join('\n');
+        },
+
+        /**
+         * Converts a CSV file object to an array of objects.
+         */
+        fromCSV: (file, requiredHeaders) => {
+            return new Promise((resolve, reject) => {
+                SafeUI.readTextFile(file,
+                    (text) => {
+                        const lines = [];
+                        let currentLine = '';
+                        let inQuotes = false;
+
+                        // Normalize line endings to \n
+                        const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+                        // First pass: properly split lines respecting quoted newlines
+                        for (let i = 0; i < normalizedText.length; i++) {
+                            const char = normalizedText[i];
+
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            }
+
+                            if (char === '\n' && !inQuotes) {
+                                if (currentLine.trim() || lines.length > 0) {
+                                    lines.push(currentLine);
+                                }
+                                currentLine = '';
+                            } else {
+                                currentLine += char;
+                            }
+                        }
+
+                        // Add final line
+                        if (currentLine.trim() || lines.length > 0) {
+                            lines.push(currentLine);
+                        }
+
+                        if (lines.length === 0) {
+                            return resolve({ data: [], errors: [] });
+                        }
+
+                        // Parse header line
+                        const headerLine = lines.shift();
+                        const headers = _parseCsvLine(headerLine).map(h => h.trim());
+
+                        const errors = [];
+
+                        // Validate required headers
+                        for (const reqHeader of requiredHeaders) {
+                            if (!headers.includes(reqHeader)) {
+                                errors.push(`Missing required CSV header: "${reqHeader}"`);
+                            }
+                        }
+                        if (errors.length > 0) {
+                            return reject(new Error(`CSV Import Failed: ${errors.join(', ')}`));
+                        }
+
+                        // Parse data rows
+                        const data = lines.filter(line => line.trim().length > 0).map((line, lineIndex) => {
+                            const obj = {};
+                            const values = _parseCsvLine(line);
+
+                            if (values.length > headers.length) {
+                                errors.push(`Row ${lineIndex + 2}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating.`);
+                            }
+
+                            headers.forEach((header, i) => {
+                                // Only map headers we care about
+                                if (requiredHeaders.includes(header)) {
+                                    obj[header] = values[i] || '';
+                                }
+                            });
+
+                            return obj;
+                        });
+
+                        if (errors.length > 10) {
+                            errors.splice(10, errors.length - 10, `... and ${errors.length - 10} more errors.`);
+                        }
+
+                        resolve({ data, errors });
+                    },
+                    (errorMsg) => {
+                        reject(new Error(errorMsg));
+                    }
+                );
+            });
+        }
+    };
+})();
 
 /**
  * CsvManager - Consolidates CSV import/export logic
  */
-const CsvManager = {
+const CsvManager = (() => {
     /**
      * Helper function to create a timestamp string
      */
-    _getTimestamp: () => {
+    const _getTimestamp = () => {
         const d = new Date();
         const Y = d.getFullYear();
         const M = String(d.getMonth() + 1).padStart(2, '0');
@@ -452,90 +462,92 @@ const CsvManager = {
         const m = String(d.getMinutes()).padStart(2, '0');
         const s = String(d.getSeconds()).padStart(2, '0');
         return `${Y}${M}${D}_${h}${m}${s}`; // e.g., 20251031_162800
-    },
+    };
 
-    /**
-     * Wires up a CSV export button
-     */
-    setupExport: (config) => {
-        if (!config.exportBtn) {
-            return;
-        }
-
-        config.exportBtn.addEventListener('click', () => {
-            try {
-                const data = config.dataGetter();
-                
-                // Add validation that data is an array
-                if (!Array.isArray(data)) {
-                    throw new Error("Data getter did not return an array.");
-                }
-
-                const csvString = DataConverter.toCSV(data, config.headers);
-                
-                const baseFilename = config.filename.replace(/\.csv$/, '');
-                const timestamp = CsvManager._getTimestamp();
-                const finalFilename = `${baseFilename}_${timestamp}.csv`;
-                
-                SafeUI.downloadJSON(csvString, finalFilename, 'text/csv');
-                
-            } catch (err) {
-                console.error("Export failed:", err);
-                SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+    return {
+        /**
+         * Wires up a CSV export button
+         */
+        setupExport: (config) => {
+            if (!config.exportBtn) {
+                return;
             }
-        });
-    },
 
-    /**
-     * Wires up a CSV import button
-     */
-    setupImport: (config) => {
-        if (!config.importBtn) {
-            return;
-        }
-
-        config.importBtn.addEventListener('click', () => {
-            SafeUI.openFilePicker(async (file) => {
+            config.exportBtn.addEventListener('click', () => {
                 try {
-                    const { data, errors: parseErrors } = await DataConverter.fromCSV(file, config.headers);
-                    
-                    const validatedData = [];
-                    const validationErrors = [...parseErrors];
-                    
-                    if (typeof config.onValidate !== 'function') {
-                         console.error("CsvManager.setupImport: 'onValidate' function is missing.");
-                         throw new Error("Import validation is not configured.");
+                    const data = config.dataGetter();
+
+                    // Add validation that data is an array
+                    if (!Array.isArray(data)) {
+                        throw new Error("Data getter did not return an array.");
                     }
 
-                    data.forEach((row, index) => {
-                        const result = config.onValidate(row, index);
-                        if (result.error) {
-                            validationErrors.push(result.error);
-                        } else {
-                            validatedData.push(result.entry);
-                        }
-                    });
+                    const csvString = DataConverter.toCSV(data, config.headers);
 
-                    if (validatedData.length === 0 && validationErrors.length === 0) {
-                        SafeUI.showModal("Import Failed", "<p>No valid data rows found in the CSV file.</p>", [{label: 'OK'}]);
-                        return;
-                    }
+                    const baseFilename = config.filename.replace(/\.csv$/, '');
+                    const timestamp = _getTimestamp();
+                    const finalFilename = `${baseFilename}_${timestamp}.csv`;
 
-                    if (typeof config.onConfirm !== 'function') {
-                        console.error("CsvManager.setupImport: 'onConfirm' function is missing.");
-                        throw new Error("Import confirmation is not configured.");
-                    }
-                    
-                    config.onConfirm(validatedData, validationErrors);
+                    SafeUI.downloadJSON(csvString, finalFilename, 'text/csv');
 
                 } catch (err) {
-                    console.error("Import failed:", err);
-                    SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+                    console.error("Export failed:", err);
+                    SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
                 }
-            }, '.csv');
-        });
-    }
-};
+            });
+        },
+
+        /**
+         * Wires up a CSV import button
+         */
+        setupImport: (config) => {
+            if (!config.importBtn) {
+                return;
+            }
+
+            config.importBtn.addEventListener('click', () => {
+                SafeUI.openFilePicker(async (file) => {
+                    try {
+                        const { data, errors: parseErrors } = await DataConverter.fromCSV(file, config.headers);
+
+                        const validatedData = [];
+                        const validationErrors = [...parseErrors];
+
+                        if (typeof config.onValidate !== 'function') {
+                            console.error("CsvManager.setupImport: 'onValidate' function is missing.");
+                            throw new Error("Import validation is not configured.");
+                        }
+
+                        data.forEach((row, index) => {
+                            const result = config.onValidate(row, index);
+                            if (result.error) {
+                                validationErrors.push(result.error);
+                            } else {
+                                validatedData.push(result.entry);
+                            }
+                        });
+
+                        if (validatedData.length === 0 && validationErrors.length === 0) {
+                            SafeUI.showModal("Import Failed", "<p>No valid data rows found in the CSV file.</p>", [{ label: 'OK' }]);
+                            return;
+                        }
+
+                        if (typeof config.onConfirm !== 'function') {
+                            console.error("CsvManager.setupImport: 'onConfirm' function is missing.");
+                            throw new Error("Import confirmation is not configured.");
+                        }
+
+                        config.onConfirm(validatedData, validationErrors);
+
+                    } catch (err) {
+                        console.error("Import failed:", err);
+                        SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                    }
+                }, '.csv');
+            });
+        }
+    };
+})();
 
 
 // Expose components to the global window scope
