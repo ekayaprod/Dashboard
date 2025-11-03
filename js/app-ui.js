@@ -1,6 +1,6 @@
 /**
  * app-ui.js
- * * Reusable high-level UI patterns and components
+ * High-level, reusable UI patterns and components
  * Depends on: app-core.js
  */
 
@@ -38,6 +38,7 @@ const UIPatterns = {
      */
     highlightSearchTerm: (text, term) => {
         if (!term) return SafeUI.escapeHTML(text);
+        // Escape special regex characters in the term
         const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
         const regex = new RegExp(`(${escapedTerm})`, 'gi');
         return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
@@ -99,11 +100,10 @@ const SearchHelper = {
         return items.filter(item => {
             return searchFields.some(field => {
                 const value = item[field];
-                // Handle null/undefined/Symbol field values
-                if (value === null || value === undefined || typeof value === 'symbol') {
-                    return false;
-                }
-                return String(value).toLowerCase().includes(lowerTerm);
+                // Handle null/undefined/non-string values correctly
+                return value != null && 
+                       typeof value !== 'object' && // Prevent searching [object Object]
+                       String(value).toLowerCase().includes(lowerTerm);
             });
         });
     },
@@ -125,8 +125,9 @@ const SearchHelper = {
     }
 };
 
-// --- Expose components to the global window scope ---
+// Expose components to the global window scope
 window.UIPatterns = UIPatterns;
 window.ListRenderer = ListRenderer;
 window.SearchHelper = SearchHelper;
+
 
