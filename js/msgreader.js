@@ -8,7 +8,8 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(factory((global.MsgReader = {})));
+    // MODIFIED: Assign the class constructor directly to global.MsgReader
+	(global.MsgReader = factory({}).default);
 }(this, (function (exports) { 'use strict';
 
 function _typeof(obj) {
@@ -85,6 +86,7 @@ var OleCompoundDoc = function () {
     this.header = {};
     this.sectors = [];
     this.streams = {};
+    this.rootStreamEntry = null; // OFT FIX: Added to store root entry
     this.readHeader();
     this.readSectors();
     this.readDirTree();
@@ -284,6 +286,7 @@ var OleCompoundDoc = function () {
 
         if (type === 5) {
           rootStream = entry;
+          this.rootStreamEntry = entry; // OFT FIX: Store the root entry
         }
 
         entries.push(entry);
@@ -369,7 +372,17 @@ var OleCompoundDoc = function () {
     } else {
       sectorsChain = miniFat;
       sectorSize = header.uMiniSectorSize;
-      var rootStream = this.streams['Root Entry'] || this.streams['Root Storage'];
+      
+      // OFT FIX: Use this.rootStreamEntry which is set during readDirTree
+      // The old code (this.streams['Root Entry']) fails if readStream
+      // is called before this.streams is populated.
+      var rootStream = this.rootStreamEntry; 
+      if (!rootStream) {
+        console.error("MsgReader: Could not find Root Entry to read mini-stream. File may be corrupt.");
+        stream.content = []; // Set to empty to prevent further errors
+        return;
+      }
+
       var miniStreamSectors = this.readSectorsFromSAT(fat, rootStream.size / sectorSize, rootStream.sectStart);
       var sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
       var offsetInMiniStream = sector * sectorSize % header.uSectorSize;
@@ -391,6 +404,16 @@ var OleCompoundDoc = function () {
           var _sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
 
           var _offsetInMiniStream = sector * sectorSize % header.uSectorSize;
+          
+          // OFT FIX: Need to re-calculate rootStream and miniStreamSectors, as they are not defined in this scope
+          var rootStream = this.rootStreamEntry;
+          if (!rootStream) {
+             console.error("MsgReader: Could not find Root Entry to read mini-stream. File may be corrupt.");
+             stream.content = [];
+             return;
+          }
+          var miniStreamSectors = this.readSectorsFromSAT(fat, rootStream.size / sectorSize, rootStream.sectStart);
+          // End OFT FIX
 
           file.seek(512 + miniStreamSectors[_sectorInMiniStream] * header.uSectorSize + _offsetInMiniStream);
         }
@@ -610,15 +633,29 @@ var Reader = function () {
 
   _proto.readFields = function readFields(oleCompoundDoc) {
     var streams = oleCompoundDoc.streams;
+    if (!streams) {
+        console.error("MsgReader: OLE streams not found.");
+        return [];
+    }
     var propertyStream = streams['__properties_version1.0'];
 
     if (!propertyStream) {
-      return [];
+      console.warn("MsgReader: Property stream '__properties_version1.0' not found. File may be an OFT or a different format.");
+      // return []; // Don't return, as OFT might store properties differently (though unlikely for basic fields)
     }
 
-    var property = new Property(new ReadFile(propertyStream.content));
+    // OFT FIX: Even if propertyStream is missing, try to read other streams
     var fields = [];
     var attachments = [];
+
+    if (propertyStream) {
+        var property = new Property(new ReadFile(propertyStream.content));
+        // Note: The original code implicitly read properties from propertyStream,
+        // but it seems to only be used for iteration logic that's not present.
+        // We will proceed to read streams directly.
+    }
+
+
     Object.keys(streams).filter(function (key) {
       return key.indexOf('__substg1.0_') > -1;
     }).forEach(function (key) {
@@ -645,6 +682,10 @@ var Reader = function () {
       return key.indexOf('__attach_version1.0_') > -1;
     }).forEach(function (key, index) {
       var attachStream = streams[key];
+      if (!attachStream.streams) {
+        console.warn("MsgReader: Attachment stream found but contains no sub-streams.", key);
+        return;
+      }
       var attachStreams = attachStream.streams;
       var attachment = {};
       Object.keys(attachStreams).filter(function (key) {
@@ -686,6 +727,10 @@ var Reader = function () {
       return key.indexOf('__recip_version1.0_') > -1;
     }).forEach(function (key, index) {
       var recipStream = streams[key];
+      if (!recipStream.streams) {
+        console.warn("MsgReader: Recipient stream found but contains no sub-streams.", key);
+        return;
+      }
       var recipStreams = recipStream.streams;
       var recipient = {};
       Object.keys(recipStreams).filter(function (key) {
@@ -723,7 +768,7 @@ var Reader = function () {
       var recipientType = recipient.recipientType;
       recipients.push({
         name: recipient.recipientSmtpAddress || recipient.recipientName || recipient.recipientEmail || recipient.recipientDisplayName,
-        email: recipient.recipientSmtgAddress || recipient.recipientEmail || recipient.recipientEmailAddress,
+        email: recipient.recipientSmtpAddress || recipient.recipientEmail || recipient.recipientEmailAddress,
         type: recipientType === 1 ? 'to' : recipientType === 2 ? 'cc' : recipientType === 3 ? 'bcc' : undefined
       });
     });
@@ -766,4 +811,6 @@ exports.default = MsgReader;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
+// MODIFIED: Return the exports object so the wrapper can access .default
+return exports;
 })));
