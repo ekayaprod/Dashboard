@@ -5,22 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Specific layout tweaks for lookup page */
+        .lookup-page .results-container {
+            flex-direction: row; /* Switch to side-by-side */
+        }
+        .lookup-page .column#kb-column {
+            flex-basis: 33.33%; /* KB takes 1/3 */
+            min-width: 200px;
+        }
+        .lookup-page .column#local-column {
+            flex-basis: 66.67%; /* Local DB takes 2/3 */
+        }
+    </style>
 </head>
 <body class="lookup-page">
 
     <div id="navbar-container"></div>
 
     <div class="container">
+        <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;margin-bottom: 0.5rem;"></div>
+        
         <header class="lookup-header">
             <div class="header-top-row">
                 <h1>Lookup</h1>
                 <div class="header-actions">
-                    <!-- CSV buttons -->
-                    <button id="btn-export-csv" class="button-base">Export (CSV)</button>
-                    <button id="btn-import-csv" class="button-base">Import (CSV)</button>
+                    <button id="btn-import-csv" class="button-base" title="Import data from CSV">Import</button>
+                    <button id="btn-export-csv" class="button-base" title="Export data to CSV">Export</button>
                     <button id="btn-settings" class="icon-btn" title="Settings">
-                        <!-- Settings SVG Icon will be loaded by script -->
-                    </button>
+                        </button>
                     <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
                 </div>
             </div>
@@ -33,7 +46,6 @@
             <section class="column" id="kb-column">
                 <h2>KnowledgeBase Results</h2>
                 <div id="kb-results-container">
-                    <!-- This list will now hold a single dynamic link -->
                     <ul id="kb-results-list" class="kb-result-list"></ul>
                     <div id="kb-empty-state" class="empty-state-message">
                         Search to generate a KnowledgeBase link.
@@ -50,11 +62,6 @@
         </main>
     </div>
 
-    <!-- 
-      Toast and Modal HTML.
-      These elements must be in the main HTML file (not in navbar.html)
-      to avoid duplicate ID issues and ensure they exist when AppLifecycle.initPage runs.
-    -->
     <div id="toast" class="toast"></div>
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
@@ -63,8 +70,842 @@
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
-    <!-- Extracted inline script -->
-    <script src="js/lookup-app.js"></script>
+    <script>
+    // Dependency Check
+    (() => {
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        if (missing.length > 0) {
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = `One or more required JavaScript files (e.g., app-core.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+            
+            console.error(errorMessage);
+            
+            // Check if AppLifecycle itself loaded to use its banner function
+            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+            } else {
+                // Fallback to directly manipulating the banner if AppLifecycle failed
+                const banner = document.getElementById('app-startup-error');
+                if(banner) {
+                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                    banner.classList.remove('hidden');
+                }
+            }
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
+
+
+    // FIX: Mode C, Issue 12 - Constants at top level
+    const APP_CONFIG = {
+        NAME: 'lookup',
+        VERSION: '2.1.0',
+        DATA_KEY: 'lookup_v2_data',
+        CSV_HEADERS: ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath']
+    };
+
+    // FIX: Mode C, Issue 7 - Constant for max height
+    const TEXTAREA_MAX_HEIGHT = 200; // Max height for notes field in pixels
+
+    AppLifecycle.run(async () => {
+
+            const defaultState = {
+                items: [],
+                settings: {
+                    kbBaseUrl: '' // e.g., https://my-kb.com/search?q={query}&params=...
+                }
+            };
+
+            const ctx = await AppLifecycle.initPage({
+                storageKey: APP_CONFIG.DATA_KEY,
+                defaultState: defaultState,
+                version: APP_CONFIG.VERSION,
+                requiredElements: [
+                    'search-input', 'local-results',
+                    'btn-add-new-entry', 'btn-settings', 'btn-edit-mode',
+                    'toast', 'modal-overlay', 'modal-content',
+                    'navbar-container',
+                    'kb-results-container', 'kb-results-list', 'kb-empty-state',
+                    'btn-import-csv', 'btn-export-csv' // Added for CSV
+                ]
+            });
+
+            // This guard stops execution if initPage() fails (e.g., missing DOM elements)
+            if (!ctx) return;
+
+            let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
+
+            // FIX: Mode C, Issue 4 - Remove redundant state check
+            // FIX: Mode F - Create optimized save functions
+            const saveState = () => {
+                try {
+                    originalSaveState();
+                } catch (e) {
+                    console.error("Failed to save state:", e);
+                    SafeUI.showModal("Error", "<p>Failed to save data. Storage might be full.</p>", [{label: 'OK'}]);
+                }
+            };
+            
+            const sortAndSaveState = () => {
+                state.items.sort((a, b) => a.keyword.localeCompare(b.keyword));
+                saveState();
+            };
+            
+            let currentEditState = { id: null, type: null };
+            let isEditMode = false;
+
+            // ====================================================================
+            // HELPERS (From Mode C & D)
+            // ====================================================================
+
+            // FIX: Mode C, Issue 11 - Extract focus/scroll helper
+            const focusAndScroll = (elementId) => {
+                setTimeout(() => {
+                    const el = document.getElementById(elementId);
+                    if (el) {
+                        el.focus();
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 0);
+            };
+
+            // FIX: Mode D, Issue 17 - State reset helper
+            const clearEditStateAndRender = (message = null) => {
+                currentEditState = { id: null, type: null };
+                renderAll();
+                if (message) {
+                    SafeUI.showToast(message);
+                }
+            };
+
+            // FIX: Mode D, Issue 15 - Entry creation factory
+            const createEntry = (partial = {}) => ({
+                id: partial.id || SafeUI.generateId(),
+                keyword: (partial.keyword || '').trim(),
+                assignmentGroup: (partial.assignmentGroup || '').trim(),
+                notes: (partial.notes || '').trim(),
+                phoneLogPath: (partial.phoneLogPath || '').trim()
+            });
+            
+            // FIX: Mode D, Issue 13 - Unified validation logic
+            // FIX: Relaxed validation (Assignment Group no longer required)
+            const validateEntry = (entry) => {
+                const errors = [];
+                
+                if (!entry.keyword?.trim()) {
+                    errors.push('Keyword is required');
+                }
+                
+                return {
+                    valid: errors.length === 0,
+                    errors
+                };
+            };
+            
+            // FIX: Mode D, Issue 19 - Keyword processing utilities
+            const keywordUtils = {
+                parse: (keywordString) => {
+                    return keywordString
+                        .split(',')
+                        .map(k => k.trim())
+                        .filter(Boolean);
+                },
+                
+                merge: (keywordString1, keywordString2, caseSensitive = false) => {
+                    const keywords1 = keywordUtils.parse(keywordString1);
+                    const keywords2 = keywordUtils.parse(keywordString2);
+                    
+                    if (caseSensitive) {
+                        return [...new Set([...keywords1, ...keywords2])].join(', ');
+                    }
+                    
+                    // Case-insensitive deduplication
+                    const keywordMap = new Map();
+                    [...keywords1, ...keywords2].forEach(kw => {
+                        const key = kw.toLowerCase();
+                        if (!keywordMap.has(key)) {
+                            keywordMap.set(key, kw); // Preserve original case
+                        }
+                    });
+                    
+                    return Array.from(keywordMap.values()).join(', ');
+                }
+            };
+
+            // FIX: Mode D, Issue 14 - Centralized KB URL validation
+            const validateKbUrl = (url) => {
+                if (!url) {
+                    return { valid: true, message: '' }; // Empty is valid
+                }
+                
+                if (!url.includes('{query}')) {
+                    return { 
+                        valid: false, 
+                        message: 'The URL must contain the {query} placeholder (case-sensitive).' 
+                    };
+                }
+                
+                // Test URL construction
+                try {
+                    const testUrl = url.replace(/{query}/g, 'test'); // FIX: Replace all
+                    const urlObj = new URL(testUrl);
+                    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                        return { 
+                            valid: false, 
+                            message: 'URL must use http:// or https:// protocol.' 
+                        };
+                    }
+                } catch (e) {
+                    return { 
+                        valid: false, 
+                        message: 'The URL format is invalid. It must be a complete URL (e.g., https://...).' 
+                    };
+                }
+                
+                return { valid: true, message: '' };
+            };
+
+            // FIX: Mode C, Issue 2 - KB empty state helpers
+            const showKbEmptyState = (message) => {
+                DOMElements.kbEmptyState.textContent = message;
+                DOMElements.kbEmptyState.classList.remove('hidden');
+            };
+            const hideKbEmptyState = () => {
+                DOMElements.kbEmptyState.classList.add('hidden');
+            };
+
+            // FIX: Mode C, Issue 5 - Simplify ternary
+            const getEmptyMessage = (lowerTerm) => {
+                if (isEditMode) return 'No entries in the database. Click "+ Create Entry".';
+                return lowerTerm ? 'No local entries found.' : 'Search to see local results.';
+            };
+            
+            // FIX: Mode D, Issue 16 - Modal action builders
+            const modalActions = {
+                cancelAndConfirm: (label, callback, isDangerous = false) => [
+                    { label: 'Cancel' },
+                    { 
+                        label, 
+                        class: isDangerous ? 'button-danger' : 'button-primary', 
+                        callback 
+                    }
+                ],
+                
+                cancelAndMultiple: (actions) => [
+                    { label: 'Cancel' },
+                    ...actions
+                ]
+            };
+            
+            // FIX: Mode D, Issue 18 - Form value extraction
+            const getFormValues = (form, id) => {
+                const fields = ['keyword', 'group', 'notes', 'path'];
+                return fields.reduce((values, field) => {
+                    // Note: 'group' field in map corresponds to 'assignmentGroup' property
+                    const key = (field === 'group') ? 'assignmentGroup' : (field === 'path' ? 'phoneLogPath' : field);
+                    const element = form.querySelector(`#edit-${field}-${id}`);
+                    values[key] = element ? element.value.trim() : '';
+                    return values;
+                }, {});
+            };
+
+            // ====================================================================
+            // CORE FUNCTIONS
+            // ====================================================================
+
+            /**
+             * Renders the list of local database items
+             */
+            const renderLocalList = (searchTerm = '') => {
+                let itemsToRender = [];
+                const lowerTerm = searchTerm.toLowerCase().trim();
+
+                // FIX: Mode C, Issue 1 - Simplify conditional logic
+                // Start with all items in Edit Mode, or empty in Search Mode
+                itemsToRender = isEditMode ? [...state.items] : [];
+
+                // Apply search filter if term exists and NOT in edit mode
+                // FIX: Mode B - Edit mode override
+                if (lowerTerm && !isEditMode) {
+                    const sourceItems = state.items; // Always search full list in search mode
+                    itemsToRender = SearchHelper.simpleSearch(sourceItems, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                }
+                
+                // Ensure the item being edited is always visible, even if filtered out
+                if (currentEditState.id) {
+                    const isItemVisible = itemsToRender.some(item => item.id === currentEditState.id);
+                    if (!isItemVisible) {
+                        const itemInState = state.items.find(item => item.id === currentEditState.id);
+                        if (itemInState) itemsToRender.unshift(itemInState);
+                    }
+                }
+
+                // Show "+ Create Entry" button
+                DOMElements.btnAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
+
+                ListRenderer.renderList({
+                    container: DOMElements.localResults,
+                    items: itemsToRender,
+                    // FIX: Mode C, Issue 5 - Use helper
+                    emptyMessage: getEmptyMessage(lowerTerm),
+                    createItemElement: (item) => {
+                        // Render as edit form if in Edit Mode OR if it's the specific item being edited
+                        if (isEditMode || (currentEditState.id === item.id)) {
+                            return createEditForm(item);
+                        }
+                        return createItemElement(item, searchTerm);
+                    }
+                });
+            };
+
+            /**
+             * Renders the dynamic KnowledgeBase link
+             */
+            const renderKbLink = (term) => {
+                DOMElements.kbResultsList.innerHTML = '';
+                const baseUrl = state.settings.kbBaseUrl;
+
+                // FIX: Mode C, Issue 2 - Use helpers
+                if (!term) {
+                    return showKbEmptyState('Search to generate a KnowledgeBase link.');
+                }
+                
+                if (!baseUrl) {
+                    return showKbEmptyState('KB URL not set. Click ⚙️ to configure.');
+                }
+                
+                // FIX: Mode D, Issue 14 - Use consolidated validation
+                const validation = validateKbUrl(baseUrl);
+                if (!validation.valid) {
+                    return showKbEmptyState(`KB URL is invalid: ${validation.message}`);
+                }
+
+                hideKbEmptyState();
+
+                // Create and inject the dynamic link
+                // FIX: Mode B - Replace all instances of {query}
+                const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
+
+                const li = document.createElement('li');
+                li.className = 'kb-result-item';
+                const a = document.createElement('a');
+                a.href = finalUrl;
+                a.textContent = `Search "${SafeUI.escapeHTML(term)}" in KnowledgeBase`;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                li.appendChild(a);
+                DOMElements.kbResultsList.appendChild(li);
+            };
+            
+            /**
+             * Renders all data sections (local list + KB link)
+             */
+            const renderAll = () => {
+                const searchTerm = DOMElements.searchInput.value;
+                if (isEditMode) {
+                    DOMElements.btnAddNewEntry.classList.remove('hidden');
+                }
+                renderLocalList(searchTerm);
+            };
+
+            /**
+             * Handles the main search logic
+             */
+            const handleSearch = () => {
+                const term = DOMElements.searchInput.value.trim();
+                renderLocalList(term);
+                renderKbLink(term);
+            };
+
+            /**
+             * Creates the HTML for a read-only local database item
+             */
+            function createItemElement(item, searchTerm) {
+                const li = document.createElement('li');
+                li.className = 'result-item';
+                li.dataset.id = item.id;
+                
+                li.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
+                        <div class="item-actions">
+                            <button class="btn-edit icon-btn" title="Edit">${SafeUI.SVGIcons.pencil}</button>
+                            <button class="btn-delete icon-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                        </div>
+                    </div>
+                    <div class="item-grid">
+                        <strong>Group:</strong>
+                        <div>
+                            <span>${UIPatterns.highlightSearchTerm(item.assignmentGroup, searchTerm) || '...'}</span>
+                            <button class="btn-copy icon-btn" title="Copy Group" data-copy="${SafeUI.escapeHTML(item.assignmentGroup)}">📋</button>
+                        </div>
+                        <strong>Notes:</strong>
+                        <div>
+                            <span>${SafeUI.escapeHTML(item.notes) || '...'}</span>
+                        </div>
+                        <strong>Path:</strong>
+                        <div>
+                            <span>${UIPatterns.highlightSearchTerm(item.phoneLogPath, searchTerm) || '...'}</span>
+                            <button class="btn-copy icon-btn" title="Copy Path" data-copy="${SafeUI.escapeHTML(item.phoneLogPath)}">📋</button>
+                        </div>
+                    </div>
+                `;
+                return li;
+            }
+
+            /**
+             * Creates the HTML for an in-line edit form
+             */
+            function createEditForm(item) {
+                const li = document.createElement('li');
+                li.className = 'edit-form-li';
+
+                const form = document.createElement('form');
+                form.className = 'edit-form';
+                form.dataset.id = item.id;
+                
+                form.innerHTML = `
+                    <div class="form-grid">
+                        <label for="edit-keyword-${item.id}">Keyword(s)</label>
+                        <input type="text" id="edit-keyword-${item.id}" value="${SafeUI.escapeHTML(item.keyword)}" placeholder="Comma-separated keywords">
+                        
+                        <label for="edit-group-${item.id}">Assignment Group</label>
+                        <input type="text" id="edit-group-${item.id}" value="${SafeUI.escapeHTML(item.assignmentGroup)}" placeholder="Group name">
+                        
+                        <label for="edit-notes-${item.id}">Notes</label>
+                        <textarea id="edit-notes-${item.id}" placeholder="Procedural notes...">${SafeUI.escapeHTML(item.notes)}</textarea>
+                        
+                        <label for="edit-path-${item.id}">Phone Log Path</label>
+                        <input type="text" id="edit-path-${item.id}" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="Cat > SubCat > Item">
+                    </div>
+                    <div class="edit-form-actions">
+                        <button type="button" class="btn-delete button-base button-danger" title="Delete">Delete</button>
+                        <button type="button" class="btn-cancel button-base" title="Cancel">Cancel</button>
+                        <button type="submit" class="btn-save button-base button-primary" title="Save">Save</button>
+                    </div>
+                `;
+
+                // Attach event listeners to the new form
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleSave(form, item.id);
+                });
+                
+                form.querySelector('.btn-delete').addEventListener('click', () => {
+                    UIPatterns.confirmDelete('Entry', item.keyword || 'New Entry', () => handleDelete(item.id));
+                });
+
+                form.querySelector('.btn-cancel').addEventListener('click', () => {
+                    // FIX: Mode C, Issue 10 - Simplify empty check
+                    // FIX: Relaxed validation
+                    const isNewEmptyEntry = !item.keyword.trim();
+                    if (isNewEmptyEntry) {
+                        handleDelete(item.id, true); // true = skip confirm
+                    }
+                    clearEditStateAndRender();
+                });
+
+                // Setup auto-resize for the textarea
+                setTimeout(() => {
+                    const notesTextarea = form.querySelector(`#edit-notes-${item.id}`);
+                    if (notesTextarea) {
+                        // FIX: Mode C, Issue 7 - Use constant
+                        DOMHelpers.setupTextareaAutoResize(notesTextarea, TEXTAREA_MAX_HEIGHT);
+                    }
+                }, 0);
+
+                li.appendChild(form);
+                return li;
+            }
+
+            /**
+             * Handles click on "+ Create Entry"
+             */
+            function handleAddNewEntry() {
+                if (currentEditState.id) {
+                    const el = document.querySelector('.edit-form-li');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    SafeUI.showToast("Please save or cancel your current edit first.");
+                    return;
+                }
+
+                const searchTerm = DOMElements.searchInput.value.trim();
+                // FIX: Mode D, Issue 15 - Use factory
+                const newItem = createEntry({ keyword: searchTerm });
+                state.items.unshift(newItem); // Add to start of array
+
+                currentEditState = { id: newItem.id, type: 'local' };
+                
+                DOMElements.searchInput.value = '';
+                
+                // FIX: Mode D, Issue 17 - Use helper
+                clearEditStateAndRender(); // Re-render to show the new form
+
+                // FIX: Mode C, Issue 11 - Use helper
+                focusAndScroll(`edit-keyword-${newItem.id}`);
+            }
+
+            /**
+             * Handles click on an item's "Edit" button
+             */
+            function handleEdit(id) {
+                if (currentEditState.id && currentEditState.id !== id) {
+                    const el = document.querySelector('.edit-form-li');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    SafeUI.showToast("Please save or cancel your current edit first.");
+                    return;
+                }
+
+                currentEditState = { id: id, type: 'local' };
+                renderAll(); // Re-render to show this item as an edit form
+                
+                // FIX: Mode C, Issue 11 - Use helper
+                focusAndScroll(`edit-keyword-${id}`);
+            }
+
+            /**
+             * Handles saving an edit form (includes merge logic)
+             */
+            function handleSave(form, id) {
+                // FIX: Mode D, Issue 18 - Use helper
+                const { keyword, assignmentGroup, notes, phoneLogPath } = getFormValues(form, id);
+
+                // FIX: Mode D, Issue 13 - Use consolidated validation
+                const validation = validateEntry({ keyword, assignmentGroup });
+                if (!validation.valid) {
+                    const errorField = validation.errors[0].includes('Keyword') ? `edit-keyword-${id}` : `edit-group-${id}`;
+                    return SafeUI.showValidationError("Invalid Input", validation.errors.join('. '), errorField);
+                }
+
+                // Check for duplicates (only if assignment group is not empty)
+                const existingEntry = (assignmentGroup && state.items.find(item => 
+                    item.assignmentGroup.toLowerCase() === assignmentGroup.toLowerCase() &&
+                    item.id !== id // Exclude self
+                ));
+
+                const saveAction = () => {
+                    let itemToUpdate = state.items.find(item => item.id === id);
+                    if (!itemToUpdate) {
+                        // This case handles if a new entry was created
+                        itemToUpdate = createEntry({ id });
+                        state.items.push(itemToUpdate);
+                    }
+                    Object.assign(itemToUpdate, { keyword, assignmentGroup, notes, phoneLogPath });
+                    
+                    saveState(); // Use non-sorting save
+                    // FIX: Mode D, Issue 17 - Use helper
+                    clearEditStateAndRender("Entry saved.");
+                };
+
+                // If duplicate found, show merge/continue/cancel modal
+                if (existingEntry) {
+                    // FIX: Mode D, Issue 16 - Use modal helper
+                    SafeUI.showModal("Duplicate Group", 
+                        `<p>An entry for "<strong>${SafeUI.escapeHTML(existingEntry.assignmentGroup)}</strong>" already exists with keyword(s) "<strong>${SafeUI.escapeHTML(existingEntry.keyword)}</strong>".</p>`, 
+                        modalActions.cancelAndMultiple([
+                            { label: 'Continue (Create New)', class: 'button-danger', callback: saveAction },
+                            { 
+                                label: 'Merge Keywords', 
+                                class: 'button-primary', 
+                                callback: () => {
+                                    // FIX: Mode D, Issue 19 - Use helper
+                                    existingEntry.keyword = keywordUtils.merge(existingEntry.keyword, keyword);
+                                    handleDelete(id, true); // Delete the new/edited entry
+                                    saveState(); // Use non-sorting save
+                                    // FIX: Mode D, Issue 17 - Use helper
+                                    clearEditStateAndRender("Keywords merged.");
+                                }
+                            }
+                        ])
+                    );
+                } else {
+                    // No duplicate, just save
+                    saveAction();
+                }
+            }
+
+            /**
+             * Handles deleting an entry
+             */
+            function handleDelete(id, skipConfirm = false) { 
+                if (currentEditState.id === id) {
+                    currentEditState = { id: null, type: null };
+                }
+
+                const index = state.items.findIndex(i => i.id === id);
+                if (index === -1) return;
+                
+                const item = state.items[index];
+
+                const doDelete = () => {
+                    state.items.splice(index, 1);
+                    saveState(); // Use non-sorting save
+                    // FIX: Mode D, Issue 17 - Use helper
+                    clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
+                };
+
+                if (skipConfirm) {
+                    doDelete();
+                } else {
+                    UIPatterns.confirmDelete('Entry', item.keyword || 'New Entry', doDelete);
+                }
+            }
+            
+            // ====================================================================
+            // CSV IMPORT / EXPORT (Refactored to use CsvManager)
+            // ====================================================================
+            
+            /**
+             * Validates a single row from CSV import.
+             */
+            function validateCsvRow(row, index, allItems) {
+                const entry = createEntry(row); // Use factory to trim/normalize
+                
+                // FIX: Relaxed validation
+                const validation = validateEntry(entry); 
+                if (!validation.valid) {
+                    return { error: `Row ${index + 2}: ${validation.errors.join(', ')}` };
+                }
+                
+                // Check for duplicates
+                const contentKey = `${entry.keyword.toLowerCase()}|${entry.assignmentGroup.toLowerCase()}`;
+                
+                // FIX: Duplication check
+                if (entry.id) {
+                    // Check if this ID already exists
+                    if (allItems.some(item => item.id === entry.id)) {
+                        return { action: 'overwrite', item: entry };
+                    }
+                }
+                
+                // No ID or ID is new, check by content
+                if (allItems.some(item => `${item.keyword.toLowerCase()}|${item.assignmentGroup.toLowerCase()}` === contentKey)) {
+                     return { error: `Row ${index + 2}: A identical entry (Keyword + Group) already exists. Row skipped.` };
+                }
+
+                return { action: 'add', item: entry };
+            }
+
+            /**
+             * Confirms and processes the imported CSV data.
+             */
+            function confirmCsvImport(actions) {
+                const toAdd = actions.filter(a => a.action === 'add').length;
+                const toOverwrite = actions.filter(a => a.action === 'overwrite').length;
+
+                SafeUI.showModal("Confirm Import", 
+                    `<p>CSV file processed:</p>
+                     <ul style="text-align: left; margin: 0.5rem 0 1rem 1.5rem;">
+                         <li><strong>${toAdd}</strong> new entries will be added.</li>
+                         <li><strong>${toOverwrite}</strong> existing entries will be overwritten (matched by ID).</li>
+                     </ul>
+                     <p>This cannot be undone.</p>`, 
+                    modalActions.cancelAndConfirm('Import Data', () => {
+                        actions.forEach(action => {
+                            if (action.action === 'add') {
+                                state.items.push(action.item);
+                            } else if (action.action === 'overwrite') {
+                                const index = state.items.findIndex(i => i.id === action.item.id);
+                                if (index > -1) {
+                                    state.items[index] = action.item;
+                                } else {
+                                     state.items.push(action.item); // Should not happen, but safe fallback
+                                }
+                            }
+                        });
+                        sortAndSaveState(); // Sort after import
+                        renderAll();
+                        SafeUI.showToast(`Imported ${toAdd + toOverwrite} entries.`);
+                    }, true)
+                );
+            }
+
+
+            /**
+             * Shows the Settings modal
+             */
+            function showSettingsModal() {
+                const modalContent = `
+                    <div class="form-group">
+                        <label for="kb-url-input">KnowledgeBase Search URL</label>
+                        <input type="text" id="kb-url-input" class="sidebar-input" placeholder="https://my-kb.com/search?q={query}" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}">
+                        <p class="form-help">Enter the full URL from a search on your KB. Use <strong>{query}</strong> as a placeholder for the search term.</p>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="form-group">
+                        <label>Advanced Data Management (JSON)</label>
+                        <p class="form-help">Use these tools for disaster recovery. "Import/Export" (on the main page) is for managing data via CSV.</p>
+                        <div class="button-group">
+                            <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
+                            <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
+                        </div>
+                    </div>
+                `;
+                
+                SafeUI.showModal("Settings", modalContent, [
+                    { label: 'Cancel' },
+                    { 
+                        label: 'Save', 
+                        class: 'button-primary', 
+                        callback: () => {
+                            const newUrl = document.getElementById('kb-url-input').value.trim();
+                            
+                            // FIX: Mode D, Issue 14 - Use consolidated validation
+                            const validation = validateKbUrl(newUrl);
+                            if (!validation.valid) {
+                                SafeUI.showValidationError("Invalid URL", validation.message, "kb-url-input");
+                                return false;
+                            }
+
+                            state.settings.kbBaseUrl = newUrl;
+                            saveState(); // Use non-sorting save
+                            SafeUI.showToast("Settings saved.");
+                            handleSearch();
+                        }
+                    }
+                ]);
+
+                setTimeout(() => {
+                    const input = document.getElementById('kb-url-input');
+                    if (input) {
+                        input.addEventListener('input', () => {
+                            const value = input.value.trim();
+                            // FIX: Mode D, Issue 14 - Use validation helper
+                            const validation = validateKbUrl(value);
+                            if (!validation.valid && value.length > 0) {
+                                input.style.borderColor = 'var(--danger-color)';
+                            } else {
+                                input.style.borderColor = '';
+                            }
+                        });
+                    }
+                }, 0);
+
+                // FIX: Mode D Refactor - Use consolidated backup handler
+                BackupRestore.setupBackupRestoreHandlers({
+                    appName: APP_CONFIG.NAME,
+                    backupBtn: document.getElementById('modal-backup-btn'),
+                    restoreBtn: document.getElementById('modal-restore-btn'),
+                    state: state,
+                    legacyAppName: 'assignment_tool',
+                    itemValidators: {
+                        items: APP_CONFIG.CSV_HEADERS,
+                        settings: ['kbBaseUrl']
+                    },
+                    onRestoreCallback: (dataToRestore) => {
+                        state.items = dataToRestore.items || [];
+                        state.settings = dataToRestore.settings || { kbBaseUrl: '' };
+                        sortAndSaveState(); // Sort after JSON restore
+                        renderAll();
+                        handleSearch();
+                        SafeUI.hideModal(); // Close settings modal
+                    }
+                });
+            }
+
+            /**
+             * Attaches all primary event listeners
+             */
+            function attachEventListeners() {
+                // Search bar
+                SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
+                
+                // Header buttons
+                DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
+                DOMElements.btnSettings.addEventListener('click', showSettingsModal);
+                
+                DOMElements.btnEditMode.addEventListener('click', () => {
+                    // Check if there's an active edit with unsaved changes
+                    if (currentEditState.id) {
+                        const form = document.querySelector(`form[data-id="${currentEditState.id}"]`);
+                        if (form) {
+                            const item = state.items.find(i => i.id === currentEditState.id);
+                            if (item) {
+                                // FIX: Mode D, Issue 18 - Use helper
+                                const { keyword, assignmentGroup, notes, phoneLogPath } = getFormValues(form, currentEditState.id);
+                                const hasChanges = 
+                                    keyword !== item.keyword ||
+                                    assignmentGroup !== item.assignmentGroup ||
+                                    notes !== item.notes ||
+                                    phoneLogPath !== item.phoneLogPath;
+                                
+                                if (hasChanges) {
+                                    UIPatterns.confirmUnsavedChanges(() => {
+                                        toggleEditMode();
+                                    });
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    
+                    toggleEditMode();
+                });
+
+                // Event delegation for local results list (edit, delete, copy)
+                DOMElements.localResults.addEventListener('click', async (e) => {
+                    const editBtn = e.target.closest('.btn-edit');
+                    if (editBtn) {
+                        const id = e.target.closest('.result-item').dataset.id;
+                        handleEdit(id);
+                        return;
+                    }
+                    
+                    const copyBtn = e.target.closest('.btn-copy');
+                    if (copyBtn) {
+                        const success = await SafeUI.copyToClipboard(copyBtn.dataset.copy);
+                        SafeUI.showToast(success ? "Copied to clipboard!" : "Failed to copy.");
+                        return;
+                    }
+                });
+
+                // FIX: Mode D Refactor - Use consolidated CsvManager
+                CsvManager.setupExport({
+                    exportBtn: DOMElements.btnExportCsv,
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    dataGetter: () => state.items,
+                    filenameBase: 'lookup-export' // CsvManager will add timestamp
+                });
+                
+                CsvManager.setupImport({
+                    importBtn: DOMElements.btnImportCsv,
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    stateItemsGetter: () => state.items,
+                    onValidate: validateCsvRow, 
+                    onConfirm: confirmCsvImport
+                });
+            }
+            
+            function toggleEditMode() {
+                isEditMode = !isEditMode;
+                DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
+                DOMElements.btnEditMode.classList.toggle('button-primary', isEditMode);
+                // FIX: Mode D, Issue 17 - Use helper
+                clearEditStateAndRender();
+            }
+
+            /**
+             * Entry point
+             */
+            function init() {
+                // Load settings icon
+                DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+                
+                // FIX: Mode C, Issue 4 / Mode D, Issue 21 - Remove redundant checks
+                // State structure is guaranteed by initPage and defaultState
+
+                attachEventListeners();
+                renderAll();
+                handleSearch(); // Run initial search (to render KB link state)
+                
+                // --- CRITICAL FIX: Load the navbar ---
+                SafeUI.loadNavbar("navbar-container");
+            }
+
+            // Run the app
+            init();
+        });
+    </script>
 </body>
 </html>
-
