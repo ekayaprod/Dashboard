@@ -51,5 +51,51 @@
         "Spirit",
         "Legend",
         "Mystery"
+    ],
+    "Animal": [
+        "Penguin",
+        "Seal",
+        "Polar Bear",
+        "Arctic Fox",
+        "Snowy Owl",
+        "Reindeer",
+        "Caribou",
+        "Wolf",
+        "Ermine",
+        "Hare",
+        "Ptarmigan",
+        "Walrus",
+        "Narwhal",
+        "Orca",
+        "Husky"
+    ],
+    "Object": [
+        "Coat",
+        "Scarf",
+        "Gloves",
+        "Boots",
+        "Mittens",
+        "Fireplace",
+        "Chimney",
+        "Shovel",
+        "Sleigh",
+        "Snowplow",
+        "Cabin",
+        "Lodge",
+        "Blanket",
+        "Lantern",
+        "Candle"
+    ],
+    "Color": [
+        "White",
+        "Silver",
+        "Blue",
+        "Gray",
+        "Ice",
+        "Pearl",
+        "Frost",
+        "Snow",
+        "Crystal",
+        "Pale"
     ]
 }
