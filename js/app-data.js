@@ -1,13 +1,13 @@
 /**
  * app-data.js
- * State persistence, backup/restore, and validation logic
+ * State persistence, backup/restore, and validation logic.
  * Depends on: app-core.js
  */
 
 const BackupRestore = (() => {
     return {
         /**
-         * Creates and triggers download of a JSON backup file
+         * Creates and triggers download of a JSON backup file.
          */
         createBackup: (state, appName = 'app') => {
             try {
@@ -30,7 +30,7 @@ const BackupRestore = (() => {
         },
 
         /**
-         * Opens file picker and attempts to restore from JSON file
+         * Opens file picker and attempts to restore from JSON file.
          */
         restoreBackup: (onRestore) => {
             SafeUI.openFilePicker((file) => {
@@ -47,7 +47,7 @@ const BackupRestore = (() => {
         },
 
         /**
-         * Validates the high-level structure of a backup file
+         * Validates the high-level structure of a backup file.
          */
         validateBackup: (data, requiredKeys = []) => {
             if (!data || typeof data !== 'object' || !data.data || typeof data.data !== 'object') {
@@ -58,11 +58,11 @@ const BackupRestore = (() => {
         },
 
         /**
-         * Validates an array of items, ensuring each item is an object with required fields
+         * Validates an array of items, ensuring each item is an object with required fields.
          */
         validateItems: (items, requiredFields) => {
             if (!Array.isArray(items)) return false;
-            if (requiredFields.length === 0) return true; // Empty check means just ensure it's an array
+            if (requiredFields.length === 0) return true;
 
             return items.every(item => {
                 if (!item || typeof item !== 'object') return false;
@@ -71,7 +71,7 @@ const BackupRestore = (() => {
         },
 
         /**
-         * Handles the complete backup restore flow: file picking, reading, and validation.
+         * Handles the complete backup restore flow.
          */
         handleRestoreUpload: (config) => {
             BackupRestore.restoreBackup((restoredData) => {
@@ -81,7 +81,6 @@ const BackupRestore = (() => {
                     const isNewBackup = !!restoredData.data;
                     const appName = restoredData.appName;
 
-                    // Check for app name match
                     const isCorrectApp = appName === config.appName;
 
                     // Only enforce app name check on new-style backups
@@ -102,7 +101,6 @@ const BackupRestore = (() => {
                         }
                     }
 
-                    // If all checks passed, call the onRestore function
                     config.onRestore(dataToValidate);
 
                 } catch (err) {
@@ -113,64 +111,18 @@ const BackupRestore = (() => {
         },
 
         /**
-         * Consolidates logic for setting up JSON backup/restore buttons
+         * Consolidates logic for setting up JSON backup/restore buttons.
          */
         setupBackupRestoreHandlers: (config) => {
             const {
                 state,
                 appName,
-                backupBtn,   // Button to trigger backup
-                restoreBtn,  // Button to trigger restore
-                settingsBtn, // Button that *opens* the modal (if backup/restore are inside)
+                backupBtn,
+                restoreBtn,
                 itemValidators,
                 restoreConfirmMessage,
                 onRestoreCallback
             } = config;
-
-            if (settingsBtn) {
-                settingsBtn.addEventListener('click', () => {
-                    if (typeof config.showSettingsModal === 'function') {
-                        config.showSettingsModal();
-                    }
-
-                    setTimeout(() => {
-                        const modalBackupBtn = document.getElementById(config.backupBtnId || 'modal-backup-btn');
-                        const modalRestoreBtn = document.getElementById(config.restoreBtnId || 'modal-restore-btn');
-
-                        if (modalBackupBtn) {
-                            modalBackupBtn.onclick = () => {
-                                BackupRestore.createBackup(state, appName);
-                            };
-                        }
-                        if (modalRestoreBtn) {
-                            modalRestoreBtn.onclick = () => {
-                                BackupRestore.handleRestoreUpload({
-                                    appName: appName,
-                                    itemValidators: itemValidators,
-                                    onRestore: (dataToRestore) => {
-                                        SafeUI.showModal("Confirm Restore (JSON)",
-                                            `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`,
-                                            [
-                                                { label: 'Cancel' },
-                                                {
-                                                    label: 'Restore',
-                                                    class: 'button-danger',
-                                                    callback: () => {
-                                                        onRestoreCallback(dataToRestore);
-                                                    }
-                                                }
-                                            ]
-                                        );
-                                    }
-                                });
-                            };
-                        }
-                    }, 0);
-                });
-                return;
-            }
-
-            // --- Standard flow: backupBtn and restoreBtn are the triggers ---
 
             if (backupBtn) {
                 backupBtn.addEventListener('click', () => {
@@ -208,7 +160,7 @@ const BackupRestore = (() => {
 const DataValidator = (() => {
     return {
         /**
-         * Check for duplicate values in array
+         * Check for duplicate values in array.
          */
         hasDuplicate: (items, field, value, excludeId = null) => {
             if (!Array.isArray(items)) return false;
@@ -222,7 +174,7 @@ const DataValidator = (() => {
         },
 
         /**
-         * Validate form fields with common rules
+         * Validate form fields with common rules.
          */
         validateFields: (fields, rules) => {
             const errors = [];
@@ -264,7 +216,7 @@ const DataValidator = (() => {
 })();
 
 /**
- * DataConverter - Handles CSV parsing and generation
+ * DataConverter - Handles CSV parsing and generation.
  */
 const DataConverter = (() => {
 
@@ -280,11 +232,12 @@ const DataConverter = (() => {
             const char = line[i];
 
             if (inQuotes) {
+                // We are inside quotes
                 if (char === '"') {
                     if (i + 1 < line.length && line[i + 1] === '"') {
                         // This is an escaped quote ("")
                         currentVal += '"';
-                        i++; // Skip the next quote
+                        i++;
                     } else {
                         // This is the closing quote
                         inQuotes = false;
@@ -293,10 +246,11 @@ const DataConverter = (() => {
                     currentVal += char;
                 }
             } else {
+                // We are outside quotes
                 if (char === '"') {
                     inQuotes = true;
                 } else if (char === ',') {
-                    currentVal = currentVal.replace(/""/g, '"');
+                    currentVal = currentVal.replace(/""/g, '"'); // Unescape quotes
                     values.push(currentVal);
                     currentVal = '';
                 } else {
@@ -304,9 +258,9 @@ const DataConverter = (() => {
                 }
             }
         }
-        
-        currentVal = currentVal.replace(/""/g, '"');
-        values.push(currentVal); // Add the last value
+
+        currentVal = currentVal.replace(/""/g, '"'); // Unescape quotes for the last value
+        values.push(currentVal);
         return values;
     };
 
@@ -346,9 +300,10 @@ const DataConverter = (() => {
                         let currentLine = '';
                         let inQuotes = false;
 
+                        // Normalize line endings
                         const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-                        // First pass: properly split lines respecting quoted newlines
+                        // Properly split lines respecting quoted newlines
                         for (let i = 0; i < normalizedText.length; i++) {
                             const char = normalizedText[i];
 
@@ -374,6 +329,7 @@ const DataConverter = (() => {
                             return resolve({ data: [], errors: [] });
                         }
 
+                        // Parse header line
                         const headerLine = lines.shift();
                         const headers = _parseCsvLine(headerLine).map(h => h.trim());
 
@@ -423,11 +379,11 @@ const DataConverter = (() => {
 })();
 
 /**
- * CsvManager - Consolidates CSV import/export logic
+ * CsvManager - Consolidates CSV import/export logic.
  */
 const CsvManager = (() => {
     /**
-     * Helper function to create a timestamp string
+     * Helper function to create a timestamp string.
      */
     const _getTimestamp = () => {
         const d = new Date();
@@ -442,7 +398,7 @@ const CsvManager = (() => {
 
     return {
         /**
-         * Wires up a CSV export button
+         * Wires up a CSV export button.
          */
         setupExport: (config) => {
             if (!config.exportBtn) {
@@ -473,7 +429,7 @@ const CsvManager = (() => {
         },
 
         /**
-         * Wires up a CSV import button
+         * Wires up a CSV import button.
          */
         setupImport: (config) => {
             if (!config.importBtn) {
@@ -494,12 +450,11 @@ const CsvManager = (() => {
                         }
 
                         data.forEach((row, index) => {
-                            const result = config.onValidate(row, index);
+                            const result = config.onValidate(row, index, config.stateItemsGetter ? config.stateItemsGetter() : undefined);
                             if (result.error) {
                                 validationErrors.push(result.error);
                             } else {
-                                // Use 'entry' property from validation result
-                                validatedData.push(result.entry); 
+                                validatedData.push(result.entry);
                             }
                         });
 
