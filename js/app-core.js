@@ -73,7 +73,6 @@ const UIUtils = (() => {
             }
 
             try {
-                // Fetch navbar.html; add cache-busting query param.
                 const response = await fetch(`navbar.html?v=1.1`);
                 if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
                 navContainer.innerHTML = await response.text();
@@ -94,7 +93,7 @@ const UIUtils = (() => {
     };
 
     /**
-     * Generates a unique ID with a fallback.
+     * Generates a unique ID.
      */
     const generateId = () => {
         if (crypto && crypto.randomUUID) {
@@ -297,6 +296,8 @@ const UIUtils = (() => {
             return;
         }
 
+        document.body.classList.add('modal-open');
+
         modalContent.innerHTML = `<h3>${escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
         const actionsContainer = modalContent.querySelector('.modal-actions');
 
@@ -315,7 +316,6 @@ const UIUtils = (() => {
             actionsContainer.appendChild(btn);
         });
 
-        document.body.classList.add('modal-open');
         modalOverlay.style.display = 'flex';
     };
 
@@ -387,7 +387,6 @@ const SafeUI = (() => {
         isReady,
         SVGIcons: getSVGIcons(),
 
-        // --- Core UI Methods ---
         loadNavbar: (containerId) => {
             if (isReady) UIUtils.loadNavbar(containerId);
         },
@@ -407,7 +406,6 @@ const SafeUI = (() => {
             console.log("Toast (UIUtils not loaded):", msg);
         },
 
-        // --- Utility Methods ---
         escapeHTML: (str) => {
             if (isReady) return UIUtils.escapeHTML(str);
             return (str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -536,6 +534,50 @@ const AppLifecycle = (() => {
         }
     };
 
+    /**
+     * Handles the core application logic for the dashboard page.
+     */
+    const _handleDashboardInit = async () => {
+        const APP_VERSION = '6.2.0';
+        const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
+        const requiredElements = [
+            'shortcuts-container', 'app-select-group', 'app-select',
+            'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
+            'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
+            'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
+            'add-new-app-btn-menu', 
+            'btn-export-csv', 'btn-import-csv', 'btn-settings',
+            'notepad-header',
+            'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
+            'navbar-container',
+            'app-startup-error'
+        ];
+        
+        const defaultState = {
+            apps: [],
+            notes: [],
+            shortcuts: [],
+            version: APP_VERSION
+        };
+
+        const ctx = await AppLifecycle.initPage({
+            storageKey: LOCAL_STORAGE_KEY,
+            defaultState,
+            version: APP_VERSION,
+            requiredElements: requiredElements,
+        });
+
+        if (!ctx) return;
+        
+        // Check if DashboardUI is available (should be from app-ui.js)
+        if (typeof DashboardUI === 'undefined' || typeof DashboardUI.initDashboard !== 'function') {
+            _showErrorBanner("Configuration Error", "The DashboardUI module failed to load.");
+            return;
+        }
+
+        DashboardUI.initDashboard(ctx);
+    };
+
     return {
         /**
          * Standard init wrapper with error handling
@@ -543,15 +585,30 @@ const AppLifecycle = (() => {
         run: (initFn) => {
             document.addEventListener('DOMContentLoaded', async () => {
                 try {
-                    if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
+                    // Dependency Check (Moved from index.html)
+                    const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'DashboardUI'];
+                    const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+                    
+                    if (missing.length > 0) {
                         const errorTitle = "Application Failed to Load";
-                        const errorMessage = "A critical file (app-core.js) may be missing, failed to load, or is corrupted. Please check the console for errors.";
+                        const errorMessage = `One or more core modules are missing. Missing: ${missing.join(', ')}`;
                         _showErrorBanner(errorTitle, errorMessage);
-                        console.error("FATAL: UIUtils, SafeUI, or DOMHelpers failed to initialize.");
+                        console.error(`FATAL: Critical dependencies missing: ${missing.join(', ')}`);
                         return;
                     }
-
-                    await initFn();
+                    
+                    // Run the page-specific initialization logic
+                    const path = window.location.pathname.split('/').pop().toLowerCase();
+                    
+                    if (path === '' || path === 'index.html') {
+                        _handleDashboardInit();
+                    } else {
+                        // For other pages (lookup.html, passwords.html, mailto.html), 
+                        // the AppLifecycle.run call must be placed in their own <script> block,
+                        // which is correct for those files. For index.html, we handle it here.
+                        // We run the provided initFn for general purpose init (mostly for other pages' scripts)
+                        await initFn();
+                    }
 
                 } catch (err) {
                     console.error("Unhandled exception during initialization:", err);
@@ -568,6 +625,7 @@ const AppLifecycle = (() => {
         initPage: async (config) => {
             const { storageKey, defaultState, version, requiredElements, onCorruption } = config;
 
+            // Cache DOM elements
             const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
             if (!allFound) {
                 const errorTitle = "Application Failed to Start";
@@ -577,6 +635,7 @@ const AppLifecycle = (() => {
                 return null;
             }
 
+            // Initialize state
             const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
             if (!stateManager) {
                 const errorTitle = "Application Failed to Start";
@@ -590,12 +649,14 @@ const AppLifecycle = (() => {
             const saveState = () => stateManager.save(state);
 
             return { elements, state, saveState };
-        }
+        },
+        _showErrorBanner // Expose for internal use by SafeUI/HTML watchdogs
     };
 })();
 
 // ============================================================================
 // Global Exports
+// =pose components to the global window scope
 // ============================================================================
 window.UIUtils = UIUtils;
 window.SafeUI = SafeUI;
