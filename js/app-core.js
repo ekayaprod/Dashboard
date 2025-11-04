@@ -497,6 +497,11 @@ const DOMHelpers = (() => {
 const AppLifecycle = (() => {
 
     /**
+     * FIX: Create a registry for page-specific save functions.
+     */
+    const _exitSaveCallbacks = [];
+
+    /**
      * Displays a non-destructive error banner at the top of the page.
      */
     const _showErrorBanner = (title, message) => {
@@ -530,7 +535,36 @@ const AppLifecycle = (() => {
         }
     };
 
+    /**
+     * FIX: Add a single, global 'pagehide' listener.
+     * This will run all registered save functions when the user navigates
+     * away, closes the tab, or backgrounds the tab on mobile.
+     */
+    window.addEventListener('pagehide', () => {
+        try {
+            _exitSaveCallbacks.forEach(callback => {
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            });
+        } catch (e) {
+            console.error("Error during 'pagehide' save:", e);
+            // We can't show a modal here, but we log the error.
+        }
+    });
+
     return {
+        /**
+         * FIX: Add a public method for pages to register their save functions.
+         */
+        registerSaveOnExit: (callback) => {
+            if (typeof callback === 'function') {
+                _exitSaveCallbacks.push(callback);
+            } else {
+                console.error("Attempted to register a non-function for save-on-exit.");
+            }
+        },
+
         /**
          * Standard init wrapper with error handling.
          */
@@ -611,8 +645,3 @@ window.UIUtils = UIUtils;
 window.SafeUI = SafeUI;
 window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
-
-// Dashboard App Initializer
-// [REMOVED] The duplicate AppLifecycle.run block that initialized the dashboard has been removed.
-// Each page (index.html, passwords.html, etc.) is now responsible
-// for its own initialization via its inline <script> block.
