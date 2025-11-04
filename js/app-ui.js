@@ -509,7 +509,7 @@ const DashboardUI = (() => {
         // Setup icons
         DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
         DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
-        DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+        // REMOVED: DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
         DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
         DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
         DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
@@ -753,7 +753,7 @@ const DashboardUI = (() => {
         }
 
         renderAll();
-        SafeUI.loadNavbar("navbar-container");
+        // REMOVED: SafeUI.loadNavbar("navbar-container");
     };
 
     return { initDashboard };
