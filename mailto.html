@@ -692,48 +692,8 @@
             });
         };
 
-        // CSV "Human-Friendly" Export
-        const handleExportCsv = () => {
-            const csvData = [];
-            
-            // Recursive helper to flatten the library
-            function walk(items, currentPath) {
-                for (const item of items) {
-                    if (item.type === 'folder') {
-                        walk(item.children, currentPath + item.name + '/');
-                    } else if (item.type === 'item') {
-                        const mailtoParts = parseMailto(item.mailto);
-                        csvData.push({
-                            name: item.name,
-                            path: currentPath,
-                            to: mailtoParts.to,
-                            cc: mailtoParts.cc,
-                            bcc: mailtoParts.bcc,
-                            subject: mailtoParts.subject,
-                            body: mailtoParts.body
-                        });
-                    }
-                }
-            }
-            
-            walk(state.library, '/'); 
-            
-            if (csvData.length === 0) {
-                return SafeUI.showToast("Library is empty, nothing to export.");
-            }
-            
-            try {
-                const csvString = DataConverter.toCSV(csvData, APP_CONFIG.CSV_HEADERS);
-                // Get timestamp for filename
-                const now = new Date();
-                const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
-                SafeUI.downloadJSON(csvString, `mailto-library-export_${timestamp}.csv`, 'text/csv');
-            } catch (err) {
-                console.error("CSV Export failed:", err);
-                SafeUI.showModal('CSV Export Error', `<p>Failed to create CSV: ${err.message}</p>`, [{label: 'OK'}]);
-            }
-        };
-
+        // REFACTORED: Removed handleExportCsv function block
+        
         // CSV "Human-Friendly" Import (Setup)
         const setupCsvImport = () => {
             // 1. Validation function for each row
@@ -825,7 +785,43 @@
             DOMElements.btnSettings.addEventListener('click', showSettingsModal);
             
             // CSV I/O
-            DOMElements.btnExportCsv.addEventListener('click', handleExportCsv);
+            // REFACTORED: Replaced handleExportCsv with CsvManager.setupExport
+            CsvManager.setupExport({
+                exportBtn: DOMElements.btnExportCsv,
+                headers: APP_CONFIG.CSV_HEADERS,
+                dataGetter: () => {
+                    const csvData = [];
+                    // Recursive helper to flatten the library
+                    function walk(items, currentPath) {
+                        for (const item of items) {
+                            if (item.type === 'folder') {
+                                walk(item.children, currentPath + item.name + '/');
+                            } else if (item.type === 'item') {
+                                const mailtoParts = parseMailto(item.mailto);
+                                csvData.push({
+                                    name: item.name,
+                                    path: currentPath,
+                                    to: mailtoParts.to,
+                                    cc: mailtoParts.cc,
+                                    bcc: mailtoParts.bcc,
+                                    subject: mailtoParts.subject,
+                                    body: mailtoParts.body
+                                });
+                            }
+                        }
+                    }
+                    walk(state.library, '/');
+
+                    if (csvData.length === 0) {
+                         SafeUI.showToast("Library is empty, nothing to export.");
+                         // Return an empty array to prevent the exporter from running
+                         return []; 
+                    }
+                    return csvData;
+                },
+                filename: `${APP_CONFIG.NAME}-export.csv`
+            });
+            
             setupCsvImport(); 
             
             // Editor View
@@ -920,7 +916,7 @@
         // Init
         const init = () => {
             // Setup icons
-            // REMOVED: DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+            // REFACTORED: Removed btnSettings.innerHTML
             DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
 
             // Setup textareas
@@ -933,7 +929,7 @@
             showView('catalogue');
             renderCatalogue();
             
-            // REMOVED: SafeUI.loadNavbar("navbar-container");
+            // REFACTORED: Removed SafeUI.loadNavbar("navbar-container");
         };
 
         init();
