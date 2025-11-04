@@ -1,10 +1,7 @@
 /**
  * app-ui.js
- * High-level, reusable UI patterns and components
+ * High-level, reusable UI patterns and components.
  * Depends on: app-core.js
- *
- * Refactored using IIFEs (Immediately Invoked Function Expressions)
- * to modularize concerns and implement optimizations.
  */
 
 const UIPatterns = (() => {
@@ -41,9 +38,8 @@ const UIPatterns = (() => {
         },
 
         /**
-         * Highlight search term in text (for search results)
-         *
-         * OPTIMIZED: Caches compiled regex patterns
+         * Highlight search term in text (for search results).
+         * Caches compiled regex patterns for performance.
          */
         highlightSearchTerm: (text, term) => {
             if (!term) return SafeUI.escapeHTML(text);
