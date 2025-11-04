@@ -1,6 +1,6 @@
 /**
  * app-core.js
- * Core application initialization, SafeUI wrapper, and DOM utilities
+ * Core application initialization, SafeUI wrapper, and DOM utilities.
  */
 
 // ============================================================================
@@ -10,7 +10,7 @@ const SVGIcons = Object.freeze({
     plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>',
     pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
     trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>',
-    settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/></svg>',
+    settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/></svg>',
     copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>'
 });
 
@@ -115,27 +115,15 @@ const UIUtils = (() => {
 
     /**
      * Copies text to the clipboard.
+     * Edge Optimization: Removed legacy execCommand fallback.
      */
     const copyToClipboard = async (text) => {
         try {
             await navigator.clipboard.writeText(text);
             return true;
         } catch (err) {
-            console.error('Failed to copy (navigator.clipboard): ', err);
-            try {
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "absolute";
-                textArea.style.left = "-9999px";
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand("copy");
-                document.body.removeChild(textArea);
-                return true;
-            } catch (errFallback) {
-                console.error('Failed to copy (execCommand fallback): ', errFallback);
-                return false;
-            }
+            console.error('Failed to copy to clipboard (API failure):', err);
+            return false;
         }
     };
 
@@ -145,7 +133,7 @@ const UIUtils = (() => {
     const downloadJSON = function(dataStr, filename, mimeType = 'application/json') {
         try {
             if (typeof dataStr !== 'string' || !filename) {
-                throw new Error('Invalid parameters');
+                throw new Error('Invalid download parameters.');
             }
             const dataBlob = new Blob([dataStr], { type: mimeType });
             const url = URL.createObjectURL(dataBlob);
@@ -158,7 +146,7 @@ const UIUtils = (() => {
             URL.revokeObjectURL(url);
             return true;
         } catch (error) {
-            console.error("Failed to download file:", error);
+            console.error("Failed to trigger file download:", error);
             _showModal("Download Error", "<p>Failed to create download.</p>", [{ label: "OK" }]);
             return false;
         }
@@ -227,7 +215,7 @@ const UIUtils = (() => {
      */
     const createStateManager = (key, defaults, version, onCorruption) => {
         if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
-            console.error("createStateManager requires valid key (string), defaults (object), and version.");
+            console.error("State Manager initialization error: Invalid parameters provided.");
             return null;
         }
 
@@ -248,10 +236,11 @@ const UIUtils = (() => {
                         try {
                             onCorruption();
                         } catch (callbackErr) {
-                            console.error("onCorruption callback failed:", callbackErr);
+                            console.error("Corruption handler failed:", callbackErr);
                         }
                     }
                     localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
+                    // Notify user that corruption occurred
                     _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
                     data = { ...defaults };
                 }
@@ -275,7 +264,7 @@ const UIUtils = (() => {
     };
 
     /**
-     * Hides the global modal.
+     * Hides the global modal. (Internal helper)
      */
     const _hideModal = () => {
         const modalOverlay = document.getElementById('modal-overlay');
@@ -286,13 +275,13 @@ const UIUtils = (() => {
     };
 
     /**
-     * Shows the global modal with custom content and buttons.
+     * Shows the global modal with custom content and buttons. (Internal helper)
      */
     const _showModal = function(title, contentHtml, actions) {
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
         if (!modalOverlay || !modalContent) {
-            console.error('Modal DOM elements (modal-overlay, modal-content) not found.');
+            console.error('Modal DOM elements not found.');
             return;
         }
 
@@ -352,6 +341,7 @@ const UIUtils = (() => {
         };
     })();
 
+    // Expose public API for UIUtils
     return {
         SVGIcons: SVGIcons,
         validators: CoreValidators,
@@ -387,6 +377,7 @@ const SafeUI = (() => {
         isReady,
         SVGIcons: getSVGIcons(),
 
+        // --- Core UI Methods ---
         loadNavbar: (containerId) => {
             if (isReady) UIUtils.loadNavbar(containerId);
         },
@@ -406,6 +397,7 @@ const SafeUI = (() => {
             console.log("Toast (UIUtils not loaded):", msg);
         },
 
+        // --- Utility Methods ---
         escapeHTML: (str) => {
             if (isReady) return UIUtils.escapeHTML(str);
             return (str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -450,7 +442,7 @@ const SafeUI = (() => {
 const DOMHelpers = (() => {
     return {
         /**
-         * Cache DOM elements and validate they exist
+         * Cache DOM elements and validate they exist.
          */
         cacheElements: (requiredIds) => {
             const elements = {};
@@ -459,7 +451,7 @@ const DOMHelpers = (() => {
             for (const id of requiredIds) {
                 const el = document.getElementById(id);
                 if (!el) {
-                    console.error(`FATAL: DOM element with id "${id}" not found.`);
+                    console.error(`DOM element with id "${id}" not found.`);
                     allFound = false;
                 }
                 elements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
@@ -469,7 +461,7 @@ const DOMHelpers = (() => {
         },
 
         /**
-         * Setup auto-resize for textarea elements
+         * Setup auto-resize for textarea elements.
          */
         setupTextareaAutoResize: (textarea, maxHeight = 300) => {
             if (!textarea) return;
@@ -485,7 +477,7 @@ const DOMHelpers = (() => {
         },
 
         /**
-         * Manually trigger a resize on a textarea
+         * Manually trigger a resize on a textarea.
          */
         triggerTextareaResize: (textarea) => {
             if (textarea && typeof textarea._autoResize === 'function') {
@@ -534,94 +526,36 @@ const AppLifecycle = (() => {
         }
     };
 
-    /**
-     * Handles the core application logic for the dashboard page.
-     */
-    const _handleDashboardInit = async () => {
-        const APP_VERSION = '6.2.0';
-        const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
-        const requiredElements = [
-            'shortcuts-container', 'app-select-group', 'app-select',
-            'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
-            'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
-            'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
-            'add-new-app-btn-menu', 
-            'btn-export-csv', 'btn-import-csv', 'btn-settings',
-            'notepad-header',
-            'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
-            'navbar-container',
-            'app-startup-error'
-        ];
-        
-        const defaultState = {
-            apps: [],
-            notes: [],
-            shortcuts: [],
-            version: APP_VERSION
-        };
-
-        const ctx = await AppLifecycle.initPage({
-            storageKey: LOCAL_STORAGE_KEY,
-            defaultState,
-            version: APP_VERSION,
-            requiredElements: requiredElements,
-        });
-
-        if (!ctx) return;
-        
-        // Check if DashboardUI is available (should be from app-ui.js)
-        if (typeof DashboardUI === 'undefined' || typeof DashboardUI.initDashboard !== 'function') {
-            _showErrorBanner("Configuration Error", "The DashboardUI module failed to load.");
-            return;
-        }
-
-        DashboardUI.initDashboard(ctx);
-    };
-
     return {
         /**
-         * Standard init wrapper with error handling
+         * Standard init wrapper with error handling.
          */
         run: (initFn) => {
             document.addEventListener('DOMContentLoaded', async () => {
                 try {
-                    // Dependency Check (Moved from index.html)
-                    const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'DashboardUI'];
-                    const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
-                    
-                    if (missing.length > 0) {
+                    // Dependency check for UIUtils itself
+                    if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
                         const errorTitle = "Application Failed to Load";
-                        const errorMessage = `One or more core modules are missing. Missing: ${missing.join(', ')}`;
+                        const errorMessage = "A critical file (app-core.js) may be missing, failed to load, or is corrupted. Check console for errors.";
                         _showErrorBanner(errorTitle, errorMessage);
-                        console.error(`FATAL: Critical dependencies missing: ${missing.join(', ')}`);
+                        console.error("FATAL: UIUtils, SafeUI, or DOMHelpers failed to initialize. Application halted.");
                         return;
                     }
-                    
-                    // Run the page-specific initialization logic
-                    const path = window.location.pathname.split('/').pop().toLowerCase();
-                    
-                    if (path === '' || path === 'index.html') {
-                        _handleDashboardInit();
-                    } else {
-                        // For other pages (lookup.html, passwords.html, mailto.html), 
-                        // the AppLifecycle.run call must be placed in their own <script> block,
-                        // which is correct for those files. For index.html, we handle it here.
-                        // We run the provided initFn for general purpose init (mostly for other pages' scripts)
-                        await initFn();
-                    }
+
+                    await initFn();
 
                 } catch (err) {
                     console.error("Unhandled exception during initialization:", err);
                     const errorTitle = "Application Error";
-                    const errorMessage = `An unexpected error occurred during startup: ${err.message}. Please check the console for more details.`;
+                    const errorMessage = `An unexpected error occurred during startup: ${err.message}. Check console for more details.`;
                     _showErrorBanner(errorTitle, errorMessage);
                 }
             });
         },
 
         /**
-        * Standard page initialization boilerplate
-        */
+         * Standard page initialization boilerplate.
+         */
         initPage: async (config) => {
             const { storageKey, defaultState, version, requiredElements, onCorruption } = config;
 
@@ -629,7 +563,7 @@ const AppLifecycle = (() => {
             const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
             if (!allFound) {
                 const errorTitle = "Application Failed to Start";
-                const errorMessage = "One or more critical HTML elements are missing from the page. Application cannot continue. Check console for details.";
+                const errorMessage = "One or more critical HTML elements are missing from the page. Application cannot continue.";
                 _showErrorBanner(errorTitle, errorMessage);
                 console.error("FATAL: Missing critical DOM elements. Application halted.");
                 return null;
@@ -650,15 +584,57 @@ const AppLifecycle = (() => {
 
             return { elements, state, saveState };
         },
-        _showErrorBanner // Expose for internal use by SafeUI/HTML watchdogs
+        _showErrorBanner // Expose for dependency checker fallback
     };
 })();
 
 // ============================================================================
 // Global Exports
-// =pose components to the global window scope
 // ============================================================================
 window.UIUtils = UIUtils;
 window.SafeUI = SafeUI;
 window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
+
+// Dashboard App Initializer
+AppLifecycle.run(async () => {
+    const APP_VERSION = '6.2.0';
+    const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
+    const APP_CONFIG = {
+        NAME: 'dashboard',
+        APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
+    };
+
+    const defaultState = {
+        apps: [],
+        notes: [],
+        shortcuts: [],
+        version: APP_VERSION
+    };
+
+    const ctx = await AppLifecycle.initPage({
+        storageKey: LOCAL_STORAGE_KEY,
+        defaultState,
+        version: APP_VERSION,
+        requiredElements: [
+            'shortcuts-container', 'app-select-group', 'app-select',
+            'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
+            'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
+            'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
+            'add-new-app-btn-menu',
+            'btn-export-csv', 'btn-import-csv', 'btn-settings',
+            'notepad-header',
+            'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
+            'navbar-container'
+        ]
+    });
+
+    if (!ctx) return;
+
+    // Call the centralized dashboard initialization function
+    if (typeof window.DashboardUI?.initDashboard === 'function') {
+        window.DashboardUI.initDashboard(ctx, APP_CONFIG);
+    } else {
+        console.error("DashboardUI.initDashboard not found. app-ui.js may not have loaded correctly.");
+    }
+});
