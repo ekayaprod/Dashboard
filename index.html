@@ -72,20 +72,116 @@
                         <button id="rename-note-btn" class="button-base icon-btn" title="Rename Note"></button>
                         <button id="delete-note-btn" class="button-base icon-btn" title="Delete Current Note"></button>
                     </div>
-                    <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing...\"></textarea>
+                    <textarea id="notepad-editor" class="notepad-editor" placeholder="Start typing..."></textarea>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="modal-overlay" class="modal-overlay">
-        <div id="modal-content" class=\"modal-content\"></div>
+        <div id="modal-content" class="modal-content"></div>
     </div>
-    <div id=\"toast\" class=\"toast\"></div>
+    <div id="toast" classT="toast"></div>
 
-    <script src=\"js/app-core.js\"></script>
-    <script src=\"js/app-ui.js\"></script>
-    <script src=\"js/app-data.js\"></script>
+    <script src="js/app-core.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-data.js"></script>
+    
+    <!-- 
+      STARTUP SCRIPT 
+      This script runs the application for this specific page.
+      It includes a dependency check to ensure libraries are loaded.
+    -->
+    <script>
+    // Dependency Check for Dashboard
+    (() => {
+        // Check for dependencies from app-core.js, app-ui.js, and app-data.js
+        const dependencies = [
+            'SafeUI', 
+            'UIPatterns', 
+            'ListRenderer', 
+            'SearchHelper', 
+            'BackupRestore', 
+            'DataValidator', 
+            'DataConverter', 
+            'CsvManager',
+            'DashboardUI' // Specific to index.html
+        ];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        
+        if (missing.length > 0) {
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, app-ui.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+            
+            console.error(errorMessage);
+            
+            // Check if AppLifecycle itself loaded to use its banner function
+            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+            } else {
+                // Fallback to directly manipulating the banner if AppLifecycle failed
+                const banner = document.getElementById('app-startup-error');
+                if(banner) {
+                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                    banner.classList.remove('hidden');
+                }
+            }
+            // Stop execution
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
+
+    // Dashboard App Initializer
+    // This code was moved from app-core.js to fix the race condition
+    AppLifecycle.run(async () => {
+        const APP_VERSION = '6.2.0';
+        const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
+        const APP_CONFIG = {
+            NAME: 'dashboard',
+            APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
+        };
+
+        const defaultState = {
+            apps: [],
+            notes: [],
+            shortcuts: [],
+            version: APP_VERSION
+        };
+
+        const ctx = await AppLifecycle.initPage({
+            storageKey: LOCAL_STORAGE_KEY,
+            defaultState,
+            version: APP_VERSION,
+            requiredElements: [
+                'shortcuts-container', 'app-select-group', 'app-select',
+                'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
+                'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
+                'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
+                'add-new-app-btn-menu',
+                'btn-export-csv', 'btn-import-csv', 'btn-settings',
+                'notepad-header',
+                'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
+                'navbar-container'
+            ]
+        });
+
+        if (!ctx) return;
+
+        // Call the centralized dashboard initialization function
+        // This is safe now because the dependency check above passed
+        if (typeof window.DashboardUI?.initDashboard === 'function') {
+            window.DashboardUI.initDashboard(ctx, APP_CONFIG);
+        } else {
+            // This else block is a fallback, but shouldn't be hit if the dependency check is correct
+            console.error("DashboardUI.initDashboard not found. app-ui.js may not have loaded correctly.");
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = "The core dashboard UI failed to load (DashboardUI.initDashboard missing). 'app-ui.js' may be corrupt or blocked.";
+            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+            }
+        }
+    });
+    </script>
 </body>
 </html>
 
