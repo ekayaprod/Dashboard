@@ -833,14 +833,13 @@
              * Entry point
              */
             function init() {
-                // Load settings icon
-                DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+                // REMOVED: DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
                 
                 attachEventListeners();
                 renderAll();
                 handleSearch();
                 
-                SafeUI.loadNavbar("navbar-container");
+                // REMOVED: SafeUI.loadNavbar("navbar-container");
             }
 
             // Run the app
