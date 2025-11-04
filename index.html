@@ -5,11 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .shortcuts-container.drag-active { 
-            background-color: var(--primary-hover-bg-light); 
-        }
-    </style>
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -17,7 +12,8 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;"></div>
+                <!-- FIX 1: Replaced inline style with a class -->
+                <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
                 <div id="shortcuts-container" class="shortcuts-container"></div>
                 <div class="divider"></div>
@@ -184,4 +180,5 @@
     </script>
 </body>
 </html>
+
 
