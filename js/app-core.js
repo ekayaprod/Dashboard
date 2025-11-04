@@ -1,855 +1,647 @@
 /**
- * app-ui.js
- * High-level, reusable UI patterns and components.
- * Depends on: app-core.js
+ * app-core.js
+ * Core application initialization, SafeUI wrapper, and DOM utilities.
  */
 
-const UIPatterns = (() => {
-    // Cache for highlightSearchTerm regex patterns
-    const regexCache = new Map();
+// ============================================================================
+// MODULE: SVGIcons
+// ============================================================================
+const SVGIcons = Object.freeze({
+    plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>',
+    pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
+    trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>',
+    settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/></svg>',
+    // FIX 1: Added missing copy icon
+    copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>'
+});
 
-    return {
-        /**
-         * Show confirmation dialog before delete action.
-         */
-        confirmDelete: (itemType, itemName, onConfirm) => {
-            SafeUI.showModal(
-                `Delete ${itemType}`,
-                `<p>Are you sure you want to delete "${SafeUI.escapeHTML(itemName)}"?</p><p>This cannot be undone.</p>`,
-                [
-                    { label: 'Cancel' },
-                    { label: 'Delete', class: 'button-danger', callback: onConfirm }
-                ]
-            );
-        },
+// ============================================================================
+// MODULE: CoreValidators
+// ============================================================================
+const CoreValidators = Object.freeze({
+    _validate: (value, type, options = {}) => {
+        if (value == null) return false;
+        const str = String(value).trim();
 
-        /**
-         * Show unsaved changes warning.
-         */
-        confirmUnsavedChanges: (onDiscard) => {
-            SafeUI.showModal(
-                'Unsaved Changes',
-                '<p>You have unsaved changes. Discard them?</p>',
-                [
-                    { label: 'Cancel' },
-                    { label: 'Discard', class: 'button-danger', callback: onDiscard }
-                ]
-            );
-        },
+        switch (type) {
+            case 'url':
+                const urlRegex = /^(https?:\/\/)?(localhost|[\w-]+)(\.[\w-]+)*(:[0-9]{1,5})?(\/.*)?$/i;
+                if (!urlRegex.test(str)) {
+                    return false;
+                }
+                try {
+                    let testUrl = str;
+                    if (!/^https?:\/\//.test(testUrl)) {
+                        testUrl = 'http://' + testUrl;
+                    }
+                    new URL(testUrl);
+                    return true;
+                } catch {
+                    return false;
+                }
+            case 'notEmpty':
+                return str.length > 0;
+            case 'maxLength':
+                return str.length <= (options.max || Infinity);
+            default:
+                return false;
+        }
+    },
+    url: function(value) { return this._validate(value, 'url'); },
+    notEmpty: function(value) { return this._validate(value, 'notEmpty'); },
+    maxLength: function(value, max) { return this._validate(value, 'maxLength', { max }); }
+});
 
-        /**
-         * Highlight search term in text (for search results).
-         */
-        highlightSearchTerm: (text, term) => {
-            if (!term) return SafeUI.escapeHTML(text);
 
-            let regex;
-            if (regexCache.has(term)) {
-                regex = regexCache.get(term);
-            } else {
-                const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-                regex = new RegExp(`(${escapedTerm})`, 'gi');
-                regexCache.set(term, regex);
+// ============================================================================
+// MODULE: UIUtils (Low-level DOM, UI, and helper functions)
+// ============================================================================
+const UIUtils = (() => {
+
+    /**
+     * Dynamically loads the navigation bar.
+     */
+    const loadNavbar = (function() {
+        let loaded = false;
+        return async function(containerId) {
+            if (loaded) return;
+            loaded = true;
+
+            const navContainer = document.getElementById(containerId);
+            if (!navContainer) {
+                console.error(`Navbar container "${containerId}" not found.`);
+                return;
             }
 
-            return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
+            try {
+                const response = await fetch(`navbar.html?v=1.1`);
+                if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
+                navContainer.innerHTML = await response.text();
+            } catch (error) {
+                console.error('Failed to load navbar:', error);
+                navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
+            }
+        };
+    })();
+
+    /**
+     * Escapes a string for safe insertion into HTML.
+     */
+    const escapeHTML = (str) => {
+        const p = document.createElement('p');
+        p.textContent = str ?? '';
+        return p.innerHTML;
+    };
+
+    /**
+     * Generates a unique ID.
+     */
+    const generateId = () => {
+        if (crypto && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    };
+
+    /**
+     * Debounces a function.
+     */
+    const debounce = (func, delay) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), delay);
+        };
+    };
+
+    /**
+     * Copies text to the clipboard.
+     * Edge Optimization: Removed legacy execCommand fallback.
+     */
+    const copyToClipboard = async (text) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (err) {
+            console.error('Failed to copy to clipboard (API failure):', err);
+            return false;
         }
     };
-})();
 
-const ListRenderer = (() => {
-    return {
-        /**
-         * Render a list with empty state handling.
-         */
-        renderList: (config) => {
-            const {
-                container,
-                items,
-                emptyMessage,
-                emptyElement,
-                createItemElement
-            } = config;
-
-            if (!container) {
-                console.error("ListRenderer: container element is null.");
-                return;
+    /**
+     * Triggers a file download.
+     */
+    const downloadJSON = function(dataStr, filename, mimeType = 'application/json') {
+        try {
+            if (typeof dataStr !== 'string' || !filename) {
+                throw new Error('Invalid download parameters.');
             }
+            const dataBlob = new Blob([dataStr], { type: mimeType });
+            const url = URL.createObjectURL(dataBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            return true;
+        } catch (error) {
+            console.error("Failed to trigger file download:", error);
+            _showModal("Download Error", "<p>Failed to create download.</p>", [{ label: "OK" }]);
+            return false;
+        }
+    };
 
-            container.innerHTML = '';
+    /**
+     * Programmatically opens a file picker.
+     */
+    const openFilePicker = (callback, accept = "application/json,.json") => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = accept;
+        input.onchange = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                callback(file);
+            }
+        };
+        input.click();
+    };
 
-            if (!items || items.length === 0) {
-                if (emptyElement) {
-                    emptyElement.innerHTML = emptyMessage;
-                    emptyElement.classList.remove('hidden');
-                } else {
-                    container.innerHTML = `<div class="empty-state-message">${emptyMessage}</div>`;
+    /**
+     * Reads a file as JSON.
+     */
+    const readJSONFile = (file, onSuccess, onError) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                onSuccess(data);
+            } catch (err) {
+                console.error("Failed to parse JSON:", err);
+                onError("File is not valid JSON.");
+            }
+        };
+        reader.onerror = () => {
+            console.error("Failed to read file.");
+            onError("Failed to read the file.");
+        };
+        reader.readAsText(file);
+    };
+
+    /**
+     * Reads a file as plain text.
+     */
+    const readTextFile = (file, onSuccess, onError) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = event.target.result;
+                onSuccess(text);
+            } catch (err) {
+                console.error("Failed to read text:", err);
+                onError("Failed to read file as text.");
+            }
+        };
+        reader.onerror = () => {
+            console.error("Failed to read file.");
+            onError("Failed to read the file.");
+        };
+        reader.readAsText(file);
+    };
+
+    /**
+     * Creates a state manager for localStorage.
+     */
+    const createStateManager = (key, defaults, version, onCorruption) => {
+        if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
+            console.error("State Manager initialization error: Invalid parameters provided.");
+            return null;
+        }
+
+        const load = () => {
+            let data;
+            const rawData = localStorage.getItem(key);
+
+            if (rawData) {
+                try {
+                    data = JSON.parse(rawData);
+                    if (data.version !== version) {
+                        console.warn(`State version mismatch (found ${data.version}, expected ${version}). Resetting to default.`);
+                        data = { ...defaults };
+                    }
+                } catch (err) {
+                    console.error("Failed to parse state:", err);
+                    if (onCorruption) {
+                        try {
+                            onCorruption();
+                        } catch (callbackErr) {
+                            console.error("Corruption handler failed:", callbackErr);
+                        }
+                    }
+                    localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
+                    // FIX 2: Added user notification on data corruption
+                    // Note: Using _showModal as SafeUI is not yet defined at this point.
+                    _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved with timestamp.</p>', [{label: 'OK'}]);
+                    data = { ...defaults };
                 }
-                return;
+            } else {
+                data = { ...defaults };
             }
+            return data;
+        };
 
-            if (emptyElement) {
-                emptyElement.classList.add('hidden');
+        const save = (state) => {
+            try {
+                state.version = version;
+                localStorage.setItem(key, JSON.stringify(state));
+            } catch (err) {
+                console.error("Failed to save state:", err);
+                _showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{ label: 'OK' }]);
             }
+        };
 
-            const fragment = document.createDocumentFragment();
-            items.forEach(item => {
-                const element = createItemElement(item);
-                if (element) fragment.appendChild(element);
-            });
-            container.appendChild(fragment);
-        },
+        return { load, save };
+    };
+
+    /**
+     * Hides the global modal. (Internal helper)
+     */
+    const _hideModal = () => {
+        const modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+        // FIX 3: Added missing class removal
+        document.body.classList.remove('modal-open');
+    };
+
+    /**
+     * Shows the global modal with custom content and buttons. (Internal helper)
+     */
+    const _showModal = function(title, contentHtml, actions) {
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+        if (!modalOverlay || !modalContent) {
+            console.error('Modal DOM elements not found.');
+            return;
+        }
+        
+        // FIX 3: Added missing class addition
+        document.body.classList.add('modal-open');
+
+        modalContent.innerHTML = `<h3>${escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
+        const actionsContainer = modalContent.querySelector('.modal-actions');
+
+        actions.forEach(action => {
+            const btn = document.createElement('button');
+            btn.className = `button-base ${action.class || ''}`;
+            btn.textContent = action.label;
+            btn.onclick = () => {
+                if (action.callback) {
+                    if (action.callback() === false) {
+                        return;
+                    }
+                }
+                _hideModal();
+            };
+            actionsContainer.appendChild(btn);
+        });
+
+        modalOverlay.style.display = 'flex';
+    };
+
+    /**
+     * Shows a standardized validation error modal and focuses the element.
+     */
+    const showValidationError = function(title, message, focusElementId) {
+        _showModal(title, `<p>${escapeHTML(message)}</p>`, [{ label: 'OK' }]);
+        if (focusElementId) {
+            setTimeout(() => document.getElementById(focusElementId)?.focus(), 100);
+        }
+    };
+
+
+    /**
+     * Shows a simple feedback toast message.
+     */
+    const showToast = (function() {
+        let activeTimer = null;
+
+        return function(message) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+
+            if (activeTimer) clearTimeout(activeTimer);
+
+            toast.innerHTML = `<span>${escapeHTML(message)}</span>`;
+            toast.classList.add('show');
+
+            activeTimer = setTimeout(() => {
+                toast.classList.remove('show');
+                activeTimer = null;
+            }, 3000);
+        };
+    })();
+
+    // Expose public API for UIUtils
+    return {
+        SVGIcons: SVGIcons,
+        validators: CoreValidators,
+        loadNavbar: loadNavbar,
+        escapeHTML: escapeHTML,
+        generateId: generateId,
+        debounce: debounce,
+        copyToClipboard: copyToClipboard,
+        downloadJSON: downloadJSON,
+        openFilePicker: openFilePicker,
+        readJSONFile: readJSONFile,
+        readTextFile: readTextFile,
+        createStateManager: createStateManager,
+        hideModal: _hideModal,
+        showModal: _showModal,
+        showValidationError: showValidationError,
+        showToast: showToast,
     };
 })();
 
-const SearchHelper = (() => {
+// ============================================================================
+// MODULE: SafeUI (Proxy layer providing fallback implementations)
+// ============================================================================
+const SafeUI = (() => {
+    const isReady = typeof UIUtils !== 'undefined' && UIUtils;
+
+    const getSVGIcons = () => {
+        if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
+        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋' };
+    };
+
     return {
-        /**
-         * Simple search - filter array of objects by term matching any string property.
-         */
-        simpleSearch: (items, term, searchFields) => {
-            if (!term || !term.trim()) return items;
+        isReady,
+        SVGIcons: getSVGIcons(),
 
-            const lowerTerm = term.toLowerCase().trim();
-
-            return items.filter(item => {
-                return searchFields.some(field => {
-                    const value = item[field];
-                    return value != null &&
-                        typeof value !== 'object' &&
-                        String(value).toLowerCase().includes(lowerTerm);
-                });
-            });
+        // --- Core UI Methods ---
+        loadNavbar: (containerId) => {
+            if (isReady) UIUtils.loadNavbar(containerId);
+        },
+        showModal: (title, content, actions) => {
+            if (isReady) return UIUtils.showModal(title, content, actions);
+            console.error("UIUtils not loaded. Modal requested:", title);
+        },
+        showValidationError: (title, msg, elId) => {
+            if (isReady) return UIUtils.showValidationError(title, msg, elId);
+            console.error("UIUtils not loaded. Validation Error:", title, msg);
+        },
+        hideModal: () => {
+            if (isReady) UIUtils.hideModal();
+        },
+        showToast: (msg) => {
+            if (isReady) return UIUtils.showToast(msg);
+            console.log("Toast (UIUtils not loaded):", msg);
         },
 
-        /**
-         * Setup debounced search on an input element.
-         */
-        setupDebouncedSearch: (inputElement, onSearch, delay = 300) => {
-            if (!inputElement) {
-                console.error("setupDebouncedSearch: inputElement is null.");
-                return;
-            }
-
-            const debouncedSearch = SafeUI.debounce(onSearch, delay);
-
-            inputElement.addEventListener('input', () => {
-                debouncedSearch(inputElement.value);
-            });
+        // --- Utility Methods ---
+        escapeHTML: (str) => {
+            if (isReady) return UIUtils.escapeHTML(str);
+            return (str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        },
+        generateId: () => {
+            return isReady ? UIUtils.generateId() : Date.now().toString();
+        },
+        debounce: (func, delay) => {
+            return isReady ? UIUtils.debounce(func, delay) : func;
+        },
+        copyToClipboard: (text) => {
+            return isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false);
+        },
+        downloadJSON: (data, filename, mimeType) => {
+            if (isReady) return UIUtils.downloadJSON(data, filename, mimeType);
+        },
+        openFilePicker: (cb, accept) => {
+            if (isReady) return UIUtils.openFilePicker(cb, accept);
+        },
+        readJSONFile: (file, onSuccess, onError) => {
+            if (isReady) return UIUtils.readJSONFile(file, onSuccess, onError);
+            onError("UI Framework not loaded.");
+        },
+        readTextFile: (file, onSuccess, onError) => {
+            if (isReady) return UIUtils.readTextFile(file, onSuccess, onError);
+            onError("UI Framework not loaded.");
+        },
+        createStateManager: (key, defaults, version, onCorruption) => {
+            return isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null;
+        },
+        validators: isReady ? UIUtils.validators : {
+            url: (v) => v,
+            notEmpty: (v) => v,
+            maxLength: (v, m) => v
         }
     };
 })();
 
 // ============================================================================
-// MODULE: DashboardUI (Dashboard-specific logic migrated from index-app.js)
+// MODULE: DOMHelpers (Utilities for DOM manipulation)
 // ============================================================================
-const DashboardUI = (() => {
-    // FIX: Reduced debounce delay for better responsiveness
-    const DEBOUNCE_DELAY = 300; 
-    
-    // Scoped variables for state and DOM access
-    let DOMElements;
-    let state;
-    let saveState;
-    let APP_CONFIG;
-
-    let shortcutsManager;
-    let selectedAppId = null;
-    let activeNoteId = null;
-    let initialAppData = null;
-    
-    // --- Scoped Helpers ---
-    const getCollection = (type) => state[type];
-    const hasItems = (type) => getCollection(type).length > 0;
-    const findById = (collectionType, id) => {
-        if (!id) return null;
-        return getCollection(collectionType).find(item => item.id === id);
-    };
-    const confirmDelete = (type, itemName, onConfirm) => {
-        const labels = {apps: 'Application', notes: 'Note', shortcuts: 'Shortcut'};
-        const itemTypeLabel = labels[type] || 'Item';
-        UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
-    };
-    const checkFormDirty = () => {
-        if (!initialAppData) return false;
-        if (initialAppData.id === null) {
-            return DOMElements.editAppName.value.trim() !== '' ||
-                   DOMElements.editAppUrls.value.trim() !== '' ||
-                   DOMElements.editAppEscalation.value.trim() !== '';
-        }
-        return DOMElements.editAppName.value.trim() !== initialAppData.name ||
-               DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
-               DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
-    };
-    
-    /**
-     * Helper function to check for unsaved notepad changes.
-     */
-    const checkNotepadDirty = () => {
-        if (!activeNoteId) return false;
-        const note = findById('notes', activeNoteId);
-        if (!note) return false;
-        // Compare the live value in the DOM to the value in the state object
-        return DOMElements.notepadEditor.value !== note.content;
-    };
-
-    const updateSaveButtonState = () => {
-        if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
-    };
-    
-    // --- Shortcuts Manager ---
-    const createShortcutsManager = (services) => {
-        const container = DOMElements.shortcutsContainer;
-        let draggedItemId = null;
-
-        const addDragAndDropListeners = (element) => {
-            element.addEventListener('dragstart', (e) => {
-                draggedItemId = element.dataset.id;
-                setTimeout(() => element.classList.add('dragging'), 0);
-                container.classList.add('drag-active'); // Add visual feedback
-            });
-            element.addEventListener('dragend', () => {
-                element.classList.remove('dragging');
-                draggedItemId = null;
-                container.classList.remove('drag-active'); // Remove visual feedback
-            });
-        };
-
-        const createShortcutElement = (shortcut) => {
-            const div = document.createElement('div');
-            div.className = 'shortcut-item';
-            div.dataset.id = shortcut.id;
-            div.draggable = true;
-            div.innerHTML = `
-                <span class="drag-handle" title="Drag to reorder">☰</span>
-                <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${services.escapeHTML(shortcut.name)}</a>
-                <button class="icon-btn delete-btn" data-id="${shortcut.id}" title="Delete">${services.SVGIcons.trash}</button>
-            `;
-            addDragAndDropListeners(div);
-            return div;
-        };
-
-        const render = () => {
-            container.innerHTML = '';
-            if (!hasItems('shortcuts')) {
-                container.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add from 'Actions'.</span>`;
-            } else {
-                const fragment = document.createDocumentFragment();
-                getCollection('shortcuts').forEach(shortcut => {
-                    const element = createShortcutElement(shortcut);
-                    fragment.appendChild(element);
-                });
-                container.appendChild(fragment);
-            }
-        };
-
-        const remove = (shortcutId) => {
-            const itemIndex = getCollection('shortcuts').findIndex(s => s.id === shortcutId);
-            if (itemIndex === -1) return;
-            const itemCopy = { ...getCollection('shortcuts')[itemIndex] };
-
-            confirmDelete('shortcuts', itemCopy.name, () => {
-                getCollection('shortcuts').splice(itemIndex, 1);
-                saveState();
-                render();
-            });
-        };
-
-        const add = () => {
-            SafeUI.showModal('Add Shortcut',
-                `<input type="text" id="shortcut-name" placeholder="Name" class="sidebar-input">
-                 <input type="text" id="shortcut-url" placeholder="URL" class="sidebar-input">`,
-                [{ label: 'Cancel' }, {
-                    label: 'Add', class: 'button-primary', callback: () => {
-                        const nameInput = document.getElementById('shortcut-name');
-                        const urlInput = document.getElementById('shortcut-url');
-                        const name = nameInput.value;
-                        const url = urlInput.value;
-                        if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
-                            getCollection('shortcuts').push({ id: SafeUI.generateId(), name, url });
-                            saveState();
-                            render();
-                        } else {
-                            SafeUI.showToast('Invalid name or URL');
-                            return false;
-                        }
-                    }
-                }]
-            );
-        };
-
-        const init = () => {
-            container.addEventListener('click', (e) => {
-                const deleteBtn = e.target.closest('.delete-btn');
-                if (deleteBtn && deleteBtn.dataset.id) {
-                    remove(deleteBtn.dataset.id);
-                }
-            });
-
-            container.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                container.classList.add('drag-active');
-            });
-            
-            container.addEventListener('dragleave', (e) => {
-                 container.classList.remove('drag-active');
-            });
-
-
-            container.addEventListener('drop', (e) => {
-                e.preventDefault();
-                container.classList.remove('drag-active');
-                if (!draggedItemId) return;
-
-                const targetElement = e.target.closest('.shortcut-item, .shortcuts-container');
-                if (!targetElement) return;
-
-                const shortcuts = getCollection('shortcuts');
-                const draggedIndex = shortcuts.findIndex(s => s.id === draggedItemId);
-                if (draggedIndex === -1) return;
-
-                const [draggedItem] = shortcuts.splice(draggedIndex, 1);
-
-                if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id !== draggedItemId) {
-                    const targetIndex = shortcuts.findIndex(s => s.id === targetElement.dataset.id);
-                    // Determine if dropping before or after the target element
-                    const rect = targetElement.getBoundingClientRect();
-                    const dropIndex = (e.clientY - rect.top) < (rect.height / 2) ? targetIndex : targetIndex + 1;
-                    
-                    if (dropIndex !== -1) {
-                         shortcuts.splice(dropIndex, 0, draggedItem);
-                    } else {
-                        shortcuts.push(draggedItem);
-                    }
-                } else if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id === draggedItemId) {
-                    shortcuts.splice(draggedIndex, 0, draggedItem);
-                } else {
-                    shortcuts.push(draggedItem);
-                }
-                saveState();
-                render();
-                draggedItemId = null;
-            });
-        };
-
-        return { init, render, add };
-    };
-
-    // --- Data Renderers ---
-    const renderAppDropdown = () => {
-        const appSelect = DOMElements.appSelect;
-        const selectedValue = appSelect.value;
-        appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-
-        const sortedApps = [...getCollection('apps')].sort((a,b) => a.name.localeCompare(b.name));
-        
-        sortedApps.forEach(app => {
-            appSelect.add(new Option(app.name, app.id));
-        });
-        
-        if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
-            appSelect.value = selectedValue;
-        } else {
-            appSelect.value = '';
-            if (selectedAppId && !sortedApps.some(app => app.id === selectedAppId)) {
-                selectedAppId = null;
-            }
-        }
-    };
-
-    const renderAppData = () => {
-        if (!hasItems('apps')) {
-            DOMElements.appSelectGroup.classList.add('hidden');
-            DOMElements.appEmptyState.classList.remove('hidden');
-        } else {
-            DOMElements.appSelectGroup.classList.remove('hidden');
-            DOMElements.appEmptyState.classList.add('hidden');
-            renderAppDropdown();
-        }
-    };
-
-    /**
-     * Helper function to immediately save active note content.
-     */
-    const saveActiveNote = () => {
-        if (!activeNoteId) return;
-        const note = findById('notes', activeNoteId);
-        if (note) {
-            const currentContent = DOMElements.notepadEditor.value;
-            if (note.content !== currentContent) { // Only save if changed
-                note.content = currentContent;
-                saveState();
-            }
-        }
-    };
-
-    const renderNotesData = () => {
-        const noteSelect = DOMElements.noteSelect;
-        noteSelect.innerHTML = '';
-
-        const fragment = document.createDocumentFragment();
-        getCollection('notes').forEach(note => fragment.appendChild(new Option(note.title, note.id)));
-        noteSelect.appendChild(fragment);
-
-        // Structural Fix: Consolidate activeNoteId logic (Mode C, Fix 4)
-        activeNoteId = activeNoteId && getCollection('notes').some(n => n.id === activeNoteId) ? activeNoteId : (hasItems('notes') ? getCollection('notes')[0].id : null);
-
-        if (activeNoteId) {
-             noteSelect.value = activeNoteId;
-        }
-
-        const activeNote = findById('notes', activeNoteId);
-        if (activeNote) {
-            DOMElements.notepadEditor.value = activeNote.content;
-            DOMElements.notepadEditor.disabled = false;
-        } else {
-            DOMElements.notepadEditor.value = '';
-            DOMElements.notepadEditor.disabled = true;
-        }
-        DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
-        DOMElements.deleteNoteBtn.disabled = !hasItems('notes');
-        DOMElements.renameNoteBtn.disabled = !hasItems('notes');
-    };
-
-    const renderAll = () => {
-        if (shortcutsManager) shortcutsManager.render();
-        renderAppData();
-        renderNotesData();
-    };
-
-    // --- App Detail Handlers ---
-    const displayAppDetails = (appId) => {
-        selectedAppId = appId;
-        const isVisible = !!appId;
-
-        DOMElements.editAppName.value = '';
-        DOMElements.editAppUrls.value = '';
-        DOMElements.editAppEscalation.value = '';
-        DOMElements.editAppNameWrapper.classList.add('hidden');
-
-        // Structural Fix (Mode B, Fix 2): Handle null selection
-        DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
-
-        if (isVisible) {
-            const app = findById('apps', appId);
-            if (!app) {
-                console.error(`Failed to find app with ID: ${appId}`);
-                DOMElements.appDetailsContainer.classList.add('hidden');
-                selectedAppId = null;
-                initialAppData = null;
-                return;
-            }
-            
-            initialAppData = {...app};
-            DOMElements.editAppName.value = app.name;
-            
-            DOMElements.editAppUrls.value = (app.urls || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            DOMElements.editAppEscalation.value = (app.escalation || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-        } else {
-            initialAppData = null;
-        }
-
-        // UX Improvement (A. Vertical Space Saver): Initially collapse escalation field
-        const escalationTextarea = DOMElements.editAppEscalation;
-        const isCollapsed = escalationTextarea.value.trim() === '';
-        // If the textarea is empty, set its height to a minimum (e.g., 40px)
-        escalationTextarea.style.height = isCollapsed ? '40px' : 'auto'; 
-        
-        setTimeout(() => {
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
-        }, 0);
-        
-        updateSaveButtonState();
-    };
-
-    const createNewAppForm = () => {
-        DOMElements.appSelect.value = '';
-        displayAppDetails(null);
-        DOMElements.appDetailsContainer.classList.remove('hidden');
-        DOMElements.editAppNameWrapper.classList.remove('hidden');
-        DOMElements.editAppName.focus();
-        initialAppData = {id: null, name: '', urls: '', escalation: ''};
-        updateSaveButtonState();
-    };
-    
-    // --- Settings Modal ---
-    const showSettingsModal = () => {
-        const modalContent = `
-            <div class="form-group">
-                <label>Advanced Data Management</label>
-                <p class="form-help">Use these tools for disaster recovery. "Import/Export" (on the main page) is for managing application data via CSV.</p>
-                <div class="button-group">
-                    <button id="modal-backup-btn" class="button-base">Backup ALL (JSON)</button>
-                    <button id="modal-restore-btn" class="button-base">Restore ALL (JSON)</button>
-                </div>
-            </div>
-        `;
-        
-        SafeUI.showModal("Settings", modalContent, [{ label: 'Close' }]);
-
-        // Attach listeners to modal buttons
-        BackupRestore.setupBackupRestoreHandlers({
-            state: state,
-            appName: APP_CONFIG.NAME,
-            backupBtn: document.getElementById('modal-backup-btn'),
-            restoreBtn: document.getElementById('modal-restore-btn'),
-            itemValidators: {
-                apps: APP_CONFIG.APP_CSV_HEADERS,
-                notes: ['id', 'title', 'content'],
-                shortcuts: ['id', 'name', 'url']
-            },
-            restoreConfirmMessage: 'This will overwrite all dashboard data (Apps, Notes, and Shortcuts). This cannot be undone.',
-            onRestoreCallback: (dataToRestore) => {
-                state.apps = dataToRestore.apps || [];
-                state.notes = dataToRestore.notes || [];
-                state.shortcuts = dataToRestore.shortcuts || [];
-                
-                if (!hasItems('notes')) {
-                    getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
-                }
-                
-                saveState();
-                
-                selectedAppId = null;
-                activeNoteId = null;
-                displayAppDetails(null);
-                renderAll();
-                SafeUI.showToast('Dashboard data restored.');
-                SafeUI.hideModal();
-            }
-        });
-    };
-
-    // --- App Initializer (called by app-core.js) ---
-    const initDashboard = (ctx, appConfig) => {
-        DOMElements = ctx.elements;
-        state = ctx.state;
-        saveState = ctx.saveState;
-        APP_CONFIG = appConfig;
-
-        // Setup textareas
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
-        DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
-
-        // Setup icons
-        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
-        // REMOVED: DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
-        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
-        DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
-        DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
-
-        // Initialize shortcuts
-        shortcutsManager = createShortcutsManager({
-            escapeHTML: SafeUI.escapeHTML, confirmDelete, saveState, showModal: SafeUI.showModal, 
-            showToast: SafeUI.showToast, validators: SafeUI.validators, generateId: SafeUI.generateId, SVGIcons: SafeUI.SVGIcons
-        });
-        shortcutsManager.init();
-
-        // Setup CSV listeners
-        CsvManager.setupExport({
-            exportBtn: DOMElements.btnExportCsv,
-            dataGetter: () => state.apps,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            filename: `${APP_CONFIG.NAME}-export.csv`
-        });
-        
-        CsvManager.setupImport({
-            importBtn: DOMElements.btnImportCsv,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            // FIX: Pass the state getter so onValidate can check for duplicates
-            stateItemsGetter: () => state.apps,
-            /**
-             * FIX: Modified onValidate to accept allItems and check for duplicate names.
-             */
-            onValidate: (row, index, allItems) => {
-                 const entry = {
-                    id: row.id || SafeUI.generateId(),
-                    name: (row.name || '').trim(),
-                    urls: (row.urls || '').trim(),
-                    escalation: (row.escalation || '').trim()
-                };
-
-                if (!SafeUI.validators.notEmpty(entry.name)) {
-                    return { error: `Row ${index + 2}: 'name' is required.` };
-                }
-
-                // FIX: Check for duplicate name, excluding self (if id matches)
-                if (DataValidator.hasDuplicate(allItems, 'name', entry.name, row.id)) {
-                    return { error: `Row ${index + 2}: An app with the name "${entry.name}" already exists.` };
-                }
-
-                return { entry };
-            },
-            onConfirm: (validatedData, importErrors) => {
-                const newEntries = [];
-                const updatedEntries = [];
-                const existingIds = new Set(state.apps.map(app => app.id));
-
-                validatedData.forEach(entry => {
-                    if (existingIds.has(entry.id)) {
-                        updatedEntries.push(entry);
-                    } else {
-                        newEntries.push(entry);
-                    }
-                });
-
-                const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-                const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
-
-                let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
-                
-                if (importErrors.length > 0) {
-                    summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
-                                    <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
-                                        ${errorList}${moreErrors}
-                                    </ul>`;
-                }
-
-                summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
-
-                SafeUI.showModal("Confirm CSV Import", summaryHtml, [
-                    { label: 'Cancel' },
-                    { 
-                        label: 'Import and Overwrite', 
-                        class: 'button-primary', 
-                        callback: () => {
-                            let importedCount = 0;
-                            
-                            newEntries.forEach(entry => {
-                                if (state.apps.some(app => app.id === entry.id)) {
-                                    console.warn(`ID collision detected for "${entry.name}" (${entry.id}). Assigning new ID.`);
-                                    entry.id = SafeUI.generateId();
-                                }
-                                state.apps.push(entry);
-                                importedCount++;
-                            });
-
-                            updatedEntries.forEach(entry => {
-                                const existingIndex = state.apps.findIndex(app => app.id === entry.id);
-                                if (existingIndex > -1) {
-                                    state.apps[existingIndex] = entry;
-                                    importedCount++;
-                                }
-                            });
-
-                            saveState();
-                            renderAll();
-                            SafeUI.showToast(`Imported ${importedCount} applications.`);
-                        }
-                    }
-                ]);
-            }
-        });
-
-        // Add main event listeners
-        
+const DOMHelpers = (() => {
+    return {
         /**
-         * FIX: Removed the 'pagehide' listener from here.
-         * It's now handled globally by AppLifecycle, which we register with below.
+         * Cache DOM elements and validate they exist.
          */
-        
-        /**
-         * 'beforeunload' listener is ONLY for prompting the user about the app form.
-         * All silent saving is now handled by the 'pagehide' listener in app-core.js.
-         */
-        window.addEventListener('beforeunload', (e) => { 
-            // Only prompt user if the main app form is dirty
-            if (checkFormDirty()) { 
-                e.preventDefault(); 
-                e.returnValue = ''; 
-            } 
-        });
-        
-        /**
-         * FIX: Replaced listener logic to check for unsaved changes before switching apps.
-         */
-        DOMElements.appSelect.addEventListener('change', () => {
-            const originalAppId = selectedAppId; // Store the app ID before change
+        cacheElements: (requiredIds) => {
+            const elements = {};
+            let allFound = true;
 
-            if (checkFormDirty()) {
-                UIPatterns.confirmUnsavedChanges(() => {
-                    // User confirmed discard, proceed to display new app
-                    const appId = DOMElements.appSelect.value || null;
-                    displayAppDetails(appId);
-                });
-                // User clicked cancel, so reset the dropdown to its original value
-                if (originalAppId) {
-                    DOMElements.appSelect.value = originalAppId;
-                } else {
-                    DOMElements.appSelect.value = '';
+            for (const id of requiredIds) {
+                const el = document.getElementById(id);
+                if (!el) {
+                    console.error(`DOM element with id "${id}" not found.`);
+                    allFound = false;
                 }
-                return; // Stop execution
-            }
-            
-            // No dirty form, proceed as normal
-            const appId = DOMElements.appSelect.value || null;
-            displayAppDetails(appId);
-        });
-
-        const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
-        DOMElements.editAppName.addEventListener('input', debouncedSave);
-        DOMElements.editAppUrls.addEventListener('input', debouncedSave);
-        DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
-
-        DOMElements.saveChangesBtn.addEventListener('click', () => {
-            const newName = DOMElements.editAppName.value.trim();
-            if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
-                return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
+                elements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
             }
 
-            const isNewApp = initialAppData.id === null;
-            const nameChanged = !isNewApp && newName !== initialAppData.name;
-            
-            if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName)) {
-                return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
-            }
+            return { elements, allFound };
+        },
 
-            const appData = {
-                name: newName,
-                urls: DOMElements.editAppUrls.value.trim(),
-                escalation: DOMElements.editAppEscalation.value.trim()
+        /**
+         * Setup auto-resize for textarea elements.
+         */
+        setupTextareaAutoResize: (textarea, maxHeight = 300) => {
+            if (!textarea) return;
+
+            const resize = () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
             };
 
-            if (isNewApp) {
-                appData.id = SafeUI.generateId();
-                getCollection('apps').push(appData);
-                SafeUI.showToast('Application created');
-            } else {
-                const app = findById('apps', selectedAppId);
-                if (app) {
-                    app.name = appData.name;
-                    app.urls = appData.urls;
-                    app.escalation = appData.escalation;
-                    SafeUI.showToast('Application updated');
-                }
+            textarea.addEventListener('input', resize);
+            textarea._autoResize = resize;
+            resize();
+        },
+
+        /**
+         * Manually trigger a resize on a textarea.
+         */
+        triggerTextareaResize: (textarea) => {
+            if (textarea && typeof textarea._autoResize === 'function') {
+                textarea._autoResize();
             }
-            
-            saveState();
-            renderAppData();
-            DOMElements.appSelect.value = appData.id || selectedAppId;
-            displayAppDetails(appData.id || selectedAppId);
-        });
-
-        DOMElements.deleteAppBtn.addEventListener('click', () => {
-            if (!selectedAppId) return;
-            const app = findById('apps', selectedAppId);
-            if (!app) return;
-            
-            confirmDelete('apps', app.name, () => {
-                state.apps = state.apps.filter(a => a.id !== selectedAppId);
-                saveState();
-                selectedAppId = null;
-                displayAppDetails(null);
-                renderAppData();
-            });
-        });
-
-        DOMElements.addShortcutBtnMenu.addEventListener('click', () => shortcutsManager.add());
-        DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
-        DOMElements.btnSettings.addEventListener('click', showSettingsModal);
-
-        // Notepad listeners
-        DOMElements.noteSelect.addEventListener('change', () => {
-            // FIX: Immediately save the content of the *old* note before switching
-            saveActiveNote();
-            
-            // Now proceed with switching to the new note
-            activeNoteId = DOMElements.noteSelect.value;
-            const note = findById('notes', activeNoteId);
-            DOMElements.notepadEditor.value = note ? note.content : '';
-            DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
-        });
-
-        /**
-         * FIX: Changed the debounced function to call the new saveActiveNote helper.
-         * The delay was already reduced via the DEBOUNCE_DELAY constant.
-         */
-        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
-            saveActiveNote();
-        }, DEBOUNCE_DELAY));
-        
-        DOMElements.newNoteBtn.addEventListener('click', () => {
-            // FIX: Save current note before opening "new note" modal
-            saveActiveNote();
-            SafeUI.showModal('New Note', '<input id="new-note-title" class="sidebar-input" placeholder="Note title">', [
-                {label: 'Cancel'},
-                {label: 'Create', class: 'button-primary', callback: () => {
-                    const titleInput = document.getElementById('new-note-title');
-                    const title = titleInput.value.trim() || 'Untitled Note';
-                    const newNote = { id: SafeUI.generateId(), title, content: '' };
-                    getCollection('notes').push(newNote);
-                    saveState();
-                    activeNoteId = newNote.id;
-                    renderNotesData();
-                }}
-            ]);
-        });
-        
-        DOMElements.renameNoteBtn.addEventListener('click', () => {
-            if (!activeNoteId) return;
-            // FIX: Save current note before opening "rename" modal
-            saveActiveNote();
-            const note = findById('notes', activeNoteId);
-            if (!note) return;
-            
-            SafeUI.showModal('Rename Note', `<input id="rename-note-title" class="sidebar-input" value="${SafeUI.escapeHTML(note.title)}">`, [
-                {label: 'Cancel'},
-                {label: 'Rename', class: 'button-primary', callback: () => {
-                    const titleInput = document.getElementById('rename-note-title');
-                    const newTitle = titleInput.value.trim();
-                    if (newTitle) {
-                        note.title = newTitle;
-                        saveState();
-                        renderNotesData();
-                    } else {
-                        return SafeUI.showValidationError('Invalid Title', 'Title cannot be empty.', 'rename-note-title');
-                    }
-                }}
-            ]);
-        });
-        
-        DOMElements.deleteNoteBtn.addEventListener('click', () => {
-            // FIX: Save current note before opening "delete" modal
-            saveActiveNote();
-            if (!activeNoteId || !hasItems('notes')) return;
-            const note = findById('notes', activeNoteId);
-            if (!note) return;
-            
-            confirmDelete('notes', note.title, () => {
-                state.notes = state.notes.filter(n => n.id !== activeNoteId);
-                saveState();
-                activeNoteId = null;
-                renderNotesData();
-            });
-        });
-
-        // First-run check for notes
-        if (!hasItems('notes')) {
-            getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
-            saveState();
         }
-
-        renderAll();
-        
-        /**
-         * FIX: This is the new registration step.
-         * We tell AppLifecycle that for *this* page, the function to run
-         * on exit is the dashboard's `saveActiveNote` function.
-         */
-        AppLifecycle.registerSaveOnExit(saveActiveNote);
     };
-
-    return { initDashboard };
 })();
 
+// ============================================================================
+// MODULE: AppLifecycle (Core initialization and error handling)
+// ============================================================================
+const AppLifecycle = (() => {
 
-// Expose components to the global window scope
-window.UIPatterns = UIPatterns;
-window.ListRenderer = ListRenderer;
-window.SearchHelper = SearchHelper;
-window.DashboardUI = DashboardUI;
+    /**
+     * FIX: Create a registry for page-specific save functions.
+     */
+    const _exitSaveCallbacks = [];
+
+    /**
+     * Displays a non-destructive error banner at the top of the page.
+     */
+    const _showErrorBanner = (title, message) => {
+        try {
+            const bannerId = 'app-startup-error';
+            let banner = document.getElementById(bannerId);
+
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = bannerId;
+                Object.assign(banner.style, {
+                    position: 'sticky', top: '0', left: '0', width: '100%',
+                    padding: '1rem', backgroundColor: '#fef2f2', color: '#dc2626',
+                    borderBottom: '2px solid #fecaca', fontFamily: 'sans-serif',
+                    fontSize: '1rem', fontWeight: '600', zIndex: '10000',
+                    boxSizing: 'border-box'
+                });
+
+                if (document.body) {
+                    document.body.prepend(banner);
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
+                }
+            }
+
+            banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
+            banner.classList.remove('hidden');
+        } catch (e) {
+            console.error("Failed to show error banner:", e);
+            document.body.innerHTML = `<p>${SafeUI.escapeHTML(title)}: ${SafeUI.escapeHTML(message)}</p>`;
+        }
+    };
+
+    /**
+     * FIX: Add a single, global 'pagehide' listener.
+     * This will run all registered save functions when the user navigates
+     * away, closes the tab, or backgrounds the tab on mobile.
+     */
+    window.addEventListener('pagehide', () => {
+        try {
+            _exitSaveCallbacks.forEach(callback => {
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            });
+        } catch (e) {
+            console.error("Error during 'pagehide' save:", e);
+            // We can't show a modal here, but we log the error.
+        }
+    });
+
+    return {
+        /**
+         * FIX: Add a public method for pages to register their save functions.
+         */
+        registerSaveOnExit: (callback) => {
+            if (typeof callback === 'function') {
+                _exitSaveCallbacks.push(callback);
+            } else {
+                console.error("Attempted to register a non-function for save-on-exit.");
+            }
+        },
+
+        /**
+         * Standard init wrapper with error handling.
+         */
+        run: (initFn) => {
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    // Dependency check for UIUtils itself
+                    if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
+                        const errorTitle = "Application Failed to Load";
+                        const errorMessage = "A critical file (app-core.js) may be missing, failed to load, or is corrupted. Check console for errors.";
+                        _showErrorBanner(errorTitle, errorMessage);
+                        console.error("FATAL: UIUtils, SafeUI, or DOMHelpers failed to initialize. Application halted.");
+                        return;
+                    }
+
+                    await initFn();
+
+                } catch (err) {
+                    console.error("Unhandled exception during initialization:", err);
+                    const errorTitle = "Application Error";
+                    const errorMessage = `An unexpected error occurred during startup: ${err.message}. Check console for more details.`;
+                    _showErrorBanner(errorTitle, errorMessage);
+                }
+            });
+        },
+
+        /**
+         * Standard page initialization boilerplate.
+         */
+        initPage: async (config) => {
+            const { storageKey, defaultState, version, requiredElements, onCorruption } = config;
+
+            // Cache DOM elements
+            const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
+            if (!allFound) {
+                const errorTitle = "Application Failed to Start";
+                const errorMessage = "One or more critical HTML elements are missing from the page. Application cannot continue.";
+                _showErrorBanner(errorTitle, errorMessage);
+                console.error("FATAL: Missing critical DOM elements. Application halted.");
+                return null;
+            }
+
+            // Initialize state
+            const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
+            if (!stateManager) {
+                const errorTitle = "Application Failed to Start";
+                const errorMessage = "The StateManager (for localStorage) failed to initialize. Application cannot continue.";
+                _showErrorBanner(errorTitle, errorMessage);
+                console.error("FATAL: StateManager failed to initialize.");
+                return null;
+            }
+
+            // --- START REFACTOR ---
+            // Automatically load common components if they are required
+            if (elements.btnSettings) {
+                elements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+            }
+            if (elements.navbarContainer) {
+                // This is safe because the watchdog script in the HTML
+                // already confirmed SafeUI (from this file) is loaded.
+                await SafeUI.loadNavbar("navbar-container");
+            }
+            // --- END REFACTOR ---
+
+            const state = stateManager.load();
+            const saveState = () => stateManager.save(state);
+
+            return { elements, state, saveState };
+        },
+        _showErrorBanner // Expose for dependency checker fallback
+    };
+})();
+
+// ============================================================================
+// Global Exports
+// ============================================================================
+window.UIUtils = UIUtils;
+window.SafeUI = SafeUI;
+window.DOMHelpers = DOMHelpers;
+window.AppLifecycle = AppLifecycle;
