@@ -65,5 +65,51 @@
         "Happiness",
         "Journey",
         "Leisure"
+    ],
+    "Animal": [
+        "Dolphin",
+        "Seagull",
+        "Crab",
+        "Starfish",
+        "Jellyfish",
+        "Turtle",
+        "Pelican",
+        "Whale",
+        "Shark",
+        "Otter",
+        "Firefly",
+        "Cicada",
+        "Cricket",
+        "Lizard",
+        "Dragonfly"
+    ],
+    "Object": [
+        "Surfboard",
+        "Sandcastle",
+        "Cooler",
+        "Towel",
+        "Sunglasses",
+        "Sunscreen",
+        "Frisbee",
+        "Volleyball",
+        "Tent",
+        "Hammock",
+        "Fan",
+        "Ice",
+        "Popsicle",
+        "Grill",
+        "Kayak"
+    ],
+    "Color": [
+        "Gold",
+        "Yellow",
+        "Blue",
+        "Orange",
+        "Coral",
+        "Aqua",
+        "Tan",
+        "Bronze",
+        "Turquoise",
+        "Amber"
     ]
 }
