@@ -11,7 +11,6 @@ const SVGIcons = Object.freeze({
     pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V12h2.293l6.5-6.5zM3.586 10.5 2 12.086 1.914 14.086 3.914 13 5.5 11.414 3.586 10.5z"/></svg>',
     trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>',
     settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zM8 10.93a2.929 2.929 0 1 1 0-5.858 2.929 2.929 0 0 1 0 5.858z"/></svg>',
-    // FIX 1: Added missing copy icon
     copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>'
 });
 
@@ -241,8 +240,6 @@ const UIUtils = (() => {
                         }
                     }
                     localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
-                    // FIX 2: Added user notification on data corruption
-                    // Note: Using _showModal as SafeUI is not yet defined at this point.
                     _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved with timestamp.</p>', [{label: 'OK'}]);
                     data = { ...defaults };
                 }
@@ -273,7 +270,6 @@ const UIUtils = (() => {
         if (modalOverlay) {
             modalOverlay.style.display = 'none';
         }
-        // FIX 3: Added missing class removal
         document.body.classList.remove('modal-open');
     };
 
@@ -288,7 +284,6 @@ const UIUtils = (() => {
             return;
         }
         
-        // FIX 3: Added missing class addition
         document.body.classList.add('modal-open');
 
         modalContent.innerHTML = `<h3>${escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
@@ -497,11 +492,6 @@ const DOMHelpers = (() => {
 const AppLifecycle = (() => {
 
     /**
-     * FIX: Create a registry for page-specific save functions.
-     */
-    const _exitSaveCallbacks = [];
-
-    /**
      * Displays a non-destructive error banner at the top of the page.
      */
     const _showErrorBanner = (title, message) => {
@@ -512,13 +502,8 @@ const AppLifecycle = (() => {
             if (!banner) {
                 banner = document.createElement('div');
                 banner.id = bannerId;
-                Object.assign(banner.style, {
-                    position: 'sticky', top: '0', left: '0', width: '100%',
-                    padding: '1rem', backgroundColor: '#fef2f2', color: '#dc2626',
-                    borderBottom: '2px solid #fecaca', fontFamily: 'sans-serif',
-                    fontSize: '1rem', fontWeight: '600', zIndex: '10000',
-                    boxSizing: 'border-box'
-                });
+                // Use the .app-startup-banner class from style.css
+                banner.className = 'app-startup-banner';
 
                 if (document.body) {
                     document.body.prepend(banner);
@@ -535,36 +520,38 @@ const AppLifecycle = (() => {
         }
     };
 
-    /**
-     * FIX: Add a single, global 'pagehide' listener.
-     * This will run all registered save functions when the user navigates
-     * away, closes the tab, or backgrounds the tab on mobile.
-     */
+    // --- Page Exit Handling System ---
+    let onExitSaveFunctions = [];
+    let beforeUnloadPrompt = null;
+
+    // This listener handles silent saving for navigation, tab closing, etc.
     window.addEventListener('pagehide', () => {
-        try {
-            _exitSaveCallbacks.forEach(callback => {
-                if (typeof callback === 'function') {
-                    callback();
-                }
-            });
-        } catch (e) {
-            console.error("Error during 'pagehide' save:", e);
-            // We can't show a modal here, but we log the error.
-        }
+        onExitSaveFunctions.forEach(fn => {
+            try {
+                fn();
+            } catch (e) {
+                console.error("Error during pagehide save function:", e);
+            }
+        });
     });
 
-    return {
-        /**
-         * FIX: Add a public method for pages to register their save functions.
-         */
-        registerSaveOnExit: (callback) => {
-            if (typeof callback === 'function') {
-                _exitSaveCallbacks.push(callback);
-            } else {
-                console.error("Attempted to register a non-function for save-on-exit.");
-            }
-        },
+    // This listener handles the user prompt (e.g., "Discard changes?")
+    window.addEventListener('beforeunload', (e) => {
+        let promptMessage = null;
+        if (typeof beforeUnloadPrompt === 'function') {
+            promptMessage = beforeUnloadPrompt();
+        }
+        
+        if (promptMessage) {
+            e.preventDefault();
+            e.returnValue = promptMessage;
+            return promptMessage;
+        }
+    });
+    // --- End Page Exit Handling System ---
 
+
+    return {
         /**
          * Standard init wrapper with error handling.
          */
@@ -618,13 +605,12 @@ const AppLifecycle = (() => {
             }
 
             // --- START REFACTOR ---
-            // Automatically load common components if they are required
+            // FIX 3: Automatically load settings icon if the button exists
             if (elements.btnSettings) {
                 elements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
             }
+            // FIX 2: Automatically load navbar if the container exists
             if (elements.navbarContainer) {
-                // This is safe because the watchdog script in the HTML
-                // already confirmed SafeUI (from this file) is loaded.
                 await SafeUI.loadNavbar("navbar-container");
             }
             // --- END REFACTOR ---
@@ -634,6 +620,31 @@ const AppLifecycle = (() => {
 
             return { elements, state, saveState };
         },
+        
+        /**
+         * Registers a function to be called silently on page exit (pagehide).
+         * Used for saving data without prompting the user.
+         */
+        registerSaveOnExit: (saveFunction) => {
+            if (typeof saveFunction === 'function') {
+                onExitSaveFunctions.push(saveFunction);
+            } else {
+                console.error("registerSaveOnExit: provided argument is not a function.");
+            }
+        },
+
+        /**
+         * Registers a function to be called on beforeunload.
+         * If the function returns a string, the user will be prompted to leave.
+         */
+        registerPromptOnExit: (promptFunction) => {
+            if (typeof promptFunction === 'function') {
+                beforeUnloadPrompt = promptFunction;
+            } else {
+                console.error("registerPromptOnExit: provided argument is not a function.");
+            }
+        },
+        
         _showErrorBanner // Expose for dependency checker fallback
     };
 })();
