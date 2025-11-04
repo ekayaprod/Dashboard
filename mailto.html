@@ -126,6 +126,25 @@
             font-weight: 500;
         }
 
+        /* --- DARK MODE --- */
+        @media (prefers-color-scheme: dark) {
+            .upload-wrapper.dragover {
+                background-color: var(--primary-hover-bg-light);
+            }
+            .list-item:hover {
+                background-color: var(--info-bg);
+                border-color: var(--border-color);
+            }
+            .list-item a.list-item-name {
+                color: var(--text-color);
+            }
+            .breadcrumb-container {
+                background-color: var(--info-bg);
+            }
+            .breadcrumb-current {
+                color: var(--text-color);
+            }
+        }
     </style>
 </head>
 <body>
@@ -134,7 +153,8 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;"></div>
+                <!-- This banner's style is now in style.css -->
+                <div id="app-startup-error" class="hidden app-startup-banner"></div>
                 
                 <!-- VIEW 1: CATALOGUE / LIBRARY (DEFAULT VIEW) -->
                 <div id="catalogue-view" class="view active">
@@ -691,8 +711,6 @@
                 }
             });
         };
-
-        // REFACTORED: Removed handleExportCsv function block
         
         // CSV "Human-Friendly" Import (Setup)
         const setupCsvImport = () => {
@@ -785,7 +803,6 @@
             DOMElements.btnSettings.addEventListener('click', showSettingsModal);
             
             // CSV I/O
-            // REFACTORED: Replaced handleExportCsv with CsvManager.setupExport
             CsvManager.setupExport({
                 exportBtn: DOMElements.btnExportCsv,
                 headers: APP_CONFIG.CSV_HEADERS,
@@ -841,7 +858,7 @@
             const uploadWrapper = DOMElements.uploadWrapper; 
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, (ev) => ev.preventDefault()));
             ['dragenter', 'dragover'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.add('dragover')));
-            ['dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.remove('dragover')));
+            ['dragleave', 'drop'].EaforEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.remove('dragover')));
             uploadWrapper.addEventListener('drop', (e) => {
                 e.preventDefault();
                 const files = e.dataTransfer.files;
@@ -915,10 +932,8 @@
 
         // Init
         const init = () => {
-            // Setup icons
-            // REFACTORED: Removed btnSettings.innerHTML
-            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
-
+            // FIX 3 & 5: Removed redundant icon setup
+            
             // Setup textareas
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultMailto, 150);
@@ -929,7 +944,7 @@
             showView('catalogue');
             renderCatalogue();
             
-            // REFACTORED: Removed SafeUI.loadNavbar("navbar-container");
+            // FIX 2: Removed redundant navbar load
         };
 
         init();
