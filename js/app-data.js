@@ -2,9 +2,6 @@
  * app-data.js
  * State persistence, backup/restore, and validation logic
  * Depends on: app-core.js
- *
- * Refactored using IIFEs (Immediately Invoked Function Expressions)
- * to modularize concerns.
  */
 
 const BackupRestore = (() => {
@@ -62,8 +59,6 @@ const BackupRestore = (() => {
 
         /**
          * Validates an array of items, ensuring each item is an object with required fields
-         * Note: An empty requiredFields array will always return true, which is intended
-         * if the array just needs to be validated as an array (e.g., 'notes': [])
          */
         validateItems: (items, requiredFields) => {
             if (!Array.isArray(items)) return false;
@@ -86,12 +81,11 @@ const BackupRestore = (() => {
                     const isNewBackup = !!restoredData.data;
                     const appName = restoredData.appName;
 
-                    // Check for app name match, allowing for a legacy name
-                    const isLegacy = config.legacyAppName && appName === config.legacyAppName;
+                    // Check for app name match
                     const isCorrectApp = appName === config.appName;
 
                     // Only enforce app name check on new-style backups
-                    if (isNewBackup && !isCorrectApp && !isLegacy) {
+                    if (isNewBackup && !isCorrectApp) {
                         throw new Error(`This file is not a valid '${config.appName}' backup.`);
                     }
 
@@ -109,7 +103,7 @@ const BackupRestore = (() => {
                     }
 
                     // If all checks passed, call the onRestore function
-                    config.onRestore(dataToValidate, isLegacy);
+                    config.onRestore(dataToValidate);
 
                 } catch (err) {
                     console.error("Restore failed:", err);
@@ -128,25 +122,17 @@ const BackupRestore = (() => {
                 backupBtn,   // Button to trigger backup
                 restoreBtn,  // Button to trigger restore
                 settingsBtn, // Button that *opens* the modal (if backup/restore are inside)
-                legacyAppName,
                 itemValidators,
                 restoreConfirmMessage,
                 onRestoreCallback
             } = config;
 
-            // If settingsBtn is provided, it means the backup/restore buttons
-            // are inside a modal that this button opens.
             if (settingsBtn) {
                 settingsBtn.addEventListener('click', () => {
-                    // This function is defined inside mailto.html, lookup.html, etc.
-                    // It's expected to show a modal that contains
-                    // elements with IDs 'modal-backup-btn' and 'modal-restore-btn'
                     if (typeof config.showSettingsModal === 'function') {
-                        config.showSettingsModal(); // This modal HTML must contain the buttons
+                        config.showSettingsModal();
                     }
 
-                    // We have to find the buttons *after* the modal is created
-                    // We use setTimeout to give the modal time to render
                     setTimeout(() => {
                         const modalBackupBtn = document.getElementById(config.backupBtnId || 'modal-backup-btn');
                         const modalRestoreBtn = document.getElementById(config.restoreBtnId || 'modal-restore-btn');
@@ -160,9 +146,8 @@ const BackupRestore = (() => {
                             modalRestoreBtn.onclick = () => {
                                 BackupRestore.handleRestoreUpload({
                                     appName: appName,
-                                    legacyAppName: legacyAppName,
                                     itemValidators: itemValidators,
-                                    onRestore: (dataToRestore, isLegacy) => {
+                                    onRestore: (dataToRestore) => {
                                         SafeUI.showModal("Confirm Restore (JSON)",
                                             `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`,
                                             [
@@ -182,7 +167,7 @@ const BackupRestore = (() => {
                         }
                     }, 0);
                 });
-                return; // Exit, as the main buttons aren't the triggers
+                return;
             }
 
             // --- Standard flow: backupBtn and restoreBtn are the triggers ---
@@ -197,9 +182,8 @@ const BackupRestore = (() => {
                 restoreBtn.addEventListener('click', () => {
                     BackupRestore.handleRestoreUpload({
                         appName: appName,
-                        legacyAppName: legacyAppName,
                         itemValidators: itemValidators,
-                        onRestore: (dataToRestore, isLegacy) => {
+                        onRestore: (dataToRestore) => {
                             SafeUI.showModal("Confirm Restore (JSON)",
                                 `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`,
                                 [
@@ -286,7 +270,6 @@ const DataConverter = (() => {
 
     /**
      * Internal helper to parse a single CSV line according to RFC 4180.
-     * This is a state machine.
      */
     const _parseCsvLine = (line) => {
         const values = [];
@@ -297,7 +280,6 @@ const DataConverter = (() => {
             const char = line[i];
 
             if (inQuotes) {
-                // We are inside quotes
                 if (char === '"') {
                     if (i + 1 < line.length && line[i + 1] === '"') {
                         // This is an escaped quote ("")
@@ -311,10 +293,10 @@ const DataConverter = (() => {
                     currentVal += char;
                 }
             } else {
-                // We are outside quotes
                 if (char === '"') {
                     inQuotes = true;
                 } else if (char === ',') {
+                    currentVal = currentVal.replace(/""/g, '"');
                     values.push(currentVal);
                     currentVal = '';
                 } else {
@@ -322,7 +304,8 @@ const DataConverter = (() => {
                 }
             }
         }
-
+        
+        currentVal = currentVal.replace(/""/g, '"');
         values.push(currentVal); // Add the last value
         return values;
     };
@@ -338,10 +321,7 @@ const DataConverter = (() => {
 
             const escapeCell = (cell) => {
                 const str = String(cell == null ? '' : cell);
-                // RFC 4180: Fields containing line breaks (CRLF), double quotes,
-                // and commas should be enclosed in double-quotes.
                 if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
-                    // Escape existing quotes by doubling them
                     return `"${str.replace(/"/g, '""')}"`;
                 }
                 return str;
@@ -366,7 +346,6 @@ const DataConverter = (() => {
                         let currentLine = '';
                         let inQuotes = false;
 
-                        // Normalize line endings to \n
                         const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
                         // First pass: properly split lines respecting quoted newlines
@@ -387,7 +366,6 @@ const DataConverter = (() => {
                             }
                         }
 
-                        // Add final line
                         if (currentLine.trim() || lines.length > 0) {
                             lines.push(currentLine);
                         }
@@ -396,7 +374,6 @@ const DataConverter = (() => {
                             return resolve({ data: [], errors: [] });
                         }
 
-                        // Parse header line
                         const headerLine = lines.shift();
                         const headers = _parseCsvLine(headerLine).map(h => h.trim());
 
@@ -422,7 +399,6 @@ const DataConverter = (() => {
                             }
 
                             headers.forEach((header, i) => {
-                                // Only map headers we care about
                                 if (requiredHeaders.includes(header)) {
                                     obj[header] = values[i] || '';
                                 }
@@ -461,7 +437,7 @@ const CsvManager = (() => {
         const h = String(d.getHours()).padStart(2, '0');
         const m = String(d.getMinutes()).padStart(2, '0');
         const s = String(d.getSeconds()).padStart(2, '0');
-        return `${Y}${M}${D}_${h}${m}${s}`; // e.g., 20251031_162800
+        return `${Y}${M}${D}_${h}${m}${s}`;
     };
 
     return {
@@ -477,7 +453,6 @@ const CsvManager = (() => {
                 try {
                     const data = config.dataGetter();
 
-                    // Add validation that data is an array
                     if (!Array.isArray(data)) {
                         throw new Error("Data getter did not return an array.");
                     }
@@ -523,7 +498,8 @@ const CsvManager = (() => {
                             if (result.error) {
                                 validationErrors.push(result.error);
                             } else {
-                                validatedData.push(result.entry);
+                                // Use 'entry' property from validation result
+                                validatedData.push(result.entry); 
                             }
                         });
 
