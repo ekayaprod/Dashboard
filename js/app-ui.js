@@ -144,7 +144,8 @@ const SearchHelper = (() => {
 // MODULE: DashboardUI (Dashboard-specific logic migrated from index-app.js)
 // ============================================================================
 const DashboardUI = (() => {
-    const DEBOUNCE_DELAY = 500;
+    // FIX: Reduced debounce delay for better responsiveness
+    const DEBOUNCE_DELAY = 300; 
     
     // Scoped variables for state and DOM access
     let DOMElements;
@@ -180,6 +181,18 @@ const DashboardUI = (() => {
                DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
                DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
     };
+    
+    /**
+     * Helper function to check for unsaved notepad changes.
+     */
+    const checkNotepadDirty = () => {
+        if (!activeNoteId) return false;
+        const note = findById('notes', activeNoteId);
+        if (!note) return false;
+        // Compare the live value in the DOM to the value in the state object
+        return DOMElements.notepadEditor.value !== note.content;
+    };
+
     const updateSaveButtonState = () => {
         if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
     };
@@ -352,6 +365,21 @@ const DashboardUI = (() => {
             DOMElements.appSelectGroup.classList.remove('hidden');
             DOMElements.appEmptyState.classList.add('hidden');
             renderAppDropdown();
+        }
+    };
+
+    /**
+     * Helper function to immediately save active note content.
+     */
+    const saveActiveNote = () => {
+        if (!activeNoteId) return;
+        const note = findById('notes', activeNoteId);
+        if (note) {
+            const currentContent = DOMElements.notepadEditor.value;
+            if (note.content !== currentContent) { // Only save if changed
+                note.content = currentContent;
+                saveState();
+            }
         }
     };
 
@@ -533,7 +561,12 @@ const DashboardUI = (() => {
         CsvManager.setupImport({
             importBtn: DOMElements.btnImportCsv,
             headers: APP_CONFIG.APP_CSV_HEADERS,
-            onValidate: (row, index) => {
+            // FIX: Pass the state getter so onValidate can check for duplicates
+            stateItemsGetter: () => state.apps,
+            /**
+             * FIX: Modified onValidate to accept allItems and check for duplicate names.
+             */
+            onValidate: (row, index, allItems) => {
                  const entry = {
                     id: row.id || SafeUI.generateId(),
                     name: (row.name || '').trim(),
@@ -544,6 +577,12 @@ const DashboardUI = (() => {
                 if (!SafeUI.validators.notEmpty(entry.name)) {
                     return { error: `Row ${index + 2}: 'name' is required.` };
                 }
+
+                // FIX: Check for duplicate name, excluding self (if id matches)
+                if (DataValidator.hasDuplicate(allItems, 'name', entry.name, row.id)) {
+                    return { error: `Row ${index + 2}: An app with the name "${entry.name}" already exists.` };
+                }
+
                 return { entry };
             },
             onConfirm: (validatedData, importErrors) => {
@@ -608,12 +647,46 @@ const DashboardUI = (() => {
         });
 
         // Add main event listeners
+        
+        /**
+         * FIX: Removed the 'pagehide' listener from here.
+         * It's now handled globally by AppLifecycle, which we register with below.
+         */
+        
+        /**
+         * 'beforeunload' listener is ONLY for prompting the user about the app form.
+         * All silent saving is now handled by the 'pagehide' listener in app-core.js.
+         */
         window.addEventListener('beforeunload', (e) => { 
-            if (checkFormDirty()) { e.preventDefault(); e.returnValue = ''; } 
+            // Only prompt user if the main app form is dirty
+            if (checkFormDirty()) { 
+                e.preventDefault(); 
+                e.returnValue = ''; 
+            } 
         });
         
+        /**
+         * FIX: Replaced listener logic to check for unsaved changes before switching apps.
+         */
         DOMElements.appSelect.addEventListener('change', () => {
-            // Structural Fix (Mode B, Fix 2): Ensure null is passed for empty selection
+            const originalAppId = selectedAppId; // Store the app ID before change
+
+            if (checkFormDirty()) {
+                UIPatterns.confirmUnsavedChanges(() => {
+                    // User confirmed discard, proceed to display new app
+                    const appId = DOMElements.appSelect.value || null;
+                    displayAppDetails(appId);
+                });
+                // User clicked cancel, so reset the dropdown to its original value
+                if (originalAppId) {
+                    DOMElements.appSelect.value = originalAppId;
+                } else {
+                    DOMElements.appSelect.value = '';
+                }
+                return; // Stop execution
+            }
+            
+            // No dirty form, proceed as normal
             const appId = DOMElements.appSelect.value || null;
             displayAppDetails(appId);
         });
@@ -682,22 +755,27 @@ const DashboardUI = (() => {
 
         // Notepad listeners
         DOMElements.noteSelect.addEventListener('change', () => {
+            // FIX: Immediately save the content of the *old* note before switching
+            saveActiveNote();
+            
+            // Now proceed with switching to the new note
             activeNoteId = DOMElements.noteSelect.value;
             const note = findById('notes', activeNoteId);
             DOMElements.notepadEditor.value = note ? note.content : '';
             DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
         });
 
+        /**
+         * FIX: Changed the debounced function to call the new saveActiveNote helper.
+         * The delay was already reduced via the DEBOUNCE_DELAY constant.
+         */
         DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
-            if (!activeNoteId) return;
-            const note = findById('notes', activeNoteId);
-            if (note) {
-                note.content = DOMElements.notepadEditor.value;
-                saveState();
-            }
+            saveActiveNote();
         }, DEBOUNCE_DELAY));
         
         DOMElements.newNoteBtn.addEventListener('click', () => {
+            // FIX: Save current note before opening "new note" modal
+            saveActiveNote();
             SafeUI.showModal('New Note', '<input id="new-note-title" class="sidebar-input" placeholder="Note title">', [
                 {label: 'Cancel'},
                 {label: 'Create', class: 'button-primary', callback: () => {
@@ -714,6 +792,8 @@ const DashboardUI = (() => {
         
         DOMElements.renameNoteBtn.addEventListener('click', () => {
             if (!activeNoteId) return;
+            // FIX: Save current note before opening "rename" modal
+            saveActiveNote();
             const note = findById('notes', activeNoteId);
             if (!note) return;
             
@@ -734,6 +814,8 @@ const DashboardUI = (() => {
         });
         
         DOMElements.deleteNoteBtn.addEventListener('click', () => {
+            // FIX: Save current note before opening "delete" modal
+            saveActiveNote();
             if (!activeNoteId || !hasItems('notes')) return;
             const note = findById('notes', activeNoteId);
             if (!note) return;
@@ -753,7 +835,13 @@ const DashboardUI = (() => {
         }
 
         renderAll();
-        // REMOVED: SafeUI.loadNavbar("navbar-container");
+        
+        /**
+         * FIX: This is the new registration step.
+         * We tell AppLifecycle that for *this* page, the function to run
+         * on exit is the dashboard's `saveActiveNote` function.
+         */
+        AppLifecycle.registerSaveOnExit(saveActiveNote);
     };
 
     return { initDashboard };
