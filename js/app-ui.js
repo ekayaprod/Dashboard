@@ -144,8 +144,7 @@ const SearchHelper = (() => {
 // MODULE: DashboardUI (Dashboard-specific logic migrated from index-app.js)
 // ============================================================================
 const DashboardUI = (() => {
-    // FIX: Reduced debounce delay for better responsiveness
-    const DEBOUNCE_DELAY = 300; 
+    const DEBOUNCE_DELAY = 300;
     
     // Scoped variables for state and DOM access
     let DOMElements;
@@ -181,20 +180,17 @@ const DashboardUI = (() => {
                DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
                DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
     };
-    
-    /**
-     * Helper function to check for unsaved notepad changes.
-     */
-    const checkNotepadDirty = () => {
-        if (!activeNoteId) return false;
-        const note = findById('notes', activeNoteId);
-        if (!note) return false;
-        // Compare the live value in the DOM to the value in the state object
-        return DOMElements.notepadEditor.value !== note.content;
-    };
-
     const updateSaveButtonState = () => {
         if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
+    };
+
+    const saveActiveNote = () => {
+        if (!activeNoteId || !DOMElements || !DOMElements.notepadEditor) return;
+        const note = findById('notes', activeNoteId);
+        if (note && note.content !== DOMElements.notepadEditor.value) {
+            note.content = DOMElements.notepadEditor.value;
+            saveState();
+        }
     };
     
     // --- Shortcuts Manager ---
@@ -368,21 +364,6 @@ const DashboardUI = (() => {
         }
     };
 
-    /**
-     * Helper function to immediately save active note content.
-     */
-    const saveActiveNote = () => {
-        if (!activeNoteId) return;
-        const note = findById('notes', activeNoteId);
-        if (note) {
-            const currentContent = DOMElements.notepadEditor.value;
-            if (note.content !== currentContent) { // Only save if changed
-                note.content = currentContent;
-                saveState();
-            }
-        }
-    };
-
     const renderNotesData = () => {
         const noteSelect = DOMElements.noteSelect;
         noteSelect.innerHTML = '';
@@ -391,7 +372,6 @@ const DashboardUI = (() => {
         getCollection('notes').forEach(note => fragment.appendChild(new Option(note.title, note.id)));
         noteSelect.appendChild(fragment);
 
-        // Structural Fix: Consolidate activeNoteId logic (Mode C, Fix 4)
         activeNoteId = activeNoteId && getCollection('notes').some(n => n.id === activeNoteId) ? activeNoteId : (hasItems('notes') ? getCollection('notes')[0].id : null);
 
         if (activeNoteId) {
@@ -427,7 +407,6 @@ const DashboardUI = (() => {
         DOMElements.editAppEscalation.value = '';
         DOMElements.editAppNameWrapper.classList.add('hidden');
 
-        // Structural Fix (Mode B, Fix 2): Handle null selection
         DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
 
         if (isVisible) {
@@ -450,10 +429,8 @@ const DashboardUI = (() => {
             initialAppData = null;
         }
 
-        // UX Improvement (A. Vertical Space Saver): Initially collapse escalation field
         const escalationTextarea = DOMElements.editAppEscalation;
         const isCollapsed = escalationTextarea.value.trim() === '';
-        // If the textarea is empty, set its height to a minimum (e.g., 40px)
         escalationTextarea.style.height = isCollapsed ? '40px' : 'auto'; 
         
         setTimeout(() => {
@@ -529,19 +506,23 @@ const DashboardUI = (() => {
         saveState = ctx.saveState;
         APP_CONFIG = appConfig;
 
+        // Register the silent save function for page exit
+        AppLifecycle.registerSaveOnExit(saveActiveNote);
+        
+        // Register the prompt function for page exit
+        AppLifecycle.registerPromptOnExit(() => {
+            if (checkFormDirty()) {
+                return 'You have unsaved changes to an application. Are you sure you want to leave?';
+            }
+            return null; // Return null or undefined to allow exit
+        });
+
         // Setup textareas
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
         DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
 
-        // Setup icons
-        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
-        // REMOVED: DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
-        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
-        DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
-        DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
+        // REMOVED: Redundant icon setup block (Fixes 3 & 5)
 
         // Initialize shortcuts
         shortcutsManager = createShortcutsManager({
@@ -561,12 +542,8 @@ const DashboardUI = (() => {
         CsvManager.setupImport({
             importBtn: DOMElements.btnImportCsv,
             headers: APP_CONFIG.APP_CSV_HEADERS,
-            // FIX: Pass the state getter so onValidate can check for duplicates
-            stateItemsGetter: () => state.apps,
-            /**
-             * FIX: Modified onValidate to accept allItems and check for duplicate names.
-             */
-            onValidate: (row, index, allItems) => {
+            stateItemsGetter: () => state.apps, // Pass current apps for validation
+            onValidate: (row, index, allApps) => {
                  const entry = {
                     id: row.id || SafeUI.generateId(),
                     name: (row.name || '').trim(),
@@ -577,10 +554,10 @@ const DashboardUI = (() => {
                 if (!SafeUI.validators.notEmpty(entry.name)) {
                     return { error: `Row ${index + 2}: 'name' is required.` };
                 }
-
-                // FIX: Check for duplicate name, excluding self (if id matches)
-                if (DataValidator.hasDuplicate(allItems, 'name', entry.name, row.id)) {
-                    return { error: `Row ${index + 2}: An app with the name "${entry.name}" already exists.` };
+                
+                // Check for duplicate names, excluding the item itself if it's an update
+                if (DataValidator.hasDuplicate(allApps, 'name', entry.name, entry.id)) {
+                    return { error: `Row ${index + 2}: App name '${entry.name}' already exists.` };
                 }
 
                 return { entry };
@@ -621,6 +598,7 @@ const DashboardUI = (() => {
                             let importedCount = 0;
                             
                             newEntries.forEach(entry => {
+                                // Final check for ID collision, though unlikely with UUIDs
                                 if (state.apps.some(app => app.id === entry.id)) {
                                     console.warn(`ID collision detected for "${entry.name}" (${entry.id}). Assigning new ID.`);
                                     entry.id = SafeUI.generateId();
@@ -648,45 +626,16 @@ const DashboardUI = (() => {
 
         // Add main event listeners
         
-        /**
-         * FIX: Removed the 'pagehide' listener from here.
-         * It's now handled globally by AppLifecycle, which we register with below.
-         */
-        
-        /**
-         * 'beforeunload' listener is ONLY for prompting the user about the app form.
-         * All silent saving is now handled by the 'pagehide' listener in app-core.js.
-         */
-        window.addEventListener('beforeunload', (e) => { 
-            // Only prompt user if the main app form is dirty
-            if (checkFormDirty()) { 
-                e.preventDefault(); 
-                e.returnValue = ''; 
-            } 
-        });
-        
-        /**
-         * FIX: Replaced listener logic to check for unsaved changes before switching apps.
-         */
         DOMElements.appSelect.addEventListener('change', () => {
-            const originalAppId = selectedAppId; // Store the app ID before change
-
             if (checkFormDirty()) {
                 UIPatterns.confirmUnsavedChanges(() => {
-                    // User confirmed discard, proceed to display new app
                     const appId = DOMElements.appSelect.value || null;
                     displayAppDetails(appId);
                 });
-                // User clicked cancel, so reset the dropdown to its original value
-                if (originalAppId) {
-                    DOMElements.appSelect.value = originalAppId;
-                } else {
-                    DOMElements.appSelect.value = '';
-                }
-                return; // Stop execution
+                // Revert selection
+                DOMElements.appSelect.value = selectedAppId || '';
+                return;
             }
-            
-            // No dirty form, proceed as normal
             const appId = DOMElements.appSelect.value || null;
             displayAppDetails(appId);
         });
@@ -703,9 +652,9 @@ const DashboardUI = (() => {
             }
 
             const isNewApp = initialAppData.id === null;
-            const nameChanged = !isNewApp && newName !== initialAppData.name;
+            const appToExcludeId = isNewApp ? null : selectedAppId;
             
-            if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName)) {
+            if (DataValidator.hasDuplicate(state.apps, 'name', newName, appToExcludeId)) {
                 return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
             }
 
@@ -754,28 +703,22 @@ const DashboardUI = (() => {
         DOMElements.btnSettings.addEventListener('click', showSettingsModal);
 
         // Notepad listeners
-        DOMElements.noteSelect.addEventListener('change', () => {
-            // FIX: Immediately save the content of the *old* note before switching
+        DOMElements.noteSelect.addEventListener('mousedown', () => {
+            // Save immediately on click, before 'change' event fires
             saveActiveNote();
-            
-            // Now proceed with switching to the new note
+        });
+        
+        DOMElements.noteSelect.addEventListener('change', () => {
             activeNoteId = DOMElements.noteSelect.value;
             const note = findById('notes', activeNoteId);
             DOMElements.notepadEditor.value = note ? note.content : '';
             DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
         });
 
-        /**
-         * FIX: Changed the debounced function to call the new saveActiveNote helper.
-         * The delay was already reduced via the DEBOUNCE_DELAY constant.
-         */
-        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
-            saveActiveNote();
-        }, DEBOUNCE_DELAY));
+        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(saveActiveNote, DEBOUNCE_DELAY));
         
         DOMElements.newNoteBtn.addEventListener('click', () => {
-            // FIX: Save current note before opening "new note" modal
-            saveActiveNote();
+            saveActiveNote(); // Save before opening modal
             SafeUI.showModal('New Note', '<input id="new-note-title" class="sidebar-input" placeholder="Note title">', [
                 {label: 'Cancel'},
                 {label: 'Create', class: 'button-primary', callback: () => {
@@ -792,8 +735,7 @@ const DashboardUI = (() => {
         
         DOMElements.renameNoteBtn.addEventListener('click', () => {
             if (!activeNoteId) return;
-            // FIX: Save current note before opening "rename" modal
-            saveActiveNote();
+            saveActiveNote(); // Save before opening modal
             const note = findById('notes', activeNoteId);
             if (!note) return;
             
@@ -814,9 +756,8 @@ const DashboardUI = (() => {
         });
         
         DOMElements.deleteNoteBtn.addEventListener('click', () => {
-            // FIX: Save current note before opening "delete" modal
-            saveActiveNote();
             if (!activeNoteId || !hasItems('notes')) return;
+            saveActiveNote(); // Save before deleting
             const note = findById('notes', activeNoteId);
             if (!note) return;
             
@@ -835,13 +776,6 @@ const DashboardUI = (() => {
         }
 
         renderAll();
-        
-        /**
-         * FIX: This is the new registration step.
-         * We tell AppLifecycle that for *this* page, the function to run
-         * on exit is the dashboard's `saveActiveNote` function.
-         */
-        AppLifecycle.registerSaveOnExit(saveActiveNote);
     };
 
     return { initDashboard };
