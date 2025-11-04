@@ -1,15 +1,16 @@
 /**
  * app-ui.js
- * High-level, reusable UI patterns and components
+ * High-level, reusable UI patterns and components.
  * Depends on: app-core.js
  */
 
 const UIPatterns = (() => {
+    // Cache for highlightSearchTerm regex patterns
     const regexCache = new Map();
 
     return {
         /**
-         * Show confirmation dialog before delete action
+         * Show confirmation dialog before delete action.
          */
         confirmDelete: (itemType, itemName, onConfirm) => {
             SafeUI.showModal(
@@ -23,7 +24,7 @@ const UIPatterns = (() => {
         },
 
         /**
-         * Show unsaved changes warning
+         * Show unsaved changes warning.
          */
         confirmUnsavedChanges: (onDiscard) => {
             SafeUI.showModal(
@@ -37,7 +38,7 @@ const UIPatterns = (() => {
         },
 
         /**
-         * Highlight search term in text (for search results)
+         * Highlight search term in text (for search results).
          */
         highlightSearchTerm: (text, term) => {
             if (!term) return SafeUI.escapeHTML(text);
@@ -59,7 +60,7 @@ const UIPatterns = (() => {
 const ListRenderer = (() => {
     return {
         /**
-         * Render a list with empty state handling
+         * Render a list with empty state handling.
          */
         renderList: (config) => {
             const {
@@ -104,7 +105,7 @@ const ListRenderer = (() => {
 const SearchHelper = (() => {
     return {
         /**
-         * Simple search - filter array of objects by term matching any string property
+         * Simple search - filter array of objects by term matching any string property.
          */
         simpleSearch: (items, term, searchFields) => {
             if (!term || !term.trim()) return items;
@@ -114,14 +115,15 @@ const SearchHelper = (() => {
             return items.filter(item => {
                 return searchFields.some(field => {
                     const value = item[field];
-                    if (value == null || typeof value === 'object') return false; 
-                    return String(value).toLowerCase().includes(lowerTerm);
+                    return value != null &&
+                        typeof value !== 'object' &&
+                        String(value).toLowerCase().includes(lowerTerm);
                 });
             });
         },
 
         /**
-         * Setup debounced search on an input element
+         * Setup debounced search on an input element.
          */
         setupDebouncedSearch: (inputElement, onSearch, delay = 300) => {
             if (!inputElement) {
@@ -138,61 +140,52 @@ const SearchHelper = (() => {
     };
 })();
 
-
+// ============================================================================
+// MODULE: DashboardUI (Dashboard-specific logic migrated from index-app.js)
+// ============================================================================
 const DashboardUI = (() => {
-    const APP_VERSION = '6.2.0';
-    const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
-    const APP_CONFIG = {
-        NAME: 'dashboard',
-        APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
-    };
     const DEBOUNCE_DELAY = 500;
     
-    let ctx = null; 
-    let DOMElements = {};
-    let state = null;
-    let saveState = () => {};
+    // Scoped variables for state and DOM access
+    let DOMElements;
+    let state;
+    let saveState;
+    let APP_CONFIG;
 
     let shortcutsManager;
     let selectedAppId = null;
     let activeNoteId = null;
     let initialAppData = null;
     
-    // --- State Accessors ---
+    // --- Scoped Helpers ---
     const getCollection = (type) => state[type];
     const hasItems = (type) => getCollection(type).length > 0;
     const findById = (collectionType, id) => {
         if (!id) return null;
         return getCollection(collectionType).find(item => item.id === id);
     };
-
     const confirmDelete = (type, itemName, onConfirm) => {
         const labels = {apps: 'Application', notes: 'Note', shortcuts: 'Shortcut'};
         const itemTypeLabel = labels[type] || 'Item';
         UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
     };
-    
-    // --- UI State Management ---
     const checkFormDirty = () => {
         if (!initialAppData) return false;
-        // Check for new app form being dirty (id: null)
         if (initialAppData.id === null) {
             return DOMElements.editAppName.value.trim() !== '' ||
                    DOMElements.editAppUrls.value.trim() !== '' ||
                    DOMElements.editAppEscalation.value.trim() !== '';
         }
-        // Check for existing app form being dirty
         return DOMElements.editAppName.value.trim() !== initialAppData.name ||
                DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
                DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
     };
-    
     const updateSaveButtonState = () => {
         if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
     };
     
     // --- Shortcuts Manager ---
-    const createShortcutsManager = () => {
+    const createShortcutsManager = (services) => {
         const container = DOMElements.shortcutsContainer;
         let draggedItemId = null;
 
@@ -200,10 +193,12 @@ const DashboardUI = (() => {
             element.addEventListener('dragstart', (e) => {
                 draggedItemId = element.dataset.id;
                 setTimeout(() => element.classList.add('dragging'), 0);
+                container.classList.add('drag-active'); // Add visual feedback
             });
             element.addEventListener('dragend', () => {
                 element.classList.remove('dragging');
                 draggedItemId = null;
+                container.classList.remove('drag-active'); // Remove visual feedback
             });
         };
 
@@ -214,8 +209,8 @@ const DashboardUI = (() => {
             div.draggable = true;
             div.innerHTML = `
                 <span class="drag-handle" title="Drag to reorder">☰</span>
-                <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${SafeUI.escapeHTML(shortcut.name)}</a>
-                <button class="icon-btn delete-btn" data-id="${shortcut.id}" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${services.escapeHTML(shortcut.name)}</a>
+                <button class="icon-btn delete-btn" data-id="${shortcut.id}" title="Delete">${services.SVGIcons.trash}</button>
             `;
             addDragAndDropListeners(div);
             return div;
@@ -226,12 +221,12 @@ const DashboardUI = (() => {
             if (!hasItems('shortcuts')) {
                 container.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add from 'Actions'.</span>`;
             } else {
-                ListRenderer.renderList({
-                    container: container,
-                    items: getCollection('shortcuts'),
-                    emptyMessage: "This should not be seen",
-                    createItemElement: createShortcutElement
+                const fragment = document.createDocumentFragment();
+                getCollection('shortcuts').forEach(shortcut => {
+                    const element = createShortcutElement(shortcut);
+                    fragment.appendChild(element);
                 });
+                container.appendChild(fragment);
             }
         };
 
@@ -282,37 +277,42 @@ const DashboardUI = (() => {
                 e.preventDefault();
                 container.classList.add('drag-active');
             });
-            container.addEventListener('dragleave', () => container.classList.remove('drag-active'));
+            
+            container.addEventListener('dragleave', (e) => {
+                 container.classList.remove('drag-active');
+            });
+
+
             container.addEventListener('drop', (e) => {
                 e.preventDefault();
                 container.classList.remove('drag-active');
                 if (!draggedItemId) return;
 
-                const targetElement = e.target.closest('.shortcut-item');
+                const targetElement = e.target.closest('.shortcut-item, .shortcuts-container');
+                if (!targetElement) return;
+
                 const shortcuts = getCollection('shortcuts');
                 const draggedIndex = shortcuts.findIndex(s => s.id === draggedItemId);
                 if (draggedIndex === -1) return;
 
                 const [draggedItem] = shortcuts.splice(draggedIndex, 1);
 
-                if (targetElement && targetElement.dataset.id !== draggedItemId) {
+                if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id !== draggedItemId) {
                     const targetIndex = shortcuts.findIndex(s => s.id === targetElement.dataset.id);
-                    if (targetIndex !== -1) {
-                        // Use insertBefore logic (checks mouse position relative to target)
-                        const rect = targetElement.getBoundingClientRect();
-                        const isBefore = e.clientY < rect.top + rect.height / 2;
-                        shortcuts.splice(isBefore ? targetIndex : targetIndex + 1, 0, draggedItem);
+                    // Determine if dropping before or after the target element
+                    const rect = targetElement.getBoundingClientRect();
+                    const dropIndex = (e.clientY - rect.top) < (rect.height / 2) ? targetIndex : targetIndex + 1;
+                    
+                    if (dropIndex !== -1) {
+                         shortcuts.splice(dropIndex, 0, draggedItem);
                     } else {
                         shortcuts.push(draggedItem);
                     }
-                } else if (!targetElement) {
-                     // Dropped into empty space of container (append to end)
-                     shortcuts.push(draggedItem);
-                } else {
-                    // Dropped on self, insert back at original position
+                } else if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id === draggedItemId) {
                     shortcuts.splice(draggedIndex, 0, draggedItem);
+                } else {
+                    shortcuts.push(draggedItem);
                 }
-                
                 saveState();
                 render();
                 draggedItemId = null;
@@ -321,83 +321,8 @@ const DashboardUI = (() => {
 
         return { init, render, add };
     };
-    
-    // --- CSV Import/Export Logic ---
-    const validateCsvRow = (row, index) => {
-        const entry = {
-            id: row.id || SafeUI.generateId(),
-            name: (row.name || '').trim(),
-            urls: (row.urls || '').trim(),
-            escalation: (row.escalation || '').trim()
-        };
 
-        if (!SafeUI.validators.notEmpty(entry.name)) {
-            return { error: `Row ${index + 2}: 'name' is required.` };
-        }
-        return { entry };
-    };
-    
-    const confirmCsvImport = (validatedData, importErrors) => {
-        const newEntries = [];
-        const updatedEntries = [];
-        const existingIds = new Set(state.apps.map(app => app.id));
-
-        validatedData.forEach(entry => {
-            if (existingIds.has(entry.id)) {
-                updatedEntries.push(entry);
-            } else {
-                newEntries.push(entry);
-            }
-        });
-
-        const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-        const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
-
-        let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
-        
-        if (importErrors.length > 0) {
-            summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
-                            <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
-                                ${errorList}${moreErrors}
-                            </ul>`;
-        }
-
-        summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
-
-        SafeUI.showModal("Confirm CSV Import", summaryHtml, [
-            { label: 'Cancel' },
-            { 
-                label: 'Import and Overwrite', 
-                class: 'button-primary', 
-                callback: () => {
-                    let importedCount = 0;
-                    
-                    newEntries.forEach(entry => {
-                        if (state.apps.some(app => app.id === entry.id)) {
-                            console.warn(`ID collision detected for "${entry.name}". Assigning new ID.`);
-                            entry.id = SafeUI.generateId();
-                        }
-                        state.apps.push(entry);
-                        importedCount++;
-                    });
-
-                    updatedEntries.forEach(entry => {
-                        const existingIndex = state.apps.findIndex(app => app.id === entry.id);
-                        if (existingIndex > -1) {
-                            state.apps[existingIndex] = entry;
-                            importedCount++;
-                        }
-                    });
-
-                    saveState();
-                    renderAll();
-                    SafeUI.showToast(`Imported ${importedCount} applications.`);
-                }
-            }
-        ]);
-    };
-    
-    // --- App & Notes Rendering ---
+    // --- Data Renderers ---
     const renderAppDropdown = () => {
         const appSelect = DOMElements.appSelect;
         const selectedValue = appSelect.value;
@@ -405,9 +330,9 @@ const DashboardUI = (() => {
 
         const sortedApps = [...getCollection('apps')].sort((a,b) => a.name.localeCompare(b.name));
         
-        const fragment = document.createDocumentFragment();
-        sortedApps.forEach(app => fragment.appendChild(new Option(app.name, app.id)));
-        appSelect.appendChild(fragment);
+        sortedApps.forEach(app => {
+            appSelect.add(new Option(app.name, app.id));
+        });
         
         if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
             appSelect.value = selectedValue;
@@ -438,18 +363,13 @@ const DashboardUI = (() => {
         getCollection('notes').forEach(note => fragment.appendChild(new Option(note.title, note.id)));
         noteSelect.appendChild(fragment);
 
-        // --- Mode C, Fix 4: Consolidate redundant notepad selection logic ---
-        const notes = getCollection('notes');
-        const hasNotes = hasItems('notes');
+        // Structural Fix: Consolidate activeNoteId logic (Mode C, Fix 4)
+        activeNoteId = activeNoteId && getCollection('notes').some(n => n.id === activeNoteId) ? activeNoteId : (hasItems('notes') ? getCollection('notes')[0].id : null);
 
-        if (activeNoteId && notes.some(n => n.id == activeNoteId)) {
+        if (activeNoteId) {
              noteSelect.value = activeNoteId;
-        } else {
-            // Fix: If an active note doesn't exist (e.g., deleted), select the first one or null.
-            activeNoteId = hasNotes ? notes[0].id : null;
-            if (activeNoteId) noteSelect.value = activeNoteId;
         }
-        
+
         const activeNote = findById('notes', activeNoteId);
         if (activeNote) {
             DOMElements.notepadEditor.value = activeNote.content;
@@ -459,18 +379,17 @@ const DashboardUI = (() => {
             DOMElements.notepadEditor.disabled = true;
         }
         DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
-        DOMElements.deleteNoteBtn.disabled = !hasNotes;
-        DOMElements.renameNoteBtn.disabled = !hasNotes;
+        DOMElements.deleteNoteBtn.disabled = !hasItems('notes');
+        DOMElements.renameNoteBtn.disabled = !hasItems('notes');
     };
-    
-    // --- Main Rendering ---
+
     const renderAll = () => {
         if (shortcutsManager) shortcutsManager.render();
         renderAppData();
         renderNotesData();
     };
 
-    // --- Detail Panel Logic ---
+    // --- App Detail Handlers ---
     const displayAppDetails = (appId) => {
         selectedAppId = appId;
         const isVisible = !!appId;
@@ -480,6 +399,7 @@ const DashboardUI = (() => {
         DOMElements.editAppEscalation.value = '';
         DOMElements.editAppNameWrapper.classList.add('hidden');
 
+        // Structural Fix (Mode B, Fix 2): Handle null selection
         DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
 
         if (isVisible) {
@@ -502,6 +422,12 @@ const DashboardUI = (() => {
             initialAppData = null;
         }
 
+        // UX Improvement (A. Vertical Space Saver): Initially collapse escalation field
+        const escalationTextarea = DOMElements.editAppEscalation;
+        const isCollapsed = escalationTextarea.value.trim() === '';
+        // If the textarea is empty, set its height to a minimum (e.g., 40px)
+        escalationTextarea.style.height = isCollapsed ? '40px' : 'auto'; 
+        
         setTimeout(() => {
             DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
             DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
@@ -516,11 +442,10 @@ const DashboardUI = (() => {
         DOMElements.appDetailsContainer.classList.remove('hidden');
         DOMElements.editAppNameWrapper.classList.remove('hidden');
         DOMElements.editAppName.focus();
-        // Initialize temporary app data object for a new entry
         initialAppData = {id: null, name: '', urls: '', escalation: ''};
         updateSaveButtonState();
     };
-
+    
     // --- Settings Modal ---
     const showSettingsModal = () => {
         const modalContent = `
@@ -536,6 +461,7 @@ const DashboardUI = (() => {
         
         SafeUI.showModal("Settings", modalContent, [{ label: 'Close' }]);
 
+        // Attach listeners to modal buttons
         BackupRestore.setupBackupRestoreHandlers({
             state: state,
             appName: APP_CONFIG.NAME,
@@ -567,31 +493,144 @@ const DashboardUI = (() => {
             }
         });
     };
-    
-    // --- Event Handlers ---
-    const attachEventListeners = () => {
-        // App Selection
+
+    // --- App Initializer (called by app-core.js) ---
+    const initDashboard = (ctx, appConfig) => {
+        DOMElements = ctx.elements;
+        state = ctx.state;
+        saveState = ctx.saveState;
+        APP_CONFIG = appConfig;
+
+        // Setup textareas
+        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
+        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
+        DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
+
+        // Setup icons
+        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
+        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
+        DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
+        DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
+        DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
+        DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
+
+        // Initialize shortcuts
+        shortcutsManager = createShortcutsManager({
+            escapeHTML: SafeUI.escapeHTML, confirmDelete, saveState, showModal: SafeUI.showModal, 
+            showToast: SafeUI.showToast, validators: SafeUI.validators, generateId: SafeUI.generateId, SVGIcons: SafeUI.SVGIcons
+        });
+        shortcutsManager.init();
+
+        // Setup CSV listeners
+        CsvManager.setupExport({
+            exportBtn: DOMElements.btnExportCsv,
+            dataGetter: () => state.apps,
+            headers: APP_CONFIG.APP_CSV_HEADERS,
+            filename: `${APP_CONFIG.NAME}-export.csv`
+        });
+        
+        CsvManager.setupImport({
+            importBtn: DOMElements.btnImportCsv,
+            headers: APP_CONFIG.APP_CSV_HEADERS,
+            onValidate: (row, index) => {
+                 const entry = {
+                    id: row.id || SafeUI.generateId(),
+                    name: (row.name || '').trim(),
+                    urls: (row.urls || '').trim(),
+                    escalation: (row.escalation || '').trim()
+                };
+
+                if (!SafeUI.validators.notEmpty(entry.name)) {
+                    return { error: `Row ${index + 2}: 'name' is required.` };
+                }
+                return { entry };
+            },
+            onConfirm: (validatedData, importErrors) => {
+                const newEntries = [];
+                const updatedEntries = [];
+                const existingIds = new Set(state.apps.map(app => app.id));
+
+                validatedData.forEach(entry => {
+                    if (existingIds.has(entry.id)) {
+                        updatedEntries.push(entry);
+                    } else {
+                        newEntries.push(entry);
+                    }
+                });
+
+                const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+
+                let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
+                
+                if (importErrors.length > 0) {
+                    summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
+                                    <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
+                                        ${errorList}${moreErrors}
+                                    </ul>`;
+                }
+
+                summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
+
+                SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                    { label: 'Cancel' },
+                    { 
+                        label: 'Import and Overwrite', 
+                        class: 'button-primary', 
+                        callback: () => {
+                            let importedCount = 0;
+                            
+                            newEntries.forEach(entry => {
+                                if (state.apps.some(app => app.id === entry.id)) {
+                                    console.warn(`ID collision detected for "${entry.name}" (${entry.id}). Assigning new ID.`);
+                                    entry.id = SafeUI.generateId();
+                                }
+                                state.apps.push(entry);
+                                importedCount++;
+                            });
+
+                            updatedEntries.forEach(entry => {
+                                const existingIndex = state.apps.findIndex(app => app.id === entry.id);
+                                if (existingIndex > -1) {
+                                    state.apps[existingIndex] = entry;
+                                    importedCount++;
+                                }
+                            });
+
+                            saveState();
+                            renderAll();
+                            SafeUI.showToast(`Imported ${importedCount} applications.`);
+                        }
+                    }
+                ]);
+            }
+        });
+
+        // Add main event listeners
+        window.addEventListener('beforeunload', (e) => { 
+            if (checkFormDirty()) { e.preventDefault(); e.returnValue = ''; } 
+        });
+        
         DOMElements.appSelect.addEventListener('change', () => {
-            // Mode B, Fix 2: Check value for empty string and assign null
-            const appId = DOMElements.appSelect.value || null; 
+            // Structural Fix (Mode B, Fix 2): Ensure null is passed for empty selection
+            const appId = DOMElements.appSelect.value || null;
             displayAppDetails(appId);
         });
 
-        // App Detail Change Detection
         const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
         DOMElements.editAppName.addEventListener('input', debouncedSave);
         DOMElements.editAppUrls.addEventListener('input', debouncedSave);
         DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
-        
-        // App Save
+
         DOMElements.saveChangesBtn.addEventListener('click', () => {
             const newName = DOMElements.editAppName.value.trim();
             if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
                 return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
             }
 
-            const isNewApp = initialAppData && initialAppData.id === null;
-            const nameChanged = !isNewApp && initialAppData && newName !== initialAppData.name;
+            const isNewApp = initialAppData.id === null;
+            const nameChanged = !isNewApp && newName !== initialAppData.name;
             
             if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName)) {
                 return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
@@ -603,11 +642,9 @@ const DashboardUI = (() => {
                 escalation: DOMElements.editAppEscalation.value.trim()
             };
 
-            let appToSelectId;
             if (isNewApp) {
                 appData.id = SafeUI.generateId();
                 getCollection('apps').push(appData);
-                appToSelectId = appData.id;
                 SafeUI.showToast('Application created');
             } else {
                 const app = findById('apps', selectedAppId);
@@ -615,18 +652,16 @@ const DashboardUI = (() => {
                     app.name = appData.name;
                     app.urls = appData.urls;
                     app.escalation = appData.escalation;
-                    appToSelectId = app.id;
                     SafeUI.showToast('Application updated');
                 }
             }
             
             saveState();
             renderAppData();
-            DOMElements.appSelect.value = appToSelectId;
-            displayAppDetails(appToSelectId);
+            DOMElements.appSelect.value = appData.id || selectedAppId;
+            displayAppDetails(appData.id || selectedAppId);
         });
 
-        // App Delete
         DOMElements.deleteAppBtn.addEventListener('click', () => {
             if (!selectedAppId) return;
             const app = findById('apps', selectedAppId);
@@ -641,12 +676,11 @@ const DashboardUI = (() => {
             });
         });
 
-        // Dashboard Actions
         DOMElements.addShortcutBtnMenu.addEventListener('click', () => shortcutsManager.add());
         DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
         DOMElements.btnSettings.addEventListener('click', showSettingsModal);
 
-        // Notepad Actions
+        // Notepad listeners
         DOMElements.noteSelect.addEventListener('change', () => {
             activeNoteId = DOMElements.noteSelect.value;
             const note = findById('notes', activeNoteId);
@@ -712,60 +746,6 @@ const DashboardUI = (() => {
             });
         });
 
-        // Before Unload Protection (Mode A, Fix 1 from index.html)
-        window.addEventListener('beforeunload', (e) => { 
-            if (checkFormDirty()) { 
-                e.preventDefault(); 
-                e.returnValue = ''; 
-            } 
-        });
-    };
-
-    /**
-     * Public entry point for dashboard initialization
-     */
-    async function initDashboard(context) {
-        // Save context globally for accessors
-        ctx = context;
-        DOMElements = ctx.elements;
-        state = ctx.state;
-        saveState = ctx.saveState;
-        
-        // Setup textareas
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
-        DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
-
-        // Setup icons
-        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
-        DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
-        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
-        DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
-        DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
-
-        // Initialize shortcuts
-        shortcutsManager = createShortcutsManager();
-        shortcutsManager.init();
-
-        // Setup CSV listeners
-        CsvManager.setupExport({
-            exportBtn: DOMElements.btnExportCsv,
-            dataGetter: () => state.apps,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            filename: `${APP_CONFIG.NAME}-export.csv`
-        });
-        
-        CsvManager.setupImport({
-            importBtn: DOMElements.btnImportCsv,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            onValidate: validateCsvRow,
-            onConfirm: confirmCsvImport
-        });
-
-        attachEventListeners();
-
         // First-run check for notes
         if (!hasItems('notes')) {
             getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
@@ -774,14 +754,14 @@ const DashboardUI = (() => {
 
         renderAll();
         SafeUI.loadNavbar("navbar-container");
-    }
+    };
 
     return { initDashboard };
-
 })();
+
 
 // Expose components to the global window scope
 window.UIPatterns = UIPatterns;
 window.ListRenderer = ListRenderer;
 window.SearchHelper = SearchHelper;
-window.DashboardUI = DashboardUI; // Expose the new module
+window.DashboardUI = DashboardUI;
