@@ -920,7 +920,7 @@
         // Init
         const init = () => {
             // Setup icons
-            DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+            // REMOVED: DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
             DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
 
             // Setup textareas
@@ -933,7 +933,7 @@
             showView('catalogue');
             renderCatalogue();
             
-            SafeUI.loadNavbar("navbar-container");
+            // REMOVED: SafeUI.loadNavbar("navbar-container");
         };
 
         init();
