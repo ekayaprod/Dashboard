@@ -41,7 +41,7 @@
             padding: 0.6rem 0.5rem;
             border-radius: var(--border-radius);
             border: 1px solid transparent;
-            cursor: default; /* Changed from pointer */
+            cursor: default;
             transition: background-color 0.2s;
             gap: 0.75rem;
         }
@@ -136,18 +136,14 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;"></div>
                 
-                <!-- =================================================================== -->
-                <!-- VIEW 1: CATALOGUE / LIBRARY (DEFAULT VIEW)                          -->
-                <!-- =================================================================== -->
+                <!-- VIEW 1: CATALOGUE / LIBRARY (DEFAULT VIEW) -->
                 <div id="catalogue-view" class="view active">
                     <div class="section-header-wrapper">
                         <h3 class="section-header">Email Template Library</h3>
                         <div class="button-group">
-                            <!-- User-friendly CSV Buttons -->
                             <button id="btn-import-csv" class="button-base" title="Import from CSV">Import (CSV)</button>
                             <button id="btn-export-csv" class="button-base" title="Export to CSV">Export (CSV)</button>
                             
-                            <!-- Actions -->
                             <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
                             <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
                             <button id="btn-new-template" class="button-base button-primary">New Template</button>
@@ -155,17 +151,13 @@
                     </div>
 
                     <div id="breadcrumb-container" class="breadcrumb-container">
-                        <!-- Breadcrumbs will be rendered here -->
                     </div>
 
                     <div id="tree-list-container">
-                        <!-- List of templates and folders will be rendered here -->
                     </div>
                 </div>
 
-                <!-- =================================================================== -->
-                <!-- VIEW 2: TEMPLATE EDITOR (GENERATOR)                                 -->
-                <!-- =================================================================== -->
+                <!-- VIEW 2: TEMPLATE EDITOR (GENERATOR) -->
                 <div id="editor-view" class="view">
                     
                     <div class="section-header-wrapper">
@@ -288,14 +280,14 @@
     
         const APP_CONFIG = {
             NAME: 'mailto_library',
-            VERSION: '1.1.0', // Added CSV I/O and Settings Modal
+            VERSION: '1.1.0', 
             DATA_KEY: 'mailto_library_v1',
             CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
         };
 
         const defaultState = {
             version: APP_CONFIG.VERSION,
-            library: [] // This will store our tree: [{id, type: 'folder', name, children: [...]}, {id, type: 'item', name, mailto: '...'}]
+            library: [] 
         };
     
         const ctx = await AppLifecycle.initPage({
@@ -304,24 +296,24 @@
             version: APP_CONFIG.VERSION,
             requiredElements: [
                 'navbar-container', 'toast', 'modal-overlay', 'modal-content',
-                'catalogue-view', 'editor-view', // Main Views
-                'btn-new-template', 'btn-new-folder', // Catalogue buttons
-                'btn-settings', // Settings button
-                'btn-import-csv', 'btn-export-csv', // CSV I/O
-                'breadcrumb-container', 'tree-list-container', // Catalogue UI
-                'btn-editor-cancel', 'btn-generate', // Editor buttons
-                'upload-wrapper', 'msg-upload', // Editor Phase 1
-                'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', // Editor Phase 2
-                'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', // Editor Phase 3
-                'save-template-name', 'btn-save-to-library' // Editor Save
+                'catalogue-view', 'editor-view', 
+                'btn-new-template', 'btn-new-folder', 
+                'btn-settings', 
+                'btn-import-csv', 'btn-export-csv', 
+                'breadcrumb-container', 'tree-list-container', 
+                'btn-editor-cancel', 'btn-generate', 
+                'upload-wrapper', 'msg-upload', 
+                'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', 
+                'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', 
+                'save-template-name', 'btn-save-to-library' 
             ]
         });
     
         if (!ctx) return;
     
         const { elements: DOMElements, state, saveState } = ctx;
-        let currentFolderId = 'root'; // 'root' means the base of the library
-        let currentMailtoCommand = null; // Holds the generated command before saving
+        let currentFolderId = 'root'; 
+        let currentMailtoCommand = null; 
 
         // ===================================================================
         // HELPER FUNCTIONS
@@ -351,7 +343,7 @@
                 
                 return data;
             } catch (e) {
-                console.warn("Could not parse mailto string:", mailtoStr, e);
+                console.warn("Mailto string parsing failed:", mailtoStr, e);
                 // Fallback for simple mailto:email@example.com
                 if (mailtoStr.indexOf('?') === -1) {
                      data.to = mailtoStr.substring(7);
@@ -362,7 +354,6 @@
 
         /**
          * Builds a mailto: string from plain-text components.
-         * Re-uses the exact same encoding logic as the "Generate" button.
          */
         const buildMailto = (data) => {
             let mailto = 'mailto:';
@@ -388,7 +379,7 @@
         };
 
 
-        // --- Recursive Helper to find an item/folder in the tree ---
+        // Recursive search for an item/folder in the tree
         const findItemById = (id, items = state.library) => {
             if (id === 'root') return { id: 'root', name: 'Root', children: state.library, path: '/' };
             for (const item of items) {
@@ -401,7 +392,7 @@
             return null;
         };
         
-        // --- Get children of the current folder ---
+        // Get children of the current folder
         const getItemsInCurrentFolder = () => {
             if (currentFolderId === 'root') {
                 return state.library;
@@ -410,7 +401,7 @@
             return folder ? folder.children : [];
         };
 
-        // --- Generate breadcrumb path (iterative) ---
+        // Generate breadcrumb path (iterative)
         const getBreadcrumbPath = (folderId) => {
             if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
 
@@ -418,7 +409,6 @@
             let targetItem = null;
             
             // Stack for iterative depth-first search
-            // item: [item, parentPathArray]
             const stack = state.library.map(item => [item, []]);
 
             while (stack.length > 0) {
@@ -428,7 +418,7 @@
                 if (currentItem.id === folderId) {
                     targetItem = currentItem;
                     path.push(...currentPath);
-                    break; // Found it
+                    break; 
                 }
 
                 if (currentItem.type === 'folder' && currentItem.children) {
@@ -448,7 +438,7 @@
         // RENDER & VIEW FUNCTIONS
         // ===================================================================
 
-        // --- Main Render Function ---
+        // Main Render Function
         const renderCatalogue = () => {
             // Render Breadcrumbs
             DOMElements.breadcrumbContainer.innerHTML = '';
@@ -517,7 +507,7 @@
             });
         };
 
-        // --- View Switching ---
+        // View Switching
         const showView = (viewName) => {
             DOMElements.catalogueView.classList.toggle('active', viewName === 'catalogue');
             DOMElements.editorView.classList.toggle('active', viewName === 'editor');
@@ -542,7 +532,6 @@
                     // Use window.MsgReader explicitly
                     const msgReader = new window.MsgReader(e.target.result);
                     const fileData = msgReader.getFileData();
-                    if (fileData.error) throw new Error(fileData.error);
 
                     const recipients = fileData.recipients || [];
                     DOMElements.resultTo.value = recipients.filter(r => r.type === 'to').map(r => r.email).join(', ');
@@ -556,10 +545,14 @@
                     setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultBody), 0);
                 } catch (err) {
                     console.error('File parsing error:', err);
-                    SafeUI.showModal('Parsing Error', `<p>Failed to parse the file.</p><p><small>${SafeUI.escapeHTML(err.message)}</small></p>`, [{label: 'OK'}]);
+                    // Throw error to be caught by AppLifecycle for user notification
+                    throw new Error(`Failed to parse file: ${err.message}`);
                 }
             };
-            reader.onerror = () => SafeUI.showModal('File Read Error', '<p>Could not read the selected file.</p>', [{label: 'OK'}]);
+            reader.onerror = () => {
+                // Throw error to be caught by AppLifecycle for user notification
+                throw new Error('File reading failed. Could not access file content.');
+            };
             reader.readAsArrayBuffer(file);
         };
 
@@ -662,7 +655,7 @@
         // DATA MANAGEMENT HANDLERS (JSON & CSV)
         // ===================================================================
         
-        // --- Settings Modal ---
+        // Settings Modal
         const showSettingsModal = () => {
             const modalContent = `
                 <div class="form-group">
@@ -684,7 +677,7 @@
                 backupBtn: document.getElementById('modal-backup-btn'),
                 restoreBtn: document.getElementById('modal-restore-btn'),
                 itemValidators: {
-                    library: [] // Just checks if 'library' key exists
+                    library: [] 
                 },
                 restoreConfirmMessage: 'This will overwrite your entire mailto library with the JSON backup. This cannot be undone.',
                 onRestoreCallback: (dataToRestore) => {
@@ -694,12 +687,12 @@
                     saveState();
                     renderCatalogue();
                     SafeUI.showToast('Library restored successfully.');
-                    SafeUI.hideModal(); // Close settings modal
+                    SafeUI.hideModal(); 
                 }
             });
         };
 
-        // --- CSV "Human-Friendly" Export ---
+        // CSV "Human-Friendly" Export
         const handleExportCsv = () => {
             const csvData = [];
             
@@ -723,7 +716,7 @@
                 }
             }
             
-            walk(state.library, '/'); // Start walk at the root
+            walk(state.library, '/'); 
             
             if (csvData.length === 0) {
                 return SafeUI.showToast("Library is empty, nothing to export.");
@@ -741,7 +734,7 @@
             }
         };
 
-        // --- CSV "Human-Friendly" Import (Setup) ---
+        // CSV "Human-Friendly" Import (Setup)
         const setupCsvImport = () => {
             // 1. Validation function for each row
             const validateCsvRow = (row, index) => {
@@ -770,7 +763,7 @@
                             let skippedCount = 0;
 
                             for (const row of validatedData) {
-                                const pathParts = row.path.split('/').filter(p => p.trim().length > 0); // e.g., ["/", "Projects", "TeamA"] -> ["Projects", "TeamA"]
+                                const pathParts = row.path.split('/').filter(p => p.trim().length > 0); 
                                 let currentContainer = state.library;
 
                                 // Find or create the folder path
@@ -826,16 +819,16 @@
         // ===================================================================
 
         const attachEventListeners = () => {
-            // --- Catalogue View ---
+            // Catalogue View
             DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
             DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
             DOMElements.btnSettings.addEventListener('click', showSettingsModal);
             
             // CSV I/O
             DOMElements.btnExportCsv.addEventListener('click', handleExportCsv);
-            setupCsvImport(); // This wires up the btnImportCsv listener
+            setupCsvImport(); 
             
-            // --- Editor View ---
+            // Editor View
             DOMElements.btnEditorCancel.addEventListener('click', () => {
                 showView('catalogue');
                 renderCatalogue();
@@ -848,8 +841,8 @@
                 SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
             });
             
-            // --- Drag and Drop (Editor) ---
-            const uploadWrapper = DOMElements.uploadWrapper; // Cache for frequent use
+            // Drag and Drop (Editor)
+            const uploadWrapper = DOMElements.uploadWrapper; 
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, (ev) => ev.preventDefault()));
             ['dragenter', 'dragover'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.add('dragover')));
             ['dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.remove('dragover')));
@@ -862,14 +855,13 @@
                 if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
             });
 
-            // --- Event Delegation for Lists ---
+            // Event Delegation for Lists
             DOMElements.treeListContainer.addEventListener('click', (e) => {
                 const itemEl = e.target.closest('.list-item');
                 if (!itemEl) return;
                 
                 // If user clicks the main link, let the browser handle it.
                 if (e.target.closest('.list-item-name')) {
-                    // This is an <a> tag, let the default behavior (launch mailto:) run.
                     return; 
                 }
                 
@@ -925,7 +917,7 @@
             });
         };
 
-        // --- Init ---
+        // Init
         const init = () => {
             // Setup icons
             DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
