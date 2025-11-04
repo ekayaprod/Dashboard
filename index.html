@@ -5,44 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    
-    <!-- CHANGE 1: Added standard watchdog script -->
-    <script>
-    // Dependency Check
-    (() => {
-        // Core deps for all pages
-        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter'];
-        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
-        
-        if (missing.length > 0) {
-            const errorTitle = "Application Failed to Load";
-            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, app-ui.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
-            
-            console.error(errorMessage);
-            
-            // Check if AppLifecycle itself loaded to use its banner function
-            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-            } else {
-                // Fallback to directly manipulating the banner if AppLifecycle failed
-                // This is a failsafe for if app-core.js (which has AppLifecycle) fails to load.
-                document.addEventListener('DOMContentLoaded', () => {
-                    try {
-                        const banner = document.getElementById('app-startup-error');
-                        if(banner) {
-                            banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
-                            banner.classList.remove('hidden');
-                        }
-                    } catch(e) {
-                        console.error("Failed to show error banner:", e);
-                    }
-                });
-            }
-            // Stop further script execution
-            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+    <style>
+        /* Added per Mode B, Fix 3 for drag-and-drop feedback */
+        .shortcuts-container.drag-active { 
+            background-color: var(--primary-hover-bg-light); 
         }
-    })();
-    </script>
+    </style>
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -50,7 +18,7 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <!-- CHANGE 2: Added standard error banner -->
+                <!-- Added per Cross-File, Fix 2 -->
                 <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;"></div>
 
                 <div id="shortcuts-container" class="shortcuts-container"></div>
@@ -121,8 +89,6 @@
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
-    <!-- Extracted inline script to its own file -->
-    <script src="js/index-app.js"></script>
 </body>
 </html>
 
