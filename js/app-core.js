@@ -613,55 +613,6 @@ window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
 
 // Dashboard App Initializer
-AppLifecycle.run(async () => {
-    // Check if the required elements for the Dashboard UI are present
-    // This prevents this code from running on other pages
-    if (!document.getElementById('app-select')) {
-        return;
-    }
-
-    const APP_VERSION = '6.2.0';
-    const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
-    const APP_CONFIG = {
-        NAME: 'dashboard',
-        APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
-    };
-
-    const defaultState = {
-        apps: [],
-        notes: [],
-        shortcuts: [],
-        version: APP_VERSION
-    };
-
-    const ctx = await AppLifecycle.initPage({
-        storageKey: LOCAL_STORAGE_KEY,
-        defaultState,
-        version: APP_VERSION,
-        requiredElements: [
-            'shortcuts-container', 'app-select-group', 'app-select',
-            'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
-            'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
-            'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
-            'add-new-app-btn-menu',
-            'btn-export-csv', 'btn-import-csv', 'btn-settings',
-            'notepad-header',
-            'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
-            'navbar-container'
-        ]
-    });
-
-    if (!ctx) return;
-
-    // Call the centralized dashboard initialization function
-    if (typeof window.DashboardUI?.initDashboard === 'function') {
-        window.DashboardUI.initDashboard(ctx, APP_CONFIG);
-    } else {
-        console.error("DashboardUI.initDashboard not found. app-ui.js may not have loaded correctly.");
-        // Use the banner function which is now confirmed to exist
-        AppLifecycle._showErrorBanner(
-            "Application Failed to Load",
-            "The core dashboard UI failed to load (DashboardUI.initDashboard missing). 'app-ui.js' may be corrupt or blocked."
-        );
-    }
-});
+// [REMOVED] The duplicate AppLifecycle.run block that initialized the dashboard has been removed.
+// Each page (index.html, passwords.html, etc.) is now responsible
+// for its own initialization via its inline <script> block.
