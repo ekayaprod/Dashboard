@@ -86,7 +86,7 @@ var OleCompoundDoc = function () {
     this.header = {};
     this.sectors = [];
     this.streams = {};
-    this.rootStreamEntry = null; // OFT FIX: Added to store root entry
+    this.rootStreamEntry = null;
     this.readHeader();
     this.readSectors();
     this.readDirTree();
@@ -286,7 +286,7 @@ var OleCompoundDoc = function () {
 
         if (type === 5) {
           rootStream = entry;
-          this.rootStreamEntry = entry; // OFT FIX: Store the root entry
+          this.rootStreamEntry = entry;
         }
 
         entries.push(entry);
@@ -373,14 +373,9 @@ var OleCompoundDoc = function () {
       sectorsChain = miniFat;
       sectorSize = header.uMiniSectorSize;
       
-      // OFT FIX: Use this.rootStreamEntry which is set during readDirTree
-      // The old code (this.streams['Root Entry']) fails if readStream
-      // is called before this.streams is populated.
       var rootStream = this.rootStreamEntry; 
       if (!rootStream) {
-        console.error("MsgReader: Could not find Root Entry to read mini-stream. File may be corrupt.");
-        stream.content = []; // Set to empty to prevent further errors
-        return;
+        throw new Error("MSG/OFT file is corrupt: Root Entry not found");
       }
 
       var miniStreamSectors = this.readSectorsFromSAT(fat, rootStream.size / sectorSize, rootStream.sectStart);
@@ -405,15 +400,11 @@ var OleCompoundDoc = function () {
 
           var _offsetInMiniStream = sector * sectorSize % header.uSectorSize;
           
-          // OFT FIX: Need to re-calculate rootStream and miniStreamSectors, as they are not defined in this scope
           var rootStream = this.rootStreamEntry;
           if (!rootStream) {
-             console.error("MsgReader: Could not find Root Entry to read mini-stream. File may be corrupt.");
-             stream.content = [];
-             return;
+             throw new Error("MSG/OFT file is corrupt: Root Entry not found");
           }
           var miniStreamSectors = this.readSectorsFromSAT(fat, rootStream.size / sectorSize, rootStream.sectStart);
-          // End OFT FIX
 
           file.seek(512 + miniStreamSectors[_sectorInMiniStream] * header.uSectorSize + _offsetInMiniStream);
         }
@@ -632,27 +623,21 @@ var Reader = function () {
   };
 
   _proto.readFields = function readFields(oleCompoundDoc) {
-    var streams = oleCompoundDoc.streams;
-    if (!streams) {
-        console.error("MsgReader: OLE streams not found.");
-        return [];
+    if (!oleCompoundDoc || !oleCompoundDoc.streams) { 
+        throw new Error('Invalid MSG/OFT file structure'); 
     }
+    var streams = oleCompoundDoc.streams;
     var propertyStream = streams['__properties_version1.0'];
 
     if (!propertyStream) {
       console.warn("MsgReader: Property stream '__properties_version1.0' not found. File may be an OFT or a different format.");
-      // return []; // Don't return, as OFT might store properties differently (though unlikely for basic fields)
     }
 
-    // OFT FIX: Even if propertyStream is missing, try to read other streams
     var fields = [];
     var attachments = [];
 
     if (propertyStream) {
         var property = new Property(new ReadFile(propertyStream.content));
-        // Note: The original code implicitly read properties from propertyStream,
-        // but it seems to only be used for iteration logic that's not present.
-        // We will proceed to read streams directly.
     }
 
 
@@ -781,7 +766,13 @@ var Reader = function () {
 var MsgReader = function () {
   function MsgReader(arrayBuffer) {
     this.reader = new Reader(arrayBuffer);
-    this.fields = this.reader.read();
+    try {
+        this.fields = this.reader.read();
+    } catch (e) {
+        console.error("MsgReader initialization failed:", e.message);
+        // Re-throw a user-friendly error
+        throw new Error(`Failed to parse file: ${e.message}`);
+    }
   }
 
   var _proto = MsgReader.prototype;
@@ -789,7 +780,8 @@ var MsgReader = function () {
   _proto.getFileData = function getFileData() {
     var body = this.fields.getField('body');
     var html = this.fields.getField('html');
-    return {
+    
+    const data = {
       senderName: this.fields.getField('senderName') ? this.fields.getField('senderName').value : undefined,
       senderEmail: this.fields.getField('senderEmail') ? this.fields.getField('senderEmail').value : undefined,
       senderSmtpAddress: this.fields.getField('senderSmtpAddress') ? this.fields.getField('senderSmtpAddress').value : undefined,
@@ -802,6 +794,13 @@ var MsgReader = function () {
       attachments: this.fields.getField('attachments') ? this.fields.getField('attachments').value : [],
       recipients: this.fields.getField('recipients') ? this.fields.getField('recipients').value : []
     };
+
+    // Check for malformed file
+    if (data.subject === undefined && data.senderName === undefined && data.recipients.length === 0) {
+        throw new Error('MSG/OFT file contains no readable email data');
+    }
+
+    return data;
   };
 
   return MsgReader;
