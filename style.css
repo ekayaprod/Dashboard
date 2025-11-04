@@ -262,7 +262,6 @@ body {
     flex-wrap: wrap; 
     gap: 0.3rem; 
 }
-/* FIX 7: Moved from index.html inline style */
 .shortcuts-container.drag-active { 
     background-color: var(--primary-hover-bg-light); 
 }
@@ -511,7 +510,8 @@ body.modal-open > *:not(.modal-overlay) {
     gap: 0.5rem;
 }
 
-/* FIX 1: Moved from index.html inline style 
+/* This class was moved from an inline style on index.html 
+  to this global stylesheet.
 */
 .app-startup-banner {
     position: sticky;
@@ -528,13 +528,6 @@ body.modal-open > *:not(.modal-overlay) {
     z-index: 10000;
     box-sizing: border-box;
 }
-
-
-/* FIX 4: Removed all page-specific styles for .lookup-page,
-  .kb-result-item, .local-header, .result-item, etc.
-  These will be moved to inline <style> blocks on their
-  respective pages (lookup.html, passwords.html).
-*/
 
 
 /* ======================================= */
@@ -568,10 +561,6 @@ body.modal-open > *:not(.modal-overlay) {
     
     .nav-link:hover { background-color: #374151; }
     .nav-link.active { background-color: var(--primary-color); color: #fff; }
-
-    /* FIX 4: Removed dark mode overrides for .lookup-page, 
-      .kb-result-item, etc.
-    */
 }
 
 .button-base:focus-visible,
