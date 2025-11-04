@@ -6,7 +6,287 @@
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Specific layout tweaks for lookup page */
+        /* ======================================= */
+        /* === LOOKUP PAGE STYLES === */
+        /* ======================================= */
+
+        body.lookup-page {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .lookup-page .container {
+            padding: 0.5rem;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .lookup-page .lookup-header {
+            background-color: var(--panel-bg);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--box-shadow);
+            flex-shrink: 0; 
+        }
+        .lookup-page .header-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .lookup-page .lookup-header h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .lookup-page .header-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+        .lookup-page .header-actions .button-base,
+        .lookup-page .header-actions .icon-btn {
+            padding: 0.3rem 0.5rem;
+        }
+        .lookup-page .search-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .lookup-page #search-input {
+            flex-grow: 1;
+            margin: 0;
+        }
+
+        .lookup-page .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex-grow: 1;
+            min-height: 0;
+        }
+        .lookup-page .column {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.5rem;
+            box-shadow: var(--box-shadow);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            flex-basis: 50%;
+        }
+        .lookup-page #kb-column {
+            flex-basis: 33.33%;
+            min-width: 250px; /* Ensure it doesn't get too small */
+        }
+        .lookup-page #local-column {
+            flex-basis: 66.67%;
+        }
+
+        .lookup-page .column h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--primary-color);
+        }
+
+        .lookup-page .local-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .lookup-page .local-header h2 {
+            margin: 0;
+            padding: 0;
+            border: none;
+        }
+        .lookup-page .local-header .button-base {
+            padding: 0.2rem 0.5rem;
+        }
+
+
+        .lookup-page .result-list, .kb-result-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* --- KB Results --- */
+        .kb-results-container {
+            position: relative;
+            min-height: 50px;
+        }
+        .kb-result-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .kb-result-item a {
+            display: block;
+            padding: 0.4rem 0.5rem;
+            border-radius: 0.25rem;
+            text-decoration: none;
+            color: var(--primary-color);
+            font-size: 0.85rem;
+        }
+        .kb-result-item a:hover {
+            background-color: var(--info-bg);
+            text-decoration: underline;
+        }
+        .kb-summary {
+            font-size: 0.85rem;
+            color: var(--subtle-text);
+            padding: 0.25rem 0.5rem;
+            border-bottom: 1px dashed var(--border-color);
+            margin-bottom: 0.25rem;
+            line-height: 1.5;
+        }
+
+
+        .lookup-page .result-item {
+            background-color: var(--info-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .lookup-page .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.4rem 0.5rem;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .lookup-page .item-keyword {
+            font-weight: 600;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        .lookup-page .item-actions {
+            display: flex;
+            gap: 0.25rem;
+            flex-shrink: 0;
+            margin-left: 0.5rem;
+        }
+        .lookup-page .item-actions .icon-btn {
+            padding: 0.25rem;
+        }
+        .lookup-page .item-actions .btn-delete:hover {
+            background-color: var(--danger-hover-bg);
+            color: var(--danger-color);
+        }
+
+        .lookup-page .item-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.4rem 0.6rem;
+            padding: 0.5rem;
+            align-items: center;
+        }
+        .lookup-page .item-grid strong {
+            font-weight: 500;
+            color: var(--subtle-text);
+            text-align: right;
+            font-size: 0.8rem;
+        }
+        .lookup-page .item-grid div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.25rem;
+            word-break: break-all;
+        }
+        .lookup-page .item-grid .btn-copy {
+            padding: 0.25rem;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .lookup-page .edit-form-li {
+            background-color: #fff; 
+            border: 1px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+        }
+        .lookup-page .edit-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .lookup-page .form-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .lookup-page .form-grid label {
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: var(--subtle-text);
+            text-align: right;
+        }
+        .lookup-page .form-grid input,
+        .lookup-page .form-grid textarea {
+            margin: 0;
+            font-size: 0.85rem;
+        }
+        .lookup-page .form-grid textarea {
+            min-height: 60px;
+        }
+        .lookup-page .edit-form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 0.5rem;
+            margin-top: 0.25rem;
+        }
+
+        /* --- DARK MODE --- */
+        @media (prefers-color-scheme: dark) {
+            body.lookup-page {
+                background-color: var(--bg-color);
+            }
+            .lookup-page .lookup-header {
+                background-color: var(--panel-bg);
+                border-color: var(--border-color);
+            }
+            .lookup-page .column {
+                background-color: var(--panel-bg);
+                border-color: var(--border-color);
+            }
+            .kb-result-item a:hover {
+                background-color: var(--bg-color);
+            }
+            .kb-summary {
+                border-color: var(--border-color);
+            }
+            .lookup-page .result-item {
+                background-color: var(--bg-color);
+                border-color: var(--border-color);
+            }
+            .lookup-page .item-header {
+                background-color: var(--panel-bg);
+                border-color: var(--border-color);
+            }
+            .lookup-page .edit-form-li {
+                background-color: var(--panel-bg); 
+                border-color: var(--primary-color);
+            }
+        }
     </style>
 </head>
 <body class="lookup-page">
@@ -14,7 +294,8 @@
     <div id="navbar-container"></div>
 
     <div class="container">
-        <div id="app-startup-error" class="hidden" style="position:sticky;top:0;left:0;width:100%;padding:1rem;background-color:#fef2f2;color:#dc2626;border-bottom:2px solid #fecaca;font-family:sans-serif;font-size:1rem;font-weight:600;z-index:10000;box-sizing:border-box;margin-bottom: 0.5rem;"></div>
+        <!-- This banner's style is now in style.css -->
+        <div id="app-startup-error" class="hidden app-startup-banner" style="margin-bottom: 0.5rem;"></div>
         
         <header class="lookup-header">
             <div class="header-top-row">
@@ -23,7 +304,8 @@
                     <button id="btn-import-csv" class="button-base" title="Import data from CSV">Import</button>
                     <button id="btn-export-csv" class="button-base" title="Export data to CSV">Export</button>
                     <button id="btn-settings" class="icon-btn" title="Settings">
-                        </button>
+                        <!-- Icon now added by app-core.js -->
+                    </button>
                     <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
                 </div>
             </div>
@@ -833,13 +1115,13 @@
              * Entry point
              */
             function init() {
-                // REMOVED: DOMElements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+                // FIX 3: Removed redundant settings icon logic
                 
                 attachEventListeners();
                 renderAll();
                 handleSearch();
                 
-                // REMOVED: SafeUI.loadNavbar("navbar-container");
+                // FIX 2: Removed redundant navbar load
             }
 
             // Run the app
