@@ -65,5 +65,51 @@
         "Hope",
         "Freshness",
         "Youth"
+    ],
+    "Animal": [
+        "Butterfly",
+        "Rabbit",
+        "Robin",
+        "Lamb",
+        "Chick",
+        "Duckling",
+        "Fawn",
+        "Bee",
+        "Hummingbird",
+        "Frog",
+        "Tadpole",
+        "Sparrow",
+        "Songbird",
+        "Deer",
+        "Calf"
+    ],
+    "Object": [
+        "Basket",
+        "Watering Can",
+        "Trowel",
+        "Seed",
+        "Pot",
+        "Shovel",
+        "Rake",
+        "Hose",
+        "Umbrella",
+        "Raincoat",
+        "Kite",
+        "Bike",
+        "Swing",
+        "Fence",
+        "Gate"
+    ],
+    "Color": [
+        "Green",
+        "Pink",
+        "Yellow",
+        "Lavender",
+        "Mint",
+        "Lime",
+        "Peach",
+        "Rose",
+        "Sky",
+        "Lilac"
     ]
 }
