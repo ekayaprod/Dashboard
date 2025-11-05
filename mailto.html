@@ -252,10 +252,22 @@
     <script src="js/app-data.js"></script>
 
     <script>
+    // C15: Global constant for file size limit
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
     // Dependency Check
     (() => {
         const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        
+        // A1: Specific validation for MsgReader being a callable constructor
+        if (typeof window.MsgReader !== 'function') {
+            if (!missing.includes('MsgReader')) {
+                // If it was loaded but isn't a function, mark it as missing
+                missing.push('MsgReader (Invalid Type)');
+            }
+        }
+
         if (missing.length > 0) {
             const errorTitle = "Application Failed to Load";
             const errorMessage = `One or more required JavaScript files (e.g., app-core.js, msgreader.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
@@ -309,14 +321,94 @@
             ]
         });
     
-        if (!ctx) return;
+        // A7: Ensure context and elements object are valid
+        if (!ctx || !ctx.elements) {
+            console.error('AppLifecycle failed to initialize context or DOM elements.');
+            return;
+        }
     
         const { elements: DOMElements, state, saveState } = ctx;
         let currentFolderId = 'root'; 
         let currentMailtoCommand = null; 
 
+        // C2: Helper to clear editor fields
+        const clearEditorFields = () => {
+            currentMailtoCommand = null;
+            DOMElements.resultTo.value = '';
+            DOMElements.resultCc.value = '';
+            DOMElements.resultBcc.value = '';
+            DOMElements.resultSubject.value = '';
+            DOMElements.resultBody.value = '';
+            DOMElements.saveTemplateName.value = '';
+            DOMElements.outputWrapper.classList.add('hidden');
+        };
+        
+        // C13, B7, B8: Helper to check for unsaved changes
+        const hasUnsavedEditorChanges = () => {
+            return currentMailtoCommand || DOMElements.resultTo.value || DOMElements.resultSubject.value || DOMElements.resultBody.value;
+        };
+        
+        // C29: Helpers for resizing
+        const resizeResultBody = () => DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
+        const resizeResultMailto = () => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
+
+        // C28, A10: Helper for navigation
+        const navigateToFolder = (id) => {
+            currentFolderId = id;
+            renderCatalogue();
+        };
+
+        // C6: Helper to generate modal content for new folder
+        const createFolderModalHTML = () => {
+            return '<input id="folder-name-input" class="sidebar-input" placeholder="Folder Name">';
+        };
+
+        // C4: Extracted handler for list item copy button
+        const handleTreeItemCopy = (item, copyBtn) => {
+            // B6: Stricter validation for dataset value
+            const mailtoCommand = copyBtn.dataset.mailto;
+            if (mailtoCommand && mailtoCommand !== 'undefined' && mailtoCommand !== 'null') {
+                SafeUI.copyToClipboard(mailtoCommand);
+                SafeUI.showToast(`Copied "${item.name}" to clipboard!`);
+            } else {
+                SafeUI.showToast('No command to copy from this template.');
+            }
+        };
+
+        // C4: Extracted handler for list item delete button
+        const handleTreeItemDelete = (id, item) => {
+            UIPatterns.confirmDelete(item.type, item.name, () => {
+                const container = getItemsInCurrentFolder();
+                const index = container.findIndex(i => i.id === id);
+                if (index > -1) {
+                    container.splice(index, 1);
+                    saveState();
+                    renderCatalogue();
+                }
+            });
+        };
+
+        // C26: Named handlers for drag-and-drop
+        const handleDragEnterOver = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.add('dragover');
+        };
+
+        const handleDragLeave = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.remove('dragover');
+        };
+
+        const handleDrop = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.remove('dragover'); // Remove dragover class
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) handleFile(files[0]);
+        };
+
+
         // ===================================================================
-        // HELPER FUNCTIONS
+        // CORE DATA FUNCTIONS
         // ===================================================================
 
         /**
@@ -325,6 +417,11 @@
         const parseMailto = (mailtoStr) => {
             const data = { to: '', cc: '', bcc: '', subject: '', body: '' };
             if (!mailtoStr || !mailtoStr.startsWith('mailto:')) {
+                return data;
+            }
+            
+            // A3: Validate basic mailto structure before attempting URL constructor
+            if (!/^mailto:[^\s]*/.test(mailtoStr)) {
                 return data;
             }
 
@@ -346,7 +443,12 @@
                 console.warn("Mailto string parsing failed:", mailtoStr, e);
                 // Fallback for simple mailto:email@example.com
                 if (mailtoStr.indexOf('?') === -1) {
-                     data.to = mailtoStr.substring(7);
+                     // B10: Decode the 'to' part in the fallback path
+                     try { 
+                        data.to = decodeURIComponent(mailtoStr.substring(7)); 
+                     } catch { 
+                        data.to = mailtoStr.substring(7);
+                     }
                 }
                 return data;
             }
@@ -357,8 +459,10 @@
          */
         const buildMailto = (data) => {
             let mailto = 'mailto:';
+            // B1: Handle multiple recipients correctly (comma-separated list for most clients)
             if (data.to) {
-                mailto += encodeURIComponent(data.to);
+                const recipients = data.to.split(',').map(r => r.trim()).filter(Boolean);
+                mailto += recipients.map(r => encodeURIComponent(r)).join(',');
             }
             
             const params = [];
@@ -379,13 +483,17 @@
         };
 
 
-        // Recursive search for an item/folder in the tree
-        const findItemById = (id, items = state.library) => {
+        // A5: Recursive search for an item/folder in the tree with circular reference protection
+        const findItemById = (id, items = state.library, visited = new Set()) => {
             if (id === 'root') return { id: 'root', name: 'Root', children: state.library, path: '/' };
             for (const item of items) {
+                // A5: Circular reference protection
+                if (visited.has(item.id)) continue; 
+                visited.add(item.id); 
+
                 if (item.id === id) return item;
                 if (item.type === 'folder' && item.children) {
-                    const found = findItemById(id, item.children);
+                    const found = findItemById(id, item.children, visited); // Pass set to recursive call
                     if (found) return found;
                 }
             }
@@ -401,18 +509,33 @@
             return folder ? folder.children : [];
         };
 
-        // Generate breadcrumb path (iterative)
+        // A4: Generate breadcrumb path (iterative with loop protection)
         const getBreadcrumbPath = (folderId) => {
             if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
 
             const path = [];
             let targetItem = null;
             
+            // A4: Circular reference and iteration protection
+            const visitedIds = new Set(); 
+            let iterations = 0; 
+            const maxIterations = state.library.length * 10; // Simple heuristic limit
+
             // Stack for iterative depth-first search
             const stack = state.library.map(item => [item, []]);
 
             while (stack.length > 0) {
+                 // A4: Check iteration limit
+                if (++iterations > maxIterations) { 
+                    console.error("Breadcrumb path generation exceeded max iterations, circular reference suspected.");
+                    break; 
+                }
+
                 const [currentItem, parentPath] = stack.pop();
+                
+                if (visitedIds.has(currentItem.id)) continue; // Check if already visited in this path search
+                visitedIds.add(currentItem.id);
+
                 const currentPath = [...parentPath, { id: currentItem.id, name: currentItem.name }];
 
                 if (currentItem.id === folderId) {
@@ -438,30 +561,26 @@
         // RENDER & VIEW FUNCTIONS
         // ===================================================================
 
+        // C18: Refactored breadcrumb rendering
+        const renderBreadcrumbs = (path) => {
+            const html = path.map((part, index) => {
+                const escapedId = SafeUI.escapeHTML(part.id);
+                const escapedName = SafeUI.escapeHTML(part.name);
+
+                if (index === path.length - 1) {
+                    return `<span class="breadcrumb-current">${escapedName}</span>`;
+                } else {
+                    return `<a class="breadcrumb-link" data-id="${escapedId}">${escapedName}</a><span class="breadcrumb-separator">&gt;</span>`;
+                }
+            }).join('');
+            DOMElements.breadcrumbContainer.innerHTML = html;
+        };
+
         // Main Render Function
         const renderCatalogue = () => {
-            // Render Breadcrumbs
-            DOMElements.breadcrumbContainer.innerHTML = '';
+            // Render Breadcrumbs (C18)
             const path = getBreadcrumbPath(currentFolderId);
-            path.forEach((part, index) => {
-                if (index === path.length - 1) {
-                    const span = document.createElement('span');
-                    span.className = 'breadcrumb-current';
-                    span.textContent = part.name;
-                    DOMElements.breadcrumbContainer.appendChild(span);
-                } else {
-                    const a = document.createElement('a');
-                    a.className = 'breadcrumb-link';
-                    a.textContent = part.name;
-                    a.dataset.id = part.id;
-                    DOMElements.breadcrumbContainer.appendChild(a);
-                    
-                    const sep = document.createElement('span');
-                    sep.className = 'breadcrumb-separator';
-                    sep.innerHTML = '&gt;';
-                    DOMElements.breadcrumbContainer.appendChild(sep);
-                }
-            });
+            renderBreadcrumbs(path);
 
             // Render List
             const items = getItemsInCurrentFolder();
@@ -469,7 +588,8 @@
             const sortedItems = [...items].sort((a, b) => {
                 if (a.type === 'folder' && b.type !== 'folder') return -1;
                 if (a.type !== 'folder' && b.type === 'folder') return 1;
-                return a.name.localeCompare(b.name);
+                // B5: Null/undefined name safety
+                return (a.name || '').localeCompare(b.name || '');
             });
             
             ListRenderer.renderList({
@@ -488,10 +608,13 @@
                         : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.I-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>';
                     
                     let nameElement = '';
+                    const escapedName = SafeUI.escapeHTML(item.name);
+
                     if (item.type === 'folder') {
-                        nameElement = `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>`;
+                        nameElement = `<span class="list-item-name-folder">${escapedName}</span>`;
                     } else {
-                        nameElement = `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name" title="Launch: ${SafeUI.escapeHTML(item.name)}">${SafeUI.escapeHTML(item.name)}</a>`;
+                        const escapedMailto = SafeUI.escapeHTML(item.mailto);
+                        nameElement = `<a href="${escapedMailto}" class="list-item-name" title="Launch: ${escapedName}">${escapedName}</a>`;
                     }
 
                     div.innerHTML = `
@@ -518,42 +641,60 @@
         // ===================================================================
 
         const handleFile = (file) => {
-            if (!file) {
-                return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
-            }
-            // Validate file type
-            if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft')) {
-                return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg</strong> or <strong>.oft</strong> file.</p>', [{label: 'OK'}]);
-            }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    // Use window.MsgReader explicitly
-                    const msgReader = new window.MsgReader(e.target.result);
-                    const fileData = msgReader.getFileData();
-
-                    const recipients = fileData.recipients || [];
-                    DOMElements.resultTo.value = recipients.filter(r => r.type === 'to').map(r => r.email).join(', ');
-                    DOMElements.resultCc.value = recipients.filter(r => r.type === 'cc').map(r => r.email).join(', ');
-                    DOMElements.resultBcc.value = recipients.filter(r => r.type === 'bcc').map(r => r.email).join(', ');
-                    DOMElements.resultSubject.value = fileData.subject || '';
-                    DOMElements.resultBody.value = fileData.body || '';
-                    DOMElements.saveTemplateName.value = fileData.subject || '';
-                    
-                    DOMElements.outputWrapper.classList.add('hidden'); // Hide output on new upload
-                    setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultBody), 0);
-                } catch (err) {
-                    console.error('File parsing error:', err);
-                    // Throw error to be caught by AppLifecycle for user notification
-                    throw new Error(`Failed to parse file: ${err.message}`);
+            try { // A6: Error boundary
+                if (!file) {
+                    return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
                 }
-            };
-            reader.onerror = () => {
-                // Throw error to be caught by AppLifecycle for user notification
-                throw new Error('File reading failed. Could not access file content.');
-            };
-            reader.readAsArrayBuffer(file);
+                // B2/C15: Validate file size before reading
+                if (file.size > MAX_FILE_SIZE_BYTES) { 
+                    return SafeUI.showModal('File Too Large', '<p>File must be under 10MB.</p>', [{label: 'OK'}]); 
+                }
+
+                // Validate file type
+                if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft')) {
+                    return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg</strong> or <strong>.oft</strong> file.</p>', [{label: 'OK'}]);
+                }
+                
+                // B4/C2: Clear previous data
+                clearEditorFields();
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        // A2: Runtime check for MsgReader before instantiation
+                        if (!window.MsgReader || typeof window.MsgReader !== 'function') { 
+                            throw new Error('MsgReader library not loaded or invalid.'); 
+                        } 
+
+                        // Use window.MsgReader explicitly
+                        const msgReader = new window.MsgReader(e.target.result);
+                        const fileData = msgReader.getFileData();
+
+                        const recipients = fileData.recipients || [];
+                        DOMElements.resultTo.value = recipients.filter(r => r.type === 'to').map(r => r.email).join(', ');
+                        DOMElements.resultCc.value = recipients.filter(r => r.type === 'cc').map(r => r.email).join(', ');
+                        DOMElements.resultBcc.value = recipients.filter(r => r.type === 'bcc').map(r => r.email).join(', ');
+                        DOMElements.resultSubject.value = fileData.subject || '';
+                        DOMElements.resultBody.value = fileData.body || '';
+                        
+                        // The save template name will be handled by generateAndShowMailto or handleNewTemplate
+                        DOMElements.outputWrapper.classList.add('hidden'); // Hide output on new upload
+                        setTimeout(() => resizeResultBody(), 0);
+                    } catch (err) {
+                        console.error('File parsing error:', err);
+                        // Throw error to be caught by AppLifecycle for user notification
+                        throw new Error(`Failed to parse file: ${err.message}`);
+                    }
+                };
+                reader.onerror = () => {
+                    // Throw error to be caught by AppLifecycle for user notification
+                    throw new Error('File reading failed. Could not access file content.');
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (e) {
+                console.error('File operation failed:', e);
+                SafeUI.showToast('File operation failed due to internal error.');
+            }
         };
 
         const generateAndShowMailto = () => {
@@ -572,12 +713,12 @@
             DOMElements.resultLink.href = mailto;
             DOMElements.outputWrapper.classList.remove('hidden');
             
-            // Auto-fill template name if empty
+            // B9: Auto-fill template name if empty, sanitizing the subject
             if (DOMElements.saveTemplateName.value.trim() === '') {
-                 DOMElements.saveTemplateName.value = mailtoData.subject || 'New Template';
+                 DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
             }
 
-            setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto), 0);
+            setTimeout(() => resizeResultMailto(), 0);
         };
         
         // ===================================================================
@@ -585,51 +726,62 @@
         // ===================================================================
         
         const handleNewTemplate = () => {
+             // B7/C13: Confirm if user has unsaved work
+            if (hasUnsavedEditorChanges()) {
+                UIPatterns.confirmUnsavedChanges(() => {
+                    clearEditorFields(); // C2
+                    resizeResultBody(); // C29
+                    showView('editor');
+                });
+                return;
+            }
+
             // Reset editor
-            currentMailtoCommand = null;
-            DOMElements.resultTo.value = '';
-            DOMElements.resultCc.value = '';
-            DOMElements.resultBcc.value = '';
-            DOMElements.resultSubject.value = '';
-            DOMElements.resultBody.value = '';
-            DOMElements.saveTemplateName.value = '';
-            DOMElements.outputWrapper.classList.add('hidden');
-            DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
+            clearEditorFields(); // C2
+            resizeResultBody(); // C29
             showView('editor');
         };
         
         const handleNewFolder = () => {
-            SafeUI.showModal('New Folder', '<input id="folder-name-input" class="sidebar-input" placeholder="Folder Name">', [
+            SafeUI.showModal('New Folder', createFolderModalHTML(), [ // C6: Use helper function
                 {label: 'Cancel'},
                 {label: 'Create', class: 'button-primary', callback: () => {
-                    const nameInput = document.getElementById('folder-name-input');
-                    const name = nameInput.value.trim();
-                    if (!SafeUI.validators.notEmpty(name)) {
-                        return SafeUI.showValidationError('Invalid Name', 'Folder name cannot be empty.', 'folder-name-input');
+                    try { // A6: Error boundary for new folder creation logic
+                        const nameInput = document.getElementById('folder-name-input');
+                        const name = nameInput.value.trim();
+                        if (!SafeUI.validators.notEmpty(name)) {
+                            return SafeUI.showValidationError('Invalid Name', 'Folder name cannot be empty.', 'folder-name-input');
+                        }
+                        
+                        const container = getItemsInCurrentFolder();
+                        if (DataValidator.hasDuplicate(container, 'name', name)) {
+                             return SafeUI.showValidationError('Duplicate Name', 'A folder or item with this name already exists here.', 'folder-name-input');
+                        }
+                        
+                        container.push({
+                            id: SafeUI.generateId(),
+                            type: 'folder',
+                            name: name,
+                            children: []
+                        });
+                        saveState();
+                        renderCatalogue();
+                    } catch(e) {
+                        console.error('Folder creation failed:', e);
+                        SafeUI.showToast('Folder creation failed due to internal error.');
                     }
-                    
-                    const container = getItemsInCurrentFolder();
-                    if (DataValidator.hasDuplicate(container, 'name', name)) {
-                         return SafeUI.showValidationError('Duplicate Name', 'A folder or item with this name already exists here.', 'folder-name-input');
-                    }
-                    
-                    container.push({
-                        id: SafeUI.generateId(),
-                        type: 'folder',
-                        name: name,
-                        children: []
-                    });
-                    saveState();
-                    renderCatalogue();
                 }}
             ]);
         };
         
         const handleSaveToLibrary = () => {
-            const name = DOMElements.saveTemplateName.value.trim();
+            // B3: Check if command has been generated
             if (!currentMailtoCommand) {
-                return SafeUI.showToast('Error: Please generate a command first.');
+                SafeUI.showValidationError('No Command Generated', 'Click "Generate Command" first.', 'btn-generate');
+                return;
             }
+
+            const name = DOMElements.saveTemplateName.value.trim();
             if (!SafeUI.validators.notEmpty(name)) {
                 return SafeUI.showValidationError('Invalid Name', 'Template name cannot be empty.', 'save-template-name');
             }
@@ -662,8 +814,9 @@
                 if (!row.name || !row.name.trim()) {
                     return { error: `Row ${index + 2}: 'name' column is required.` };
                 }
-                if (!row.path || !row.path.trim().startsWith('/')) {
-                    return { error: `Row ${index + 2}: 'path' column must start with '/'.` };
+                // A8: Stricter regex path validation (start with /, only allowed characters)
+                if (!row.path || !/^\/[\w\s\/-]*$/.test(row.path.trim())) { 
+                    return { error: `Row ${index + 2}: 'path' must be a valid folder path like /folder or /folder/subfolder` };
                 }
                 return { entry: row };
             };
@@ -802,27 +955,37 @@
             
             // Editor View
             DOMElements.btnEditorCancel.addEventListener('click', () => {
-                showView('catalogue');
-                renderCatalogue();
+                // B8/C13: Warn about unsaved changes
+                if (hasUnsavedEditorChanges()) {
+                    UIPatterns.confirmUnsavedChanges(() => {
+                        showView('catalogue');
+                        renderCatalogue();
+                    });
+                } else {
+                    showView('catalogue');
+                    renderCatalogue();
+                }
             });
+
             DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
             DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
+            
+            // B6: Copy button validation for the main editor output
             DOMElements.copyMailtoBtn.addEventListener('click', async () => {
-                if (!currentMailtoCommand) return;
+                if (!currentMailtoCommand) {
+                    SafeUI.showToast('No command to copy'); 
+                    return;
+                }
                 const success = await SafeUI.copyToClipboard(currentMailtoCommand);
                 SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
             });
             
-            // Drag and Drop (Editor)
-            const uploadWrapper = DOMElements.uploadWrapper; 
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, (ev) => ev.preventDefault()));
-            ['dragenter', 'dragover'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.add('dragover')));
-            ['dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.remove('dragover')));
-            uploadWrapper.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const files = e.dataTransfer.files;
-                if (files && files.length > 0) handleFile(files[0]);
-            });
+            // Setup Drag and Drop (Editor) (C26)
+            DOMElements.uploadWrapper.addEventListener('dragenter', handleDragEnterOver);
+            DOMElements.uploadWrapper.addEventListener('dragover', handleDragEnterOver);
+            DOMElements.uploadWrapper.addEventListener('dragleave', handleDragLeave);
+            DOMElements.uploadWrapper.addEventListener('drop', handleDrop);
+            
             DOMElements.msgUpload.addEventListener('change', (e) => {
                 if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
             });
@@ -837,45 +1000,30 @@
                     return; 
                 }
                 
-                // Handle folder name click
-                if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
-                    e.preventDefault();
-                    const id = itemEl.dataset.id;
-                    // Find the item only in the *current* list, not recursively
-                    const item = getItemsInCurrentFolder().find(i => i.id === id);
-                    if (item && item.type === 'folder') {
-                        currentFolderId = item.id;
-                        renderCatalogue();
-                    }
-                    return;
-                }
-
-                // For any other click (buttons, div padding), prevent default.
-                e.preventDefault();
+                e.preventDefault(); // For any other click (buttons, folder icons)
 
                 const id = itemEl.dataset.id;
                 const item = getItemsInCurrentFolder().find(i => i.id === id);
                 if (!item) return;
 
-                // Handle Copy Button
+                // Handle folder name click (navigation)
+                if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
+                    if (item.type === 'folder') {
+                        navigateToFolder(item.id); 
+                    }
+                    return;
+                }
+
+                // C4: Handle Copy Button
                 const copyBtn = e.target.closest('.copy-btn');
-                if (copyBtn && copyBtn.dataset.mailto) {
-                    SafeUI.copyToClipboard(copyBtn.dataset.mailto);
-                    SafeUI.showToast(`Copied "${item.name}" to clipboard!`);
+                if (copyBtn) {
+                    handleTreeItemCopy(item, copyBtn);
                     return;
                 }
                 
-                // Handle Delete Button
+                // C4: Handle Delete Button
                 if (e.target.closest('.delete-btn')) {
-                    UIPatterns.confirmDelete(item.type, item.name, () => {
-                        const container = getItemsInCurrentFolder();
-                        const index = container.findIndex(i => i.id === id);
-                        if (index > -1) {
-                            container.splice(index, 1);
-                            saveState();
-                            renderCatalogue();
-                        }
-                    });
+                    handleTreeItemDelete(id, item);
                     return; 
                 }
             });
@@ -883,16 +1031,28 @@
             DOMElements.breadcrumbContainer.addEventListener('click', (e) => {
                  const link = e.target.closest('.breadcrumb-link');
                  if (link && link.dataset.id) {
-                     currentFolderId = link.dataset.id;
-                     renderCatalogue();
+                     const targetId = link.dataset.id;
+                     // A10: Validate folder existence before navigating
+                     if (targetId === 'root' || findItemById(targetId)) { 
+                         navigateToFolder(targetId); // C28
+                     } else {
+                         console.warn('Folder not found, returning to root');
+                         navigateToFolder('root'); // C28
+                     }
                  }
             });
         };
 
         // Init
         const init = () => {
+            // A9: Critical state validation/reset
+            if (!state.library || !Array.isArray(state.library)) { 
+                console.error('State corrupted, resetting library'); 
+                state.library = []; 
+                saveState(); 
+            }
+            
             // Setup icons
-            // REFACTORED: Removed btnSettings.innerHTML
             DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
 
             // Setup textareas
