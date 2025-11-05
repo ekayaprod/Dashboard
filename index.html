@@ -471,8 +471,22 @@
         // Set up scoped variables
         DOMElements = ctx.elements;
         state = ctx.state;
-        saveState = ctx.saveState;
+        // saveState = ctx.saveState; // <-- Original line
         APP_CONFIG = appConfig;
+
+        // DEBUG: Step 1 - Log all saves
+        const originalSaveState = ctx.saveState;
+        saveState = () => {
+            console.log('Dashboard saveState called');
+            // Use try-catch for stringify in case of circular refs during debug
+            try {
+                console.log('Current state:', JSON.parse(JSON.stringify(state)));
+            } catch (e) {
+                console.error('Could not stringify state for logging:', e, state);
+            }
+            originalSaveState();
+        };
+        // End DEBUG Step 1
 
         // Setup textareas
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
@@ -583,6 +597,20 @@
     // Dashboard App Initializer
     // This code was moved from app-core.js to fix the race condition
     AppLifecycle.run(async () => {
+        // DEBUG: Step 4 - Test localStorage availability
+        try {
+            const testKey = '__storage_test__';
+            localStorage.setItem(testKey, 'test');
+            localStorage.removeItem(testKey);
+            console.log('localStorage is available and writable');
+        } catch (e) {
+            console.error('localStorage is NOT available:', e);
+            // We can't use SafeUI.showModal here as it's not initialized
+            // A native alert is blocking and appropriate for a critical failure
+            alert('WARNING: localStorage is not available or is disabled. Data will not persist.');
+        }
+        // End DEBUG Step 4
+
         const APP_VERSION = '6.2.0';
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const APP_CONFIG = {
@@ -626,7 +654,7 @@
         // 2. Initialize the shared Notepad module
         if (typeof window.NotepadManager?.init === 'function') {
             // Pass the context, which has the elements, state, and saveState function
-            window.NotepadManager.init(ctx);
+            window.NotGpadManager.init(ctx);
         } else {
             // This else block is a fallback, but shouldn't be hit if the dependency check is correct
             console.error("NotepadManager.init not found. app-ui.js may not have loaded correctly.");
