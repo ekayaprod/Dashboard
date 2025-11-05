@@ -81,7 +81,8 @@
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
-    <div id="toast" classT="toast"></div>
+    <!-- FIX (Mode A, Issue 1): Corrected classT to class -->
+    <div id="toast" class="toast"></div>
 
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
@@ -161,14 +162,19 @@
     };
     const checkFormDirty = () => {
         if (!initialAppData) return false;
+        
+        const currentUrls = DOMElements.editAppUrls.value.trim();
+        const currentEscalation = DOMElements.editAppEscalation.value.trim();
+
         if (initialAppData.id === null) {
             return DOMElements.editAppName.value.trim() !== '' ||
-                   DOMElements.editAppUrls.value.trim() !== '' ||
-                   DOMElements.editAppEscalation.value.trim() !== '';
+                   currentUrls !== '' ||
+                   currentEscalation !== '';
         }
+
         return DOMElements.editAppName.value.trim() !== initialAppData.name ||
-               DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
-               DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
+               currentUrls !== initialAppData.urls || // URLs are already normalized in initialAppData
+               currentEscalation !== initialAppData.escalation; // Escalation is already normalized in initialAppData
     };
     const updateSaveButtonState = () => {
         if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
@@ -265,6 +271,16 @@
         initQuickList(); // Re-initialize the quick list
         renderAppData(); // Re-render the app dropdown
     };
+    
+    /**
+     * Converts various line endings to simple newline (\n) for consistent state saving/comparison.
+     * @param {string} text 
+     * @returns {string}
+     */
+    const normalizeLineEndings = (text) => {
+        if (!text) return '';
+        return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    };
 
     // --- App Detail Handlers (Page-Specific) ---
     const displayAppDetails = (appId) => {
@@ -288,11 +304,19 @@
                 return;
             }
             
-            initialAppData = {...app};
-            DOMElements.editAppName.value = app.name;
+            // FIX (Mode B, Issue 1): Normalize line endings for comparison integrity
+            const urlsNormalized = normalizeLineEndings(app.urls);
+            const escalationNormalized = normalizeLineEndings(app.escalation);
             
-            DOMElements.editAppUrls.value = (app.urls || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            DOMElements.editAppEscalation.value = (app.escalation || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            initialAppData = {
+                ...app, 
+                urls: urlsNormalized, 
+                escalation: escalationNormalized
+            };
+            
+            DOMElements.editAppName.value = app.name;
+            DOMElements.editAppUrls.value = urlsNormalized;
+            DOMElements.editAppEscalation.value = escalationNormalized;
 
         } else {
             initialAppData = null;
@@ -346,9 +370,10 @@
                     displayAppDetails(null);
                     renderAllPageSpecific(); // Render apps/shortcuts
                     
-                    // Manually trigger notepad reload
+                    // Manually trigger notepad reload - DEFERRED FIX (Mode A, Issue 2) removed
                     if (window.NotepadManager) {
-                        window.NotepadManager.init({ elements: DOMElements, state, saveState });
+                        // The NotepadManager will be re-initialized by AppLifecycle.run's main flow
+                        // after the settings modal closes, so we don't need to manually re-init here.
                     }
 
                     SafeUI.showToast('Dashboard data restored.');
@@ -401,6 +426,11 @@
 
                 if (!SafeUI.validators.notEmpty(entry.name)) {
                     return { error: `Row ${index + 2}: 'name' is required.` };
+                }
+                
+                // FIX (Mode B, Issue 3): Add Max Length Validation for CSV Import
+                if (!SafeUI.validators.maxLength(entry.name, 100)) {
+                    return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
                 }
                 
                 // Fix: Check for duplicate names, not just IDs
@@ -507,7 +537,8 @@
             const isNewApp = initialAppData.id === null;
             const nameChanged = !isNewApp && newName !== initialAppData.name;
             
-            if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName)) {
+            // FIX (Mode B, Issue 2): Pass selectedAppId to exclude current app from duplicate check
+            if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName, isNewApp ? null : selectedAppId)) {
                 return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
             }
 
@@ -620,5 +651,4 @@
     </script>
 </body>
 </html>
-
 
