@@ -6,18 +6,7 @@
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* ======================================= */
-        /* === LOOKUP PAGE STYLES === */
-        /* ======================================= */
-
-        body.lookup-page {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
+        /* Specific layout tweaks for lookup page */
         .lookup-page .container {
             padding: 0.5rem;
             flex-grow: 1;
@@ -81,6 +70,7 @@
             flex-direction: column;
             flex-basis: 50%;
         }
+        /* Add specific overrides for the two columns */
         .lookup-page #kb-column {
             flex-basis: 33.33%;
             min-width: 250px; /* Ensure it doesn't get too small */
@@ -254,12 +244,8 @@
             padding-top: 0.5rem;
             margin-top: 0.25rem;
         }
-
-        /* --- DARK MODE --- */
+        /* Dark mode adjustments */
         @media (prefers-color-scheme: dark) {
-            body.lookup-page {
-                background-color: var(--bg-color);
-            }
             .lookup-page .lookup-header {
                 background-color: var(--panel-bg);
                 border-color: var(--border-color);
@@ -294,7 +280,6 @@
     <div id="navbar-container"></div>
 
     <div class="container">
-        <!-- This banner's style is now in style.css -->
         <div id="app-startup-error" class="hidden app-startup-banner" style="margin-bottom: 0.5rem;"></div>
         
         <header class="lookup-header">
@@ -304,8 +289,7 @@
                     <button id="btn-import-csv" class="button-base" title="Import data from CSV">Import</button>
                     <button id="btn-export-csv" class="button-base" title="Export data to CSV">Export</button>
                     <button id="btn-settings" class="icon-btn" title="Settings">
-                        <!-- Icon now added by app-core.js -->
-                    </button>
+                        </button>
                     <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
                 </div>
             </div>
@@ -349,7 +333,7 @@
     <script>
     // Dependency Check
     (() => {
-        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'];
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         if (missing.length > 0) {
             const errorTitle = "Application Failed to Load";
@@ -821,7 +805,7 @@
                     }
                     Object.assign(itemToUpdate, { keyword, assignmentGroup, notes, phoneLogPath });
                     
-                    saveState();
+                    sortAndSaveState();
                     clearEditStateAndRender("Entry saved.");
                 };
 
@@ -836,7 +820,7 @@
                                 callback: () => {
                                     existingEntry.keyword = keywordUtils.merge(existingEntry.keyword, keyword);
                                     handleDelete(id, true);
-                                    saveState();
+                                    sortAndSaveState();
                                     clearEditStateAndRender("Keywords merged.");
                                 }
                             }
@@ -862,7 +846,7 @@
 
                 const doDelete = () => {
                     state.items.splice(index, 1);
-                    saveState();
+                    sortAndSaveState();
                     clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
                 };
 
@@ -958,68 +942,44 @@
 
 
             /**
-             * Shows the Settings modal
+             * Shows the Settings modal (Now using SharedSettingsModal)
              */
             function showSettingsModal() {
-                const modalContent = `
+                
+                // Content for the KB URL input, which is page-specific
+                const kbSettingsContent = `
                     <div class="form-group">
                         <label for="kb-url-input">KnowledgeBase Search URL</label>
                         <input type="text" id="kb-url-input" class="sidebar-input" placeholder="https://my-kb.com/search?q={query}" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}">
                         <p class="form-help">Enter the full URL from a search on your KB. Use <strong>{query}</strong> as a placeholder for the search term.</p>
                     </div>
                     <div class="divider"></div>
-                    <div class="form-group">
-                        <label>Advanced Data Management (JSON)</label>
-                        <p class="form-help">Use these tools for disaster recovery. "Import/Export" (on the main page) is for managing data via CSV.</p>
-                        <div class="button-group">
-                            <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
-                            <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
-                        </div>
-                    </div>
                 `;
-                
-                SafeUI.showModal("Settings", modalContent, [
-                    { label: 'Cancel' },
-                    { 
-                        label: 'Save', 
-                        class: 'button-primary', 
-                        callback: () => {
-                            const newUrl = document.getElementById('kb-url-input').value.trim();
+
+                // Logic for saving the KB URL, which is page-specific
+                const kbSaveCallback = () => {
+                    const newUrl = document.getElementById('kb-url-input').value.trim();
                             
-                            const validation = validateKbUrl(newUrl);
-                            if (!validation.valid) {
-                                SafeUI.showValidationError("Invalid URL", validation.message, "kb-url-input");
-                                return false;
-                            }
-
-                            state.settings.kbBaseUrl = newUrl;
-                            saveState();
-                            SafeUI.showToast("Settings saved.");
-                            handleSearch();
-                        }
+                    const validation = validateKbUrl(newUrl);
+                    if (!validation.valid) {
+                        SafeUI.showValidationError("Invalid URL", validation.message, "kb-url-input");
+                        return false;
                     }
-                ]);
 
-                setTimeout(() => {
-                    const input = document.getElementById('kb-url-input');
-                    if (input) {
-                        input.addEventListener('input', () => {
-                            const value = input.value.trim();
-                            const validation = validateKbUrl(value);
-                            if (!validation.valid && value.length > 0) {
-                                input.style.borderColor = 'var(--danger-color)';
-                            } else {
-                                input.style.borderColor = '';
-                            }
-                        });
-                    }
-                }, 0);
+                    state.settings.kbBaseUrl = newUrl;
+                    saveState();
+                    SafeUI.showToast("Settings saved.");
+                    handleSearch();
+                    return true;
+                };
 
-                BackupRestore.setupBackupRestoreHandlers({
+                // Initialize the SharedSettingsModal
+                window.SharedSettingsModal.init({
+                    buttonId: 'btn-settings',
                     appName: APP_CONFIG.NAME,
-                    backupBtn: document.getElementById('modal-backup-btn'),
-                    restoreBtn: document.getElementById('modal-restore-btn'),
                     state: state,
+                    modalContentHtml: kbSettingsContent, // Inject KB form
+                    onModalSave: kbSaveCallback,
                     itemValidators: {
                         items: APP_CONFIG.CSV_HEADERS,
                         settings: ['kbBaseUrl']
@@ -1044,11 +1004,13 @@
                 
                 // Header buttons
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
-                DOMElements.btnSettings.addEventListener('click', showSettingsModal);
+                
+                // Initialize the Settings Modal
+                showSettingsModal();
                 
                 DOMElements.btnEditMode.addEventListener('click', () => {
                     if (currentEditState.id) {
-                        const form = document.querySelector(`form[data-id="${currentEditState.id}"]`);
+                        const form = document.querySelector('.edit-form-li form');
                         if (form) {
                             const item = state.items.find(i => i.id === currentEditState.id);
                             if (item) {
@@ -1081,6 +1043,13 @@
                         return;
                     }
                     
+                    const deleteBtn = e.target.closest('.btn-delete');
+                    if (deleteBtn) {
+                        const id = e.target.closest('.result-item').dataset.id;
+                        handleDelete(id, false);
+                        return;
+                    }
+
                     const copyBtn = e.target.closest('.btn-copy');
                     if (copyBtn) {
                         const success = await SafeUI.copyToClipboard(copyBtn.dataset.copy);
@@ -1115,13 +1084,9 @@
              * Entry point
              */
             function init() {
-                // FIX 3: Removed redundant settings icon logic
-                
                 attachEventListeners();
                 renderAll();
                 handleSearch();
-                
-                // FIX 2: Removed redundant navbar load
             }
 
             // Run the app
