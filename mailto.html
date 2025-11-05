@@ -141,9 +141,7 @@
                     <div class="section-header-wrapper">
                         <h3 class="section-header">Email Template Library</h3>
                         <div class="button-group">
-                            <button id="btn-import-csv" class="button-base" title="Import from CSV">Import (CSV)</button>
-                            <button id="btn-export-csv" class="button-base" title="Export to CSV">Export (CSV)</button>
-                            
+                            <!-- REFACTOR: Removed btn-import-csv and btn-export-csv -->
                             <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
                             <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
                             <button id="btn-new-template" class="button-base button-primary">New Template</button>
@@ -251,6 +249,8 @@
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
 
+    <!-- REFACTOR: Removed placeholder <script> tag comment -->
+
     <script>
     // ===================================================================
     // CONSTANTS & HELPERS (Issue 1, 10, 13, 15)
@@ -290,13 +290,15 @@
 
     // Dependency Check
     (() => {
+        // REFACTOR: Added SharedSettingsModal to dependency check
         const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
-        // A1: Specific validation for MsgReader being a callable constructor
-        if (typeof window.MsgReader !== 'function') {
+        // REFACTOR: Changed check for MsgReader to be 'object' (not 'function')
+        // and check for its 'read' method.
+        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
             if (!missing.includes('MsgReader')) {
-                // If it was loaded but isn't a function, mark it as missing
+                // If it was loaded but isn't the correct structure, mark it as missing
                 missing.push('MsgReader (Invalid Type)');
             }
         }
@@ -344,7 +346,7 @@
                 'catalogue-view', 'editor-view', 
                 'btn-new-template', 'btn-new-folder', 
                 'btn-settings', 
-                'btn-import-csv', 'btn-export-csv', 
+                /* REFACTOR: Removed 'btn-import-csv', 'btn-export-csv' */
                 'breadcrumb-container', 'tree-list-container', 
                 'btn-editor-cancel', 'btn-generate', 
                 'upload-wrapper', 'msg-upload', 
@@ -701,14 +703,13 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
-                        // A2: Runtime check for MsgReader before instantiation
-                        if (!window.MsgReader || typeof window.MsgReader !== 'function') { 
+                        // REFACTOR: Check for MsgReader.read as a function
+                        if (!window.MsgReader || typeof window.MsgReader.read !== 'function') { 
                             throw new Error('MsgReader library not loaded or invalid.'); 
                         } 
 
-                        // Use window.MsgReader explicitly
-                        const msgReader = new window.MsgReader(e.target.result);
-                        const fileData = msgReader.read(); // Changed from getFileData to read
+                        // REFACTOR: Call MsgReader.read() static method
+                        const fileData = window.MsgReader.read(e.target.result); 
 
                         // Assuming MsgReader fieldsData now has properties like subject, body, and array recipients
                         
@@ -862,85 +863,124 @@
         // DATA MANAGEMENT HANDLERS (CSV)
         // ===================================================================
         
-        // CSV "Human-Friendly" Import (Setup)
-        const setupCsvImport = () => {
-            // 1. Validation function for each row
-            const validateCsvRow = (row, index) => {
-                if (!row.name || !row.name.trim()) {
-                    return { error: `Row ${index + 2}: 'name' column is required.` };
-                }
-                // A8, Issue 13: Use extracted regex constant
-                if (!row.path || !CSV_PATH_REGEX.test(row.path.trim())) { 
-                    return { error: `Row ${index + 2}: 'path' must be a valid folder path like /folder or /folder/subfolder` };
-                }
-                return { entry: row };
-            };
+        // REFACTOR: This entire `setupCsvImport` function will be moved
+        // into the new `setupSettingsModal` function.
+        
 
-            // 2. Confirmation and processing function
-            const confirmCsvImport = (validatedData, importErrors) => {
-                const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library based on the CSV. It will not delete or overwrite existing templates, but it will skip duplicates (same name in the same path).</p>
-                                     ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
-                                     <p>Do you want to continue?</p>`;
-                
-                SafeUI.showModal("Confirm CSV Import", summaryHtml, [
-                    { label: 'Cancel' },
-                    { 
-                        label: 'Import', 
-                        class: 'button-primary', 
-                        callback: () => {
-                            let importedCount = 0;
-                            let skippedCount = 0;
+        // REFACTOR: This new function replaces the old settings init
+        const setupSettingsModal = () => {
+            // 1. Define page-specific HTML (for CSV buttons)
+            const pageDataHtml = `
+                <button id="modal-export-csv-btn" class="button-base">Export Library (CSV)</button>
+                <button id="modal-import-csv-btn" class="button-base">Import Library (CSV)</button>
+            `;
 
-                            for (const row of validatedData) {
-                                const pathParts = row.path.split('/').filter(p => p.trim().length > 0); 
-                                let currentContainer = state.library;
-
-                                // Find or create the folder path
-                                for (const part of pathParts) {
-                                    // Use case-insensitive find
-                                    let folder = currentContainer.find(i => i.type === 'folder' && i.name.toLowerCase() === part.toLowerCase());
-                                    if (!folder) {
-                                        // B4: Use the mixed-case part as the name for the new folder
-                                        folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
-                                        currentContainer.push(folder);
-                                    }
-                                    currentContainer = folder.children;
-                                }
-
-                                // Now currentContainer is the target folder
-                                // Check for duplicate name in this folder
-                                if (DataValidator.hasDuplicate(currentContainer, 'name', row.name)) {
-                                    skippedCount++;
-                                } else {
-                                    // Re-build the mailto string and add the template
-                                    const newMailto = buildMailto(row);
-                                    const newTemplate = {
-                                        id: SafeUI.generateId(),
-                                        type: 'item',
-                                        name: row.name.trim(),
-                                        mailto: newMailto
-                                    };
-                                    currentContainer.push(newTemplate);
-                                    importedCount++;
+            // 2. Define page-specific "open" callback (to wire up buttons)
+            const onModalOpen = () => {
+                // Wire up CSV Export
+                CsvManager.setupExport({
+                    exportBtn: document.getElementById('modal-export-csv-btn'),
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    dataGetter: () => {
+                        const csvData = [];
+                        function walk(items, currentPath) {
+                            for (const item of items) {
+                                if (item.type === 'folder') {
+                                    walk(item.children, currentPath + item.name + '/');
+                                } else if (item.type === 'item') {
+                                    const mailtoParts = parseMailto(item.mailto);
+                                    const row = { name: item.name, path: currentPath };
+                                    MAILTO_FIELDS.forEach(field => { row[field] = mailtoParts[field]; });
+                                    csvData.push(row);
                                 }
                             }
-                            
-                            if (importedCount > 0) {
-                                saveState();
-                                renderCatalogue();
-                            }
-                            SafeUI.showToast(`Import complete. Added ${importedCount} templates, skipped ${skippedCount} duplicates.`);
                         }
+                        walk(state.library, '/');
+                        if (csvData.length === 0) {
+                             SafeUI.showToast("Library is empty, nothing to export.");
+                             return []; 
+                        }
+                        return csvData;
+                    },
+                    filename: `${APP_CONFIG.NAME}-export.csv`
+                });
+                
+                // Wire up CSV Import
+                const validateCsvRow = (row, index) => {
+                    if (!row.name || !row.name.trim()) {
+                        return { error: `Row ${index + 2}: 'name' column is required.` };
                     }
-                ]);
+                    if (!row.path || !CSV_PATH_REGEX.test(row.path.trim())) { 
+                        return { error: `Row ${index + 2}: 'path' must be a valid folder path like /folder or /folder/subfolder` };
+                    }
+                    return { entry: row };
+                };
+                const confirmCsvImport = (validatedData, importErrors) => {
+                    const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library. It will skip duplicates (same name in the same path).</p>
+                                         ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
+                                         <p>Do you want to continue?</p>`;
+                    SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Import', 
+                            class: 'button-primary', 
+                            callback: () => {
+                                let importedCount = 0;
+                                let skippedCount = 0;
+                                for (const row of validatedData) {
+                                    const pathParts = row.path.split('/').filter(p => p.trim().length > 0); 
+                                    let currentContainer = state.library;
+                                    for (const part of pathParts) {
+                                        let folder = currentContainer.find(i => i.type === 'folder' && i.name.toLowerCase() === part.toLowerCase());
+                                        if (!folder) {
+                                            folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
+                                            currentContainer.push(folder);
+                                        }
+                                        currentContainer = folder.children;
+                                    }
+                                    if (DataValidator.hasDuplicate(currentContainer, 'name', row.name)) {
+                                        skippedCount++;
+                                    } else {
+                                        const newMailto = buildMailto(row);
+                                        currentContainer.push({ id: SafeUI.generateId(), type: 'item', name: row.name.trim(), mailto: newMailto });
+                                        importedCount++;
+                                    }
+                                }
+                                if (importedCount > 0) { saveState(); renderCatalogue(); }
+                                SafeUI.showToast(`Import complete. Added ${importedCount}, skipped ${skippedCount}.`);
+                                SafeUI.hideModal(); // Close settings modal
+                            }
+                        }
+                    ]);
+                    return false; // Prevent modal from closing
+                };
+                CsvManager.setupImport({
+                    importBtn: document.getElementById('modal-import-csv-btn'),
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    onValidate: validateCsvRow,
+                    onConfirm: confirmCsvImport
+                });
             };
 
-            // 3. Wire up the CsvManager
-            CsvManager.setupImport({
-                importBtn: DOMElements.btnImportCsv,
-                headers: APP_CONFIG.CSV_HEADERS,
-                onValidate: validateCsvRow,
-                onConfirm: confirmCsvImport
+            // 3. Define page-specific "restore" callback
+            const onRestore = (dataToRestore) => {
+                state.library = dataToRestore.library || [];
+                currentFolderId = 'root';
+                saveState();
+                renderCatalogue();
+            };
+
+            // 4. Initialize the shared modal
+            window.SharedSettingsModal.init({
+                buttonId: 'btn-settings',
+                appName: APP_CONFIG.NAME,
+                state: { library: state.library, version: state.version },
+                pageSpecificDataHtml: pageDataHtml, 
+                onModalOpen: onModalOpen,           
+                onRestoreCallback: onRestore,
+                itemValidators: {
+                    library: []
+                }
             });
         };
 
@@ -950,62 +990,16 @@
         // ===================================================================
 
         const attachEventListeners = () => {
-            // Initialize the Shared Settings Modal for JSON Backup/Restore
-            window.SharedSettingsModal.init({
-                buttonId: 'btn-settings',
-                appName: APP_CONFIG.NAME,
-                state: { library: state.library, version: state.version }, // Pass only the relevant data
-                onRestoreCallback: (dataToRestore) => {
-                    state.library = dataToRestore.library || [];
-                    currentFolderId = 'root';
-                    saveState();
-                    renderCatalogue();
-                    SafeUI.hideModal(); 
-                },
-                itemValidators: {
-                    library: [] // We don't need deep validation on recursive structures
-                }
-            });
+            // REFACTOR: Replaced old modal init with new setup function call
+            setupSettingsModal();
 
             // Catalogue View
             DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
             DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
             
-            // CSV I/O
-            CsvManager.setupExport({
-                exportBtn: DOMElements.btnExportCsv,
-                headers: APP_CONFIG.CSV_HEADERS,
-                dataGetter: () => {
-                    const csvData = [];
-                    // Recursive helper to flatten the library
-                    function walk(items, currentPath) {
-                        for (const item of items) {
-                            if (item.type === 'folder') {
-                                walk(item.children, currentPath + item.name + '/');
-                            } else if (item.type === 'item') {
-                                const mailtoParts = parseMailto(item.mailto);
-                                
-                                const row = { name: item.name, path: currentPath };
-                                MAILTO_FIELDS.forEach(field => { // Issue 1: Use constant array
-                                    row[field] = mailtoParts[field];
-                                });
-                                csvData.push(row);
-                            }
-                        }
-                    }
-                    walk(state.library, '/');
-
-                    if (csvData.length === 0) {
-                         SafeUI.showToast("Library is empty, nothing to export.");
-                         // Return an empty array to prevent the exporter from running
-                         return []; 
-                    }
-                    return csvData;
-                },
-                filename: `${APP_CONFIG.NAME}-export.csv`
-            });
+            // REFACTOR: Removed CsvManager.setupExport
             
-            setupCsvImport(); 
+            // REFACTOR: Removed setupCsvImport() call
             
             // Editor View
             DOMElements.btnEditorCancel.addEventListener('click', () => {
