@@ -453,6 +453,145 @@ const QuickListManager = (() => {
     };
 })();
 
+const SharedSettingsModal = (() => {
+    /**
+     * Creates the full HTML for the modal content.
+     * @param {string} [customSettingsHtml=''] - Page-specific *settings* (like KB URL).
+     * @param {string} [pageSpecificDataHtml=''] - Page-specific *data I/O* (like CSV or Wordbank).
+     */
+    const _createModalHtml = (customSettingsHtml = '', pageSpecificDataHtml = '') => {
+        
+        // Section 1: Custom Settings (e.g., KB URL)
+        const customSettingsSection = customSettingsHtml ? `
+            ${customSettingsHtml}
+            <div class="divider"></div>
+        ` : '';
+
+        // Section 2: Page-Specific Data I/O (e.g., CSV, Wordbank)
+        const pageDataSection = pageSpecificDataHtml ? `
+            <div class="form-group">
+                <label>Page-Specific Data</label>
+                <p class="form-help">Import or export data specific to this page.</p>
+                <div class="button-group">
+                    ${pageSpecificDataHtml}
+                </div>
+            </div>
+            <div class="divider"></div>
+        ` : '';
+
+        // Section 3: Standard JSON Backup/Restore
+        const standardBackupSection = `
+            <div class="form-group">
+                <label>Advanced Data Management (All Apps)</label>
+                <p class="form-help">Use these tools for disaster recovery. This will backup/restore *all* data for *all* apps.</p>
+                <div class="button-group">
+                    <button id="modal-backup-btn" class="button-base">Backup ALL (JSON)</button>
+                    <button id="modal-restore-btn" class="button-base">Restore ALL (JSON)</button>
+                </div>
+            </div>
+        `;
+        
+        // Inject custom HTML above the standard backup/restore section
+        return customSettingsSection + pageDataSection + standardBackupSection;
+    };
+
+    /**
+     * Attaches listeners for the standard Backup/Restore buttons.
+     */
+    const _attachStandardListeners = (config) => {
+        const backupBtn = document.getElementById('modal-backup-btn');
+        if (backupBtn) {
+            backupBtn.addEventListener('click', () => {
+                BackupRestore.createBackup(config.state, config.appName);
+            });
+        }
+
+        const restoreBtn = document.getElementById('modal-restore-btn');
+        if (restoreBtn) {
+            restoreBtn.addEventListener('click', () => {
+                BackupRestore.handleRestoreUpload({
+                    appName: config.appName,
+                    itemValidators: config.itemValidators,
+                    onRestore: (dataToRestore) => {
+                        UIPatterns.confirmDelete("Restore", "This will overwrite all data for this app. This cannot be undone.", () => {
+                            config.onRestoreCallback(dataToRestore);
+                            SafeUI.showToast('Data restored successfully.');
+                            SafeUI.hideModal();
+                        });
+                    }
+                });
+            });
+        }
+    };
+
+    return {
+        /**
+         * Initializes the shared settings modal.
+         * @param {object} config
+         * @param {string} config.buttonId - ID of the settings button to attach to.
+         * @param {string} config.appName - The app's name (for backups).
+         * @param {object} config.state - The app's state object.
+         * @param {function} config.onRestoreCallback - Function to run after data is validated.
+         * @param {object} config.itemValidators - Validation rules for restore.
+         * @param {string} [config.customSettingsHtml] - (Optional) Page-specific *settings* (like KB URL).
+         * @param {string} [config.pageSpecificDataHtml] - (Optional) Page-specific *data I/O buttons* (like CSV).
+         * @param {function} [config.onModalOpen] - (Optional) Callback to run after modal opens (for attaching listeners to custom HTML).
+         * @param {function} [config.onModalSave] - (Optional) If provided, shows Save/Cancel buttons. Save callback must return true on success to close.
+         */
+        init: (config) => {
+            const settingsBtn = document.getElementById(config.buttonId);
+            if (!settingsBtn) {
+                console.error(`SharedSettingsModal: Button with id "${config.buttonId}" not found.`);
+                return;
+            }
+
+            // 1. Set the icon consistently
+            settingsBtn.innerHTML = SafeUI.SVGIcons.settings;
+
+            // 2. Attach the click listener to the settings button
+            settingsBtn.addEventListener('click', () => {
+                const modalHtml = _createModalHtml(config.customSettingsHtml, config.pageSpecificDataHtml); // <-- UPDATED
+
+                // 3. Determine which buttons to show (Save/Cancel or just Close)
+                let modalActions = [];
+                if (config.onModalSave) {
+                    // Use case for lookup.html (needs a Save button)
+                    modalActions = [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Save', 
+                            class: 'button-primary', 
+                            callback: () => {
+                                // Only close modal if the save callback returns true
+                                if (config.onModalSave() === true) {
+                                    SafeUI.hideModal();
+                                } else {
+                                    // Stay open, validation error was likely shown
+                                    return false; 
+                                }
+                            }
+                        }
+                    ];
+                } else {
+                    // Use case for index.html, passwords.html, and mailto.html
+                    modalActions = [{ label: 'Close' }];
+                }
+
+                // 4. Show the modal
+                SafeUI.showModal("Settings", modalHtml, modalActions);
+
+                // 5. Attach listeners for standard Backup/Restore
+                _attachStandardListeners(config);
+
+                // 6. Run page-specific "open" callback (for custom HTML buttons)
+                if (config.onModalOpen) {
+                    config.onModalOpen();
+                }
+            });
+        }
+    };
+})();
+
 
 // Expose components to the global window scope
 window.UIPatterns = UIPatterns;
@@ -460,3 +599,5 @@ window.ListRenderer = ListRenderer;
 window.SearchHelper = SearchHelper;
 window.NotepadManager = NotepadManager;
 window.QuickListManager = QuickListManager; // Expose the new module
+window.SharedSettingsModal = SharedSettingsModal;
+
