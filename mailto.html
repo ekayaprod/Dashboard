@@ -682,12 +682,12 @@
                         setTimeout(() => resizeResultBody(), 0);
                     } catch (err) {
                         console.error('File parsing error:', err);
-                        // Throw error to be caught by AppLifecycle for user notification
+                        // A1: The error propagation hazard. Re-throw here relies on outer promise/global handler.
                         throw new Error(`Failed to parse file: ${err.message}`);
                     }
                 };
                 reader.onerror = () => {
-                    // Throw error to be caught by AppLifecycle for user notification
+                    // A1: This error is correctly thrown to rely on outer promise/global handler.
                     throw new Error('File reading failed. Could not access file content.');
                 };
                 reader.readAsArrayBuffer(file);
@@ -728,6 +728,7 @@
         const handleNewTemplate = () => {
              // B7/C13: Confirm if user has unsaved work
             if (hasUnsavedEditorChanges()) {
+                // A3: This relies on UIPatterns.confirmUnsavedChanges executing its callback
                 UIPatterns.confirmUnsavedChanges(() => {
                     clearEditorFields(); // C2
                     resizeResultBody(); // C29
