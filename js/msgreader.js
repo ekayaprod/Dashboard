@@ -1,1796 +1,1194 @@
-/**
- * msgreader.js v2.3.0
- * * Microsoft Outlook MSG and OFT file parser for JavaScript environments.
- * Implements OLE Compound File Binary Format (CFB) parsing according to
- * [MS-CFB] and [MS-OXMSG] specifications.
- * * Original Author: B-AR (https://github.com/B-AR)
- * Enhanced Version: Includes comprehensive error handling, validation,
- * OFT template support, and memory optimization.
- * * Supported Formats:
- * - .msg (Microsoft Outlook Message Files)
- * - .oft (Microsoft Outlook Template Files)
- */
-(function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-    // A1: Added try-catch around factory call for safer UMD loading
-    (function () {
-        try {
-            global.MsgReader = factory({}).default;
-        } catch(e) { 
-            console.error('MsgReader initialization failed in UMD wrapper:', e); 
-            global.MsgReader = null; 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailTo Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* --- View Styles --- */
+        .view { display: none; }
+        .view.active { display: block; }
+
+        /* --- Upload Box --- */
+        .upload-wrapper {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            background-color: var(--info-bg);
+            transition: background-color 0.2s;
+        }
+        .upload-wrapper.dragover {
+            background-color: var(--primary-hover-bg-light);
+            border-color: var(--primary-color);
+        }
+        .upload-wrapper input[type="file"] {
+            display: none;
+        }
+        .upload-wrapper .button-base {
+            cursor: pointer;
+        }
+        .upload-wrapper p {
+            color: var(--subtle-text);
+            margin: 0.5rem 0 0 0;
+        }
+        
+        /* --- Tree/List Styles --- */
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 0.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid transparent;
+            cursor: default;
+            transition: background-color 0.2s;
+            gap: 0.75rem;
+        }
+        .list-item:hover {
+            background-color: var(--info-bg);
+            border-color: var(--border-color);
+        }
+        .list-item-icon {
+            flex-shrink: 0;
+            color: var(--subtle-text);
+            width: 20px;
+            height: 20px;
+        }
+        .list-item-icon.folder {
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+        .list-item-icon.template {
+            color: var(--subtle-text);
+        }
+        
+        .list-item a.list-item-name {
+            color: var(--text-color);
+            text-decoration: none;
+            cursor: pointer;
+            flex-grow: 1;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .list-item a.list-item-name:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+        .list-item .list-item-name-folder {
+            flex-grow: 1;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+         .list-item .list-item-name-folder:hover {
+            color: var(--primary-color);
+         }
+
+
+        .list-item-actions {
+            flex-shrink: 0;
+        }
+        
+        /* --- Move Modal Styles --- */
+        .move-folder-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+        }
+        .move-folder-item {
+            padding: 0.6rem 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .move-folder-item:last-child {
+            border-bottom: none;
+        }
+        .move-folder-item:hover {
+            background-color: var(--info-bg);
+        }
+        .move-folder-item.disabled {
+            opacity: 0.5;
+            background-color: var(--bg-color);
+            cursor: not-allowed;
+        }
+
+        /* --- Breadcrumb Styles --- */
+        .breadcrumb-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: center;
+            background-color: var(--info-bg);
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+        }
+        .breadcrumb-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .breadcrumb-link:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb-separator {
+            color: var(--subtle-text);
+            margin: 0 0.25rem;
+        }
+        .breadcrumb-current {
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="app-container">
+        <div class="panel">
+            <div class="main-content">
+                <div id="app-startup-error" class="hidden app-startup-banner"></div>
+                
+                <!-- VIEW 1: CATALOGUE / LIBRARY (DEFAULT VIEW) -->
+                <div id="catalogue-view" class="view active">
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Email Template Library</h3>
+                        <div class="button-group">
+                            <!-- REFACTOR: Removed btn-import-csv and btn-export-csv -->
+                            <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
+                            <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
+                            <button id="btn-new-template" class="button-base button-primary">New Template</button>
+                        </div>
+                    </div>
+
+                    <div id="breadcrumb-container" class="breadcrumb-container">
+                    </div>
+
+                    <div id="tree-list-container">
+                    </div>
+                </div>
+
+                <!-- VIEW 2: TEMPLATE EDITOR (GENERATOR) -->
+                <div id="editor-view" class="view">
+                    
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Phase 1: Create or Upload</h3>
+                        <div class="button-group">
+                            <button id="btn-editor-cancel" class="button-base">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div id="upload-wrapper" class="upload-wrapper form-group">
+                        <input type="file" id="msg-upload" accept=".msg,.oft">
+                        <label for="msg-upload" class="button-base button-primary">
+                            Upload .msg or .oft file
+                        </label>
+                        <p>or drag and drop a file here</p>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Phase 2: Review and Edit Fields</h3>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="result-to">To</label>
+                        <input type="text" id="result-to" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-cc">CC</label>
+                        <input type="text" id="result-cc" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-bcc">BCC</label>
+                        <input type="text" id="result-bcc" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-subject">Subject</label>
+                        <input type="text" id="result-subject" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-body">Body (Text)</label>
+                        <textarea id="result-body" class="sidebar-textarea"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                         <button id="btn-generate" class="button-base button-primary" style="width: 100%;">Generate Command</button>
+                    </div>
+
+                    <!-- Phase 3: Output & Save -->
+                    <div id="output-wrapper" class="hidden">
+                        <div class="divider"></div>
+                        <div class="section-header-wrapper">
+                            <h3 class="section-header">Phase 3: Generated Output</h3>
+                            <a href="#" id="result-link" target="_blank" class="button-base button-primary">Open in Email Client</a>
+                        </div>
+                        <div class="form-group">
+                            <div class="label-group">
+                                <label for="result-mailto">MailTo Command</label>
+                                <button id="copy-mailto-btn" class="button-base">Copy</button>
+                            </div>
+                            <textarea id="result-mailto" class="sidebar-textarea" readonly placeholder="Generated command will appear here..."></textarea>
+                        </div>
+                        
+                        <!-- Save to Library Section -->
+                        <div class="app-section-box">
+                             <div class="form-group">
+                                <label for="save-template-name">Template Name</label>
+                                <input type="text" id="save-template-name" class="sidebar-input" placeholder="e.g., Weekly Report Stub">
+                            </div>
+                            <div class="button-group">
+                                <button id="btn-save-to-library" class="button-base button-success">Save to Library</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global UI Elements -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <!-- External Libs -->
+    <script src="js/msgreader.js"></script>
+    
+    <!-- App Libs -->
+    <script src="js/app-core.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-data.js"></script>
+
+    <script>
+    // ===================================================================
+    // CONSTANTS & HELPERS (Issue 1, 10, 13, 15)
+    // ===================================================================
+    
+    // C15: Global constant for file size limit
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+    // Issue 1: Centralized MailTo field names
+    const MAILTO_FIELDS = ['to', 'cc', 'bcc', 'subject', 'body'];
+
+    // Issue 10: Extracted Icon SVGs
+    const ICONS = {
+        folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
+        /* * BUG FIX 1: Corrected SVG path data. 
+         * The string ".I-" was replaced with ".79l-" to fix the syntax error.
+         */
+        template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79l-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
+    };
+
+    // Issue 13: Extracted CSV path validation regex
+    const CSV_PATH_REGEX = /^\/[\w\s\/-]*$/;
+
+    // Issue 15: Centralized duplicate validation
+    /**
+     * Checks for a duplicate item in a container and shows a validation error if found.
+     * @param {Array} container - The array of items/folders (children).
+     * @param {string} name - The name to check.
+     * @param {string} errorContext - The context for the error message ('folder' or 'item').
+     * @param {string} inputId - The ID of the input field to highlight.
+     * @returns {boolean} True if a duplicate exists, false otherwise.
+     */
+    const validateUniqueInContainer = (container, name, errorContext, inputId) => {
+         if (DataValidator.hasDuplicate(container, 'name', name)) {
+             SafeUI.showValidationError('Duplicate Name', 'An ' + errorContext + ' with this name already exists in this folder.', inputId);
+             return true;
+        }
+        return false;
+    };
+
+    // Dependency Check
+    (() => {
+        // REFACTOR: Added SharedSettingsModal to dependency check
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        
+        // REFACTOR: Changed check for MsgReader to be 'object' (not 'function')
+        // and check for its 'read' method.
+        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
+            if (!missing.includes('MsgReader')) {
+                // If it was loaded but isn't the correct structure, mark it as missing
+                missing.push('MsgReader (Invalid Type)');
+            }
+        }
+
+        if (missing.length > 0) {
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, msgreader.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+            
+            console.error(errorMessage);
+            
+            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+            } else {
+                const banner = document.getElementById('app-startup-error');
+                if(banner) {
+                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                    banner.classList.remove('hidden');
+                }
+            }
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
         }
     })();
-}(this, (function (exports) { 'use strict';
 
-function _typeof(obj) {
-  if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
-    _typeof = function (obj) {
-      return typeof obj;
-    };
-  } else {
-    _typeof = function (obj) {
-      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
-    };
-  }
-  return _typeof(obj);
-}
 
-function _defineProperty(obj, key, value) {
-  if (key in obj) {
-    Object.defineProperty(obj, key, {
-      value: value,
-      enumerable: true,
-      configurable: true,
-      writable: true
-    });
-  } else {
-    obj[key] = value;
-  }
-  return obj;
-}
-
-function _objectSpread(target) {
-  for (var i = 1; i < arguments.length; i++) {
-    var source = arguments[i] != null ? arguments[i] : {};
-    var ownKeys = Object.keys(source);
-    if (typeof Object.getOwnPropertySymbols === 'function') {
-      ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) {
-        return Object.getOwnPropertyDescriptor(source, sym).enumerable;
-      }));
-    }
-    ownKeys.forEach(function (key) {
-      _defineProperty(target, key, source[key]);
-    });
-  }
-  return target;
-}
-
-function _toConsumableArray(arr) {
-  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread();
-}
-
-function _arrayWithoutHoles(arr) {
-  if (Array.isArray(arr)) {
-    for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) arr2[i] = arr[i];
-    return arr2;
-  }
-}
-
-function _iterableToArray(iter) {
-  if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
-}
-
-function _nonIterableSpread() {
-  throw new TypeError("Invalid attempt to spread non-iterable instance");
-}
-
-/**
- * Base error class for MSG/OFT parsing failures
- * @constructor
- * @param {string} message - Error description
- */
-var MsgReaderError = function(message) {
-  this.name = 'MsgReaderError';
-  this.message = message;
-  this.stack = (new Error()).stack;
-};
-MsgReaderError.prototype = Object.create(Error.prototype);
-MsgReaderError.prototype.constructor = MsgReaderError;
-
-/**
- * Error class for corrupted or malformed file structures
- * @constructor
- * @param {string} message - Error description
- */
-var CorruptFileError = function(message) {
-  this.name = 'CorruptFileError';
-  this.message = message;
-  this.stack = (new Error()).stack;
-};
-CorruptFileError.prototype = Object.create(MsgReaderError.prototype);
-CorruptFileError.prototype.constructor = CorruptFileError;
-
-// ===========================================================================
-// STRUCTURAL OPTIMIZATION HELPERS (Issue 1, 2, 3, 5, 6, 7, 13, 17, 18)
-// ===========================================================================
-
-/** Constant for the 512-byte OLE header size (Issue 13) */
-const HEADER_SIZE = 512;
-
-/**
- * Converts a 4-byte Little-Endian array segment to a 32-bit integer.
- * @param {Array<number>} d - The 4-byte array segment.
- * @returns {number} The decoded 32-bit integer. (Issue 2, 6)
- */
-function bytesToInt32(d) {
-    if (d.length !== 4) {
-        return 0;
-    }
-    return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-}
-
-/**
- * Reads data from the file, ensuring the expected length is returned.
- * @param {ReadFile} file - The file reader instance.
- * @param {number} size - The expected number of bytes.
- * @param {string} contextMsg - Description for error reporting.
- * @returns {Array<number>} The read byte array. (Issue 3, 18)
- * @throws {CorruptFileError} If the end of file is reached prematurely.
- */
-function readValidated(file, size, contextMsg) {
-    var d = file.read(size);
-    if (d.length < size) {
-        throw new CorruptFileError('Unexpected end of file in ' + contextMsg + '. Expected ' + size + ' bytes, got ' + d.length + '.');
-    }
-    return d;
-}
-
-/**
- * Calculates the absolute file offset for a given sector. (Issue 13)
- * @param {number} sector - The sector index.
- * @param {number} sectorSize - The size of the sector in bytes.
- * @returns {number} The absolute file offset.
- */
-function getSectorOffset(sector, sectorSize) {
-    return HEADER_SIZE + sector * sectorSize;
-}
-
-/**
- * Validates that a sector offset is within the file's boundaries. (Issue 1)
- * @param {number} offset - The calculated file offset.
- * @param {number} sectorSize - The size of the data being read.
- * @param {number} fileLength - The total size of the file buffer.
- * @param {string} context - The context for the error message.
- * @throws {CorruptFileError} If the offset is out of bounds.
- */
-function validateSectorOffset(offset, sectorSize, fileLength, context) {
-    if (offset < HEADER_SIZE || offset + sectorSize > fileLength) {
-        throw new CorruptFileError(context + ' sector offset (' + offset + ') points beyond file boundary (' + fileLength + ')');
-    }
-}
-
-/**
- * Converts a byte array (excluding null terminators) into a string. (Issue 5)
- * @param {Array<number>} byteArray - The byte array to convert.
- * @param {string} [context='String field'] - Context for warning messages.
- * @returns {string} The decoded string.
- */
-function bytesToString(byteArray, context = 'String field') {
-    try {
-        var filteredBytes = byteArray.filter(function (v) { return v !== 0; });
-        return String.fromCharCode.apply(String, _toConsumableArray(filteredBytes));
-    } catch (e) {
-        console.warn('Invalid string encoding in ' + context + ': ' + e.message);
-        return '';
-    }
-}
-
-/**
- * Parses a MAPI stream key string to extract the property ID and type. (Issue 7)
- * e.g., '__substg1.0_0037001F' -> { nameId: 0x0037, type: '001F' }
- * @param {string} key - The stream key.
- * @returns {{nameId: number, type: string}|null} Parsed info or null on failure.
- */
-function parsePropertyId(key) {
-    // Matches keys ending in _XXXXYYYY where XXXX=nameId and YYYY=type
-    var match = key.match(/__substg1\.0_([a-fA-F0-9]{4})([a-fA-F0-9]{4})$/);
-    if (!match) return null;
-
-    var nameId = parseInt(match[1], 16);
-    var type = match[2];
-
-    if (isNaN(nameId)) return null;
-
-    return { nameId: nameId, type: type };
-}
-
-/**
- * Calculates the exact file position within the MiniFAT stream. (Issue 17)
- * @param {number} sector - The MiniFAT sector number.
- * @param {number} miniSectorSize - Size of a mini sector.
- * @param {number} regularSectorSize - Size of a regular sector.
- * @param {Array<number>} miniStreamSectors - The sectors of the root mini stream.
- * @returns {{actualOffset: number, offsetInMiniStream: number?}|{actualOffset: number}} The offset data.
- */
-function getMiniStreamPosition(sector, miniSectorSize, regularSectorSize, miniStreamSectors) {
-    var sectorInMiniStream = Math.floor(sector * miniSectorSize / regularSectorSize);
-    var offsetInMiniStream = (sector * miniSectorSize) % regularSectorSize;
-
-    if (sectorInMiniStream < 0 || sectorInMiniStream >= miniStreamSectors.length) {
-        return { actualOffset: -1 }; // Indicate out of bounds
-    }
-
-    var actualOffset = getSectorOffset(miniStreamSectors[sectorInMiniStream], regularSectorSize) + offsetInMiniStream;
-    return { actualOffset: actualOffset, offsetInMiniStream: offsetInMiniStream };
-}
-
-/**
- * OLE Compound File Binary Format parser
- * Implements [MS-CFB]: Compound File Binary File Format specification
- * * @class OleCompoundDoc
- * @param {ReadFile} file - File reader instance
- */
-var OleCompoundDoc = function () {
-  function OleCompoundDoc(file) {
-    this.file = file;
-    this.header = {};
-    this.sectors = [];
-    this.streams = {};
-    this.rootStreamEntry = null;
+    AppLifecycle.run(async () => {
     
-    try {
-      this.readHeader();
-      this.readSectors();
-      this.readDirTree();
-    } catch (e) {
-      if (e instanceof MsgReaderError) {
-        throw e;
-      }
-      // A13: Preserve original error message and type for better debugging
-      var err = new MsgReaderError('Failed to parse OLE Compound Document: ' + e.message);
-      err.cause = e;
-      throw err;
-    }
-  }
+        const APP_CONFIG = {
+            NAME: 'mailto_library',
+            VERSION: '1.1.0', 
+            DATA_KEY: 'mailto_library_v1',
+            CSV_HEADERS: ['name', 'path', ...MAILTO_FIELDS] // Issue 1
+        };
 
-  var _proto = OleCompoundDoc.prototype;
-
-  /**
-   * Parses OLE compound file header (512 bytes)
-   * Validates signature, version, and sector configuration
-   * * @throws {CorruptFileError} If header is invalid or corrupted
-   */
-  _proto.readHeader = function readHeader() {
-    var ULONG_SIZE = 4;
-    var USHORT_SIZE = 2;
-    var HEADER_SIGNATURE_SIZE = 8;
-    var HEADER_CLSID_SIZE = 16;
-    var file = this.file;
-    var header = this.header;
+        const defaultState = {
+            version: APP_CONFIG.VERSION,
+            library: [] 
+        };
     
-    if (file.arrayBuffer.length < 512) {
-      throw new CorruptFileError('File too small to be a valid MSG/OFT file (minimum 512 bytes)');
-    }
+        const ctx = await AppLifecycle.initPage({
+            storageKey: APP_CONFIG.DATA_KEY,
+            defaultState: defaultState,
+            version: APP_CONFIG.VERSION,
+            requiredElements: [
+                'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                'catalogue-view', 'editor-view', 
+                'btn-new-template', 'btn-new-folder', 
+                'btn-settings', 
+                'breadcrumb-container', 'tree-list-container', 
+                'btn-editor-cancel', 'btn-generate', 
+                'upload-wrapper', 'msg-upload', 
+                'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', 
+                'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', 
+                'save-template-name', 'btn-save-to-library' 
+            ]
+        });
     
-    // Use readValidated (Issue 3, 18)
-    var d = readValidated(file, HEADER_SIGNATURE_SIZE, 'header signature');
-
-    var signature = '';
-    for (var i = 0; i < HEADER_SIGNATURE_SIZE; i++) {
-      signature += String.fromCharCode(d[i]);
-    }
-    header.abSig = signature;
-    
-    var validSignatures = [
-      '\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1',
-      '\x0E\x11\xFC\x0D\xD0\xCF\x11\xE0'
-    ];
-    
-    var isValidSignature = validSignatures.some(function(validSig) {
-      return signature === validSig;
-    });
-    
-    if (!isValidSignature) {
-      throw new CorruptFileError('Invalid OLE signature. This is not a valid MSG/OFT file.');
-    }
-
-    // Skip CLSID (Issue 3)
-    readValidated(file, HEADER_CLSID_SIZE, 'header CLSID'); 
-
-    d = readValidated(file, USHORT_SIZE, 'header minor version');
-    header.uMinorVersion = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
-
-    d = readValidated(file, USHORT_SIZE, 'header major version');
-    header.uMajorVersion = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
-    
-    if (header.uMajorVersion !== 3 && header.uMajorVersion !== 4) {
-      throw new CorruptFileError('Unsupported OLE version: ' + header.uMajorVersion);
-    }
-    
-    d = readValidated(file, USHORT_SIZE, 'header byte order');
-    header.uByteOrder = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
-    
-    if (header.uByteOrder !== 0xFFFE) {
-      throw new CorruptFileError('Invalid byte order marker');
-    }
-    
-    d = readValidated(file, USHORT_SIZE, 'header sector shift');
-    header.uSectorShift = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
-    
-    // B1: Restrict sector shift to standard 512/4096 bytes (9 or 12)
-    if (header.uSectorShift !== 9 && header.uSectorShift !== 12) {
-      throw new CorruptFileError('Invalid sector shift: ' + header.uSectorShift + '. Must be 9 (512 bytes) or 12 (4096 bytes)');
-    }
-    
-    header.uSectorSize = 1 << header.uSectorShift;
-    
-    d = readValidated(file, USHORT_SIZE, 'header mini sector shift');
-    header.uMiniSectorShift = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
-    
-    if (header.uMiniSectorShift < 6 || header.uMiniSectorShift > header.uSectorShift) {
-      throw new CorruptFileError('Invalid mini sector shift: ' + header.uMiniSectorShift);
-    }
-    
-    header.uMiniSectorSize = 1 << header.uMiniSectorShift;
-    
-    // Skip reserved (Issue 3)
-    readValidated(file, 6, 'header reserved section'); 
-
-    d = readValidated(file, ULONG_SIZE, 'header cDirSectors');
-    header.cDirSectors = bytesToInt32(d); // Issue 2
-    
-    // B7: Directory sector count validation
-    if (header.cDirSectors > 1000) {
-      throw new CorruptFileError('Directory sector count unreasonably large: ' + header.cDirSectors);
-    }
-
-    d = readValidated(file, ULONG_SIZE, 'header cFATSectors');
-    header.cFATSectors = bytesToInt32(d); // Issue 2
-    
-    // B5: FAT sector count validation
-    if (header.cFATSectors > 10000) {
-      throw new CorruptFileError('FAT sector count unreasonably large: ' + header.cFATSectors);
-    }
-
-    d = readValidated(file, ULONG_SIZE, 'header sectDirStart');
-    header.sectDirStart = bytesToInt32(d); // Issue 2
-
-    d = readValidated(file, ULONG_SIZE, 'header signature (2)');
-    header.signature = bytesToInt32(d); // Issue 2
-
-    d = readValidated(file, ULONG_SIZE, 'header ulMiniSectorCutoff');
-    header.ulMiniSectorCutoff = bytesToInt32(d); // Issue 2
-    
-    // B2: Mini sector cutoff validation
-    if (header.ulMiniSectorCutoff === 0) {
-      header.ulMiniSectorCutoff = 4096;
-    } else if (header.ulMiniSectorCutoff < 512 || header.ulMiniSectorCutoff > 65536) {
-        throw new CorruptFileError('Mini sector cutoff out of valid range: ' + header.ulMiniSectorCutoff);
-    }
-
-    d = readValidated(file, ULONG_SIZE, 'header sectMiniFatStart');
-    header.sectMiniFatStart = bytesToInt32(d); // Issue 2
-
-    d = readValidated(file, ULONG_SIZE, 'header cMiniFatSectors');
-    header.cMiniFatSectors = bytesToInt32(d); // Issue 2
-
-    // B6: Mini FAT sector count validation
-    if (header.cMiniFatSectors > 10000) {
-      throw new CorruptFileError('Mini FAT sector count unreasonably large: ' + header.cMiniFatSectors);
-    }
-
-    d = readValidated(file, ULONG_SIZE, 'header sectDifStart');
-    header.sectDifStart = bytesToInt32(d); // Issue 2
-
-    d = readValidated(file, ULONG_SIZE, 'header cDifSectors');
-    header.cDifSectors = bytesToInt32(d); // Issue 2
-    
-    var difSectors = [];
-    for (var _i = 0; _i < 109; _i++) {
-      d = readValidated(file, ULONG_SIZE, 'header MSAT entry ' + _i);
-      
-      var sectorNum = bytesToInt32(d); // Issue 2
-      // B3: Basic MSAT sanity check (0xFFFFFFFF is -1 in 32-bit signed, but we check for large values)
-      if (sectorNum !== 0xFFFFFFFE && sectorNum !== 0xFFFFFFFF && sectorNum > (file.arrayBuffer.length / header.uSectorSize) * 2) {
-        throw new CorruptFileError('MSAT entry points to unreasonably large sector: ' + sectorNum);
-      }
-      difSectors[_i] = sectorNum;
-    }
-    header.MSAT = difSectors;
-  };
-
-  /**
-   * Reads and constructs File Allocation Table (FAT), Mini FAT, and directory sectors
-   * FAT maps sectors to their next sector in a chain
-   * * @throws {CorruptFileError} If sector references are invalid
-   */
-  _proto.readSectors = function readSectors() {
-    var file = this.file;
-    var header = this.header;
-    var sectorSize = header.uSectorSize;
-    
-    try {
-      var fatSectors = this.readSectorsFromMSAT(header.MSAT, header.cDifSectors, header.sectDifStart, sectorSize);
-      var sectorsInFat = sectorSize / 4;
-      var fat = [];
-
-      for (var i = 0; i < header.cFATSectors; i++) {
-        var sector = fatSectors[i] ? fatSectors[i] : header.MSAT[i];
-        
-        if (sector === 0xFFFFFFFE || sector === 0xFFFFFFFF) {
-          continue;
-        }
-        
-        var offset = getSectorOffset(sector, sectorSize); // Issue 13
-        validateSectorOffset(offset, sectorSize, file.arrayBuffer.length, 'FAT'); // Issue 1
-        
-        file.seek(offset);
-        for (var j = 0; j < sectorsInFat; j++) {
-          var entry = readValidated(file, 4, 'FAT entries'); // Issue 3
-          fat.push(bytesToInt32(entry)); // Issue 2
-        }
-      }
-
-      var miniFatSectors = this.readSectorsFromSAT(fat, header.cMiniFatSectors, header.sectMiniFatStart);
-      var miniFat = [];
-
-      for (var _i2 = 0; _i2 < miniFatSectors.length; _i2++) {
-        var _sector = miniFatSectors[_i2];
-        var _offset = getSectorOffset(_sector, sectorSize); // Issue 13
-        
-        validateSectorOffset(_offset, sectorSize, file.arrayBuffer.length, 'Mini FAT'); // Issue 1
-
-        file.seek(_offset);
-        for (var _j = 0; _j < sectorsInFat; _j++) {
-          var entry = readValidated(file, 4, 'Mini FAT entries'); // Issue 3
-          miniFat.push(bytesToInt32(entry)); // Issue 2
-        }
-      }
-
-      var dirSectors = this.readSectorsFromSAT(fat, header.cDirSectors, header.sectDirStart);
-      
-      if (dirSectors.length === 0) {
-        // Only throw if cDirSectors > 0, otherwise it might be a valid, empty file
-        if (header.cDirSectors > 0) {
-            throw new CorruptFileError('No directory sectors found, expected ' + header.cDirSectors);
-        }
-      }
-      
-      this.sectors = {
-        fat: fat,
-        miniFat: miniFat,
-        dirSectors: dirSectors
-      };
-    } catch (e) {
-      if (e instanceof MsgReaderError) {
-        throw e;
-      }
-      throw new CorruptFileError('Failed to read sectors: ' + e.message);
-    }
-  };
-
-  /**
-   * Reads FAT sectors from Master Sector Allocation Table (MSAT)
-   * MSAT may extend beyond header if file contains more than 109 FAT sectors
-   * * @param {Array} msat - Initial MSAT from header
-   * @param {number} cDifSectors - Count of additional DIF sectors
-   * @param {number} sectDifStart - Starting sector of DIF chain
-   * @param {number} sectorSize - Size of each sector in bytes
-   * @returns {Array} Array of FAT sector numbers
-   * @throws {CorruptFileError} If circular reference or invalid sector detected
-   */
-  _proto.readSectorsFromMSAT = function readSectorsFromMSAT(msat, cDifSectors, sectDifStart, sectorSize) {
-    var file = this.file;
-    var fatSectors = [];
-    var sectorsInFat = sectorSize / 4;
-    var difSectors = cDifSectors;
-    // A14: Use Set for performance
-    var visitedSectors = new Set();
-    
-    // A4: Reduce max iterations, add validation for sector count
-    var maxIterations = 1000;
-    if (cDifSectors > 100) { // Practical limit for DIF sectors
-      throw new CorruptFileError('DIF sector count unreasonably large: ' + cDifSectors);
-    }
-    var iterations = 0;
-
-    if (difSectors > 0) {
-      var difSector = sectDifStart;
-
-      while (difSector !== 0xFFFFFFFE && difSector !== 0xFFFFFFFF && iterations < maxIterations) {
-        if (visitedSectors.has(difSector)) {
-          throw new CorruptFileError('Circular reference detected in MSAT chain');
-        }
-        visitedSectors.add(difSector);
-        
-        var offset = getSectorOffset(difSector, sectorSize); // Issue 13
-        validateSectorOffset(offset, sectorSize, file.arrayBuffer.length, 'DIF'); // Issue 1
-        
-        file.seek(offset);
-
-        for (var j = 0; j < sectorsInFat - 1; j++) {
-          var sectorData = readValidated(file, 4, 'DIF sector entries'); // Issue 3
-
-          var sector = bytesToInt32(sectorData); // Issue 2
-          
-          // B4: Sanity check DIF sector entry (sector number)
-          if (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sector > 1000000) {
-            throw new CorruptFileError('FAT sector number in DIF chain unreasonably large: ' + sector);
-          }
-
-          if (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
-            fatSectors.push(sector);
-          }
-        }
-
-        var nextDifSectorData = readValidated(file, 4, 'next DIF sector pointer'); // Issue 3
-        difSector = bytesToInt32(nextDifSectorData); // Issue 2
-
-        iterations++;
-      }
-      
-      if (iterations >= maxIterations) {
-        throw new CorruptFileError('MSAT chain too long, possible corruption');
-      }
-    }
-
-    return fatSectors;
-  };
-
-  /**
-   * Follows sector chain in FAT to read all sectors for a stream
-   * * @param {Array} fat - File Allocation Table
-   * @param {number} cSectors - Expected number of sectors
-   * @param {number} sectStart - Starting sector number
-   * @returns {Array} Ordered array of sector numbers in chain
-   */
-  _proto.readSectorsFromSAT = function readSectorsFromSAT(fat, cSectors, sectStart) {
-    if (sectStart === 0xFFFFFFFE || sectStart === 0xFFFFFFFF) {
-      return [];
-    }
-    
-    var sectors = [];
-    var sector = sectStart;
-    // A14: Use Set for performance
-    var visitedSectors = new Set();
-    var maxIterations = Math.max(cSectors * 2, 10000);
-    var iterations = 0;
-
-    for (var i = 0; i < cSectors && sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && iterations < maxIterations; i++) {
-      if (visitedSectors.has(sector)) {
-        console.warn('Circular reference detected in SAT chain at sector ' + sector);
-        break;
-      }
-      visitedSectors.add(sector);
-      
-      sectors.push(sector);
-      
-      // A6: Validate sector index is within FAT bounds
-      if (sector < 0 || sector >= fat.length) {
-        console.warn('Sector index out of bounds: ' + sector + '. Truncating chain.');
-        break;
-      }
-      
-      sector = fat[sector];
-      iterations++;
-    }
-    
-    if (iterations >= maxIterations) {
-      console.warn('SAT chain too long, possible corruption. Truncating.');
-    }
-
-    return sectors;
-  };
-
-  /**
-   * Parses directory entries to construct stream hierarchy
-   * Each directory entry is 128 bytes and describes a storage or stream
-   * Directory structure forms a red-black tree
-   * * @throws {CorruptFileError} If root entry not found or structure invalid
-   */
-  _proto.readDirTree = function readDirTree() {
-    var file = this.file;
-    var header = this.header;
-    var sectors = this.sectors;
-    var dirSectors = sectors.dirSectors;
-    var rootStream = null;
-    var entries = [];
-
-    try {
-      for (var i = 0; i < dirSectors.length; i++) {
-        var sector = dirSectors[i];
-        var offset = getSectorOffset(sector, header.uSectorSize); // Issue 13
-        
-        if (offset + header.uSectorSize > file.arrayBuffer.length) {
-          console.warn('Directory sector ' + sector + ' points beyond file boundary, skipping');
-          continue;
-        }
-        
-        file.seek(offset);
-
-        // 4 entries per sector (128 bytes each)
-        for (var j = 0; j < 4; j++) {
-          var entryStartOffset = file.offset;
-
-          try {
-            var nameData = readValidated(file, 64, 'directory entry name');
-            var name = '';
-
-            for (var k = 0; k < nameData.length; k += 2) {
-              if (nameData[k] === 0 && nameData[k + 1] === 0) {
-                break;
-              }
-              var charCode = nameData[k] | (nameData[k + 1] << 8);
-              if (charCode > 0) {
-                name += String.fromCharCode(charCode);
-              }
-            }
-
-            // B24: Sanitize name (remove control characters)
-            name = name.replace(/[\x00-\x1F\x7F]/g, '');
-
-            var d = readValidated(file, 2, 'directory entry name length');
-            var nameLength = d[0] | (d[1] << 8);
-            
-            // B8: Skip empty or unreasonably long entries
-            if (nameLength === 0 || nameLength > 64) {
-              file.seek(entryStartOffset + 128);
-              continue;
-            }
-
-            d = readValidated(file, 1, 'directory entry type');
-            var type = d[0];
-            
-            // B9: Skip reserved or invalid directory entry types
-            if (type !== 1 && type !== 2 && type !== 5) {
-              file.seek(entryStartOffset + 128);
-              continue;
-            }
-            
-            d = readValidated(file, 1, 'directory entry flags'); // Flags
-            
-            d = readValidated(file, 4, 'directory entry left child');
-            var leftChild = bytesToInt32(d); // Issue 2
-            d = readValidated(file, 4, 'directory entry right child');
-            var rightChild = bytesToInt32(d); // Issue 2
-            d = readValidated(file, 4, 'directory entry storage dir id');
-            var storageDirId = bytesToInt32(d); // Issue 2
-            
-            readValidated(file, 16, 'directory entry CLSID'); // CLSID
-            readValidated(file, 4, 'directory entry User Flags'); // User Flags
-            readValidated(file, 8, 'directory entry Creation Time'); // Creation Time
-            readValidated(file, 8, 'directory entry Modification Time'); // Modification Time
-            
-            d = readValidated(file, 4, 'directory entry start sector');
-            var sectStart = bytesToInt32(d); // Issue 2
-            d = readValidated(file, 4, 'directory entry stream size');
-            var size = bytesToInt32(d); // Issue 2
-            readValidated(file, 4, 'directory entry Reserved'); // Reserved
-
-            // B11: Validate stream size against file size
-            if (type === 2 && size > file.arrayBuffer.length * 2) { // 2x margin for MiniFAT overhead
-                console.warn('Stream size in entry (' + name + ') is unreasonably large, capping.');
-                size = file.arrayBuffer.length;
-            }
-
-            var entry = {
-              name: name,
-              type: type,
-              sectStart: sectStart,
-              size: size,
-              leftChild: leftChild,
-              rightChild: rightChild,
-              storageDirId: storageDirId
-            };
-
-            if (type === 5) {
-              // B29: Ensure only one root entry is processed
-              if (rootStream) {
-                 throw new CorruptFileError('Multiple root entries detected in directory tree.');
-              }
-              rootStream = entry;
-              this.rootStreamEntry = entry;
-              
-              // B4: Root entry size validation
-              if (rootStream.size === 0) { 
-                  console.warn('Root stream size is zero, setting to default cutoff for MiniFAT calculation.'); 
-                  rootStream.size = header.ulMiniSectorCutoff || 4096; 
-              }
-            }
-
-            entries.push(entry);
-          } catch (entryError) {
-            console.warn('Error reading directory entry ' + j + ' in sector ' + i + ': ' + entryError.message);
-            // Must advance file pointer to next entry boundary
-            file.seek(entryStartOffset + 128);
-          }
-        }
-      }
-
-      if (!rootStream) {
-        throw new CorruptFileError('Root Entry not found in directory tree');
-      }
-
-      this.readStorageTree(rootStream, entries);
-      this.streams = rootStream.streams || {};
-    } catch (e) {
-      if (e instanceof MsgReaderError) {
-        throw e;
-      }
-      throw new CorruptFileError('Failed to read directory tree: ' + e.message);
-    }
-  };
-
-  /**
-   * Recursively traverses storage hierarchy and reads all streams
-   * Uses depth-first search through red-black tree structure
-   * * @param {Object} root - Root storage entry
-   * @param {Array} entries - All directory entries
-   * @param {number} [depth=0] - Current recursion depth (A5)
-   */
-  _proto.readStorageTree = function readStorageTree(root, entries, depth) { // A5: Added depth parameter
-    var _this = this;
-
-    // A5: Check depth limit
-    depth = depth || 0;
-    if (depth > 50) {
-        console.warn('Storage tree depth limit reached (50), truncating search.');
-        return;
-    }
-
-    root.streams = {};
-    var stack = [root.storageDirId];
-    var visitedEntries = new Set(); // A5/B12: Use Set for visited entries
-    var maxStackSize = 1000; // B12: Stack size limit
-    var maxIterations = entries.length * 2;
-    var iterations = 0;
-
-    while (stack.length > 0 && iterations < maxIterations) {
-      var entryId = stack.pop();
-      iterations++;
-      
-      // B10: Validate entryId bounds check against entries length
-      if (entryId < 0 || entryId >= entries.length) {
-        continue;
-      }
-      
-      if (visitedEntries.has(entryId)) {
-        console.warn('Circular reference detected in storage tree at entry ' + entryId);
-        continue;
-      }
-      visitedEntries.add(entryId);
-      
-      var entry = entries[entryId];
-
-      if (!entry) {
-        continue;
-      }
-
-      if (entry.type === 1 || entry.type === 2) {
-        // B28: Avoid creating large intermediate arrays here by using a direct check
-        if (entry.name.length > 1000) {
-            console.warn('Skipping stream due to unusually long name: ' + entry.name.length);
-        } else {
-            root.streams[entry.name] = entry;
-        }
-
-
-        if (entry.type === 1) {
-          try {
-            // A5: Pass incremented depth to recursive call
-            this.readStorageTree(entry, entries, depth + 1);
-          } catch (e) {
-            console.warn('Error reading storage subtree for ' + entry.name + ': ' + e.message);
-          }
-        }
-      }
-
-      // B10: Validate child index bounds before pushing to stack
-      if (entry.leftChild !== 0xFFFFFFFF && entry.leftChild < entries.length) {
-        stack.push(entry.leftChild);
-      } else if (entry.leftChild !== 0xFFFFFFFF) {
-        console.warn('Left child index out of bounds: ' + entry.leftChild);
-      }
-
-      if (entry.rightChild !== 0xFFFFFFFF && entry.rightChild < entries.length) {
-        stack.push(entry.rightChild);
-      } else if (entry.rightChild !== 0xFFFFFFFF) {
-        console.warn('Right child index out of bounds: ' + entry.rightChild);
-      }
-      
-      // B12: Stack size limit check
-      if (stack.length > maxStackSize) {
-        console.warn('Storage tree stack exceeded max size, truncating.');
-        stack.length = maxStackSize;
-      }
-    }
-
-    if (iterations >= maxIterations) {
-      console.warn('Storage tree traversal limit reached, possible corruption');
-    }
-
-    if (root.streams['\u0005DocumentSummaryInformation']) {
-      try {
-        this.readDocumentSummary(root.streams['\u0005DocumentSummaryInformation']);
-      } catch (e) {
-        console.warn('Error reading document summary: ' + e.message);
-      }
-    }
-
-    // Consolidated stream processing loops using new helper logic (Issue 4, 15)
-    
-    // Process __substg1.0_ streams (fields)
-    // NOTE: We don't need to do a full read/process here, as `Reader.readFields` handles the actual conversion later. 
-    // This part is only for ensuring `stream.content` is populated.
-    for (var key in root.streams) {
-        if (key.indexOf('__substg1.0_') > -1) {
-            try {
-                _this.readStream(root.streams[key]);
-            } catch (e) {
-                console.warn('Error reading stream ' + key + ': ' + e.message);
-            }
-        }
-    }
-    
-    // Process attachments
-    var attachKeys = [];
-    for (var key in root.streams) {
-        if (key.indexOf('__attach_version1.0_') > -1) {
-            attachKeys.push(key);
-        }
-    }
-
-    // B16: Attachment count limit
-    if (attachKeys.length > 100) {
-        console.warn('Too many attachments (' + attachKeys.length + '), limiting processing to 100.');
-        attachKeys.length = 100;
-    }
-    
-    attachKeys.forEach(function (key) {
-      try {
-        var attachStream = root.streams[key];
-        if (!attachStream.streams) {
-          console.warn("MsgReader: Attachment stream found but contains no sub-streams.", key);
-          return;
-        }
-        
-        var attachStreams = attachStream.streams;
-        // B28: Use for...in loop for attachment sub-streams
-        for (var subKey in attachStreams) {
-            if (subKey.indexOf('__substg1.0_') > -1) {
-                try {
-                    // Just ensure stream content is read
-                    _this.readStream(attachStreams[subKey]); 
-                } catch (e) {
-                    console.warn('Error reading attachment stream ' + subKey + ': ' + e.message);
-                }
-            }
-        }
-      } catch (e) {
-        console.warn('Error reading attachment ' + key + ': ' + e.message);
-      }
-    });
-    
-    // Process recipients
-    var recipKeys = [];
-    for (var key in root.streams) {
-        if (key.indexOf('__recip_version1.0_') > -1) {
-            recipKeys.push(key);
-        }
-    }
-
-    // B17: Recipient count limit
-    if (recipKeys.length > 1000) {
-        console.warn('Too many recipients (' + recipKeys.length + '), limiting processing to 1000.');
-        recipKeys.length = 1000;
-    }
-
-    recipKeys.forEach(function (key) {
-      try {
-        var recipStream = root.streams[key];
-        if (!recipStream.streams) {
-          console.warn("MsgReader: Recipient stream found but contains no sub-streams.", key);
-          return;
-        }
-        
-        var recipStreams = recipStream.streams;
-        // B28: Use for...in loop for recipient sub-streams
-        for (var subKey in recipStreams) {
-            if (subKey.indexOf('__substg1.0_') > -1) {
-                try {
-                    // Just ensure stream content is read
-                    _this.readStream(recipStreams[subKey]);
-                } catch (e) {
-                    console.warn('Error reading recipient stream ' + subKey + ': ' + e.message);
-                }
-            }
-        }
-      } catch (e) {
-        console.warn('Error reading recipient ' + key + ': ' + e.message);
-      }
-    });
-  };
-
-  /**
-   * Reads stream content from either regular FAT or Mini FAT
-   * Streams smaller than ulMiniSectorCutoff (typically 4096 bytes) use Mini FAT
-   * * @param {Object} stream - Stream directory entry
-   * @throws {CorruptFileError} If sector chain is invalid
-   */
-  _proto.readStream = function readStream(stream) {
-    var file = this.file;
-    var header = this.header;
-    var sectors = this.sectors;
-    var fat = sectors.fat;
-    var miniFat = sectors.miniFat;
-
-    if (!stream || stream.size === 0) {
-      stream.content = [];
-      return;
-    }
-
-    var sector = stream.sectStart;
-    
-    if (sector === 0xFFFFFFFE || sector === 0xFFFFFFFF) {
-      stream.content = [];
-      return;
-    }
-    
-    // A7: Memory exhaustion check (100MB general limit)
-    var streamSize = stream.size;
-    if (streamSize > 100 * 1024 * 1024) { 
-        console.warn('Stream size (' + streamSize + ' bytes) exceeds 100MB, truncating.');
-        streamSize = 100 * 1024 * 1024;
-    }
-
-    // B18: Attachment data limit (25MB specific limit)
-    // Attachment data stream ID is 3701
-    if (stream.name && stream.name.indexOf('__substg1.0_3701') > -1 && streamSize > 25 * 1024 * 1024) { 
-        console.warn('Attachment data stream size exceeds 25MB, truncating.');
-        streamSize = 25 * 1024 * 1024;
-    }
-
-
-    // A15: Use Uint8Array buffer for efficient binary data storage
-    var contentBuffer = new Uint8Array(streamSize);
-    var contentWriteOffset = 0;
-    
-    var sectorsChain;
-    var sectorSize;
-    var useMiniFat = streamSize < header.ulMiniSectorCutoff;
-    
-    // MiniFAT sector chain reading safety hazard fix: Pre-calculate mini stream sectors
-    var miniStreamSectors = null;
-    var rootStream = this.rootStreamEntry; 
-
-    if (useMiniFat) {
-        if (!rootStream) {
-            throw new CorruptFileError("Root Entry not found for MiniFAT access");
-        }
-        // B2: Cache the MiniFAT sectors chain read once, outside the loop
-        miniStreamSectors = this.readSectorsFromSAT(
-            fat, 
-            Math.ceil(rootStream.size / header.uSectorSize), 
-            rootStream.sectStart
-        );
-        if (miniStreamSectors.length === 0) {
-          throw new CorruptFileError('Mini stream sectors not found');
-        }
-    }
-
-
-    try {
-      if (!useMiniFat) {
-        sectorsChain = fat;
-        sectorSize = header.uSectorSize;
-        
-        var offset = getSectorOffset(sector, sectorSize); // Issue 13
-        validateSectorOffset(offset, sectorSize, file.arrayBuffer.length, 'Regular Stream'); // Issue 1
-        
-        file.seek(offset);
-      } else {
-        sectorsChain = miniFat;
-        sectorSize = header.uMiniSectorSize;
-        
-        // Use getMiniStreamPosition helper (Issue 17)
-        if (sector > 100000) { 
-            throw new CorruptFileError('Mini stream sector number too large: ' + sector); 
-        }
-
-        var pos = getMiniStreamPosition(sector, sectorSize, header.uSectorSize, miniStreamSectors);
-        var actualOffset = pos.actualOffset;
-        
-        if (actualOffset === -1) {
-            console.warn('Mini stream data sector index out of bounds, truncating');
-            stream.content = Array.from(contentBuffer.slice(0, contentWriteOffset));
+        if (!ctx || !ctx.elements) {
+            console.error('AppLifecycle failed to initialize context or DOM elements.');
             return;
         }
+    
+        const { elements: DOMElements, state, saveState } = ctx;
+        let currentFolderId = 'root'; 
+        let currentMailtoCommand = null; 
 
-        if (actualOffset >= file.arrayBuffer.length) {
-          throw new CorruptFileError('Mini stream offset points beyond file boundary');
-        }
+        const clearEditorFields = () => {
+            currentMailtoCommand = null;
+            MAILTO_FIELDS.forEach(field => { 
+                const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
+                if (element) element.value = '';
+            });
+            DOMElements.saveTemplateName.value = '';
+            DOMElements.outputWrapper.classList.add('hidden');
+        };
         
-        file.seek(actualOffset);
-      }
+        const hasUnsavedEditorChanges = () => {
+            return currentMailtoCommand || MAILTO_FIELDS.some(field => {
+                const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
+                return element && element.value;
+            });
+        };
+        
+        const resizeResultBody = () => DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
+        const resizeResultMailto = () => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
 
-      var bytesLeft = streamSize;
-      var visitedSectors = {};
-      var maxIterations = Math.ceil(streamSize / sectorSize) * 2;
-      var iterations = 0;
+        const navigateToFolder = (id) => {
+            currentFolderId = id;
+            renderCatalogue();
+        };
 
-      while (bytesLeft > 0 && sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && iterations < maxIterations) {
-        if (visitedSectors[sector]) {
-          throw new CorruptFileError('Circular reference in stream sector chain');
-        }
-        visitedSectors[sector] = true;
-        iterations++;
-        
-        var bytesToRead = Math.min(bytesLeft, sectorSize);
-        
-        // B21: Check for invalid bytesToRead
-        if (bytesToRead <= 0) { 
-             console.warn('Invalid bytes to read, stopping stream read.');
-             break; 
-        }
+        const createFolderModalHTML = () => {
+            return '<input id="folder-name-input" class="sidebar-input" placeholder="Folder Name">';
+        };
 
-        var chunk = file.read(bytesToRead);
-        
-        // A15: Copy chunk into the typed array buffer
-        if (contentWriteOffset + chunk.length > contentBuffer.length) {
-            console.warn('Buffer overflow detected during stream read, truncating.');
-            break; 
-        }
-        // Use loop for array copy (Issue 9)
-        for (var i = 0; i < chunk.length; i++) {
-            contentBuffer[contentWriteOffset + i] = chunk[i];
-        }
-        contentWriteOffset += chunk.length;
-        
-        bytesLeft -= chunk.length; // Use chunk.length in case of partial read (which A8 now prevents)
-        
-        if (bytesLeft > 0) {
-          if (sector >= sectorsChain.length) {
-            console.warn('Sector index out of bounds, truncating stream');
-            break;
-          }
-          
-          sector = sectorsChain[sector];
-
-          if (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
-            if (!useMiniFat) {
-              var _offset2 = getSectorOffset(sector, sectorSize); // Issue 13
-              if (_offset2 >= file.arrayBuffer.length) {
-                console.warn('Stream sector points beyond file boundary, truncating');
-                break;
-              }
-              file.seek(_offset2);
+        const handleTreeItemCopy = (item, copyBtn) => {
+            const mailtoCommand = copyBtn.dataset.mailto;
+            if (mailtoCommand && mailtoCommand !== 'undefined' && mailtoCommand !== 'null') {
+                SafeUI.copyToClipboard(mailtoCommand);
+                SafeUI.showToast(`Copied "${item.name}" to clipboard!`);
             } else {
-              // Use cached rootStream and helper (Issue 17)
-              var _pos = getMiniStreamPosition(sector, sectorSize, header.uSectorSize, miniStreamSectors);
-              var _actualOffset = _pos.actualOffset;
-
-              if (_actualOffset === -1) {
-                  console.warn('Mini stream data sector index out of bounds, truncating');
-                  break;
-              }
-
-              if (_actualOffset >= file.arrayBuffer.length) {
-                console.warn('Mini stream offset points beyond file boundary, truncating');
-                break;
-              }
-              
-              file.seek(_actualOffset);
+                SafeUI.showToast('No command to copy from this template.');
             }
-          }
-        }
-      }
+        };
 
-      if (iterations >= maxIterations) {
-        console.warn('Stream read iteration limit reached, possible corruption');
-      }
-
-      // Return content as standard Array to maintain existing API compatibility
-      stream.content = Array.from(contentBuffer.slice(0, contentWriteOffset));
-    } catch (e) {
-      console.error('Error reading stream: ' + e.message);
-      // If error occurs, return partial content read so far
-      stream.content = Array.from(contentBuffer.slice(0, contentWriteOffset));
-      throw e;
-    }
-  };
-
-  /**
-   * Parses Document Summary Information stream
-   * Contains metadata properties according to [MS-OLEPS] specification
-   * * @param {Object} stream - Document summary stream entry
-   */
-  _proto.readDocumentSummary = function readDocumentSummary(stream) {
-    // A11: Check for stream existence before proceeding
-    if (!stream) { return; }
-
-    try {
-      this.readStream(stream);
-
-      if (!stream.content || stream.content.length === 0) {
-        return;
-      }
-
-      var content = stream.content.slice();
-      
-      if (content.length < 28) {
-        return;
-      }
-      
-      var d = content.splice(0, 4); // Skip header (version, format, etc)
-      d = content.splice(0, 4);
-      d = content.splice(0, 4);
-      d = content.splice(0, 4);
-      d = content.splice(0, 16); // Skip CLSID
-      
-      d = content.splice(0, 4);
-      var sectionCount = bytesToInt32(d); // Issue 2
-
-      if (sectionCount !== 1 || content.length < 20) {
-        return;
-      }
-
-      d = content.splice(0, 16); // Skip FMTID
-      
-      d = content.splice(0, 4);
-      // Issue 2
-      var sectionOffset = bytesToInt32(d); 
-      
-      d = content.splice(0, 4);
-      // A3: Check for content length before reading propertyCount
-      if (d.length < 4) {
-          console.warn('Unexpected end of stream while reading property count in Document Summary.');
-          return;
-      }
-      var propertyCount = bytesToInt32(d); // Issue 2
-      
-      // B27: Property count check
-      if (propertyCount > 1000) {
-        throw new CorruptFileError('Document summary property count too large: ' + propertyCount);
-      }
-      
-      var properties = [];
-
-      for (var i = 0; i < propertyCount; i++) {
-        // B3: Check if enough data exists for a full property entry (8 bytes: ID + Offset)
-        if (content.length < 8) { 
-            console.warn('Document Summary: Not enough data remaining for declared properties. Stopping.'); 
-            break; 
-        }
-
-        d = content.splice(0, 4);
-        var propertyId = bytesToInt32(d); // Issue 2
-        d = content.splice(0, 4);
-        var propertyOffset = bytesToInt32(d); // Issue 2
-        properties.push({
-          id: propertyId,
-          offset: propertyOffset
-        });
-      }
-
-      // Remaining logic for reading properties is complex and prone to errors; 
-      // leaving it largely as-is but ensuring basic bounds check.
-      if (content.length >= 8) {
-        d = content.splice(0, 4);
-        var propertySize = bytesToInt32(d); // Issue 2
-        d = content.splice(0, 4);
-        var type = bytesToInt32(d); // Issue 2
-
-        if (type === 0x001E && content.length >= 4) {
-          d = content.splice(0, 4);
-          var size = bytesToInt32(d); // Issue 2
-          
-          if (size > 0 && size <= content.length) {
-            var value = '';
-            for (var _i3 = 0; _i3 < size && _i3 < content.length; _i3++) {
-              if (content[_i3] === 0) {
-                break;
-              }
-              value += String.fromCharCode(content[_i3]);
+        // REFACTOR: Modified to find the item's parent container for deletion
+        const handleTreeItemDelete = (id, item) => {
+            UIPatterns.confirmDelete(item.type, item.name, () => {
+                // Find the parent container (folder) of the item to delete it
+                const parent = findParentOfItem(id);
+                if (parent) {
+                    const index = parent.children.findIndex(i => i.id === id);
+                    if (index > -1) {
+                        parent.children.splice(index, 1);
+                        saveState();
+                        renderCatalogue();
+                    }
+                }
+            });
+        };
+        
+        // NEW FEATURE: Handle moving a template
+        const handleTreeItemMove = (id, item) => {
+            // 1. Generate list of possible target folders
+            const folders = [];
+            // Helper to recursively find folders
+            function findFolders(container, path, currentFolderId) {
+                // Add current folder
+                folders.push({
+                    id: currentFolderId,
+                    name: path,
+                    disabled: currentFolderId === findParentOfItem(id)?.id // Disable moving to current folder
+                });
+                // Find subfolders
+                container.forEach(i => {
+                    if (i.type === 'folder') {
+                        findFolders(i.children, path + i.name + '/', i.id);
+                    }
+                });
             }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error reading document summary: ' + e.message);
-    }
-  };
+            
+            // Find all folders starting from root
+            findFolders(state.library, '/', 'root');
 
-  return OleCompoundDoc;
-}();
+            // 2. Build Modal HTML
+            const folderListHtml = folders.map(folder => `
+                <li class="move-folder-item ${folder.disabled ? 'disabled' : ''}" data-folder-id="${SafeUI.escapeHTML(folder.id)}">
+                    ${ICONS.folder} ${SafeUI.escapeHTML(folder.name)}
+                </li>
+            `).join('');
 
-/**
- * File reader with buffered sequential access
- * Provides read and seek operations on byte array
- * * @class ReadFile
- * @param {Array} arrayBuffer - Byte array to read from
- */
-var ReadFile = function () {
-  function ReadFile(arrayBuffer) {
-    if (!arrayBuffer || !arrayBuffer.length) {
-      throw new MsgReaderError('Invalid array buffer provided');
-    }
-    this.arrayBuffer = arrayBuffer;
-    this.offset = 0;
-  }
-
-  var _proto = ReadFile.prototype;
-
-  /**
-   * Reads specified number of bytes from current offset
-   * * @param {number} length - Number of bytes to read
-   * @returns {Array} Byte array of requested length
-   * @throws {MsgReaderError} If read exceeds buffer boundary
-   */
-  _proto.read = function read(length) {
-    if (length < 0) {
-      throw new MsgReaderError('Invalid read length: ' + length);
-    }
-    
-    // A8: Throw error on read beyond boundary
-    if (this.offset + length > this.arrayBuffer.length) {
-      throw new MsgReaderError('Read beyond file boundary. Offset: ' + this.offset + ', Length: ' + length + ', File size: ' + this.arrayBuffer.length);
-    }
-    
-    var data = [];
-    for (var i = 0; i < length; i++) {
-      data[i] = this.arrayBuffer[this.offset + i];
-    }
-    this.offset += length;
-    return data;
-  };
-
-  /**
-   * Moves read position to specified offset
-   * * @param {number} offset - Absolute position in buffer
-   * @throws {MsgReaderError} If offset is out of bounds
-   */
-  _proto.seek = function seek(offset) {
-    // Issue 19: Validation moved to helper functions
-    if (offset < 0 || offset > this.arrayBuffer.length) {
-      throw new MsgReaderError('Invalid seek offset: ' + offset);
-    }
-    this.offset = offset;
-  };
-
-  return ReadFile;
-}();
-
-/**
- * MAPI property type identifiers according to [MS-OXCDATA]
- */
-var propertyTypes = {
-  BINARY: 0x0102,
-  STRING: 0x001E,
-  UNICODE_STRING: 0x001F,
-  OBJECT: 0x000D,
-  INTEGER32: 0x0003,
-  BOOLEAN: 0x000B,
-  TIME: 0x0040
-};
-
-/**
- * Common MAPI property tag identifiers
- */
-var propertyTags = {
-  BODY: 0x1000,
-  HTML: 0x1013,
-  SUBJECT: 0x0037,
-  MESSAGE_CLASS: 0x001A
-};
-
-/**
- * Mapping of MAPI property IDs to semantic field names
- * Based on [MS-OXPROPS] and [MS-OXOMSG] specifications
- */
-var propertyNames = {
-  0x0037: 'subject',
-  0x0C1A: 'senderName',
-  0x0C1E: 'senderEmail',
-  0x0E04: 'recipientEmail',
-  0x1000: 'body',
-  0x1013: 'html',
-  0x3001: 'recipientName',
-  0x5FF6: 'senderSmtpAddress',
-  0x3FFD: 'normalizedSubject',
-  0x0E1D: 'subjectPrefix',
-  0x007D: 'headers',
-  0x0E03: 'recipientType',
-  0x3003: 'recipientAddressType',
-  0x0C15: 'recipientDisplayName',
-  0x39FE: 'recipientSmtpAddress',
-  0x3A00: 'recipientEmailAddress',
-  0x3A02: 'recipientName',
-  0x3FF9: 'recipientEmail',
-  0x3701: 'attachmentData',
-  0x3704: 'attachmentFilename',
-  0x3707: 'attachmentSize',
-  0x370E: 'attachmentMimeTag',
-  0x001A: 'messageClass',
-  0x0E08: 'messageSize',
-  0x0E06: 'messageDeliveryTime',
-  0x003D: 'subjectNormalized',
-  0x0070: 'conversationTopic',
-  0x0C1D: 'senderSearchKey',
-  0x0C1F: 'senderEmailType',
-  0x5D01: 'senderSmtpAddress',
-  0x5D02: 'senderEmail'
-};
-
-/**
- * MAPI data structure definitions
- */
-var data = {
-  propertyTypes: propertyTypes,
-  propertyTags: propertyTags,
-  propertyNames: propertyNames
-};
-
-/**
- * Container for parsed MAPI properties with accessor methods
- * * @class FieldsData
- * @param {Array} fields - Array of parsed field objects
- */
-var FieldsData = function () {
-  function FieldsData(fields) {
-    this.fields = fields || [];
-    this.fieldsByName = {};
-    this.fieldsById = {};
-
-    for (var i = 0; i < this.fields.length; i++) {
-      var field = this.fields[i];
-      var name = data.propertyNames[field.nameId];
-
-      if (name) {
-        this.fieldsByName[name] = field;
-      }
-
-      this.fieldsById[field.nameId] = field;
-    }
-  }
-
-  var _proto = FieldsData.prototype;
-
-  /**
-   * Retrieves field by semantic name
-   * * @param {string} name - Field name (e.g., 'subject', 'body')
-   * @returns {Object|undefined} Field object or undefined if not found
-   */
-  _proto.getField = function getField(name) {
-    return this.fieldsByName[name];
-  };
-
-  /**
-   * Retrieves field by MAPI property ID
-   * * @param {number} id - Property ID (e.g., 0x0037 for subject)
-   * @returns {Object|undefined} Field object or undefined if not found
-   */
-  _proto.getFieldById = function getFieldById(id) {
-    return this.fieldsById[id];
-  };
-  
-  /**
-   * Retrieves field value by semantic name
-   * * @param {string} name - Field name
-   * @returns {*} Field value or undefined if not found
-   */
-  _proto.getFieldValue = function getFieldValue(name) {
-    var field = this.fieldsByName[name];
-    return field ? field.value : undefined;
-  };
-
-  return FieldsData;
-}();
-
-/**
- * Parser for __properties_version1.0 stream
- * Contains MAPI property metadata and extended property definitions
- * * @class Property
- * @param {ReadFile} buffer - Buffer containing property stream data
- */
-var Property = function () {
-  function Property(buffer) {
-    this.buffer = buffer;
-    this.properties = [];
-    
-    try {
-      this.readProperties();
-    } catch (e) {
-      console.warn('Error reading properties: ' + e.message);
-    }
-  }
-
-  var _proto = Property.prototype;
-
-  /**
-   * Parses property entries from buffer
-   * Each property entry contains nameId, flags, size, and data
-   */
-  _proto.readProperties = function readProperties() {
-    var buffer = this.buffer;
-    
-    if (!buffer || !buffer.arrayBuffer || buffer.arrayBuffer.length < 32) {
-      return;
-    }
-    
-    buffer.seek(32);
-
-    while (buffer.offset < buffer.arrayBuffer.length - 16) {
-      try {
-        var d = readValidated(buffer, 4, 'property name ID'); // Issue 3
-        var nameId = bytesToInt32(d); // Issue 2
-        
-        d = readValidated(buffer, 4, 'property flags'); // Issue 3
-        var flags = bytesToInt32(d); // Issue 2
-        
-        d = readValidated(buffer, 8, 'property size'); // Issue 3
-        // Note: size is 64-bit in spec, but typically only 32-bit used. Reading as 64-bit.
-        var size = bytesToInt32(d.slice(0, 4));
-        // We ignore the upper 4 bytes of 64-bit size for now for simplicity, relying on 32-bit value
-
-        // A9: Property size limit check
-        if (size > 10 * 1024 * 1024) { 
-            console.warn('Property size exceeds 10MB, skipping property at offset ' + buffer.offset);
-            break;
-        }
-
-        if (size < 0 || size > buffer.arrayBuffer.length) {
-          console.warn('Invalid property size: ' + size);
-          break;
-        }
-        
-        if (buffer.offset + size > buffer.arrayBuffer.length) {
-          console.warn('Property size exceeds buffer, truncating');
-          size = buffer.arrayBuffer.length - buffer.offset;
-        }
-        
-        var data = readValidated(buffer, size, 'property data'); // Issue 3
-
-        // B26: Skip data read but maintain alignment for zero-size properties
-        if (size === 0) {
-            this.properties.push({
-                nameId: nameId,
-                flags: flags,
-                size: 0,
-                data: []
+            const modalHtml = `
+                <p>Move "<strong>${SafeUI.escapeHTML(item.name)}</strong>" to:</p>
+                <ul class="move-folder-list">
+                    ${folderListHtml}
+                </ul>
+            `;
+            
+            // 3. Show Modal
+            SafeUI.showModal('Move Template', modalHtml, [{ label: 'Cancel' }]);
+            
+            // 4. Add listeners to the new folder list
+            document.querySelector('.move-folder-list').addEventListener('click', (e) => {
+                const targetFolderEl = e.target.closest('.move-folder-item');
+                if (!targetFolderEl || targetFolderEl.classList.contains('disabled')) {
+                    return;
+                }
+                
+                const targetFolderId = targetFolderEl.dataset.folderId;
+                
+                // Find item's original parent and remove it
+                const originalParent = findParentOfItem(id);
+                if (!originalParent) return; // Should not happen
+                
+                const itemIndex = originalParent.children.findIndex(i => i.id === id);
+                if (itemIndex === -1) return;
+                
+                // Remove item and get a reference to it
+                const [itemToMove] = originalParent.children.splice(itemIndex, 1);
+                
+                // Find new parent and add it
+                let newParentContainer;
+                if (targetFolderId === 'root') {
+                    newParentContainer = state.library;
+                } else {
+                    newParentContainer = findItemById(targetFolderId)?.children;
+                }
+                
+                if (!newParentContainer) {
+                    // Failsafe: put it back
+                    originalParent.children.splice(itemIndex, 0, itemToMove);
+                    return;
+                }
+                
+                newParentContainer.push(itemToMove);
+                
+                saveState();
+                renderCatalogue();
+                SafeUI.hideModal();
+                SafeUI.showToast('Template moved!');
             });
-        }
-        
-        // Alignment
-        while (buffer.offset % 4 !== 0 && buffer.offset < buffer.arrayBuffer.length) {
-          readValidated(buffer, 1, 'property alignment'); // Issue 3
-        }
-        
-        if (size > 0) {
-            this.properties.push({
-              nameId: nameId,
-              flags: flags,
-              size: size,
-              data: data
+        };
+
+        const handleDragEnterOver = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.add('dragover');
+        };
+
+        const handleDragLeave = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.remove('dragover');
+        };
+
+        const handleDrop = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.remove('dragover'); 
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) handleFile(files[0]);
+        };
+
+
+        // ===================================================================
+        // CORE DATA FUNCTIONS
+        // ===================================================================
+
+        const parseMailto = (mailtoStr) => {
+            const data = {};
+            MAILTO_FIELDS.forEach(field => data[field] = ''); 
+
+            if (!mailtoStr || !mailtoStr.startsWith('mailto:')) {
+                return data;
+            }
+            
+            if (!/^mailto:[^\s]*/.test(mailtoStr)) {
+                return data;
+            }
+
+            try {
+                const url = new URL(mailtoStr.replace(/ /g, '%20'));
+                data.to = decodeURIComponent(url.pathname || '');
+                MAILTO_FIELDS.slice(1).forEach(field => { 
+                    data[field] = decodeURIComponent(url.searchParams.get(field) || '');
+                });
+                return data;
+            } catch (e) {
+                console.warn("Mailto string parsing failed:", mailtoStr, e);
+                if (mailtoStr.indexOf('?') === -1) {
+                     try { 
+                        data.to = decodeURIComponent(mailtoStr.substring(7)); 
+                     } catch { 
+                        data.to = mailtoStr.substring(7);
+                     }
+                }
+                return data;
+            }
+        };
+
+        const buildMailto = (data) => {
+            let mailto = 'mailto:';
+            if (data.to) {
+                const recipients = data.to.split(',').map(r => r.trim()).filter(Boolean);
+                mailto += recipients.map(r => encodeURIComponent(r)).join(',');
+            }
+            
+            const params = [];
+            
+            MAILTO_FIELDS.slice(1).forEach(field => { 
+                 if (data[field]) {
+                    if (field === 'body') {
+                        const normalizedBody = data.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                        const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
+                        params.push('body=' + encodedBody);
+                    } else {
+                        params.push(field + '=' + encodeURIComponent(data[field]));
+                    }
+                }
             });
-        }
+            
+            if (params.length > 0) {
+                mailto += '?' + params.join('&');
+            }
+            return mailto;
+        };
 
-      } catch (e) {
-        console.warn('Error reading property at offset ' + buffer.offset + ': ' + e.message);
-        break;
-      }
-    }
-  };
+        const findItemById = (id, items = state.library, visited = new Set()) => {
+            if (id === 'root') return { id: 'root', name: 'Root', children: state.library, path: '/' };
+            for (const item of items) {
+                if (visited.has(item.id)) continue; 
+                visited.add(item.id); 
 
-  return Property;
-}();
+                if (item.id === id) return item;
+                if (item.type === 'folder' && item.children) {
+                    const found = findItemById(id, item.children, visited); 
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+        
+        // NEW FEATURE: Helper to find the parent object of an item
+        const findParentOfItem = (childId, parent = { id: 'root', children: state.library }, visited = new Set()) => {
+            if (visited.has(parent.id)) return null;
+            visited.add(parent.id);
+            
+            if (parent.children) {
+                if (parent.children.some(child => child.id === childId)) {
+                    return parent;
+                }
+                for (const item of parent.children) {
+                    if (item.type === 'folder') {
+                        const foundParent = findParentOfItem(childId, item, visited);
+                        if (foundParent) return foundParent;
+                    }
+                }
+            }
+            return null;
+        };
+        
+        const getItemsInCurrentFolder = () => {
+            if (currentFolderId === 'root') {
+                return state.library;
+            }
+            const folder = findItemById(currentFolderId);
+            return folder ? folder.children : [];
+        };
 
-/**
- * Main MSG/OFT file parser
- * Orchestrates OLE parsing and MAPI property extraction
- * * @class Reader
- * @param {Array|Uint8Array} arrayBuffer - File contents as byte array
- */
-var Reader = function () {
-  /**
-   * BUG FIX: This constructor was rewritten to robustly handle ArrayBuffer,
-   * Uint8Array, or a plain Array as input. It converts any valid input
-   * into the plain Array<number> that the rest of the library expects.
-   */
-  function Reader(inputBuffer) { // Renamed parameter
-    if (!inputBuffer) {
-      throw new MsgReaderError('No data provided to Reader');
-    }
-    
-    if (typeof inputBuffer === 'string') {
-      throw new MsgReaderError('Reader expects ArrayBuffer or Uint8Array, not string');
-    }
+        const getBreadcrumbPath = (folderId) => {
+            if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
 
-    var plainArray;
+            const path = [];
+            let targetItem = null;
+            
+            const visitedIds = new Set(); 
+            let iterations = 0; 
+            const maxIterations = state.library.length * 10; 
 
-    // BUG FIX: Convert ArrayBuffer or Uint8Array to the plain Array
-    // that the rest of the library expects.
-    if (inputBuffer instanceof ArrayBuffer) {
-        var view = new Uint8Array(inputBuffer);
-        plainArray = new Array(view.length);
-        for (var i = 0; i < view.length; i++) {
-            plainArray[i] = view[i];
-        }
-    } else if (inputBuffer instanceof Uint8Array) {
-        plainArray = new Array(inputBuffer.length);
-        for (var i = 0; i < inputBuffer.length; i++) {
-            plainArray[i] = inputBuffer[i];
-        }
-    } else if (Array.isArray(inputBuffer)) {
-        plainArray = inputBuffer; // Already a plain array
-    } else {
-        throw new MsgReaderError('Input data is not an ArrayBuffer, Uint8Array, or Array.');
-    }
-    
-    // B25: Validate array buffer contents (now checking plainArray)
-    if (plainArray.some(function(b) { return typeof b !== 'number' || b < 0 || b > 255; })) {
-        throw new MsgReaderError('Input array buffer contains invalid byte values (must be 0-255).');
-    }
+            const stack = state.library.map(item => [item, []]);
 
-    this.arrayBuffer = plainArray; // this.arrayBuffer is now a plain Array
-  }
+            while (stack.length > 0) {
+                if (++iterations > maxIterations) { 
+                    console.error("Breadcrumb path generation exceeded max iterations, circular reference suspected.");
+                    break; 
+                }
 
-  var _proto = Reader.prototype;
+                const [currentItem, parentPath] = stack.pop();
+                
+                if (visitedIds.has(currentItem.id)) continue; 
+                visitedIds.add(currentItem.id);
 
-  /**
-   * Centralized MAPI property value conversion based on type. (Issue 14)
-   * @param {Array<number>} value - The raw byte array value.
-   * @param {string} type - The 4-character hex MAPI type code (e.g., '001F').
-   * @param {string} key - The full stream key for context/warnings.
-   * @returns {*} The converted value.
-   */
-  _proto.convertPropertyValue = function convertPropertyValue(value, type, key) {
-    switch (type) {
-      case '001F': // UNICODE_STRING
-      case '001E': // STRING
-        return bytesToString(value, 'field ' + key); // Issue 5
-      case '0102': // BINARY
-        return value;
-      case '0003': // INTEGER32
-        if (value.length === 4) {
-          return bytesToInt32(value); // Issue 2
-        } else {
-          console.warn('Integer field ' + key + ' has wrong length: ' + value.length);
-          return 0;
-        }
-      case '000B': // BOOLEAN
-        if (value.length > 0 && (value[0] === 1 || value[0] === 0)) {
-          return value[0] === 1;
-        } else {
-          console.warn('Boolean field ' + key + ' has unexpected value: ' + value[0]);
-          return value.length > 0 && value[0] !== 0;
-        }
-      case '0040': { // TIME
-        if (value.length >= 8) {
-          var low = bytesToInt32(value.slice(0, 4)); // Issue 2
-          var high = bytesToInt32(value.slice(4, 8)); // Issue 2
-          
-          // A2: Bounds check for safe integer arithmetic
-          if (high > 2097151) { 
-            console.warn('Date value out of safe range for JS Date: ' + high);
-            return new Date(0);
-          } 
-          
-          var ticks = high * 4294967296 + low;
-          var date = new Date((ticks / 10000) - 11644473600000);
-          
-          // B19: Validate resulting date object
-          if (isNaN(date.getTime())) {
-            console.warn('Invalid date value, using epoch for field ' + key); 
-            return new Date(0); 
-          }
-          return date;
-        }
-        return new Date(0);
-      }
-      default:
-        return value;
-    }
-  };
+                const currentPath = [...parentPath, { id: currentItem.id, name: currentItem.name }];
 
-  /**
-   * Extracts properties from substreams matching a prefix. (Issue 4, 15)
-   * Handles storage-level streams (attachments/recipients) and direct streams (fields).
-   * @param {Object} streams - The streams object (e.g., oleCompoundDoc.streams).
-   * @param {string} prefix - The stream name prefix (e.g., '__attach_version1.0_').
-   * @param {number} limit - Max number of streams to process.
-   * @param {string} context - 'fields', 'attachments', or 'recipients'.
-   * @returns {Array<Object>} Array of processed field/item objects.
-   */
-  _proto.processStreamsByPrefix = function processStreamsByPrefix(streams, prefix, limit, context) {
-      var _this = this;
-      var results = [];
+                if (currentItem.id === folderId) {
+                    targetItem = currentItem;
+                    path.push(...currentPath);
+                    break; 
+                }
 
-      var keys = Object.keys(streams).filter(function (key) {
-          return key.indexOf(prefix) > -1;
-      });
+                if (currentItem.type === 'folder' && currentItem.children) {
+                    for (let i = currentItem.children.length - 1; i >= 0; i--) {
+                        stack.push([currentItem.children[i], currentPath]);
+                    }
+                }
+            }
+            
+            path.unshift({ id: 'root', name: 'Root' });
+            return path;
+        };
 
-      if (keys.length > limit) {
-          console.warn('Too many ' + context + ' (' + keys.length + '), limiting processing to ' + limit + '.');
-          keys.length = limit;
-      }
 
-      keys.forEach(function (key) {
-          try {
-              var streamEntry = streams[key];
-              var processedItem = {};
-              var fieldProps = [];
+        // ===================================================================
+        // RENDER & VIEW FUNCTIONS
+        // ===================================================================
 
-              // Determine if we are processing a storage entry (like attachment/recipient)
-              // or a direct property stream (like the main message fields)
-              var subStreams = streamEntry.streams || (context === 'fields' ? { [key]: streamEntry } : null);
+        const renderBreadcrumbs = (path) => {
+            const html = path.map((part, index) => {
+                const escapedId = SafeUI.escapeHTML(part.id);
+                const escapedName = SafeUI.escapeHTML(part.name);
 
-              if (subStreams) {
-                  for (var subKey in subStreams) {
-                      if (subKey.indexOf('__substg1.0_') > -1) {
-                          var stream = subStreams[subKey];
-                          if (!stream.content) continue;
+                if (index === path.length - 1) {
+                    return `<span class="breadcrumb-current">${escapedName}</span>`;
+                } else {
+                    return `<a class="breadcrumb-link" data-id="${escapedId}">${escapedName}</a><span class="breadcrumb-separator">&gt;</span>`;
+                }
+            }).join('');
+            DOMElements.breadcrumbContainer.innerHTML = html;
+        };
 
-                          var propInfo = parsePropertyId(subKey); // Issue 7
-                          if (!propInfo) continue;
+        // Main Render Function
+        const renderCatalogue = () => {
+            const path = getBreadcrumbPath(currentFolderId);
+            renderBreadcrumbs(path);
 
-                          var name = data.propertyNames[propInfo.nameId];
-                          var value = _this.convertPropertyValue(stream.content, propInfo.type, subKey); // Issue 14
+            const items = getItemsInCurrentFolder();
+            const sortedItems = [...items].sort((a, b) => {
+                if (a.type === 'folder' && b.type !== 'folder') return -1;
+                if (a.type !== 'folder' && b.type === 'folder') return 1;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+            
+            ListRenderer.renderList({
+                container: DOMElements.treeListContainer,
+                items: sortedItems,
+                emptyMessage: "This folder is empty. Click 'New Template' to add one.",
+                createItemElement: (item) => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item';
+                    div.dataset.id = item.id;
+                    div.dataset.type = item.type;
+                    
+                    const iconType = item.type === 'folder' ? 'folder' : 'template';
+                    const iconSvg = ICONS[iconType]; 
+                    
+                    let nameElement = '';
+                    const escapedName = SafeUI.escapeHTML(item.name);
 
-                          if (context === 'fields') {
-                            fieldProps.push({ name: name, nameId: propInfo.nameId, type: propInfo.type, value: value });
-                          } else {
-                            processedItem[name] = value;
-                          }
-                      }
-                  }
-              }
+                    if (item.type === 'folder') {
+                        nameElement = `<span class="list-item-name-folder">${escapedName}</span>`;
+                    } else {
+                        const escapedMailto = SafeUI.escapeHTML(item.mailto);
+                        nameElement = `<a href="${escapedMailto}" class="list-item-name" title="Launch: ${escapedName}">${escapedName}</a>`;
+                    }
 
-              // Final result formatting based on context
-              if (context === 'attachments') {
-                  // B2: Warning if attachment was truncated
-                  if (processedItem.attachmentData && processedItem.attachmentSize && processedItem.attachmentData.length < processedItem.attachmentSize) {
-                      console.warn('Attachment ' + processedItem.attachmentFilename + ' was truncated. Declared size: ' + processedItem.attachmentSize + ', Actual read size: ' + processedItem.attachmentData.length);
-                  }
+                    // NEW FEATURE: Added Move button
+                    const moveButton = item.type === 'item' ? 
+                        `<button class="icon-btn move-btn" title="Move to...">${SVGIcons.pencil}</button>` : '';
 
-                  results.push({
-                      data: processedItem.attachmentData,
-                      name: processedItem.attachmentFilename,
-                      mime: processedItem.attachmentMimeTag,
-                      size: processedItem.attachmentSize
-                  });
-              } else if (context === 'recipients') {
-                  results.push(processedItem);
-              } else if (context === 'fields') {
-                  results.push.apply(results, fieldProps);
-              }
+                    div.innerHTML = `
+                        <div class="list-item-icon ${iconType}">${iconSvg}</div>
+                        ${nameElement}
+                        <div class="list-item-actions">
+                            ${item.type === 'item' ? `<button class="icon-btn copy-btn" title="Copy mailto: command" data-mailto="${SafeUI.escapeHTML(item.mailto)}">${SafeUI.SVGIcons.copy}</button>` : ''}
+                            ${moveButton}
+                            <button class="icon-btn delete-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                        </div>
+                    `;
+                    return div;
+                }
+            });
+        };
 
-          } catch (e) {
-              console.warn('Error reading ' + context + ' stream ' + key + ': ' + e.message);
-          }
-      });
+        const showView = (viewName) => {
+            DOMElements.catalogueView.classList.toggle('active', viewName === 'catalogue');
+            DOMElements.editorView.classList.toggle('active', viewName === 'editor');
+        };
 
-      return results;
-  };
+        // ===================================================================
+        // EDITOR FUNCTIONS (UPLOAD & GENERATE)
+        // ===================================================================
 
-  /**
-   * Initiates parsing of MSG/OFT file structure
-   * * @returns {FieldsData} Parsed fields with accessor methods
-   * @throws {MsgReaderError} If parsing fails
-   */
-  _proto.read = function read() {
-    try {
-      var buffer = this.arrayBuffer;
-      var file = new ReadFile(buffer);
-      var oleCompoundDoc = new OleCompoundDoc(file);
-      
-      if (!oleCompoundDoc || !oleCompoundDoc.streams) { 
-        throw new CorruptFileError('Invalid MSG/OFT file structure'); 
-      }
-      
-      var fields = this.readFields(oleCompoundDoc);
-      var fieldsData = new FieldsData(fields);
-      
-      var messageClass = fieldsData.getFieldValue('messageClass');
-      fieldsData.isTemplate = messageClass && messageClass.indexOf('.Template') > -1;
-      
-      return fieldsData;
-    } catch (e) {
-      if (e instanceof MsgReaderError) {
-        throw e;
-      }
-      throw new MsgReaderError('Failed to read MSG/OFT file: ' + e.message);
-    }
-  };
+        const handleFile = (file) => {
+            try { 
+                if (!file) {
+                    return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
+                }
+                if (file.size > MAX_FILE_SIZE_BYTES) { 
+                    return SafeUI.showModal('File Too Large', '<p>File must be under 10MB.</p>', [{label: 'OK'}]); 
+                }
 
-  /**
-   * Extracts MAPI properties from OLE compound document streams
-   * Processes main message properties, attachments, and recipients
-   * * @param {OleCompoundDoc} oleCompoundDoc - Parsed OLE document
-   * @returns {Array} Array of field objects with name, type, and value
-   */
-  _proto.readFields = function readFields(oleCompoundDoc) {
-    var streams = oleCompoundDoc.streams;
-    
-    if (!streams) {
-      console.error("MsgReader: OLE streams not found.");
-      return [];
-    }
-    
-    var propertyStream = streams['__properties_version1.0'];
-    var fields = [];
+                if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft')) {
+                    return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg</strong> or <strong>.oft</strong> file.</p>', [{label: 'OK'}]);
+                }
+                
+                clearEditorFields();
 
-    if (propertyStream && propertyStream.content) {
-      try {
-        // This is primarily for reading extended property definitions, not the main fields
-        var property = new Property(new ReadFile(propertyStream.content)); 
-      } catch (e) {
-        console.warn('Error reading property stream: ' + e.message);
-      }
-    }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        if (!window.MsgReader || typeof window.MsgReader.read !== 'function') { 
+                            throw new Error('MsgReader library not loaded or invalid.'); 
+                        }
 
-    // Process main message streams (Issue 15, 4 - Consolidated)
-    var mainFields = this.processStreamsByPrefix(streams, '__substg1.0_', Infinity, 'fields');
-    fields.push.apply(fields, mainFields);
+                        // Validate file size
+                        const arrayBuffer = e.target.result;
+                        if (!arrayBuffer || arrayBuffer.byteLength < 512) {
+                            throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
+                        }
 
-    // Process attachments (Issue 15, 4 - Consolidated)
-    var attachments = this.processStreamsByPrefix(streams, '__attach_version1.0_', 100, 'attachments');
-    if (attachments.length) {
-      fields.push({
-        name: 'attachments',
-        nameId: 0,
-        type: 0,
-        value: attachments
-      });
-    }
+                        // Convert ArrayBuffer to plain Array that msgreader.js expects
+                        const uint8View = new Uint8Array(arrayBuffer);
+                        const plainArray = Array.from(uint8View);
+                        const fileData = window.MsgReader.read(plainArray);
 
-    // Process recipients (Issue 15, 4 - Consolidated)
-    var recipients = this.processStreamsByPrefix(streams, '__recip_version1.0_', 1000, 'recipients');
-    if (recipients.length) {
-      fields.push({
-        name: 'recipients',
-        nameId: 0,
-        type: 0,
-        value: recipients
-      });
-    }
+                        DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
+                        DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
 
-    return fields;
-  };
+                        const recipients = fileData.getFieldValue('recipients') || [];
+                        DOMElements.resultTo.value = recipients.filter(r => r.recipientType === 1).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
+                        DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
+                        DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
 
-  return Reader;
-}();
+                        
+                        DOMElements.outputWrapper.classList.add('hidden'); 
+                        setTimeout(() => resizeResultBody(), 0);
+                    } catch (err) {
+                        console.error('File parsing error:', err);
+                        SafeUI.showModal('File Error', `<p>Failed to parse file: ${err.message}</p>`, [{label: 'OK'}]);
+                        // Do not re-throw, just show modal to user.
+                    }
+                };
+                reader.onerror = () => {
+                    SafeUI.showModal('File Error', '<p>File reading failed. Could not access file content.</p>', [{label: 'OK'}]);
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (e) {
+                console.error('File operation failed:', e);
+                SafeUI.showToast('File operation failed due to internal error.');
+            }
+        };
 
-/**
- * Public API for MSG/OFT file parsing
- * * @namespace MsgReader
- * @version 2.0.0
- */
-var MsgReader = {
-  /**
-   * Parses MSG or OFT file from byte array
-   * * @param {Array|Uint8Array} arrayBuffer - File contents
-   * @returns {FieldsData} Parsed message fields
-   * @throws {MsgReaderError} If parsing fails
-   * * @example
-   * const fileData = new Uint8Array(buffer);
-   * const result = MsgReader.read(fileData);
-   * const subject = result.getFieldValue('subject');
-   * const isTemplate = result.isTemplate;
-   */
-  read: function(arrayBuffer) {
-    var reader = new Reader(arrayBuffer);
-    return reader.read();
-  },
-  MsgReaderError: MsgReaderError,
-  CorruptFileError: CorruptFileError
-};
+        const generateAndShowMailto = () => {
+            const mailtoData = {
+                to: DOMElements.resultTo.value.trim(),
+                cc: DOMElements.resultCc.value.trim(),
+                bcc: DOMElements.resultBcc.value.trim(),
+                subject: DOMElements.resultSubject.value.trim(),
+                body: DOMElements.resultBody.value 
+            };
 
-exports.default = MsgReader;
-exports.MsgReader = MsgReader;
+            const mailto = buildMailto(mailtoData);
 
-return exports;
+            currentMailtoCommand = mailto; 
+            DOMElements.resultMailto.value = mailto;
+            DOMElements.resultLink.href = mailto;
+            DOMElements.outputWrapper.classList.remove('hidden');
+            
+            const templateNameValue = DOMElements.saveTemplateName.value;
+            if (!templateNameValue.trim() && !templateNameValue) {
+                 DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
+            }
 
-})));
+            setTimeout(() => resizeResultMailto(), 0);
+        };
+        
+        // ===================================================================
+        // LIBRARY ACTION HANDLERS
+        // ===================================================================
+        
+        const handleNewTemplate = () => {
+            if (hasUnsavedEditorChanges()) {
+                UIPatterns.confirmUnsavedChanges(() => {
+                    clearEditorFields(); 
+                    resizeResultBody(); 
+                    showView('editor');
+                });
+                return;
+            }
 
+            clearEditorFields(); 
+            resizeResultBody(); 
+            showView('editor');
+        };
+        
+        const handleNewFolder = () => {
+            SafeUI.showModal('New Folder', createFolderModalHTML(), [ 
+                {label: 'Cancel'},
+                {label: 'Create', class: 'button-primary', callback: () => {
+                    try { 
+                        const nameInput = document.getElementById('folder-name-input');
+                        const name = nameInput.value.trim();
+                        
+                        if (name.includes('/') || name.includes('\\')) {
+                             return SafeUI.showValidationError('Invalid Name', 'Folder name cannot contain path separators (/, \\).', 'folder-name-input');
+                        }
+
+                        if (!SafeUI.validators.notEmpty(name)) {
+                            return SafeUI.showValidationError('Invalid Name', 'Folder name cannot be empty.', 'folder-name-input');
+                        }
+                        
+                        const container = getItemsInCurrentFolder();
+                        if (validateUniqueInContainer(container, name, 'folder', 'folder-name-input')) {
+                             return;
+                        }
+                        
+                        container.push({
+                            id: SafeUI.generateId(),
+                            type: 'folder',
+                            name: name,
+                            children: []
+                        });
+                        saveState();
+                        renderCatalogue();
+                    } catch(e) {
+                        console.error('Folder creation failed:', e);
+                        SafeUI.showToast('Folder creation failed due to internal error.');
+                    }
+                }}
+            ]);
+        };
+        
+        const handleSaveToLibrary = () => {
+            if (!currentMailtoCommand) {
+                SafeUI.showValidationError('No Command Generated', 'Click "Generate Command" first.', 'btn-generate');
+                return;
+            }
+
+            const name = DOMElements.saveTemplateName.value.trim();
+            if (!SafeUI.validators.notEmpty(name)) {
+                return SafeUI.showValidationError('Invalid Name', 'Template name cannot be empty.', 'save-template-name');
+            }
+            
+            const container = getItemsInCurrentFolder();
+            if (validateUniqueInContainer(container, name, 'item', 'save-template-name')) {
+                return;
+            }
+            
+            container.push({
+                id: SafeUI.generateId(),
+                type: 'item',
+                name: name,
+                mailto: currentMailtoCommand
+            });
+            saveState();
+            SafeUI.showToast('Template saved!');
+            showView('catalogue');
+            renderCatalogue();
+        };
+
+        // ===================================================================
+        // DATA MANAGEMENT HANDLERS (CSV)
+        // ===================================================================
+        
+        const setupSettingsModal = () => {
+            const pageDataHtml = `
+                <button id="modal-export-csv-btn" class="button-base">Export Library (CSV)</button>
+                <button id="modal-import-csv-btn" class="button-base">Import Library (CSV)</button>
+            `;
+
+            const onModalOpen = () => {
+                CsvManager.setupExport({
+                    exportBtn: document.getElementById('modal-export-csv-btn'),
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    dataGetter: () => {
+                        const csvData = [];
+                        function walk(items, currentPath) {
+                            for (const item of items) {
+                                if (item.type === 'folder') {
+                                    walk(item.children, currentPath + item.name + '/');
+                                } else if (item.type === 'item') {
+                                    const mailtoParts = parseMailto(item.mailto);
+                                    const row = { name: item.name, path: currentPath };
+                                    MAILTO_FIELDS.forEach(field => { row[field] = mailtoParts[field]; });
+                                    csvData.push(row);
+                                }
+                            }
+                        }
+                        walk(state.library, '/');
+                        if (csvData.length === 0) {
+                             SafeUI.showToast("Library is empty, nothing to export.");
+                             return []; 
+                        }
+                        return csvData;
+                    },
+                    filename: `${APP_CONFIG.NAME}-export.csv`
+                });
+                
+                const validateCsvRow = (row, index) => {
+                    if (!row.name || !row.name.trim()) {
+                        return { error: `Row ${index + 2}: 'name' column is required.` };
+                    }
+                    if (!row.path || !CSV_PATH_REGEX.test(row.path.trim())) { 
+                        return { error: `Row ${index + 2}: 'path' must be a valid folder path like /folder or /folder/subfolder` };
+                    }
+                    return { entry: row };
+                };
+                const confirmCsvImport = (validatedData, importErrors) => {
+                    const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library. It will skip duplicates (same name in the same path).</p>
+                                         ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
+                                         <p>Do you want to continue?</p>`;
+                    SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Import', 
+                            class: 'button-primary', 
+                            callback: () => {
+                                let importedCount = 0;
+                                let skippedCount = 0;
+                                for (const row of validatedData) {
+                                    const pathParts = row.path.split('/').filter(p => p.trim().length > 0); 
+                                    let currentContainer = state.library;
+                                    for (const part of pathParts) {
+                                        let folder = currentContainer.find(i => i.type === 'folder' && i.name.toLowerCase() === part.toLowerCase());
+                                        if (!folder) {
+                                            folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
+                                            currentContainer.push(folder);
+                                        }
+                                        currentContainer = folder.children;
+                                    }
+                                    if (DataValidator.hasDuplicate(currentContainer, 'name', row.name)) {
+                                        skippedCount++;
+                                    } else {
+                                        const newMailto = buildMailto(row);
+                                        currentContainer.push({ id: SafeUI.generateId(), type: 'item', name: row.name.trim(), mailto: newMailto });
+                                        importedCount++;
+                                    }
+                                }
+                                if (importedCount > 0) { saveState(); renderCatalogue(); }
+                                SafeUI.showToast(`Import complete. Added ${importedCount}, skipped ${skippedCount}.`);
+                                SafeUI.hideModal(); 
+                            }
+                        }
+                    ]);
+                    return false; 
+                };
+                CsvManager.setupImport({
+                    importBtn: document.getElementById('modal-import-csv-btn'),
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    onValidate: validateCsvRow,
+                    onConfirm: confirmCsvImport
+                });
+            };
+
+            const onRestore = (dataToRestore) => {
+                state.library = dataToRestore.library || [];
+                currentFolderId = 'root';
+                saveState();
+                renderCatalogue();
+            };
+
+            window.SharedSettingsModal.init({
+                buttonId: 'btn-settings',
+                appName: APP_CONFIG.NAME,
+                state: { library: state.library, version: state.version },
+                pageSpecificDataHtml: pageDataHtml, 
+                onModalOpen: onModalOpen,           
+                onRestoreCallback: onRestore,
+                itemValidators: {
+                    library: []
+                }
+            });
+        };
+
+
+        // ===================================================================
+        // EVENT LISTENERS
+        // ===================================================================
+
+        const attachEventListeners = () => {
+            setupSettingsModal();
+
+            // Catalogue View
+            DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
+            DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
+            
+            // Editor View
+            DOMElements.btnEditorCancel.addEventListener('click', () => {
+                if (hasUnsavedEditorChanges()) {
+                    UIPatterns.confirmUnsavedChanges(() => {
+                        showView('catalogue');
+                        renderCatalogue();
+                    });
+                } else {
+                    showView('catalogue');
+                    renderCatalogue();
+                }
+            });
+
+            DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
+            DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
+            
+            DOMElements.copyMailtoBtn.addEventListener('click', async () => {
+                if (!currentMailtoCommand) {
+                    SafeUI.showToast('No command to copy'); 
+                    return;
+                }
+                const success = await SafeUI.copyToClipboard(currentMailtoCommand);
+                SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
+            });
+            
+            // Setup Drag and Drop (Editor) (C26)
+            DOMElements.uploadWrapper.addEventListener('dragenter', handleDragEnterOver);
+            DOMElements.uploadWrapper.addEventListener('dragover', handleDragEnterOver);
+            DOMElements.uploadWrapper.addEventListener('dragleave', handleDragLeave);
+            DOMElements.uploadWrapper.addEventListener('drop', handleDrop);
+            
+            DOMElements.msgUpload.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
+            });
+
+            // Event Delegation for Lists
+            DOMElements.treeListContainer.addEventListener('click', (e) => {
+                const itemEl = e.target.closest('.list-item');
+                if (!itemEl) return;
+                
+                if (e.target.closest('.list-item-name')) {
+                    return; 
+                }
+                
+                e.preventDefault(); 
+
+                const id = itemEl.dataset.id;
+                // REFACTOR: Use findItemById to search the whole tree, not just current folder
+                const item = findItemById(id); 
+                if (!item) return;
+
+                if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
+                    if (item.type === 'folder') {
+                        navigateToFolder(item.id); 
+                    }
+                    return;
+                }
+
+                const copyBtn = e.target.closest('.copy-btn');
+                if (copyBtn) {
+                    handleTreeItemCopy(item, copyBtn);
+                    return;
+                }
+                
+                // NEW FEATURE: Handle Move Button
+                const moveBtn = e.target.closest('.move-btn');
+                if (moveBtn) {
+                    handleTreeItemMove(id, item);
+                    return;
+                }
+                
+                if (e.target.closest('.delete-btn')) {
+                    handleTreeItemDelete(id, item);
+                    return; 
+                }
+            });
+            
+            DOMElements.breadcrumbContainer.addEventListener('click', (e) => {
+                 const link = e.target.closest('.breadcrumb-link');
+                 if (link && link.dataset.id) {
+                     const targetId = link.dataset.id;
+                     if (targetId === 'root' || findItemById(targetId)) { 
+                         navigateToFolder(targetId); 
+                     } else {
+                         console.warn('Folder not found, returning to root');
+                         navigateToFolder('root'); 
+                     }
+                 }
+            });
+        };
+
+        // Init
+        const init = () => {
+            if (!state.library || !Array.isArray(state.library)) { 
+                console.error('State corrupted, resetting library'); 
+                state.library = []; 
+                saveState(); 
+            }
+            
+            // Setup icons
+            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + ICONS.folder; 
+
+            // Setup textareas
+            DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
+            DOMHelpers.setupTextareaAutoResize(DOMElements.resultMailto, 150);
+            
+            attachEventListeners();
+            
+            // Initial render
+            showView('catalogue');
+            renderCatalogue();
+        };
+
+        init();
+    });
+    </script>
+</body>
+</html>
