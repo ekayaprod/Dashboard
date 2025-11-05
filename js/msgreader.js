@@ -1493,29 +1493,47 @@ var Property = function () {
  * @param {Array|Uint8Array} arrayBuffer - File contents as byte array
  */
 var Reader = function () {
-  function Reader(arrayBuffer) {
-    if (!arrayBuffer) {
+  /**
+   * BUG FIX: This constructor was rewritten to robustly handle ArrayBuffer,
+   * Uint8Array, or a plain Array as input. It converts any valid input
+   * into the plain Array<number> that the rest of the library expects.
+   */
+  function Reader(inputBuffer) { // Renamed parameter
+    if (!inputBuffer) {
       throw new MsgReaderError('No data provided to Reader');
     }
     
-    if (typeof arrayBuffer === 'string') {
+    if (typeof inputBuffer === 'string') {
       throw new MsgReaderError('Reader expects ArrayBuffer or Uint8Array, not string');
     }
-    
-    if (arrayBuffer instanceof Uint8Array) {
-      var arr = new Array(arrayBuffer.length);
-      for (var i = 0; i < arrayBuffer.length; i++) {
-        arr[i] = arrayBuffer[i];
-      }
-      arrayBuffer = arr;
+
+    var plainArray;
+
+    // BUG FIX: Convert ArrayBuffer or Uint8Array to the plain Array
+    // that the rest of the library expects.
+    if (inputBuffer instanceof ArrayBuffer) {
+        var view = new Uint8Array(inputBuffer);
+        plainArray = new Array(view.length);
+        for (var i = 0; i < view.length; i++) {
+            plainArray[i] = view[i];
+        }
+    } else if (inputBuffer instanceof Uint8Array) {
+        plainArray = new Array(inputBuffer.length);
+        for (var i = 0; i < inputBuffer.length; i++) {
+            plainArray[i] = inputBuffer[i];
+        }
+    } else if (Array.isArray(inputBuffer)) {
+        plainArray = inputBuffer; // Already a plain array
+    } else {
+        throw new MsgReaderError('Input data is not an ArrayBuffer, Uint8Array, or Array.');
     }
     
-    // B25: Validate array buffer contents
-    if (arrayBuffer.some(function(b) { return typeof b !== 'number' || b < 0 || b > 255; })) {
+    // B25: Validate array buffer contents (now checking plainArray)
+    if (plainArray.some(function(b) { return typeof b !== 'number' || b < 0 || b > 255; })) {
         throw new MsgReaderError('Input array buffer contains invalid byte values (must be 0-255).');
     }
 
-    this.arrayBuffer = arrayBuffer;
+    this.arrayBuffer = plainArray; // this.arrayBuffer is now a plain Array
   }
 
   var _proto = Reader.prototype;
