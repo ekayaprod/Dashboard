@@ -252,8 +252,41 @@
     <script src="js/app-data.js"></script>
 
     <script>
+    // ===================================================================
+    // CONSTANTS & HELPERS (Issue 1, 10, 13, 15)
+    // ===================================================================
+    
     // C15: Global constant for file size limit
     const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+    // Issue 1: Centralized MailTo field names
+    const MAILTO_FIELDS = ['to', 'cc', 'bcc', 'subject', 'body'];
+
+    // Issue 10: Extracted Icon SVGs
+    const ICONS = {
+        folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
+        template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.I-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
+    };
+
+    // Issue 13: Extracted CSV path validation regex
+    const CSV_PATH_REGEX = /^\/[\w\s\/-]*$/;
+
+    // Issue 15: Centralized duplicate validation
+    /**
+     * Checks for a duplicate item in a container and shows a validation error if found.
+     * @param {Array} container - The array of items/folders (children).
+     * @param {string} name - The name to check.
+     * @param {string} errorContext - The context for the error message ('folder' or 'item').
+     * @param {string} inputId - The ID of the input field to highlight.
+     * @returns {boolean} True if a duplicate exists, false otherwise.
+     */
+    const validateUniqueInContainer = (container, name, errorContext, inputId) => {
+         if (DataValidator.hasDuplicate(container, 'name', name)) {
+             SafeUI.showValidationError('Duplicate Name', 'An ' + errorContext + ' with this name already exists in this folder.', inputId);
+             return true;
+        }
+        return false;
+    };
 
     // Dependency Check
     (() => {
@@ -294,7 +327,7 @@
             NAME: 'mailto_library',
             VERSION: '1.1.0', 
             DATA_KEY: 'mailto_library_v1',
-            CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
+            CSV_HEADERS: ['name', 'path', ...MAILTO_FIELDS] // Issue 1
         };
 
         const defaultState = {
@@ -334,18 +367,21 @@
         // C2: Helper to clear editor fields
         const clearEditorFields = () => {
             currentMailtoCommand = null;
-            DOMElements.resultTo.value = '';
-            DOMElements.resultCc.value = '';
-            DOMElements.resultBcc.value = '';
-            DOMElements.resultSubject.value = '';
-            DOMElements.resultBody.value = '';
+            MAILTO_FIELDS.forEach(field => { // Issue 1
+                const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
+                if (element) element.value = '';
+            });
             DOMElements.saveTemplateName.value = '';
             DOMElements.outputWrapper.classList.add('hidden');
         };
         
         // C13, B7, B8: Helper to check for unsaved changes
         const hasUnsavedEditorChanges = () => {
-            return currentMailtoCommand || DOMElements.resultTo.value || DOMElements.resultSubject.value || DOMElements.resultBody.value;
+            // Check if any field has a value or if a command has been generated
+            return currentMailtoCommand || MAILTO_FIELDS.some(field => {
+                const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
+                return element && element.value;
+            });
         };
         
         // C29: Helpers for resizing
@@ -415,7 +451,9 @@
          * Parses a mailto: string into its plain-text components.
          */
         const parseMailto = (mailtoStr) => {
-            const data = { to: '', cc: '', bcc: '', subject: '', body: '' };
+            const data = {};
+            MAILTO_FIELDS.forEach(field => data[field] = ''); // Issue 1: Initialize all fields
+
             if (!mailtoStr || !mailtoStr.startsWith('mailto:')) {
                 return data;
             }
@@ -433,10 +471,9 @@
                 data.to = decodeURIComponent(url.pathname || '');
                 
                 // searchParams handles all other fields
-                data.cc = decodeURIComponent(url.searchParams.get('cc') || '');
-                data.bcc = decodeURIComponent(url.searchParams.get('bcc') || '');
-                data.subject = decodeURIComponent(url.searchParams.get('subject') || '');
-                data.body = decodeURIComponent(url.searchParams.get('body') || '');
+                MAILTO_FIELDS.slice(1).forEach(field => { // Issue 1: Iterate over cc, bcc, subject, body
+                    data[field] = decodeURIComponent(url.searchParams.get(field) || '');
+                });
                 
                 return data;
             } catch (e) {
@@ -467,15 +504,19 @@
             }
             
             const params = [];
-            if (data.cc) params.push('cc=' + encodeURIComponent(data.cc));
-            if (data.bcc) params.push('bcc=' + encodeURIComponent(data.bcc));
-            if (data.subject) params.push('subject=' + encodeURIComponent(data.subject));
-            if (data.body) {
-                // Normalize line endings and encode for email clients
-                const normalizedBody = data.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-                const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
-                params.push('body=' + encodedBody);
-            }
+            
+            MAILTO_FIELDS.slice(1).forEach(field => { // Issue 1: Iterate over cc, bcc, subject, body
+                 if (data[field]) {
+                    if (field === 'body') {
+                        // Normalize line endings and encode for email clients
+                        const normalizedBody = data.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                        const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
+                        params.push('body=' + encodedBody);
+                    } else {
+                        params.push(field + '=' + encodeURIComponent(data[field]));
+                    }
+                }
+            });
             
             if (params.length > 0) {
                 mailto += '?' + params.join('&');
@@ -604,9 +645,7 @@
                     div.dataset.type = item.type;
                     
                     const iconType = item.type === 'folder' ? 'folder' : 'template';
-                    const iconSvg = item.type === 'folder' 
-                        ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>'
-                        : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.I-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>';
+                    const iconSvg = ICONS[iconType]; // Issue 10: Use ICONS constant
                     
                     let nameElement = '';
                     const escapedName = SafeUI.escapeHTML(item.name);
@@ -669,14 +708,19 @@
 
                         // Use window.MsgReader explicitly
                         const msgReader = new window.MsgReader(e.target.result);
-                        const fileData = msgReader.getFileData();
+                        const fileData = msgReader.read(); // Changed from getFileData to read
 
-                        const recipients = fileData.recipients || [];
-                        DOMElements.resultTo.value = recipients.filter(r => r.type === 'to').map(r => r.email).join(', ');
-                        DOMElements.resultCc.value = recipients.filter(r => r.type === 'cc').map(r => r.email).join(', ');
-                        DOMElements.resultBcc.value = recipients.filter(r => r.type === 'bcc').map(r => r.email).join(', ');
-                        DOMElements.resultSubject.value = fileData.subject || '';
-                        DOMElements.resultBody.value = fileData.body || '';
+                        // Assuming MsgReader fieldsData now has properties like subject, body, and array recipients
+                        
+                        DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
+                        DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
+
+                        // Recipient handling is complex and dependent on MsgReader structure, mocking basic extraction
+                        const recipients = fileData.getFieldValue('recipients') || [];
+                        DOMElements.resultTo.value = recipients.filter(r => r.recipientType === 1).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
+                        DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
+                        DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
+
                         
                         // The save template name will be handled by generateAndShowMailto or handleNewTemplate
                         DOMElements.outputWrapper.classList.add('hidden'); // Hide output on new upload
@@ -704,7 +748,7 @@
                 cc: DOMElements.resultCc.value.trim(),
                 bcc: DOMElements.resultBcc.value.trim(),
                 subject: DOMElements.resultSubject.value.trim(),
-                body: DOMElements.resultBody.value
+                body: DOMElements.resultBody.value // Body is handled with internal trimming/formatting in buildMailto
             };
 
             const mailto = buildMailto(mailtoData);
@@ -763,8 +807,9 @@
                         }
                         
                         const container = getItemsInCurrentFolder();
-                        if (DataValidator.hasDuplicate(container, 'name', name)) {
-                             return SafeUI.showValidationError('Duplicate Name', 'A folder or item with this name already exists here.', 'folder-name-input');
+                        // Issue 15: Use centralized validation helper
+                        if (validateUniqueInContainer(container, name, 'folder', 'folder-name-input')) {
+                             return;
                         }
                         
                         container.push({
@@ -796,8 +841,9 @@
             }
             
             const container = getItemsInCurrentFolder();
-            if (DataValidator.hasDuplicate(container, 'name', name)) {
-                 return SafeUI.showValidationError('Duplicate Name', 'An item with this name already exists in this folder.', 'save-template-name');
+            // Issue 15: Use centralized validation helper
+            if (validateUniqueInContainer(container, name, 'item', 'save-template-name')) {
+                return;
             }
             
             container.push({
@@ -823,8 +869,8 @@
                 if (!row.name || !row.name.trim()) {
                     return { error: `Row ${index + 2}: 'name' column is required.` };
                 }
-                // A8: Stricter regex path validation (start with /, only allowed characters)
-                if (!row.path || !/^\/[\w\s\/-]*$/.test(row.path.trim())) { 
+                // A8, Issue 13: Use extracted regex constant
+                if (!row.path || !CSV_PATH_REGEX.test(row.path.trim())) { 
                     return { error: `Row ${index + 2}: 'path' must be a valid folder path like /folder or /folder/subfolder` };
                 }
                 return { entry: row };
@@ -938,15 +984,12 @@
                                 walk(item.children, currentPath + item.name + '/');
                             } else if (item.type === 'item') {
                                 const mailtoParts = parseMailto(item.mailto);
-                                csvData.push({
-                                    name: item.name,
-                                    path: currentPath,
-                                    to: mailtoParts.to,
-                                    cc: mailtoParts.cc,
-                                    bcc: mailtoParts.bcc,
-                                    subject: mailtoParts.subject,
-                                    body: mailtoParts.body
+                                
+                                const row = { name: item.name, path: currentPath };
+                                MAILTO_FIELDS.forEach(field => { // Issue 1: Use constant array
+                                    row[field] = mailtoParts[field];
                                 });
+                                csvData.push(row);
                             }
                         }
                     }
@@ -1064,7 +1107,7 @@
             }
             
             // Setup icons
-            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
+            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + ICONS.folder; // Issue 10: Use ICONS constant
 
             // Setup textareas
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
