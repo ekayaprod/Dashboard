@@ -252,7 +252,12 @@ const UIUtils = (() => {
         const save = (state) => {
             try {
                 state.version = version;
-                localStorage.setItem(key, JSON.stringify(state));
+                const serialized = JSON.stringify(state);
+                // DEBUG: Log save attempts
+                console.log('Saving state to localStorage:', key, serialized.length, 'chars');
+                localStorage.setItem(key, serialized);
+                console.log('Save successful');
+                // End DEBUG
             } catch (err) {
                 console.error("Failed to save state:", err);
                 _showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{ label: 'OK' }]);
@@ -526,13 +531,17 @@ const AppLifecycle = (() => {
 
     // This listener handles silent saving for navigation, tab closing, etc.
     window.addEventListener('pagehide', () => {
+        // DEBUG: Log pagehide saves
+        console.log('Page hiding, running save functions:', onExitSaveFunctions.length);
         onExitSaveFunctions.forEach(fn => {
             try {
                 fn();
+                console.log('Save function executed successfully');
             } catch (e) {
                 console.error("Error during pagehide save function:", e);
             }
         });
+        // End DEBUG
     });
 
     // This listener handles the user prompt (e.g., "Discard changes?")
