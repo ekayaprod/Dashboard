@@ -95,6 +95,38 @@
         .list-item-actions {
             flex-shrink: 0;
         }
+        
+        /* --- Move Modal Styles --- */
+        .move-folder-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+        }
+        .move-folder-item {
+            padding: 0.6rem 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .move-folder-item:last-child {
+            border-bottom: none;
+        }
+        .move-folder-item:hover {
+            background-color: var(--info-bg);
+        }
+        .move-folder-item.disabled {
+            opacity: 0.5;
+            background-color: var(--bg-color);
+            cursor: not-allowed;
+        }
 
         /* --- Breadcrumb Styles --- */
         .breadcrumb-container {
@@ -249,8 +281,6 @@
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
 
-    <!-- REFACTOR: Removed placeholder <script> tag comment -->
-
     <script>
     // ===================================================================
     // CONSTANTS & HELPERS (Issue 1, 10, 13, 15)
@@ -265,7 +295,10 @@
     // Issue 10: Extracted Icon SVGs
     const ICONS = {
         folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
-        template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.I-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
+        /* * BUG FIX 1: Corrected SVG path data. 
+         * The string ".I-" was replaced with ".79l-" to fix the syntax error.
+         */
+        template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79l-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
     };
 
     // Issue 13: Extracted CSV path validation regex
@@ -346,7 +379,6 @@
                 'catalogue-view', 'editor-view', 
                 'btn-new-template', 'btn-new-folder', 
                 'btn-settings', 
-                /* REFACTOR: Removed 'btn-import-csv', 'btn-export-csv' */
                 'breadcrumb-container', 'tree-list-container', 
                 'btn-editor-cancel', 'btn-generate', 
                 'upload-wrapper', 'msg-upload', 
@@ -356,7 +388,6 @@
             ]
         });
     
-        // A7: Ensure context and elements object are valid
         if (!ctx || !ctx.elements) {
             console.error('AppLifecycle failed to initialize context or DOM elements.');
             return;
@@ -366,10 +397,9 @@
         let currentFolderId = 'root'; 
         let currentMailtoCommand = null; 
 
-        // C2: Helper to clear editor fields
         const clearEditorFields = () => {
             currentMailtoCommand = null;
-            MAILTO_FIELDS.forEach(field => { // Issue 1
+            MAILTO_FIELDS.forEach(field => { 
                 const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
                 if (element) element.value = '';
             });
@@ -377,33 +407,26 @@
             DOMElements.outputWrapper.classList.add('hidden');
         };
         
-        // C13, B7, B8: Helper to check for unsaved changes
         const hasUnsavedEditorChanges = () => {
-            // Check if any field has a value or if a command has been generated
             return currentMailtoCommand || MAILTO_FIELDS.some(field => {
                 const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
                 return element && element.value;
             });
         };
         
-        // C29: Helpers for resizing
         const resizeResultBody = () => DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
         const resizeResultMailto = () => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
 
-        // C28, A10: Helper for navigation
         const navigateToFolder = (id) => {
             currentFolderId = id;
             renderCatalogue();
         };
 
-        // C6: Helper to generate modal content for new folder
         const createFolderModalHTML = () => {
             return '<input id="folder-name-input" class="sidebar-input" placeholder="Folder Name">';
         };
 
-        // C4: Extracted handler for list item copy button
         const handleTreeItemCopy = (item, copyBtn) => {
-            // B6: Stricter validation for dataset value
             const mailtoCommand = copyBtn.dataset.mailto;
             if (mailtoCommand && mailtoCommand !== 'undefined' && mailtoCommand !== 'null') {
                 SafeUI.copyToClipboard(mailtoCommand);
@@ -413,20 +436,104 @@
             }
         };
 
-        // C4: Extracted handler for list item delete button
+        // REFACTOR: Modified to find the item's parent container for deletion
         const handleTreeItemDelete = (id, item) => {
             UIPatterns.confirmDelete(item.type, item.name, () => {
-                const container = getItemsInCurrentFolder();
-                const index = container.findIndex(i => i.id === id);
-                if (index > -1) {
-                    container.splice(index, 1);
-                    saveState();
-                    renderCatalogue();
+                // Find the parent container (folder) of the item to delete it
+                const parent = findParentOfItem(id);
+                if (parent) {
+                    const index = parent.children.findIndex(i => i.id === id);
+                    if (index > -1) {
+                        parent.children.splice(index, 1);
+                        saveState();
+                        renderCatalogue();
+                    }
                 }
             });
         };
+        
+        // NEW FEATURE: Handle moving a template
+        const handleTreeItemMove = (id, item) => {
+            // 1. Generate list of possible target folders
+            const folders = [];
+            // Helper to recursively find folders
+            function findFolders(container, path, currentFolderId) {
+                // Add current folder
+                folders.push({
+                    id: currentFolderId,
+                    name: path,
+                    disabled: currentFolderId === findParentOfItem(id)?.id // Disable moving to current folder
+                });
+                // Find subfolders
+                container.forEach(i => {
+                    if (i.type === 'folder') {
+                        findFolders(i.children, path + i.name + '/', i.id);
+                    }
+                });
+            }
+            
+            // Find all folders starting from root
+            findFolders(state.library, '/', 'root');
 
-        // C26: Named handlers for drag-and-drop
+            // 2. Build Modal HTML
+            const folderListHtml = folders.map(folder => `
+                <li class="move-folder-item ${folder.disabled ? 'disabled' : ''}" data-folder-id="${SafeUI.escapeHTML(folder.id)}">
+                    ${ICONS.folder} ${SafeUI.escapeHTML(folder.name)}
+                </li>
+            `).join('');
+
+            const modalHtml = `
+                <p>Move "<strong>${SafeUI.escapeHTML(item.name)}</strong>" to:</p>
+                <ul class="move-folder-list">
+                    ${folderListHtml}
+                </ul>
+            `;
+            
+            // 3. Show Modal
+            SafeUI.showModal('Move Template', modalHtml, [{ label: 'Cancel' }]);
+            
+            // 4. Add listeners to the new folder list
+            document.querySelector('.move-folder-list').addEventListener('click', (e) => {
+                const targetFolderEl = e.target.closest('.move-folder-item');
+                if (!targetFolderEl || targetFolderEl.classList.contains('disabled')) {
+                    return;
+                }
+                
+                const targetFolderId = targetFolderEl.dataset.folderId;
+                
+                // Find item's original parent and remove it
+                const originalParent = findParentOfItem(id);
+                if (!originalParent) return; // Should not happen
+                
+                const itemIndex = originalParent.children.findIndex(i => i.id === id);
+                if (itemIndex === -1) return;
+                
+                // Remove item and get a reference to it
+                const [itemToMove] = originalParent.children.splice(itemIndex, 1);
+                
+                // Find new parent and add it
+                let newParentContainer;
+                if (targetFolderId === 'root') {
+                    newParentContainer = state.library;
+                } else {
+                    newParentContainer = findItemById(targetFolderId)?.children;
+                }
+                
+                if (!newParentContainer) {
+                    // Failsafe: put it back
+                    originalParent.children.splice(itemIndex, 0, itemToMove);
+                    return;
+                }
+                
+                newParentContainer.push(itemToMove);
+                
+                saveState();
+                renderCatalogue();
+                SafeUI.hideModal();
+                SafeUI.showToast('Template moved!');
+            });
+        };
+
         const handleDragEnterOver = (e) => {
             e.preventDefault();
             DOMElements.uploadWrapper.classList.add('dragover');
@@ -439,7 +546,7 @@
 
         const handleDrop = (e) => {
             e.preventDefault();
-            DOMElements.uploadWrapper.classList.remove('dragover'); // Remove dragover class
+            DOMElements.uploadWrapper.classList.remove('dragover'); 
             const files = e.dataTransfer.files;
             if (files && files.length > 0) handleFile(files[0]);
         };
@@ -449,57 +556,40 @@
         // CORE DATA FUNCTIONS
         // ===================================================================
 
-        /**
-         * Parses a mailto: string into its plain-text components.
-         */
         const parseMailto = (mailtoStr) => {
             const data = {};
-            MAILTO_FIELDS.forEach(field => data[field] = ''); // Issue 1: Initialize all fields
+            MAILTO_FIELDS.forEach(field => data[field] = ''); 
 
             if (!mailtoStr || !mailtoStr.startsWith('mailto:')) {
                 return data;
             }
             
-            // A3: Validate basic mailto structure before attempting URL constructor
             if (!/^mailto:[^\s]*/.test(mailtoStr)) {
                 return data;
             }
 
             try {
-                // Use new URL() for robust parsing. Replace spaces to avoid errors.
                 const url = new URL(mailtoStr.replace(/ /g, '%20'));
-                
-                // pathname holds the 'to' address
                 data.to = decodeURIComponent(url.pathname || '');
-                
-                // searchParams handles all other fields
-                MAILTO_FIELDS.slice(1).forEach(field => { // Issue 1: Iterate over cc, bcc, subject, body
+                MAILTO_FIELDS.slice(1).forEach(field => { 
                     data[field] = decodeURIComponent(url.searchParams.get(field) || '');
                 });
-                
                 return data;
             } catch (e) {
                 console.warn("Mailto string parsing failed:", mailtoStr, e);
-                // B1: Fallback logic fix. If '?' exists, we can't safely assign to 'to' field.
                 if (mailtoStr.indexOf('?') === -1) {
-                     // B10: Decode the 'to' part in the fallback path
                      try { 
                         data.to = decodeURIComponent(mailtoStr.substring(7)); 
                      } catch { 
                         data.to = mailtoStr.substring(7);
                      }
                 }
-                // If the URL constructor fails AND there are query parameters, return corrupted data empty.
                 return data;
             }
         };
 
-        /**
-         * Builds a mailto: string from plain-text components.
-         */
         const buildMailto = (data) => {
             let mailto = 'mailto:';
-            // B1: Handle multiple recipients correctly (comma-separated list for most clients)
             if (data.to) {
                 const recipients = data.to.split(',').map(r => r.trim()).filter(Boolean);
                 mailto += recipients.map(r => encodeURIComponent(r)).join(',');
@@ -507,10 +597,9 @@
             
             const params = [];
             
-            MAILTO_FIELDS.slice(1).forEach(field => { // Issue 1: Iterate over cc, bcc, subject, body
+            MAILTO_FIELDS.slice(1).forEach(field => { 
                  if (data[field]) {
                     if (field === 'body') {
-                        // Normalize line endings and encode for email clients
                         const normalizedBody = data.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
                         const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
                         params.push('body=' + encodedBody);
@@ -526,25 +615,40 @@
             return mailto;
         };
 
-
-        // A5: Recursive search for an item/folder in the tree with circular reference protection
         const findItemById = (id, items = state.library, visited = new Set()) => {
             if (id === 'root') return { id: 'root', name: 'Root', children: state.library, path: '/' };
             for (const item of items) {
-                // A5: Circular reference protection
                 if (visited.has(item.id)) continue; 
                 visited.add(item.id); 
 
                 if (item.id === id) return item;
                 if (item.type === 'folder' && item.children) {
-                    const found = findItemById(id, item.children, visited); // Pass set to recursive call
+                    const found = findItemById(id, item.children, visited); 
                     if (found) return found;
                 }
             }
             return null;
         };
         
-        // Get children of the current folder
+        // NEW FEATURE: Helper to find the parent object of an item
+        const findParentOfItem = (childId, parent = { id: 'root', children: state.library }, visited = new Set()) => {
+            if (visited.has(parent.id)) return null;
+            visited.add(parent.id);
+            
+            if (parent.children) {
+                if (parent.children.some(child => child.id === childId)) {
+                    return parent;
+                }
+                for (const item of parent.children) {
+                    if (item.type === 'folder') {
+                        const foundParent = findParentOfItem(childId, item, visited);
+                        if (foundParent) return foundParent;
+                    }
+                }
+            }
+            return null;
+        };
+        
         const getItemsInCurrentFolder = () => {
             if (currentFolderId === 'root') {
                 return state.library;
@@ -553,23 +657,19 @@
             return folder ? folder.children : [];
         };
 
-        // A4: Generate breadcrumb path (iterative with loop protection)
         const getBreadcrumbPath = (folderId) => {
             if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
 
             const path = [];
             let targetItem = null;
             
-            // A4: Circular reference and iteration protection
             const visitedIds = new Set(); 
             let iterations = 0; 
-            const maxIterations = state.library.length * 10; // Simple heuristic limit
+            const maxIterations = state.library.length * 10; 
 
-            // Stack for iterative depth-first search
             const stack = state.library.map(item => [item, []]);
 
             while (stack.length > 0) {
-                 // A4: Check iteration limit
                 if (++iterations > maxIterations) { 
                     console.error("Breadcrumb path generation exceeded max iterations, circular reference suspected.");
                     break; 
@@ -577,7 +677,7 @@
 
                 const [currentItem, parentPath] = stack.pop();
                 
-                if (visitedIds.has(currentItem.id)) continue; // Check if already visited in this path search
+                if (visitedIds.has(currentItem.id)) continue; 
                 visitedIds.add(currentItem.id);
 
                 const currentPath = [...parentPath, { id: currentItem.id, name: currentItem.name }];
@@ -595,7 +695,6 @@
                 }
             }
             
-            // Always prepend Root
             path.unshift({ id: 'root', name: 'Root' });
             return path;
         };
@@ -605,7 +704,6 @@
         // RENDER & VIEW FUNCTIONS
         // ===================================================================
 
-        // C18: Refactored breadcrumb rendering
         const renderBreadcrumbs = (path) => {
             const html = path.map((part, index) => {
                 const escapedId = SafeUI.escapeHTML(part.id);
@@ -622,17 +720,13 @@
 
         // Main Render Function
         const renderCatalogue = () => {
-            // Render Breadcrumbs (C18)
             const path = getBreadcrumbPath(currentFolderId);
             renderBreadcrumbs(path);
 
-            // Render List
             const items = getItemsInCurrentFolder();
-            // Sort folders first, then items, alphabetically
             const sortedItems = [...items].sort((a, b) => {
                 if (a.type === 'folder' && b.type !== 'folder') return -1;
                 if (a.type !== 'folder' && b.type === 'folder') return 1;
-                // B5: Null/undefined name safety
                 return (a.name || '').localeCompare(b.name || '');
             });
             
@@ -647,7 +741,7 @@
                     div.dataset.type = item.type;
                     
                     const iconType = item.type === 'folder' ? 'folder' : 'template';
-                    const iconSvg = ICONS[iconType]; // Issue 10: Use ICONS constant
+                    const iconSvg = ICONS[iconType]; 
                     
                     let nameElement = '';
                     const escapedName = SafeUI.escapeHTML(item.name);
@@ -659,11 +753,16 @@
                         nameElement = `<a href="${escapedMailto}" class="list-item-name" title="Launch: ${escapedName}">${escapedName}</a>`;
                     }
 
+                    // NEW FEATURE: Added Move button
+                    const moveButton = item.type === 'item' ? 
+                        `<button class="icon-btn move-btn" title="Move to...">${SVGIcons.pencil}</button>` : '';
+
                     div.innerHTML = `
                         <div class="list-item-icon ${iconType}">${iconSvg}</div>
                         ${nameElement}
                         <div class="list-item-actions">
                             ${item.type === 'item' ? `<button class="icon-btn copy-btn" title="Copy mailto: command" data-mailto="${SafeUI.escapeHTML(item.mailto)}">${SafeUI.SVGIcons.copy}</button>` : ''}
+                            ${moveButton}
                             <button class="icon-btn delete-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
                         </div>
                     `;
@@ -672,7 +771,6 @@
             });
         };
 
-        // View Switching
         const showView = (viewName) => {
             DOMElements.catalogueView.classList.toggle('active', viewName === 'catalogue');
             DOMElements.editorView.classList.toggle('active', viewName === 'editor');
@@ -683,58 +781,52 @@
         // ===================================================================
 
         const handleFile = (file) => {
-            try { // A6: Error boundary
+            try { 
                 if (!file) {
                     return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
                 }
-                // B2/C15: Validate file size before reading
                 if (file.size > MAX_FILE_SIZE_BYTES) { 
                     return SafeUI.showModal('File Too Large', '<p>File must be under 10MB.</p>', [{label: 'OK'}]); 
                 }
 
-                // Validate file type
                 if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft')) {
                     return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg</strong> or <strong>.oft</strong> file.</p>', [{label: 'OK'}]);
                 }
                 
-                // B4/C2: Clear previous data
                 clearEditorFields();
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
-                        // REFACTOR: Check for MsgReader.read as a function
                         if (!window.MsgReader || typeof window.MsgReader.read !== 'function') { 
                             throw new Error('MsgReader library not loaded or invalid.'); 
                         } 
 
-                        // REFACTOR: Call MsgReader.read() static method
-                        const fileData = window.MsgReader.read(e.target.result); 
+                        /* * BUG FIX 2: Convert ArrayBuffer to Uint8Array.
+                         * e.target.result is an ArrayBuffer, but msgreader.js expects
+                         * a Uint8Array or a plain Array.
+                         */
+                        const fileData = window.MsgReader.read(new Uint8Array(e.target.result)); 
 
-                        // Assuming MsgReader fieldsData now has properties like subject, body, and array recipients
-                        
                         DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
                         DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
 
-                        // Recipient handling is complex and dependent on MsgReader structure, mocking basic extraction
                         const recipients = fileData.getFieldValue('recipients') || [];
                         DOMElements.resultTo.value = recipients.filter(r => r.recipientType === 1).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
                         DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
                         DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
 
                         
-                        // The save template name will be handled by generateAndShowMailto or handleNewTemplate
-                        DOMElements.outputWrapper.classList.add('hidden'); // Hide output on new upload
+                        DOMElements.outputWrapper.classList.add('hidden'); 
                         setTimeout(() => resizeResultBody(), 0);
                     } catch (err) {
                         console.error('File parsing error:', err);
-                        // A1: The error propagation hazard. Re-throw here relies on outer promise/global handler.
-                        throw new Error(`Failed to parse file: ${err.message}`);
+                        SafeUI.showModal('File Error', `<p>Failed to parse file: ${err.message}</p>`, [{label: 'OK'}]);
+                        // Do not re-throw, just show modal to user.
                     }
                 };
                 reader.onerror = () => {
-                    // A1: This error is correctly thrown to rely on outer promise/global handler.
-                    throw new Error('File reading failed. Could not access file content.');
+                    SafeUI.showModal('File Error', '<p>File reading failed. Could not access file content.</p>', [{label: 'OK'}]);
                 };
                 reader.readAsArrayBuffer(file);
             } catch (e) {
@@ -749,17 +841,16 @@
                 cc: DOMElements.resultCc.value.trim(),
                 bcc: DOMElements.resultBcc.value.trim(),
                 subject: DOMElements.resultSubject.value.trim(),
-                body: DOMElements.resultBody.value // Body is handled with internal trimming/formatting in buildMailto
+                body: DOMElements.resultBody.value 
             };
 
             const mailto = buildMailto(mailtoData);
 
-            currentMailtoCommand = mailto; // Save for library
+            currentMailtoCommand = mailto; 
             DOMElements.resultMailto.value = mailto;
             DOMElements.resultLink.href = mailto;
             DOMElements.outputWrapper.classList.remove('hidden');
             
-            // B3: Auto-fill template name only if truly empty (not just whitespace)
             const templateNameValue = DOMElements.saveTemplateName.value;
             if (!templateNameValue.trim() && !templateNameValue) {
                  DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
@@ -773,32 +864,28 @@
         // ===================================================================
         
         const handleNewTemplate = () => {
-             // B7/C13: Confirm if user has unsaved work
             if (hasUnsavedEditorChanges()) {
-                // A3: This relies on UIPatterns.confirmUnsavedChanges executing its callback
                 UIPatterns.confirmUnsavedChanges(() => {
-                    clearEditorFields(); // C2
-                    resizeResultBody(); // C29
+                    clearEditorFields(); 
+                    resizeResultBody(); 
                     showView('editor');
                 });
                 return;
             }
 
-            // Reset editor
-            clearEditorFields(); // C2
-            resizeResultBody(); // C29
+            clearEditorFields(); 
+            resizeResultBody(); 
             showView('editor');
         };
         
         const handleNewFolder = () => {
-            SafeUI.showModal('New Folder', createFolderModalHTML(), [ // C6: Use helper function
+            SafeUI.showModal('New Folder', createFolderModalHTML(), [ 
                 {label: 'Cancel'},
                 {label: 'Create', class: 'button-primary', callback: () => {
-                    try { // A6: Error boundary for new folder creation logic
+                    try { 
                         const nameInput = document.getElementById('folder-name-input');
                         const name = nameInput.value.trim();
                         
-                        // B2: Validation for path separators (critical for path integrity)
                         if (name.includes('/') || name.includes('\\')) {
                              return SafeUI.showValidationError('Invalid Name', 'Folder name cannot contain path separators (/, \\).', 'folder-name-input');
                         }
@@ -808,7 +895,6 @@
                         }
                         
                         const container = getItemsInCurrentFolder();
-                        // Issue 15: Use centralized validation helper
                         if (validateUniqueInContainer(container, name, 'folder', 'folder-name-input')) {
                              return;
                         }
@@ -830,7 +916,6 @@
         };
         
         const handleSaveToLibrary = () => {
-            // B3: Check if command has been generated
             if (!currentMailtoCommand) {
                 SafeUI.showValidationError('No Command Generated', 'Click "Generate Command" first.', 'btn-generate');
                 return;
@@ -842,7 +927,6 @@
             }
             
             const container = getItemsInCurrentFolder();
-            // Issue 15: Use centralized validation helper
             if (validateUniqueInContainer(container, name, 'item', 'save-template-name')) {
                 return;
             }
@@ -863,21 +947,13 @@
         // DATA MANAGEMENT HANDLERS (CSV)
         // ===================================================================
         
-        // REFACTOR: This entire `setupCsvImport` function will be moved
-        // into the new `setupSettingsModal` function.
-        
-
-        // REFACTOR: This new function replaces the old settings init
         const setupSettingsModal = () => {
-            // 1. Define page-specific HTML (for CSV buttons)
             const pageDataHtml = `
                 <button id="modal-export-csv-btn" class="button-base">Export Library (CSV)</button>
                 <button id="modal-import-csv-btn" class="button-base">Import Library (CSV)</button>
             `;
 
-            // 2. Define page-specific "open" callback (to wire up buttons)
             const onModalOpen = () => {
-                // Wire up CSV Export
                 CsvManager.setupExport({
                     exportBtn: document.getElementById('modal-export-csv-btn'),
                     headers: APP_CONFIG.CSV_HEADERS,
@@ -905,7 +981,6 @@
                     filename: `${APP_CONFIG.NAME}-export.csv`
                 });
                 
-                // Wire up CSV Import
                 const validateCsvRow = (row, index) => {
                     if (!row.name || !row.name.trim()) {
                         return { error: `Row ${index + 2}: 'name' column is required.` };
@@ -948,11 +1023,11 @@
                                 }
                                 if (importedCount > 0) { saveState(); renderCatalogue(); }
                                 SafeUI.showToast(`Import complete. Added ${importedCount}, skipped ${skippedCount}.`);
-                                SafeUI.hideModal(); // Close settings modal
+                                SafeUI.hideModal(); 
                             }
                         }
                     ]);
-                    return false; // Prevent modal from closing
+                    return false; 
                 };
                 CsvManager.setupImport({
                     importBtn: document.getElementById('modal-import-csv-btn'),
@@ -962,7 +1037,6 @@
                 });
             };
 
-            // 3. Define page-specific "restore" callback
             const onRestore = (dataToRestore) => {
                 state.library = dataToRestore.library || [];
                 currentFolderId = 'root';
@@ -970,7 +1044,6 @@
                 renderCatalogue();
             };
 
-            // 4. Initialize the shared modal
             window.SharedSettingsModal.init({
                 buttonId: 'btn-settings',
                 appName: APP_CONFIG.NAME,
@@ -990,20 +1063,14 @@
         // ===================================================================
 
         const attachEventListeners = () => {
-            // REFACTOR: Replaced old modal init with new setup function call
             setupSettingsModal();
 
             // Catalogue View
             DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
             DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
             
-            // REFACTOR: Removed CsvManager.setupExport
-            
-            // REFACTOR: Removed setupCsvImport() call
-            
             // Editor View
             DOMElements.btnEditorCancel.addEventListener('click', () => {
-                // B8/C13: Warn about unsaved changes
                 if (hasUnsavedEditorChanges()) {
                     UIPatterns.confirmUnsavedChanges(() => {
                         showView('catalogue');
@@ -1018,7 +1085,6 @@
             DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
             DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
             
-            // B6: Copy button validation for the main editor output
             DOMElements.copyMailtoBtn.addEventListener('click', async () => {
                 if (!currentMailtoCommand) {
                     SafeUI.showToast('No command to copy'); 
@@ -1043,18 +1109,17 @@
                 const itemEl = e.target.closest('.list-item');
                 if (!itemEl) return;
                 
-                // If user clicks the main link, let the browser handle it.
                 if (e.target.closest('.list-item-name')) {
                     return; 
                 }
                 
-                e.preventDefault(); // For any other click (buttons, folder icons)
+                e.preventDefault(); 
 
                 const id = itemEl.dataset.id;
-                const item = getItemsInCurrentFolder().find(i => i.id === id);
+                // REFACTOR: Use findItemById to search the whole tree, not just current folder
+                const item = findItemById(id); 
                 if (!item) return;
 
-                // Handle folder name click (navigation)
                 if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
                     if (item.type === 'folder') {
                         navigateToFolder(item.id); 
@@ -1062,14 +1127,19 @@
                     return;
                 }
 
-                // C4: Handle Copy Button
                 const copyBtn = e.target.closest('.copy-btn');
                 if (copyBtn) {
                     handleTreeItemCopy(item, copyBtn);
                     return;
                 }
                 
-                // C4: Handle Delete Button
+                // NEW FEATURE: Handle Move Button
+                const moveBtn = e.target.closest('.move-btn');
+                if (moveBtn) {
+                    handleTreeItemMove(id, item);
+                    return;
+                }
+                
                 if (e.target.closest('.delete-btn')) {
                     handleTreeItemDelete(id, item);
                     return; 
@@ -1080,12 +1150,11 @@
                  const link = e.target.closest('.breadcrumb-link');
                  if (link && link.dataset.id) {
                      const targetId = link.dataset.id;
-                     // A10: Validate folder existence before navigating
                      if (targetId === 'root' || findItemById(targetId)) { 
-                         navigateToFolder(targetId); // C28
+                         navigateToFolder(targetId); 
                      } else {
                          console.warn('Folder not found, returning to root');
-                         navigateToFolder('root'); // C28
+                         navigateToFolder('root'); 
                      }
                  }
             });
@@ -1093,7 +1162,6 @@
 
         // Init
         const init = () => {
-            // A9: Critical state validation/reset
             if (!state.library || !Array.isArray(state.library)) { 
                 console.error('State corrupted, resetting library'); 
                 state.library = []; 
@@ -1101,7 +1169,7 @@
             }
             
             // Setup icons
-            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + ICONS.folder; // Issue 10: Use ICONS constant
+            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + ICONS.folder; 
 
             // Setup textareas
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
