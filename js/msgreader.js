@@ -300,24 +300,24 @@ var OleCompoundDoc = function () {
     readValidated(file, HEADER_CLSID_SIZE, 'header CLSID'); 
 
     d = readValidated(file, USHORT_SIZE, 'header minor version');
-    header.uMinorVersion = d[0];
+    header.uMinorVersion = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
 
     d = readValidated(file, USHORT_SIZE, 'header major version');
-    header.uMajorVersion = d[0];
+    header.uMajorVersion = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
     
     if (header.uMajorVersion !== 3 && header.uMajorVersion !== 4) {
       throw new CorruptFileError('Unsupported OLE version: ' + header.uMajorVersion);
     }
     
     d = readValidated(file, USHORT_SIZE, 'header byte order');
-    header.uByteOrder = d[0];
+    header.uByteOrder = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
     
     if (header.uByteOrder !== 0xFFFE) {
       throw new CorruptFileError('Invalid byte order marker');
     }
     
     d = readValidated(file, USHORT_SIZE, 'header sector shift');
-    header.uSectorShift = d[0];
+    header.uSectorShift = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
     
     // B1: Restrict sector shift to standard 512/4096 bytes (9 or 12)
     if (header.uSectorShift !== 9 && header.uSectorShift !== 12) {
@@ -327,7 +327,7 @@ var OleCompoundDoc = function () {
     header.uSectorSize = 1 << header.uSectorShift;
     
     d = readValidated(file, USHORT_SIZE, 'header mini sector shift');
-    header.uMiniSectorShift = d[0];
+    header.uMiniSectorShift = d[0] | (d[1] << 8); // BUG FIX: Was d[0]
     
     if (header.uMiniSectorShift < 6 || header.uMiniSectorShift > header.uSectorShift) {
       throw new CorruptFileError('Invalid mini sector shift: ' + header.uMiniSectorShift);
