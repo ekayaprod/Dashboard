@@ -860,6 +860,26 @@ var OleCompoundDoc = function () {
     var sectorsChain;
     var sectorSize;
     var useMiniFat = streamSize < header.ulMiniSectorCutoff;
+    
+    // 2. MiniFAT sector chain reading safety hazard fix: Pre-calculate mini stream sectors
+    var miniStreamSectors = null;
+    var rootStream = this.rootStreamEntry; 
+
+    if (useMiniFat) {
+        if (!rootStream) {
+            throw new CorruptFileError("Root Entry not found for MiniFAT access");
+        }
+        // Cache the MiniFAT sectors chain read once, outside the loop
+        miniStreamSectors = this.readSectorsFromSAT(
+            fat, 
+            Math.ceil(rootStream.size / header.uSectorSize), 
+            rootStream.sectStart
+        );
+        if (miniStreamSectors.length === 0) {
+          throw new CorruptFileError('Mini stream sectors not found');
+        }
+    }
+
 
     try {
       if (!useMiniFat) {
@@ -876,22 +896,13 @@ var OleCompoundDoc = function () {
         sectorsChain = miniFat;
         sectorSize = header.uMiniSectorSize;
         
-        var rootStream = this.rootStreamEntry; 
-        if (!rootStream) {
-          throw new CorruptFileError("Root Entry not found");
-        }
-        
+        // Use cached miniStreamSectors and rootStream
+
         // B20: Validate sector index for mini stream
         if (sector > 100000) { 
             throw new CorruptFileError('Mini stream sector number too large: ' + sector); 
         }
 
-        var miniStreamSectors = this.readSectorsFromSAT(fat, Math.ceil(rootStream.size / header.uSectorSize), rootStream.sectStart);
-        
-        if (miniStreamSectors.length === 0) {
-          throw new CorruptFileError('Mini stream sectors not found');
-        }
-        
         var sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
         var offsetInMiniStream = (sector * sectorSize) % header.uSectorSize;
         
@@ -964,22 +975,17 @@ var OleCompoundDoc = function () {
               }
               file.seek(_offset2);
             } else {
-              var _rootStream = this.rootStreamEntry;
-              if (!_rootStream) {
-                throw new CorruptFileError("Root Entry not found");
-              }
-              
-              var _miniStreamSectors = this.readSectorsFromSAT(fat, Math.ceil(_rootStream.size / header.uSectorSize), _rootStream.sectStart);
+              // Use cached rootStream
               
               var _sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
               var _offsetInMiniStream = (sector * sectorSize) % header.uSectorSize;
               
-              if (_sectorInMiniStream >= _miniStreamSectors.length) {
+              if (_sectorInMiniStream >= miniStreamSectors.length) { // Use cached miniStreamSectors
                 console.warn('Mini stream sector index out of bounds, truncating');
                 break;
               }
               
-              var _actualOffset = 512 + _miniStreamSectors[_sectorInMiniStream] * header.uSectorSize + _offsetInMiniStream;
+              var _actualOffset = 512 + miniStreamSectors[_sectorInMiniStream] * header.uSectorSize + _offsetInMiniStream; // Use cached miniStreamSectors
               
               if (_actualOffset >= file.arrayBuffer.length) {
                 console.warn('Mini stream offset points beyond file boundary, truncating');
@@ -1028,11 +1034,12 @@ var OleCompoundDoc = function () {
         return;
       }
       
-      var d = content.splice(0, 2);
-      d = content.splice(0, 2);
-      d = content.splice(0, 2);
-      d = content.splice(0, 2);
-      d = content.splice(0, 16);
+      var d = content.splice(0, 4); // Skip header (version, format, etc)
+      d = content.splice(0, 4);
+      d = content.splice(0, 4);
+      d = content.splice(0, 4);
+      d = content.splice(0, 16); // Skip CLSID
+      
       d = content.splice(0, 4);
       var sectionCount = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
 
@@ -1040,10 +1047,17 @@ var OleCompoundDoc = function () {
         return;
       }
 
-      d = content.splice(0, 16);
+      d = content.splice(0, 16); // Skip FMTID
+      
       d = content.splice(0, 4);
       var sectionOffset = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+      
       d = content.splice(0, 4);
+      // A3: Check for content length before reading propertyCount
+      if (d.length < 4) {
+          console.warn('Unexpected end of stream while reading property count in Document Summary.');
+          return;
+      }
       var propertyCount = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
       
       // B27: Property count check
