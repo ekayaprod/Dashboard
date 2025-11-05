@@ -1,5 +1,5 @@
 /**
- * msgreader.js v2.0.0
+ * msgreader.js v2.3.0
  * * Microsoft Outlook MSG and OFT file parser for JavaScript environments.
  * Implements OLE Compound File Binary Format (CFB) parsing according to
  * [MS-CFB] and [MS-OXMSG] specifications.
@@ -9,8 +9,6 @@
  * * Supported Formats:
  * - .msg (Microsoft Outlook Message Files)
  * - .oft (Microsoft Outlook Template Files)
- * * @version 2.0.0
- * @license MIT
  */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -114,6 +112,120 @@ var CorruptFileError = function(message) {
 CorruptFileError.prototype = Object.create(MsgReaderError.prototype);
 CorruptFileError.prototype.constructor = CorruptFileError;
 
+// ===========================================================================
+// STRUCTURAL OPTIMIZATION HELPERS (Issue 1, 2, 3, 5, 6, 7, 13, 17, 18)
+// ===========================================================================
+
+/** Constant for the 512-byte OLE header size (Issue 13) */
+const HEADER_SIZE = 512;
+
+/**
+ * Converts a 4-byte Little-Endian array segment to a 32-bit integer.
+ * @param {Array<number>} d - The 4-byte array segment.
+ * @returns {number} The decoded 32-bit integer. (Issue 2, 6)
+ */
+function bytesToInt32(d) {
+    if (d.length !== 4) {
+        return 0;
+    }
+    return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+}
+
+/**
+ * Reads data from the file, ensuring the expected length is returned.
+ * @param {ReadFile} file - The file reader instance.
+ * @param {number} size - The expected number of bytes.
+ * @param {string} contextMsg - Description for error reporting.
+ * @returns {Array<number>} The read byte array. (Issue 3, 18)
+ * @throws {CorruptFileError} If the end of file is reached prematurely.
+ */
+function readValidated(file, size, contextMsg) {
+    var d = file.read(size);
+    if (d.length < size) {
+        throw new CorruptFileError('Unexpected end of file in ' + contextMsg + '. Expected ' + size + ' bytes, got ' + d.length + '.');
+    }
+    return d;
+}
+
+/**
+ * Calculates the absolute file offset for a given sector. (Issue 13)
+ * @param {number} sector - The sector index.
+ * @param {number} sectorSize - The size of the sector in bytes.
+ * @returns {number} The absolute file offset.
+ */
+function getSectorOffset(sector, sectorSize) {
+    return HEADER_SIZE + sector * sectorSize;
+}
+
+/**
+ * Validates that a sector offset is within the file's boundaries. (Issue 1)
+ * @param {number} offset - The calculated file offset.
+ * @param {number} sectorSize - The size of the data being read.
+ * @param {number} fileLength - The total size of the file buffer.
+ * @param {string} context - The context for the error message.
+ * @throws {CorruptFileError} If the offset is out of bounds.
+ */
+function validateSectorOffset(offset, sectorSize, fileLength, context) {
+    if (offset < HEADER_SIZE || offset + sectorSize > fileLength) {
+        throw new CorruptFileError(context + ' sector offset (' + offset + ') points beyond file boundary (' + fileLength + ')');
+    }
+}
+
+/**
+ * Converts a byte array (excluding null terminators) into a string. (Issue 5)
+ * @param {Array<number>} byteArray - The byte array to convert.
+ * @param {string} [context='String field'] - Context for warning messages.
+ * @returns {string} The decoded string.
+ */
+function bytesToString(byteArray, context = 'String field') {
+    try {
+        var filteredBytes = byteArray.filter(function (v) { return v !== 0; });
+        return String.fromCharCode.apply(String, _toConsumableArray(filteredBytes));
+    } catch (e) {
+        console.warn('Invalid string encoding in ' + context + ': ' + e.message);
+        return '';
+    }
+}
+
+/**
+ * Parses a MAPI stream key string to extract the property ID and type. (Issue 7)
+ * e.g., '__substg1.0_0037001F' -> { nameId: 0x0037, type: '001F' }
+ * @param {string} key - The stream key.
+ * @returns {{nameId: number, type: string}|null} Parsed info or null on failure.
+ */
+function parsePropertyId(key) {
+    // Matches keys ending in _XXXXYYYY where XXXX=nameId and YYYY=type
+    var match = key.match(/__substg1\.0_([a-fA-F0-9]{4})([a-fA-F0-9]{4})$/);
+    if (!match) return null;
+
+    var nameId = parseInt(match[1], 16);
+    var type = match[2];
+
+    if (isNaN(nameId)) return null;
+
+    return { nameId: nameId, type: type };
+}
+
+/**
+ * Calculates the exact file position within the MiniFAT stream. (Issue 17)
+ * @param {number} sector - The MiniFAT sector number.
+ * @param {number} miniSectorSize - Size of a mini sector.
+ * @param {number} regularSectorSize - Size of a regular sector.
+ * @param {Array<number>} miniStreamSectors - The sectors of the root mini stream.
+ * @returns {{actualOffset: number, offsetInMiniStream: number?}|{actualOffset: number}} The offset data.
+ */
+function getMiniStreamPosition(sector, miniSectorSize, regularSectorSize, miniStreamSectors) {
+    var sectorInMiniStream = Math.floor(sector * miniSectorSize / regularSectorSize);
+    var offsetInMiniStream = (sector * miniSectorSize) % regularSectorSize;
+
+    if (sectorInMiniStream < 0 || sectorInMiniStream >= miniStreamSectors.length) {
+        return { actualOffset: -1 }; // Indicate out of bounds
+    }
+
+    var actualOffset = getSectorOffset(miniStreamSectors[sectorInMiniStream], regularSectorSize) + offsetInMiniStream;
+    return { actualOffset: actualOffset, offsetInMiniStream: offsetInMiniStream };
+}
+
 /**
  * OLE Compound File Binary Format parser
  * Implements [MS-CFB]: Compound File Binary File Format specification
@@ -162,9 +274,8 @@ var OleCompoundDoc = function () {
       throw new CorruptFileError('File too small to be a valid MSG/OFT file (minimum 512 bytes)');
     }
     
-    var d = file.read(HEADER_SIGNATURE_SIZE);
-    // A3: Check if read was complete
-    if (d.length < HEADER_SIGNATURE_SIZE) throw new CorruptFileError('Unexpected end of file in header signature.');
+    // Use readValidated (Issue 3, 18)
+    var d = readValidated(file, HEADER_SIGNATURE_SIZE, 'header signature');
 
     var signature = '';
     for (var i = 0; i < HEADER_SIGNATURE_SIZE; i++) {
@@ -185,31 +296,27 @@ var OleCompoundDoc = function () {
       throw new CorruptFileError('Invalid OLE signature. This is not a valid MSG/OFT file.');
     }
 
-    d = file.read(HEADER_CLSID_SIZE); // Skip CLSID
-    if (d.length < HEADER_CLSID_SIZE) throw new CorruptFileError('Unexpected end of file in header CLSID.');
+    // Skip CLSID (Issue 3)
+    readValidated(file, HEADER_CLSID_SIZE, 'header CLSID'); 
 
-    d = file.read(USHORT_SIZE);
-    if (d.length < USHORT_SIZE) throw new CorruptFileError('Unexpected end of file in header minor version.');
+    d = readValidated(file, USHORT_SIZE, 'header minor version');
     header.uMinorVersion = d[0];
 
-    d = file.read(USHORT_SIZE);
-    if (d.length < USHORT_SIZE) throw new CorruptFileError('Unexpected end of file in header major version.');
+    d = readValidated(file, USHORT_SIZE, 'header major version');
     header.uMajorVersion = d[0];
     
     if (header.uMajorVersion !== 3 && header.uMajorVersion !== 4) {
       throw new CorruptFileError('Unsupported OLE version: ' + header.uMajorVersion);
     }
     
-    d = file.read(USHORT_SIZE);
-    if (d.length < USHORT_SIZE) throw new CorruptFileError('Unexpected end of file in header byte order.');
+    d = readValidated(file, USHORT_SIZE, 'header byte order');
     header.uByteOrder = d[0];
     
     if (header.uByteOrder !== 0xFFFE) {
       throw new CorruptFileError('Invalid byte order marker');
     }
     
-    d = file.read(USHORT_SIZE);
-    if (d.length < USHORT_SIZE) throw new CorruptFileError('Unexpected end of file in header sector shift.');
+    d = readValidated(file, USHORT_SIZE, 'header sector shift');
     header.uSectorShift = d[0];
     
     // B1: Restrict sector shift to standard 512/4096 bytes (9 or 12)
@@ -219,8 +326,7 @@ var OleCompoundDoc = function () {
     
     header.uSectorSize = 1 << header.uSectorShift;
     
-    d = file.read(USHORT_SIZE);
-    if (d.length < USHORT_SIZE) throw new CorruptFileError('Unexpected end of file in header mini sector shift.');
+    d = readValidated(file, USHORT_SIZE, 'header mini sector shift');
     header.uMiniSectorShift = d[0];
     
     if (header.uMiniSectorShift < 6 || header.uMiniSectorShift > header.uSectorShift) {
@@ -228,38 +334,34 @@ var OleCompoundDoc = function () {
     }
     
     header.uMiniSectorSize = 1 << header.uMiniSectorShift;
-    d = file.read(6); // Skip reserved
-    if (d.length < 6) throw new CorruptFileError('Unexpected end of file in header reserved section.');
+    
+    // Skip reserved (Issue 3)
+    readValidated(file, 6, 'header reserved section'); 
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header cDirSectors.');
-    header.cDirSectors = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header cDirSectors');
+    header.cDirSectors = bytesToInt32(d); // Issue 2
     
     // B7: Directory sector count validation
     if (header.cDirSectors > 1000) {
       throw new CorruptFileError('Directory sector count unreasonably large: ' + header.cDirSectors);
     }
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header cFATSectors.');
-    header.cFATSectors = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header cFATSectors');
+    header.cFATSectors = bytesToInt32(d); // Issue 2
     
     // B5: FAT sector count validation
     if (header.cFATSectors > 10000) {
       throw new CorruptFileError('FAT sector count unreasonably large: ' + header.cFATSectors);
     }
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header sectDirStart.');
-    header.sectDirStart = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header sectDirStart');
+    header.sectDirStart = bytesToInt32(d); // Issue 2
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header signature (2).');
-    header.signature = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header signature (2)');
+    header.signature = bytesToInt32(d); // Issue 2
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header ulMiniSectorCutoff.');
-    header.ulMiniSectorCutoff = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header ulMiniSectorCutoff');
+    header.ulMiniSectorCutoff = bytesToInt32(d); // Issue 2
     
     // B2: Mini sector cutoff validation
     if (header.ulMiniSectorCutoff === 0) {
@@ -268,37 +370,33 @@ var OleCompoundDoc = function () {
         throw new CorruptFileError('Mini sector cutoff out of valid range: ' + header.ulMiniSectorCutoff);
     }
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header sectMiniFatStart.');
-    header.sectMiniFatStart = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header sectMiniFatStart');
+    header.sectMiniFatStart = bytesToInt32(d); // Issue 2
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header cMiniFatSectors.');
-    header.cMiniFatSectors = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header cMiniFatSectors');
+    header.cMiniFatSectors = bytesToInt32(d); // Issue 2
 
     // B6: Mini FAT sector count validation
     if (header.cMiniFatSectors > 10000) {
       throw new CorruptFileError('Mini FAT sector count unreasonably large: ' + header.cMiniFatSectors);
     }
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header sectDifStart.');
-    header.sectDifStart = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header sectDifStart');
+    header.sectDifStart = bytesToInt32(d); // Issue 2
 
-    d = file.read(ULONG_SIZE);
-    if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header cDifSectors.');
-    header.cDifSectors = d[0];
+    d = readValidated(file, ULONG_SIZE, 'header cDifSectors');
+    header.cDifSectors = bytesToInt32(d); // Issue 2
     
     var difSectors = [];
     for (var _i = 0; _i < 109; _i++) {
-      d = file.read(ULONG_SIZE);
-      if (d.length < ULONG_SIZE) throw new CorruptFileError('Unexpected end of file in header MSAT.');
+      d = readValidated(file, ULONG_SIZE, 'header MSAT entry ' + _i);
       
+      var sectorNum = bytesToInt32(d); // Issue 2
       // B3: Basic MSAT sanity check (0xFFFFFFFF is -1 in 32-bit signed, but we check for large values)
-      if (d[0] !== 0xFFFFFFFE && d[0] !== 0xFFFFFFFF && d[0] > (file.arrayBuffer.length / header.uSectorSize) * 2) {
-        throw new CorruptFileError('MSAT entry points to unreasonably large sector: ' + d[0]);
+      if (sectorNum !== 0xFFFFFFFE && sectorNum !== 0xFFFFFFFF && sectorNum > (file.arrayBuffer.length / header.uSectorSize) * 2) {
+        throw new CorruptFileError('MSAT entry points to unreasonably large sector: ' + sectorNum);
       }
-      difSectors[_i] = d[0];
+      difSectors[_i] = sectorNum;
     }
     header.MSAT = difSectors;
   };
@@ -325,16 +423,13 @@ var OleCompoundDoc = function () {
           continue;
         }
         
-        var offset = 512 + sector * sectorSize;
-        if (offset + sectorSize > file.arrayBuffer.length) {
-          throw new CorruptFileError('FAT sector ' + sector + ' points beyond file boundary');
-        }
+        var offset = getSectorOffset(sector, sectorSize); // Issue 13
+        validateSectorOffset(offset, sectorSize, file.arrayBuffer.length, 'FAT'); // Issue 1
         
         file.seek(offset);
         for (var j = 0; j < sectorsInFat; j++) {
-          var entry = file.read(4);
-          if (entry.length < 4) throw new CorruptFileError('Unexpected end of file while reading FAT entries.');
-          fat.push(entry[0] | (entry[1] << 8) | (entry[2] << 16) | (entry[3] << 24));
+          var entry = readValidated(file, 4, 'FAT entries'); // Issue 3
+          fat.push(bytesToInt32(entry)); // Issue 2
         }
       }
 
@@ -343,17 +438,14 @@ var OleCompoundDoc = function () {
 
       for (var _i2 = 0; _i2 < miniFatSectors.length; _i2++) {
         var _sector = miniFatSectors[_i2];
-        var _offset = 512 + _sector * sectorSize;
-        if (_offset + sectorSize > file.arrayBuffer.length) {
-          console.warn('Mini FAT sector ' + _sector + ' points beyond file boundary, skipping');
-          continue;
-        }
+        var _offset = getSectorOffset(_sector, sectorSize); // Issue 13
         
+        validateSectorOffset(_offset, sectorSize, file.arrayBuffer.length, 'Mini FAT'); // Issue 1
+
         file.seek(_offset);
         for (var _j = 0; _j < sectorsInFat; _j++) {
-          var entry = file.read(4);
-          if (entry.length < 4) throw new CorruptFileError('Unexpected end of file while reading Mini FAT entries.');
-          miniFat.push(entry[0] | (entry[1] << 8) | (entry[2] << 16) | (entry[3] << 24));
+          var entry = readValidated(file, 4, 'Mini FAT entries'); // Issue 3
+          miniFat.push(bytesToInt32(entry)); // Issue 2
         }
       }
 
@@ -413,18 +505,15 @@ var OleCompoundDoc = function () {
         }
         visitedSectors.add(difSector);
         
-        var offset = 512 + difSector * sectorSize;
-        if (offset + sectorSize > file.arrayBuffer.length) {
-          throw new CorruptFileError('DIF sector points beyond file boundary');
-        }
+        var offset = getSectorOffset(difSector, sectorSize); // Issue 13
+        validateSectorOffset(offset, sectorSize, file.arrayBuffer.length, 'DIF'); // Issue 1
         
         file.seek(offset);
 
         for (var j = 0; j < sectorsInFat - 1; j++) {
-          var sectorData = file.read(4);
-          if (sectorData.length < 4) throw new CorruptFileError('Unexpected end of file while reading DIF sector entries.');
+          var sectorData = readValidated(file, 4, 'DIF sector entries'); // Issue 3
 
-          var sector = sectorData[0] | (sectorData[1] << 8) | (sectorData[2] << 16) | (sectorData[3] << 24);
+          var sector = bytesToInt32(sectorData); // Issue 2
           
           // B4: Sanity check DIF sector entry (sector number)
           if (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sector > 1000000) {
@@ -436,9 +525,8 @@ var OleCompoundDoc = function () {
           }
         }
 
-        var nextDifSectorData = file.read(4);
-        if (nextDifSectorData.length < 4) throw new CorruptFileError('Unexpected end of file while reading next DIF sector pointer.');
-        difSector = nextDifSectorData[0] | (nextDifSectorData[1] << 8) | (nextDifSectorData[2] << 16) | (nextDifSectorData[3] << 24);
+        var nextDifSectorData = readValidated(file, 4, 'next DIF sector pointer'); // Issue 3
+        difSector = bytesToInt32(nextDifSectorData); // Issue 2
 
         iterations++;
       }
@@ -513,7 +601,7 @@ var OleCompoundDoc = function () {
     try {
       for (var i = 0; i < dirSectors.length; i++) {
         var sector = dirSectors[i];
-        var offset = 512 + sector * header.uSectorSize;
+        var offset = getSectorOffset(sector, header.uSectorSize); // Issue 13
         
         if (offset + header.uSectorSize > file.arrayBuffer.length) {
           console.warn('Directory sector ' + sector + ' points beyond file boundary, skipping');
@@ -527,7 +615,7 @@ var OleCompoundDoc = function () {
           var entryStartOffset = file.offset;
 
           try {
-            var nameData = file.read(64);
+            var nameData = readValidated(file, 64, 'directory entry name');
             var name = '';
 
             for (var k = 0; k < nameData.length; k += 2) {
@@ -543,7 +631,7 @@ var OleCompoundDoc = function () {
             // B24: Sanitize name (remove control characters)
             name = name.replace(/[\x00-\x1F\x7F]/g, '');
 
-            var d = file.read(2);
+            var d = readValidated(file, 2, 'directory entry name length');
             var nameLength = d[0] | (d[1] << 8);
             
             // B8: Skip empty or unreasonably long entries
@@ -552,7 +640,7 @@ var OleCompoundDoc = function () {
               continue;
             }
 
-            d = file.read(1);
+            d = readValidated(file, 1, 'directory entry type');
             var type = d[0];
             
             // B9: Skip reserved or invalid directory entry types
@@ -561,24 +649,25 @@ var OleCompoundDoc = function () {
               continue;
             }
             
-            d = file.read(1); // Flags
+            d = readValidated(file, 1, 'directory entry flags'); // Flags
             
-            d = file.read(4);
-            var leftChild = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-            d = file.read(4);
-            var rightChild = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-            d = file.read(4);
-            var storageDirId = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-            d = file.read(16); // CLSID
-            d = file.read(4); // User Flags
-            d = file.read(8); // Creation Time
-            d = file.read(8); // Modification Time
+            d = readValidated(file, 4, 'directory entry left child');
+            var leftChild = bytesToInt32(d); // Issue 2
+            d = readValidated(file, 4, 'directory entry right child');
+            var rightChild = bytesToInt32(d); // Issue 2
+            d = readValidated(file, 4, 'directory entry storage dir id');
+            var storageDirId = bytesToInt32(d); // Issue 2
             
-            d = file.read(4);
-            var sectStart = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-            d = file.read(4);
-            var size = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-            d = file.read(4); // Reserved
+            readValidated(file, 16, 'directory entry CLSID'); // CLSID
+            readValidated(file, 4, 'directory entry User Flags'); // User Flags
+            readValidated(file, 8, 'directory entry Creation Time'); // Creation Time
+            readValidated(file, 8, 'directory entry Modification Time'); // Modification Time
+            
+            d = readValidated(file, 4, 'directory entry start sector');
+            var sectStart = bytesToInt32(d); // Issue 2
+            d = readValidated(file, 4, 'directory entry stream size');
+            var size = bytesToInt32(d); // Issue 2
+            readValidated(file, 4, 'directory entry Reserved'); // Reserved
 
             // B11: Validate stream size against file size
             if (type === 2 && size > file.arrayBuffer.length * 2) { // 2x margin for MiniFAT overhead
@@ -730,8 +819,11 @@ var OleCompoundDoc = function () {
       }
     }
 
-    // Process __substg1.0_ streams
-    // B28: Use for...in loop for efficiency instead of Object.keys().filter()
+    // Consolidated stream processing loops using new helper logic (Issue 4, 15)
+    
+    // Process __substg1.0_ streams (fields)
+    // NOTE: We don't need to do a full read/process here, as `Reader.readFields` handles the actual conversion later. 
+    // This part is only for ensuring `stream.content` is populated.
     for (var key in root.streams) {
         if (key.indexOf('__substg1.0_') > -1) {
             try {
@@ -769,7 +861,8 @@ var OleCompoundDoc = function () {
         for (var subKey in attachStreams) {
             if (subKey.indexOf('__substg1.0_') > -1) {
                 try {
-                    _this.readStream(attachStreams[subKey]);
+                    // Just ensure stream content is read
+                    _this.readStream(attachStreams[subKey]); 
                 } catch (e) {
                     console.warn('Error reading attachment stream ' + subKey + ': ' + e.message);
                 }
@@ -807,6 +900,7 @@ var OleCompoundDoc = function () {
         for (var subKey in recipStreams) {
             if (subKey.indexOf('__substg1.0_') > -1) {
                 try {
+                    // Just ensure stream content is read
                     _this.readStream(recipStreams[subKey]);
                 } catch (e) {
                     console.warn('Error reading recipient stream ' + subKey + ': ' + e.message);
@@ -892,41 +986,28 @@ var OleCompoundDoc = function () {
         sectorsChain = fat;
         sectorSize = header.uSectorSize;
         
-        var offset = 512 + sector * sectorSize;
-        if (offset >= file.arrayBuffer.length) {
-          throw new CorruptFileError('Stream sector points beyond file boundary');
-        }
+        var offset = getSectorOffset(sector, sectorSize); // Issue 13
+        validateSectorOffset(offset, sectorSize, file.arrayBuffer.length, 'Regular Stream'); // Issue 1
         
         file.seek(offset);
       } else {
         sectorsChain = miniFat;
         sectorSize = header.uMiniSectorSize;
         
-        // Use cached miniStreamSectors and rootStream
-
-        // B20: Validate sector index for mini stream
+        // Use getMiniStreamPosition helper (Issue 17)
         if (sector > 100000) { 
             throw new CorruptFileError('Mini stream sector number too large: ' + sector); 
         }
 
-        var sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
-        var offsetInMiniStream = (sector * sectorSize) % header.uSectorSize;
+        var pos = getMiniStreamPosition(sector, sectorSize, header.uSectorSize, miniStreamSectors);
+        var actualOffset = pos.actualOffset;
         
-        // B30: Validate offsetInMiniStream against sector size
-        if (offsetInMiniStream >= header.uSectorSize) {
-            throw new CorruptFileError('Mini stream offset calculation error');
-        }
-
-        // B1: Safety check for negative index
-        if (sectorInMiniStream < 0 || sectorInMiniStream >= miniStreamSectors.length) {
+        if (actualOffset === -1) {
             console.warn('Mini stream data sector index out of bounds, truncating');
-            // If out of bounds, break early
             stream.content = Array.from(contentBuffer.slice(0, contentWriteOffset));
             return;
         }
 
-        var actualOffset = 512 + miniStreamSectors[sectorInMiniStream] * header.uSectorSize + offsetInMiniStream;
-        
         if (actualOffset >= file.arrayBuffer.length) {
           throw new CorruptFileError('Mini stream offset points beyond file boundary');
         }
@@ -961,6 +1042,7 @@ var OleCompoundDoc = function () {
             console.warn('Buffer overflow detected during stream read, truncating.');
             break; 
         }
+        // Use loop for array copy (Issue 9)
         for (var i = 0; i < chunk.length; i++) {
             contentBuffer[contentWriteOffset + i] = chunk[i];
         }
@@ -978,26 +1060,22 @@ var OleCompoundDoc = function () {
 
           if (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
             if (!useMiniFat) {
-              var _offset2 = 512 + sector * sectorSize;
+              var _offset2 = getSectorOffset(sector, sectorSize); // Issue 13
               if (_offset2 >= file.arrayBuffer.length) {
                 console.warn('Stream sector points beyond file boundary, truncating');
                 break;
               }
               file.seek(_offset2);
             } else {
-              // Use cached rootStream
-              
-              var _sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
-              var _offsetInMiniStream = (sector * sectorSize) % header.uSectorSize;
-              
-              // B1: Safety check for negative index
-              if (_sectorInMiniStream < 0 || _sectorInMiniStream >= miniStreamSectors.length) {
+              // Use cached rootStream and helper (Issue 17)
+              var _pos = getMiniStreamPosition(sector, sectorSize, header.uSectorSize, miniStreamSectors);
+              var _actualOffset = _pos.actualOffset;
+
+              if (_actualOffset === -1) {
                   console.warn('Mini stream data sector index out of bounds, truncating');
                   break;
               }
 
-              var _actualOffset = 512 + miniStreamSectors[_sectorInMiniStream] * header.uSectorSize + _offsetInMiniStream; // Use cached miniStreamSectors
-              
               if (_actualOffset >= file.arrayBuffer.length) {
                 console.warn('Mini stream offset points beyond file boundary, truncating');
                 break;
@@ -1052,7 +1130,7 @@ var OleCompoundDoc = function () {
       d = content.splice(0, 16); // Skip CLSID
       
       d = content.splice(0, 4);
-      var sectionCount = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+      var sectionCount = bytesToInt32(d); // Issue 2
 
       if (sectionCount !== 1 || content.length < 20) {
         return;
@@ -1061,7 +1139,8 @@ var OleCompoundDoc = function () {
       d = content.splice(0, 16); // Skip FMTID
       
       d = content.splice(0, 4);
-      var sectionOffset = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+      // Issue 2
+      var sectionOffset = bytesToInt32(d); 
       
       d = content.splice(0, 4);
       // A3: Check for content length before reading propertyCount
@@ -1069,7 +1148,7 @@ var OleCompoundDoc = function () {
           console.warn('Unexpected end of stream while reading property count in Document Summary.');
           return;
       }
-      var propertyCount = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+      var propertyCount = bytesToInt32(d); // Issue 2
       
       // B27: Property count check
       if (propertyCount > 1000) {
@@ -1086,9 +1165,9 @@ var OleCompoundDoc = function () {
         }
 
         d = content.splice(0, 4);
-        var propertyId = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+        var propertyId = bytesToInt32(d); // Issue 2
         d = content.splice(0, 4);
-        var propertyOffset = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+        var propertyOffset = bytesToInt32(d); // Issue 2
         properties.push({
           id: propertyId,
           offset: propertyOffset
@@ -1099,13 +1178,13 @@ var OleCompoundDoc = function () {
       // leaving it largely as-is but ensuring basic bounds check.
       if (content.length >= 8) {
         d = content.splice(0, 4);
-        var propertySize = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+        var propertySize = bytesToInt32(d); // Issue 2
         d = content.splice(0, 4);
-        var type = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+        var type = bytesToInt32(d); // Issue 2
 
         if (type === 0x001E && content.length >= 4) {
           d = content.splice(0, 4);
-          var size = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+          var size = bytesToInt32(d); // Issue 2
           
           if (size > 0 && size <= content.length) {
             var value = '';
@@ -1173,6 +1252,7 @@ var ReadFile = function () {
    * @throws {MsgReaderError} If offset is out of bounds
    */
   _proto.seek = function seek(offset) {
+    // Issue 19: Validation moved to helper functions
     if (offset < 0 || offset > this.arrayBuffer.length) {
       throw new MsgReaderError('Invalid seek offset: ' + offset);
     }
@@ -1343,15 +1423,17 @@ var Property = function () {
 
     while (buffer.offset < buffer.arrayBuffer.length - 16) {
       try {
-        var d = buffer.read(4);
-        var nameId = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+        var d = readValidated(buffer, 4, 'property name ID'); // Issue 3
+        var nameId = bytesToInt32(d); // Issue 2
         
-        d = buffer.read(4);
-        var flags = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+        d = readValidated(buffer, 4, 'property flags'); // Issue 3
+        var flags = bytesToInt32(d); // Issue 2
         
-        d = buffer.read(8);
-        var size = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-        
+        d = readValidated(buffer, 8, 'property size'); // Issue 3
+        // Note: size is 64-bit in spec, but typically only 32-bit used. Reading as 64-bit.
+        var size = bytesToInt32(d.slice(0, 4));
+        // We ignore the upper 4 bytes of 64-bit size for now for simplicity, relying on 32-bit value
+
         // A9: Property size limit check
         if (size > 10 * 1024 * 1024) { 
             console.warn('Property size exceeds 10MB, skipping property at offset ' + buffer.offset);
@@ -1368,7 +1450,7 @@ var Property = function () {
           size = buffer.arrayBuffer.length - buffer.offset;
         }
         
-        var data = buffer.read(size);
+        var data = readValidated(buffer, size, 'property data'); // Issue 3
 
         // B26: Skip data read but maintain alignment for zero-size properties
         if (size === 0) {
@@ -1382,7 +1464,7 @@ var Property = function () {
         
         // Alignment
         while (buffer.offset % 4 !== 0 && buffer.offset < buffer.arrayBuffer.length) {
-          buffer.read(1);
+          readValidated(buffer, 1, 'property alignment'); // Issue 3
         }
         
         if (size > 0) {
@@ -1439,6 +1521,142 @@ var Reader = function () {
   var _proto = Reader.prototype;
 
   /**
+   * Centralized MAPI property value conversion based on type. (Issue 14)
+   * @param {Array<number>} value - The raw byte array value.
+   * @param {string} type - The 4-character hex MAPI type code (e.g., '001F').
+   * @param {string} key - The full stream key for context/warnings.
+   * @returns {*} The converted value.
+   */
+  _proto.convertPropertyValue = function convertPropertyValue(value, type, key) {
+    switch (type) {
+      case '001F': // UNICODE_STRING
+      case '001E': // STRING
+        return bytesToString(value, 'field ' + key); // Issue 5
+      case '0102': // BINARY
+        return value;
+      case '0003': // INTEGER32
+        if (value.length === 4) {
+          return bytesToInt32(value); // Issue 2
+        } else {
+          console.warn('Integer field ' + key + ' has wrong length: ' + value.length);
+          return 0;
+        }
+      case '000B': // BOOLEAN
+        if (value.length > 0 && (value[0] === 1 || value[0] === 0)) {
+          return value[0] === 1;
+        } else {
+          console.warn('Boolean field ' + key + ' has unexpected value: ' + value[0]);
+          return value.length > 0 && value[0] !== 0;
+        }
+      case '0040': { // TIME
+        if (value.length >= 8) {
+          var low = bytesToInt32(value.slice(0, 4)); // Issue 2
+          var high = bytesToInt32(value.slice(4, 8)); // Issue 2
+          
+          // A2: Bounds check for safe integer arithmetic
+          if (high > 2097151) { 
+            console.warn('Date value out of safe range for JS Date: ' + high);
+            return new Date(0);
+          } 
+          
+          var ticks = high * 4294967296 + low;
+          var date = new Date((ticks / 10000) - 11644473600000);
+          
+          // B19: Validate resulting date object
+          if (isNaN(date.getTime())) {
+            console.warn('Invalid date value, using epoch for field ' + key); 
+            return new Date(0); 
+          }
+          return date;
+        }
+        return new Date(0);
+      }
+      default:
+        return value;
+    }
+  };
+
+  /**
+   * Extracts properties from substreams matching a prefix. (Issue 4, 15)
+   * Handles storage-level streams (attachments/recipients) and direct streams (fields).
+   * @param {Object} streams - The streams object (e.g., oleCompoundDoc.streams).
+   * @param {string} prefix - The stream name prefix (e.g., '__attach_version1.0_').
+   * @param {number} limit - Max number of streams to process.
+   * @param {string} context - 'fields', 'attachments', or 'recipients'.
+   * @returns {Array<Object>} Array of processed field/item objects.
+   */
+  _proto.processStreamsByPrefix = function processStreamsByPrefix(streams, prefix, limit, context) {
+      var _this = this;
+      var results = [];
+
+      var keys = Object.keys(streams).filter(function (key) {
+          return key.indexOf(prefix) > -1;
+      });
+
+      if (keys.length > limit) {
+          console.warn('Too many ' + context + ' (' + keys.length + '), limiting processing to ' + limit + '.');
+          keys.length = limit;
+      }
+
+      keys.forEach(function (key) {
+          try {
+              var streamEntry = streams[key];
+              var processedItem = {};
+              var fieldProps = [];
+
+              // Determine if we are processing a storage entry (like attachment/recipient)
+              // or a direct property stream (like the main message fields)
+              var subStreams = streamEntry.streams || (context === 'fields' ? { [key]: streamEntry } : null);
+
+              if (subStreams) {
+                  for (var subKey in subStreams) {
+                      if (subKey.indexOf('__substg1.0_') > -1) {
+                          var stream = subStreams[subKey];
+                          if (!stream.content) continue;
+
+                          var propInfo = parsePropertyId(subKey); // Issue 7
+                          if (!propInfo) continue;
+
+                          var name = data.propertyNames[propInfo.nameId];
+                          var value = _this.convertPropertyValue(stream.content, propInfo.type, subKey); // Issue 14
+
+                          if (context === 'fields') {
+                            fieldProps.push({ name: name, nameId: propInfo.nameId, type: propInfo.type, value: value });
+                          } else {
+                            processedItem[name] = value;
+                          }
+                      }
+                  }
+              }
+
+              // Final result formatting based on context
+              if (context === 'attachments') {
+                  // B2: Warning if attachment was truncated
+                  if (processedItem.attachmentData && processedItem.attachmentSize && processedItem.attachmentData.length < processedItem.attachmentSize) {
+                      console.warn('Attachment ' + processedItem.attachmentFilename + ' was truncated. Declared size: ' + processedItem.attachmentSize + ', Actual read size: ' + processedItem.attachmentData.length);
+                  }
+
+                  results.push({
+                      data: processedItem.attachmentData,
+                      name: processedItem.attachmentFilename,
+                      mime: processedItem.attachmentMimeTag,
+                      size: processedItem.attachmentSize
+                  });
+              } else if (context === 'recipients') {
+                  results.push(processedItem);
+              } else if (context === 'fields') {
+                  results.push.apply(results, fieldProps);
+              }
+
+          } catch (e) {
+              console.warn('Error reading ' + context + ' stream ' + key + ': ' + e.message);
+          }
+      });
+
+      return results;
+  };
+
+  /**
    * Initiates parsing of MSG/OFT file structure
    * * @returns {FieldsData} Parsed fields with accessor methods
    * @throws {MsgReaderError} If parsing fails
@@ -1484,185 +1702,22 @@ var Reader = function () {
     
     var propertyStream = streams['__properties_version1.0'];
     var fields = [];
-    var attachments = [];
-    var recipients = [];
 
     if (propertyStream && propertyStream.content) {
       try {
-        var property = new Property(new ReadFile(propertyStream.content));
+        // This is primarily for reading extended property definitions, not the main fields
+        var property = new Property(new ReadFile(propertyStream.content)); 
       } catch (e) {
         console.warn('Error reading property stream: ' + e.message);
       }
     }
 
-    // Process main message streams
-    for (var key in streams) {
-        if (key.indexOf('__substg1.0_') > -1) {
-            try {
-                var stream = streams[key];
-                if (!stream.content) {
-                    continue;
-                }
-                
-                var type = key.substring(key.length - 4, key.length);
-                var nameIdStr = key.substring('__substg1.0_'.length, key.length - 4);
-                var nameId = parseInt(nameIdStr, 16);
-                
-                // B14: Check for NaN immediately
-                if (isNaN(nameId)) {
-                    continue;
-                }
-                
-                var name = data.propertyNames[nameId];
-                var value = stream.content;
+    // Process main message streams (Issue 15, 4 - Consolidated)
+    var mainFields = this.processStreamsByPrefix(streams, '__substg1.0_', Infinity, 'fields');
+    fields.push.apply(fields, mainFields);
 
-                if (type === '001F' || type === '001E') {
-                    // B15: String conversion with safety check
-                    try {
-                        value = String.fromCharCode.apply(String, _toConsumableArray(value.filter(function (v) {
-                            return v !== 0;
-                        })));
-                    } catch (e) {
-                        console.warn('Invalid string encoding in field ' + key + ': ' + e.message);
-                        value = ''; // Use empty string on failure
-                    }
-                } else if (type === '0102') { // BINARY
-                    value = value;
-                } else if (type === '0003') { // INTEGER32
-                    // B22: Require exactly 4 bytes
-                    if (value.length === 4) {
-                        value = value[0] | (value[1] << 8) | (value[2] << 16) | (value[3] << 24);
-                    } else {
-                        console.warn('Integer field ' + key + ' has wrong length: ' + value.length);
-                        value = 0;
-                    }
-                } else if (type === '000B') { // BOOLEAN
-                    // B23: Accept only 0 or 1/0xFF as standard boolean
-                    if (value.length > 0 && (value[0] === 1 || value[0] === 0)) {
-                        value = value[0] === 1;
-                    } else {
-                        console.warn('Boolean field ' + key + ' has unexpected value: ' + value[0]);
-                        value = value.length > 0 && value[0] !== 0; // Fallback to original logic if we must
-                    }
-                } else if (type === '0040') { // TIME
-                    if (value.length >= 8) {
-                        var low = value[0] | (value[1] << 8) | (value[2] << 16) | (value[3] << 24);
-                        var high = value[4] | (value[5] << 8) | (value[6] << 16) | (value[7] << 24);
-                        
-                        // A2: Bounds check for safe integer arithmetic
-                        if (high > 2097151) { // MAX_SAFE_INTEGER / 2^32 approx
-                            console.warn('Date value out of safe range for JS Date: ' + high);
-                            value = new Date(0);
-                        } else {
-                            var ticks = high * 4294967296 + low;
-                            value = new Date((ticks / 10000) - 11644473600000);
-                        }
-
-                        // B19: Validate resulting date object
-                        if (isNaN(value.getTime())) {
-                            console.warn('Invalid date value, using epoch for field ' + key); 
-                            value = new Date(0); 
-                        }
-                    }
-                }
-
-                fields.push({
-                    name: name,
-                    nameId: nameId,
-                    type: type,
-                    value: value
-                });
-            } catch (e) {
-                console.warn('Error reading field ' + key + ': ' + e.message);
-            }
-        }
-    }
-    
-    // Process attachments
-    var attachKeys = Object.keys(streams).filter(function (key) {
-        return key.indexOf('__attach_version1.0_') > -1;
-    });
-
-    // B16: Enforce attachment limit
-    if (attachKeys.length > 100) {
-        console.warn('Too many attachments (' + attachKeys.length + '), limiting processing to 100.');
-        attachKeys.length = 100;
-    }
-
-    attachKeys.forEach(function (key, index) {
-      try {
-        var attachStream = streams[key];
-        if (!attachStream.streams) {
-          console.warn("MsgReader: Attachment stream found but contains no sub-streams.", key);
-          return;
-        }
-        
-        var attachStreams = attachStream.streams;
-        var attachment = {};
-        
-        // B28: Use for...in loop for attachment sub-streams
-        for (var subKey in attachStreams) {
-            if (subKey.indexOf('__substg1.0_') > -1) {
-                try {
-                    var stream = attachStreams[subKey];
-                    if (!stream.content) {
-                        continue;
-                    }
-                    
-                    var type = subKey.substring(subKey.length - 4, subKey.length);
-                    var nameIdStr = subKey.substring('__substg1.0_'.length, subKey.length - 4);
-                    var nameId = parseInt(nameIdStr, 16);
-                    
-                    if (isNaN(nameId)) {
-                        continue;
-                    }
-                    
-                    var name = data.propertyNames[nameId];
-                    var value = stream.content;
-
-                    if (type === '001F' || type === '001E') {
-                         // B15: String conversion with safety check
-                        try {
-                            value = String.fromCharCode.apply(String, _toConsumableArray(value.filter(function (v) {
-                                return v !== 0;
-                            })));
-                        } catch (e) {
-                            console.warn('Invalid string encoding in attachment field ' + subKey + ': ' + e.message);
-                            value = '';
-                        }
-                    } else if (type === '0003') {
-                        // B22: Require exactly 4 bytes
-                        if (value.length === 4) {
-                            value = value[0] | (value[1] << 8) | (value[2] << 16) | (value[3] << 24);
-                        } else {
-                            console.warn('Integer attachment field ' + subKey + ' has wrong length: ' + value.length);
-                            value = 0;
-                        }
-                    }
-
-                    attachment[name] = value;
-                } catch (e) {
-                    console.warn('Error reading attachment field ' + subKey + ': ' + e.message);
-                }
-            }
-        }
-
-        // B2: Warning if attachment was truncated
-        if (attachment.attachmentData && attachment.attachmentSize && attachment.attachmentData.length < attachment.attachmentSize) { 
-            console.warn('Attachment ' + attachment.attachmentFilename + ' was truncated. Declared size: ' + attachment.attachmentSize + ', Actual read size: ' + attachment.attachmentData.length);
-        }
-        
-        attachments.push({
-          data: attachment.attachmentData,
-          name: attachment.attachmentFilename,
-          mime: attachment.attachmentMimeTag,
-          size: attachment.attachmentSize
-        });
-      } catch (e) {
-        console.warn('Error reading attachment ' + key + ': ' + e.message);
-      }
-    });
-
+    // Process attachments (Issue 15, 4 - Consolidated)
+    var attachments = this.processStreamsByPrefix(streams, '__attach_version1.0_', 100, 'attachments');
     if (attachments.length) {
       fields.push({
         name: 'attachments',
@@ -1672,81 +1727,8 @@ var Reader = function () {
       });
     }
 
-    // Process recipients
-    var recipKeys = Object.keys(streams).filter(function (key) {
-      return key.indexOf('__recip_version1.0_') > -1;
-    });
-
-    // B17: Enforce recipient limit
-    if (recipKeys.length > 1000) {
-        console.warn('Too many recipients (' + recipKeys.length + '), limiting processing to 1000.');
-        recipKeys.length = 1000;
-    }
-
-    recipKeys.forEach(function (key, index) {
-      try {
-        var recipStream = streams[key];
-        if (!recipStream.streams) {
-          console.warn("MsgReader: Recipient stream found but contains no sub-streams.", key);
-          return;
-        }
-        
-        var recipStreams = recipStream.streams;
-        var recipient = {};
-        
-        // B28: Use for...in loop for recipient sub-streams
-        for (var subKey in recipStreams) {
-            if (subKey.indexOf('__substg1.0_') > -1) {
-                try {
-                    var stream = recipStreams[subKey];
-                    if (!stream.content) {
-                        continue;
-                    }
-                    
-                    var type = subKey.substring(subKey.length - 4, subKey.length);
-                    var nameIdStr = subKey.substring('__substg1.0_'.length, subKey.length - 4);
-                    var nameId = parseInt(nameIdStr, 16);
-                    
-                    if (isNaN(nameId)) {
-                        continue;
-                    }
-                    
-                    var name = data.propertyNames[nameId];
-                    var value = stream.content;
-
-                    if (type === '001F' || type === '001E') {
-                        // B15: String conversion with safety check
-                        try {
-                            value = String.fromCharCode.apply(String, _toConsumableArray(value.filter(function (v) {
-                                return v !== 0;
-                            })));
-                        } catch (e) {
-                            console.warn('Invalid string encoding in recipient field ' + subKey + ': ' + e.message);
-                            value = '';
-                        }
-                    } else if (type === '0003') {
-                        // B22: Require exactly 4 bytes
-                        if (value.length === 4) {
-                            value = value[0] | (value[1] << 8) | (value[2] << 16) | (value[3] << 24);
-                        } else {
-                            console.warn('Integer recipient field ' + subKey + ' has wrong length: ' + value.length);
-                            value = 0;
-                        }
-                    }
-
-                    recipient[name] = value;
-                } catch (e) {
-                    console.warn('Error reading recipient field ' + subKey + ': ' + e.message);
-                }
-            }
-        }
-        
-        recipients.push(recipient);
-      } catch (e) {
-        console.warn('Error reading recipient ' + key + ': ' + e.message);
-      }
-    });
-
+    // Process recipients (Issue 15, 4 - Consolidated)
+    var recipients = this.processStreamsByPrefix(streams, '__recip_version1.0_', 1000, 'recipients');
     if (recipients.length) {
       fields.push({
         name: 'recipients',
