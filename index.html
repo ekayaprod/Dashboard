@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <!-- 
+      FIX 7: Removed inline <style> block.
+      The '.shortcuts-container.drag-active' rule is now in style.css
+    -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -12,7 +16,7 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <!-- FIX 1: Replaced inline style with a class -->
+                <!-- FIX 1: Replaced 11-line inline style with a clean class -->
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
                 <div id="shortcuts-container" class="shortcuts-container"></div>
@@ -101,7 +105,8 @@
             'DataValidator', 
             'DataConverter', 
             'CsvManager',
-            'DashboardUI' // Specific to index.html
+            'NotepadManager',
+            'QuickListManager' // <-- Added check for new module
         ];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
@@ -126,6 +131,436 @@
             throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
         }
     })();
+
+    // ============================================================================
+    // PAGE-SPECIFIC LOGIC (Moved from DashboardUI in app-ui.js)
+    // This logic handles the "Applications" and "Shortcuts" widgets.
+    // ============================================================================
+    const DEBOUNCE_DELAY = 300;
+    
+    // Scoped variables for state and DOM access
+    let DOMElements;
+    let state;
+    let saveState;
+    let APP_CONFIG;
+
+    let selectedAppId = null;
+    let initialAppData = null;
+    
+    // --- Scoped Helpers ---
+    const getCollection = (type) => state[type];
+    const hasItems = (type) => getCollection(type).length > 0;
+    const findById = (collectionType, id) => {
+        if (!id) return null;
+        return getCollection(collectionType).find(item => item.id === id);
+    };
+    const confirmDelete = (type, itemName, onConfirm) => {
+        const labels = {apps: 'Application', notes: 'Note', shortcuts: 'Shortcut'};
+        const itemTypeLabel = labels[type] || 'Item';
+        UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
+    };
+    const checkFormDirty = () => {
+        if (!initialAppData) return false;
+        if (initialAppData.id === null) {
+            return DOMElements.editAppName.value.trim() !== '' ||
+                   DOMElements.editAppUrls.value.trim() !== '' ||
+                   DOMElements.editAppEscalation.value.trim() !== '';
+        }
+        return DOMElements.editAppName.value.trim() !== initialAppData.name ||
+               DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
+               DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
+    };
+    const updateSaveButtonState = () => {
+        if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
+    };
+    
+    // --- (REMOVED) createShortcutsManager ---
+    // All logic (approx 100 lines) for the old shortcuts manager has been deleted.
+    // It is replaced by the initQuickList() function below.
+    
+    // --- (NEW) initQuickList ---
+    // Initializes the new, shared QuickListManager for the Shortcuts
+    const initQuickList = () => {
+        window.QuickListManager.init({
+            container: DOMElements.shortcutsContainer,
+            items: getCollection('shortcuts'),
+            emptyMessage: "No shortcuts. Add from 'Actions'.",
+            getItemName: (item) => item.name,
+            getItemHref: (item) => item.url, // This makes them links
+            
+            onDeleteClick: (item, renderCallback) => {
+                confirmDelete('shortcuts', item.name, () => {
+                    const shortcuts = getCollection('shortcuts');
+                    const itemIndex = shortcuts.findIndex(s => s.id === item.id);
+                    if (itemIndex > -1) {
+                        shortcuts.splice(itemIndex, 1);
+                        saveState();
+                        renderCallback(); // Re-renders the list
+                    }
+                });
+            },
+            
+            addNewButtonId: 'add-shortcut-btn-menu',
+            onAddNewClick: (renderCallback) => {
+                SafeUI.showModal('Add Shortcut',
+                    `<input type="text" id="shortcut-name" placeholder="Name" class="sidebar-input">
+                     <input type="text" id="shortcut-url" placeholder="URL" class="sidebar-input">`,
+                    [{ label: 'Cancel' }, {
+                        label: 'Add', class: 'button-primary', callback: () => {
+                            const nameInput = document.getElementById('shortcut-name');
+                            const urlInput = document.getElementById('shortcut-url');
+                            const name = nameInput.value;
+                            const url = urlInput.value;
+                            if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
+                                getCollection('shortcuts').push({ id: SafeUI.generateId(), name, url });
+                                saveState();
+                                renderCallback(); // Re-renders the list
+                            } else {
+                                SafeUI.showToast('Invalid name or URL');
+                                return false;
+                            }
+                        }
+                    }]
+                );
+            }
+        });
+    };
+
+
+    // --- Data Renderers (Page-Specific) ---
+    const renderAppDropdown = () => {
+        const appSelect = DOMElements.appSelect;
+        const selectedValue = appSelect.value;
+        appSelect.innerHTML = '<option value="">-- Select an App --</option>';
+
+        const sortedApps = [...getCollection('apps')].sort((a,b) => a.name.localeCompare(b.name));
+        
+        sortedApps.forEach(app => {
+            appSelect.add(new Option(app.name, app.id));
+        });
+        
+        if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
+            appSelect.value = selectedValue;
+        } else {
+            appSelect.value = '';
+            if (selectedAppId && !sortedApps.some(app => app.id === selectedAppId)) {
+                selectedAppId = null;
+            }
+        }
+    };
+
+    const renderAppData = () => {
+        if (!hasItems('apps')) {
+            DOMElements.appSelectGroup.classList.add('hidden');
+            DOMElements.appEmptyState.classList.remove('hidden');
+        } else {
+            DOMElements.appSelectGroup.classList.remove('hidden');
+            DOMElements.appEmptyState.classList.add('hidden');
+            renderAppDropdown();
+        }
+    };
+
+    // This function is called after a JSON restore to refresh all page-specific UI
+    const renderAllPageSpecific = () => {
+        initQuickList(); // Re-initialize the quick list
+        renderAppData(); // Re-render the app dropdown
+    };
+
+    // --- App Detail Handlers (Page-Specific) ---
+    const displayAppDetails = (appId) => {
+        selectedAppId = appId;
+        const isVisible = !!appId;
+
+        DOMElements.editAppName.value = '';
+        DOMElements.editAppUrls.value = '';
+        DOMElements.editAppEscalation.value = '';
+        DOMElements.editAppNameWrapper.classList.add('hidden');
+
+        DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
+
+        if (isVisible) {
+            const app = findById('apps', appId);
+            if (!app) {
+                console.error(`Failed to find app with ID: ${appId}`);
+                DOMElements.appDetailsContainer.classList.add('hidden');
+                selectedAppId = null;
+                initialAppData = null;
+                return;
+            }
+            
+            initialAppData = {...app};
+            DOMElements.editAppName.value = app.name;
+            
+            DOMElements.editAppUrls.value = (app.urls || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            DOMElements.editAppEscalation.value = (app.escalation || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        } else {
+            initialAppData = null;
+        }
+
+        const escalationTextarea = DOMElements.editAppEscalation;
+        const isCollapsed = escalationTextarea.value.trim() === '';
+        escalationTextarea.style.height = isCollapsed ? '40px' : 'auto'; 
+        
+        setTimeout(() => {
+            DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
+            DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
+        }, 0);
+        
+        updateSaveButtonState();
+    };
+
+    const createNewAppForm = () => {
+        DOMElements.appSelect.value = '';
+        displayAppDetails(null);
+        DOMElements.appDetailsContainer.classList.remove('hidden');
+        DOMElements.editAppNameWrapper.classList.remove('hidden');
+        DOMElements.editAppName.focus();
+        initialAppData = {id: null, name: '', urls: '', escalation: ''};
+        updateSaveButtonState();
+    };
+    
+    // --- Settings Modal (Page-Specific) ---
+    const initSettingsModal = () => {
+        // This page's settings modal is simple, only showing Backup/Restore
+        // We can reuse the SharedSettingsModal module from app-data.js
+        if (window.SharedSettingsModal) {
+            SharedSettingsModal.init({
+                buttonId: 'btn-settings',
+                modalTitle: 'Settings',
+                appName: APP_CONFIG.NAME,
+                state: state,
+                itemValidators: {
+                    apps: APP_CONFIG.APP_CSV_HEADERS,
+                    notes: ['id', 'title', 'content'],
+                    shortcuts: ['id', 'name', 'url']
+                },
+                onRestoreCallback: (dataToRestore) => {
+                    state.apps = dataToRestore.apps || [];
+                    state.notes = dataToRestore.notes || [];
+                    state.shortcuts = dataToRestore.shortcuts || [];
+                    
+                    saveState();
+                    
+                    selectedAppId = null;
+                    displayAppDetails(null);
+                    renderAllPageSpecific(); // Render apps/shortcuts
+                    
+                    // Manually trigger notepad reload
+                    if (window.NotepadManager) {
+                        window.NotepadManager.init({ elements: DOMElements, state, saveState });
+                    }
+
+                    SafeUI.showToast('Dashboard data restored.');
+                }
+            });
+        } else {
+            console.error("SharedSettingsModal not found.");
+            DOMElements.btnSettings.disabled = true;
+        }
+    };
+    
+    // --- Main Page-Specific Initializer ---
+    const initDashboardPageSpecific = (ctx, appConfig) => {
+        // Set up scoped variables
+        DOMElements = ctx.elements;
+        state = ctx.state;
+        saveState = ctx.saveState;
+        APP_CONFIG = appConfig;
+
+        // Setup textareas
+        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
+        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
+
+        // Setup icons (page-specific ones)
+        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
+        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
+        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
+
+        // Initialize shortcuts
+        initQuickList();
+
+        // Setup CSV listeners
+        CsvManager.setupExport({
+            exportBtn: DOMElements.btnExportCsv,
+            dataGetter: () => state.apps,
+            headers: APP_CONFIG.APP_CSV_HEADERS,
+            filename: `${APP_CONFIG.NAME}-export.csv`
+        });
+        
+        CsvManager.setupImport({
+            importBtn: DOMElements.btnImportCsv,
+            headers: APP_CONFIG.APP_CSV_HEADERS,
+            onValidate: (row, index) => {
+                 const entry = {
+                    id: row.id || SafeUI.generateId(),
+                    name: (row.name || '').trim(),
+                    urls: (row.urls || '').trim(),
+                    escalation: (row.escalation || '').trim()
+                };
+
+                if (!SafeUI.validators.notEmpty(entry.name)) {
+                    return { error: `Row ${index + 2}: 'name' is required.` };
+                }
+                
+                // Fix: Check for duplicate names, not just IDs
+                if (DataValidator.hasDuplicate(state.apps, 'name', entry.name, row.id)) {
+                     return { error: `Row ${index + 2}: App name "${entry.name}" already exists.` };
+                }
+                
+                return { entry: entry };
+            },
+            onConfirm: (validatedData, importErrors) => {
+                const newEntries = [];
+                const updatedEntries = [];
+                const existingIds = new Set(state.apps.map(app => app.id));
+
+                validatedData.forEach(entry => {
+                    if (existingIds.has(entry.id)) {
+                        updatedEntries.push(entry);
+                    } else {
+                        newEntries.push(entry);
+                    }
+                });
+
+                const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+
+                let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
+                
+                if (importErrors.length > 0) {
+                    summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
+                                    <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
+                                        ${errorList}${moreErrors}
+                                    </ul>`;
+                }
+
+                summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
+
+                SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                    { label: 'Cancel' },
+                    { 
+                        label: 'Import and Overwrite', 
+                        class: 'button-primary', 
+                        callback: () => {
+                            let importedCount = 0;
+                            
+                            newEntries.forEach(entry => {
+                                if (state.apps.some(app => app.id === entry.id)) {
+                                    console.warn(`ID collision detected for "${entry.name}" (${entry.id}). Assigning new ID.`);
+                                    entry.id = SafeUI.generateId();
+                                }
+                                state.apps.push(entry);
+                                importedCount++;
+                            });
+
+                            updatedEntries.forEach(entry => {
+                                const existingIndex = state.apps.findIndex(app => app.id === entry.id);
+                                if (existingIndex > -1) {
+                                    state.apps[existingIndex] = entry;
+                                    importedCount++;
+                                }
+                            });
+
+                            saveState();
+                            renderAppData(); // Only update app data
+                            SafeUI.showToast(`Imported ${importedCount} applications.`);
+                        }
+                    }
+                ]);
+            }
+        });
+
+        // Add main event listeners
+        window.addEventListener('beforeunload', (e) => { 
+            // Only prompt for App form changes. Notepad is saved by AppLifecycle.
+            if (checkFormDirty()) { e.preventDefault(); e.returnValue = ''; } 
+        });
+        
+        DOMElements.appSelect.addEventListener('change', () => {
+            // Fix: Check for unsaved changes before switching
+            if (checkFormDirty()) {
+                UIPatterns.confirmUnsavedChanges(() => {
+                    const appId = DOMElements.appSelect.value || null;
+                    displayAppDetails(appId);
+                });
+                // Reset dropdown to the *previous* valid selection
+                DOMElements.appSelect.value = selectedAppId;
+                return;
+            }
+            
+            const appId = DOMElements.appSelect.value || null;
+            displayAppDetails(appId);
+        });
+
+        const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
+        DOMElements.editAppName.addEventListener('input', debouncedSave);
+        DOMElements.editAppUrls.addEventListener('input', debouncedSave);
+        DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
+
+        DOMElements.saveChangesBtn.addEventListener('click', () => {
+            const newName = DOMElements.editAppName.value.trim();
+            if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
+                return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
+            }
+
+            const isNewApp = initialAppData.id === null;
+            const nameChanged = !isNewApp && newName !== initialAppData.name;
+            
+            if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName)) {
+                return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
+            }
+
+            const appData = {
+                name: newName,
+                urls: DOMElements.editAppUrls.value.trim(),
+                escalation: DOMElements.editAppEscalation.value.trim()
+            };
+
+            if (isNewApp) {
+                appData.id = SafeUI.generateId();
+                getCollection('apps').push(appData);
+                SafeUI.showToast('Application created');
+            } else {
+                const app = findById('apps', selectedAppId);
+                if (app) {
+                    app.name = appData.name;
+                    app.urls = appData.urls;
+                    app.escalation = appData.escalation;
+                    SafeUI.showToast('Application updated');
+                }
+            }
+            
+            saveState();
+            renderAppData();
+            DOMElements.appSelect.value = appData.id || selectedAppId;
+            displayAppDetails(appData.id || selectedAppId);
+        });
+
+        DOMElements.deleteAppBtn.addEventListener('click', () => {
+            if (!selectedAppId) return;
+            const app = findById('apps', selectedAppId);
+            if (!app) return;
+            
+            confirmDelete('apps', app.name, () => {
+                state.apps = state.apps.filter(a => a.id !== selectedAppId);
+                saveState();
+                selectedAppId = null;
+                displayAppDetails(null);
+                renderAppData();
+            });
+        });
+
+        // add-shortcut-btn-menu is now handled by QuickListManager
+        DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
+        
+        // Settings modal init
+        initSettingsModal();
+        
+        // Initial render of page-specific parts
+        renderAppData();
+    };
+    
 
     // Dashboard App Initializer
     // This code was moved from app-core.js to fix the race condition
@@ -165,16 +600,21 @@
 
         // Call the centralized dashboard initialization function
         // This is safe now because the dependency check above passed
-        if (typeof window.DashboardUI?.initDashboard === 'function') {
-            window.DashboardUI.initDashboard(ctx, APP_CONFIG);
+        
+        // 1. Initialize all page-specific logic (Apps, Shortcuts, Settings)
+        initDashboardPageSpecific(ctx, APP_CONFIG);
+
+        // 2. Initialize the shared Notepad module
+        if (typeof window.NotepadManager?.init === 'function') {
+            // Pass the context, which has the elements, state, and saveState function
+            window.NotepadManager.init(ctx);
         } else {
             // This else block is a fallback, but shouldn't be hit if the dependency check is correct
-            console.error("DashboardUI.initDashboard not found. app-ui.js may not have loaded correctly.");
-            const errorTitle = "Application Failed to Load";
-            const errorMessage = "The core dashboard UI failed to load (DashboardUI.initDashboard missing). 'app-ui.js' may be corrupt or blocked.";
-            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-            }
+            console.error("NotepadManager.init not found. app-ui.js may not have loaded correctly.");
+            AppLifecycle._showErrorBanner(
+                "Application Failed to Load",
+                "The core Notepad module failed to load. 'app-ui.js' may be corrupt or blocked."
+            );
         }
     });
     </script>
