@@ -441,7 +441,7 @@
                 return data;
             } catch (e) {
                 console.warn("Mailto string parsing failed:", mailtoStr, e);
-                // Fallback for simple mailto:email@example.com
+                // B1: Fallback logic fix. If '?' exists, we can't safely assign to 'to' field.
                 if (mailtoStr.indexOf('?') === -1) {
                      // B10: Decode the 'to' part in the fallback path
                      try { 
@@ -450,6 +450,7 @@
                         data.to = mailtoStr.substring(7);
                      }
                 }
+                // If the URL constructor fails AND there are query parameters, return corrupted data empty.
                 return data;
             }
         };
@@ -713,8 +714,9 @@
             DOMElements.resultLink.href = mailto;
             DOMElements.outputWrapper.classList.remove('hidden');
             
-            // B9: Auto-fill template name if empty, sanitizing the subject
-            if (DOMElements.saveTemplateName.value.trim() === '') {
+            // B3: Auto-fill template name only if truly empty (not just whitespace)
+            const templateNameValue = DOMElements.saveTemplateName.value;
+            if (!templateNameValue.trim() && !templateNameValue) {
                  DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
             }
 
@@ -750,6 +752,12 @@
                     try { // A6: Error boundary for new folder creation logic
                         const nameInput = document.getElementById('folder-name-input');
                         const name = nameInput.value.trim();
+                        
+                        // B2: Validation for path separators (critical for path integrity)
+                        if (name.includes('/') || name.includes('\\')) {
+                             return SafeUI.showValidationError('Invalid Name', 'Folder name cannot contain path separators (/, \\).', 'folder-name-input');
+                        }
+
                         if (!SafeUI.validators.notEmpty(name)) {
                             return SafeUI.showValidationError('Invalid Name', 'Folder name cannot be empty.', 'folder-name-input');
                         }
@@ -843,8 +851,10 @@
 
                                 // Find or create the folder path
                                 for (const part of pathParts) {
+                                    // Use case-insensitive find
                                     let folder = currentContainer.find(i => i.type === 'folder' && i.name.toLowerCase() === part.toLowerCase());
                                     if (!folder) {
+                                        // B4: Use the mixed-case part as the name for the new folder
                                         folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
                                         currentContainer.push(folder);
                                     }
