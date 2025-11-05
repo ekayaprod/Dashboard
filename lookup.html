@@ -52,6 +52,39 @@
             margin: 0;
         }
 
+        /* REFACTOR: New styles for KB button */
+        .generator-section {
+            padding: 0.75rem;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        .btn-full-width-padded {
+            width: 100%; 
+            padding: 0.75rem; 
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            text-align: center;
+            text-decoration: none;
+        }
+        /* Style for <a> tags to look like disabled buttons */
+        .button-disabled-link {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background-color: var(--subtle-text);
+            border-color: var(--subtle-text);
+            color: white;
+        }
+        .button-disabled-link:hover {
+            background-color: var(--subtle-text);
+            border-color: var(--subtle-text);
+            color: white;
+            text-decoration: none;
+        }
+        /* REFACTOR: End new styles */
+
+
         .lookup-page .results-container {
             display: flex;
             flex-direction: column;
@@ -68,15 +101,15 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            flex-basis: 50%;
+            /* REFACTOR: Removed flex-basis */
         }
-        /* Add specific overrides for the two columns */
-        .lookup-page #kb-column {
-            flex-basis: 33.33%;
-            min-width: 250px; /* Ensure it doesn't get too small */
-        }
+        
+        /* REFACTOR: Removed #kb-column styles */
+
         .lookup-page #local-column {
-            flex-basis: 66.67%;
+            /* REFACTOR: Changed to width 100% and added flex-grow */
+            width: 100%;
+            flex-grow: 1;
         }
 
         .lookup-page .column h2 {
@@ -112,38 +145,8 @@
             margin: 0;
         }
 
-        /* --- KB Results --- */
-        .kb-results-container {
-            position: relative;
-            min-height: 50px;
-        }
-        .kb-result-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        .kb-result-item a {
-            display: block;
-            padding: 0.4rem 0.5rem;
-            border-radius: 0.25rem;
-            text-decoration: none;
-            color: var(--primary-color);
-            font-size: 0.85rem;
-        }
-        .kb-result-item a:hover {
-            background-color: var(--info-bg);
-            text-decoration: underline;
-        }
-        .kb-summary {
-            font-size: 0.85rem;
-            color: var(--subtle-text);
-            padding: 0.25rem 0.5rem;
-            border-bottom: 1px dashed var(--border-color);
-            margin-bottom: 0.25rem;
-            line-height: 1.5;
-        }
-
-
+        /* --- KB Results (REFACTOR: Removed old styles) --- */
+        
         .lookup-page .result-item {
             background-color: var(--info-bg);
             border: 1px solid var(--border-color);
@@ -250,16 +253,16 @@
                 background-color: var(--panel-bg);
                 border-color: var(--border-color);
             }
+            /* REFACTOR: Added generator-section dark mode */
+            .generator-section {
+                background-color: var(--panel-bg);
+                border-color: var(--border-color);
+            }
             .lookup-page .column {
                 background-color: var(--panel-bg);
                 border-color: var(--border-color);
             }
-            .kb-result-item a:hover {
-                background-color: var(--bg-color);
-            }
-            .kb-summary {
-                border-color: var(--border-color);
-            }
+            /* REFACTOR: Removed old kb styles */
             .lookup-page .result-item {
                 background-color: var(--bg-color);
                 border-color: var(--border-color);
@@ -297,19 +300,15 @@
             </div>
         </header>
 
+        <!-- REFACTOR: Moved KB section here and restyled it -->
+        <section id="kb-section" class="generator-section">
+             <a id="btn-kb-search" href="#" class="button-base button-primary btn-full-width-padded" target="_blank" rel="noopener noreferrer">
+                <!-- Text is set by JavaScript -->
+             </a>
+        </section>
+
         <main class="results-container">
-            <section class="column" id="kb-column" style="margin-bottom: 0.75rem;">
-                <h2>KnowledgeBase</h2>
-                <div id="kb-results-container">
-                    <a id="btn-kb-search" href="#" class="button-base button-primary hidden" target="_blank" rel="noopener noreferrer" style="width: 100%; box-sizing: border-box;">
-                    </a>
-                    <div id="kb-empty-state" class="empty-state-message">
-                        Search to generate a KnowledgeBase link.
-                    </div>
-                </div>
-            </section>
-            
-            <div class="divider"></div>
+            <!-- REFACTOR: Removed kb-column and divider -->
             
             <section class="column" id="local-column">
                 <div class="local-header">
@@ -329,8 +328,6 @@
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
-    
-    <!-- REFACTOR: Removed placeholder <script> tag comment -->
     
     <script>
     // Dependency Check
@@ -381,11 +378,10 @@
                 version: APP_CONFIG.VERSION,
                 requiredElements: [
                     'search-input', 'local-results',
-                    'btn-add-new-entry', 'btn-settings', 'btn-edit-mode', // <-- FIX: Corrected ID 'btnAddNewEntry' to 'btn-add-new-entry'
+                    'btn-add-new-entry', 'btn-settings', 'btn-edit-mode',
                     'toast', 'modal-overlay', 'modal-content',
                     'navbar-container',
-                    'kb-results-container', 'btn-kb-search', 'kb-empty-state'
-                    /* REFACTOR: Removed 'btn-import-csv', 'btn-export-csv' */
+                    'kb-section', 'btn-kb-search' // REFACTOR: Updated required elements
                 ]
             });
 
@@ -512,13 +508,7 @@
                 return { valid: true, message: '' };
             };
 
-            const showKbEmptyState = (message) => {
-                DOMElements.kbEmptyState.textContent = message;
-                DOMElements.kbEmptyState.classList.remove('hidden');
-            };
-            const hideKbEmptyState = () => {
-                DOMElements.kbEmptyState.classList.add('hidden');
-            };
+            // REFACTOR: Removed showKbEmptyState and hideKbEmptyState
 
             const getEmptyMessage = (lowerTerm) => {
                 if (isEditMode) return 'No entries in the database. Click "+ Create Entry".';
@@ -595,32 +585,43 @@
             /**
              * Renders the dynamic KnowledgeBase link
              */
+            // REFACTOR: Rewritten to control the single button
             const renderKbLink = (term) => {
                 const kbButton = DOMElements.btnKbSearch;
-                kbButton.classList.add('hidden');
-                
                 const baseUrl = state.settings.kbBaseUrl;
+                
+                // This mimics the 'disabled' state for an <a> tag
+                const setButtonDisabled = (text) => {
+                    kbButton.textContent = text;
+                    kbButton.classList.add('button-disabled-link');
+                    kbButton.removeAttribute('href');
+                };
+                
+                const setButtonEnabled = (text, url) => {
+                    kbButton.textContent = text;
+                    kbButton.classList.remove('button-disabled-link');
+                    kbButton.href = url;
+                };
 
                 if (!term) {
-                    return showKbEmptyState('Search to generate a KnowledgeBase link.');
+                    setButtonDisabled('Search KnowledgeBase (enter a term first)');
+                    return;
                 }
                 
                 if (!baseUrl) {
-                    return showKbEmptyState('KB URL not set. Click ⚙️ to configure.');
+                    setButtonDisabled('Search KnowledgeBase (KB URL not set in ⚙️)');
+                    return;
                 }
                 
                 const validation = validateKbUrl(baseUrl);
                 if (!validation.valid) {
-                    return showKbEmptyState(`KB URL is invalid: ${validation.message}`);
+                    setButtonDisabled('Search KnowledgeBase (KB URL is invalid)');
+                    return;
                 }
 
-                hideKbEmptyState();
-
+                // All good, enable the button
                 const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
-
-                kbButton.href = finalUrl;
-                kbButton.textContent = `Search "${SafeUI.escapeHTML(term)}" in KnowledgeBase`;
-                kbButton.classList.remove('hidden');
+                setButtonEnabled(`Search "${SafeUI.escapeHTML(term)}" in KnowledgeBase`, finalUrl);
             };
             
             /**
@@ -632,6 +633,8 @@
                     DOMElements.btnAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
+                // REFACTOR: Also render KB link on all renders
+                renderKbLink(searchTerm); 
             };
 
             /**
@@ -948,7 +951,6 @@
             /**
              * Shows the Settings modal (Now using SharedSettingsModal)
              */
-            // REFACTOR: Replaced the old showSettingsModal with setupSettingsModal
             function setupSettingsModal() {
                 // 1. Define page-specific HTML (for Settings AND CSV)
                 const settingsHtml = `
@@ -1016,10 +1018,10 @@
                     buttonId: 'btn-settings',
                     appName: APP_CONFIG.NAME,
                     state: state,
-                    customSettingsHtml: settingsHtml,     // <-- NEW
-                    pageSpecificDataHtml: pageDataHtml,  // <-- NEW
-                    onModalOpen: onModalOpen,            // <-- NEW
-                    onModalSave: onSave,                 // <-- Pass the save callback
+                    customSettingsHtml: settingsHtml,
+                    pageSpecificDataHtml: pageDataHtml,
+                    onModalOpen: onModalOpen,
+                    onModalSave: onSave,
                     onRestoreCallback: onRestore,
                     itemValidators: {
                         items: APP_CONFIG.CSV_HEADERS,
@@ -1039,7 +1041,7 @@
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
                 
                 // Initialize the Settings Modal
-                setupSettingsModal(); // REFACTOR: Renamed function call
+                setupSettingsModal(); 
                 
                 DOMElements.btnEditMode.addEventListener('click', () => {
                     if (currentEditState.id) {
@@ -1090,8 +1092,6 @@
                         return;
                     }
                 });
-
-                // REFACTOR: Removed CsvManager.setupExport and setupImport
             }
             
             function toggleEditMode() {
