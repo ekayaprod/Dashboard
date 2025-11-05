@@ -603,6 +603,12 @@ var OleCompoundDoc = function () {
               }
               rootStream = entry;
               this.rootStreamEntry = entry;
+              
+              // B4: Root entry size validation
+              if (rootStream.size === 0) { 
+                  console.warn('Root stream size is zero, setting to default cutoff for MiniFAT calculation.'); 
+                  rootStream.size = header.ulMiniSectorCutoff || 4096; 
+              }
             }
 
             entries.push(entry);
@@ -861,7 +867,7 @@ var OleCompoundDoc = function () {
     var sectorSize;
     var useMiniFat = streamSize < header.ulMiniSectorCutoff;
     
-    // 2. MiniFAT sector chain reading safety hazard fix: Pre-calculate mini stream sectors
+    // MiniFAT sector chain reading safety hazard fix: Pre-calculate mini stream sectors
     var miniStreamSectors = null;
     var rootStream = this.rootStreamEntry; 
 
@@ -869,7 +875,7 @@ var OleCompoundDoc = function () {
         if (!rootStream) {
             throw new CorruptFileError("Root Entry not found for MiniFAT access");
         }
-        // Cache the MiniFAT sectors chain read once, outside the loop
+        // B2: Cache the MiniFAT sectors chain read once, outside the loop
         miniStreamSectors = this.readSectorsFromSAT(
             fat, 
             Math.ceil(rootStream.size / header.uSectorSize), 
@@ -906,13 +912,17 @@ var OleCompoundDoc = function () {
         var sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
         var offsetInMiniStream = (sector * sectorSize) % header.uSectorSize;
         
-        if (sectorInMiniStream >= miniStreamSectors.length) {
-          throw new CorruptFileError('Mini stream sector index out of bounds');
-        }
-        
         // B30: Validate offsetInMiniStream against sector size
         if (offsetInMiniStream >= header.uSectorSize) {
             throw new CorruptFileError('Mini stream offset calculation error');
+        }
+
+        // B1: Safety check for negative index
+        if (sectorInMiniStream < 0 || sectorInMiniStream >= miniStreamSectors.length) {
+            console.warn('Mini stream data sector index out of bounds, truncating');
+            // If out of bounds, break early
+            stream.content = Array.from(contentBuffer.slice(0, contentWriteOffset));
+            return;
         }
 
         var actualOffset = 512 + miniStreamSectors[sectorInMiniStream] * header.uSectorSize + offsetInMiniStream;
@@ -980,11 +990,12 @@ var OleCompoundDoc = function () {
               var _sectorInMiniStream = Math.floor(sector * sectorSize / header.uSectorSize);
               var _offsetInMiniStream = (sector * sectorSize) % header.uSectorSize;
               
-              if (_sectorInMiniStream >= miniStreamSectors.length) { // Use cached miniStreamSectors
-                console.warn('Mini stream sector index out of bounds, truncating');
-                break;
+              // B1: Safety check for negative index
+              if (_sectorInMiniStream < 0 || _sectorInMiniStream >= miniStreamSectors.length) {
+                  console.warn('Mini stream data sector index out of bounds, truncating');
+                  break;
               }
-              
+
               var _actualOffset = 512 + miniStreamSectors[_sectorInMiniStream] * header.uSectorSize + _offsetInMiniStream; // Use cached miniStreamSectors
               
               if (_actualOffset >= file.arrayBuffer.length) {
@@ -1067,7 +1078,13 @@ var OleCompoundDoc = function () {
       
       var properties = [];
 
-      for (var i = 0; i < propertyCount && content.length >= 8; i++) {
+      for (var i = 0; i < propertyCount; i++) {
+        // B3: Check if enough data exists for a full property entry (8 bytes: ID + Offset)
+        if (content.length < 8) { 
+            console.warn('Document Summary: Not enough data remaining for declared properties. Stopping.'); 
+            break; 
+        }
+
         d = content.splice(0, 4);
         var propertyId = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
         d = content.splice(0, 4);
@@ -1628,6 +1645,11 @@ var Reader = function () {
                     console.warn('Error reading attachment field ' + subKey + ': ' + e.message);
                 }
             }
+        }
+
+        // B2: Warning if attachment was truncated
+        if (attachment.attachmentData && attachment.attachmentSize && attachment.attachmentData.length < attachment.attachmentSize) { 
+            console.warn('Attachment ' + attachment.attachmentFilename + ' was truncated. Declared size: ' + attachment.attachmentSize + ', Actual read size: ' + attachment.attachmentData.length);
         }
         
         attachments.push({
