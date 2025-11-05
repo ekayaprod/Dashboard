@@ -273,14 +273,14 @@
     </div>
     <div id="toast" class="toast"></div>
 
-    <!-- External Libs -->
-    <script src="js/msgreader.js"></script>
-    
     <!-- App Libs -->
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
 
+    <!-- External Libs -->
+    <script src="js/msgreader.js"></script>
+    
     <script>
     // ===================================================================
     // CONSTANTS & HELPERS (Issue 1, 10, 13, 15)
@@ -800,13 +800,18 @@
                     try {
                         if (!window.MsgReader || typeof window.MsgReader.read !== 'function') { 
                             throw new Error('MsgReader library not loaded or invalid.'); 
-                        } 
+                        }
 
-                        /* * BUG FIX 2: Convert ArrayBuffer to Uint8Array.
-                         * e.target.result is an ArrayBuffer, but msgreader.js expects
-                         * a Uint8Array or a plain Array.
-                         */
-                        const fileData = window.MsgReader.read(new Uint8Array(e.target.result)); 
+                        // Validate file size
+                        const arrayBuffer = e.target.result;
+                        if (!arrayBuffer || arrayBuffer.byteLength < 512) {
+                            throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
+                        }
+
+                        // Convert ArrayBuffer to plain Array that msgreader.js expects
+                        const uint8View = new Uint8Array(arrayBuffer);
+                        const plainArray = Array.from(uint8View);
+                        const fileData = window.MsgReader.read(plainArray);
 
                         DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
                         DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
