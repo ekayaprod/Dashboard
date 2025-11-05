@@ -286,8 +286,7 @@
             <div class="header-top-row">
                 <h1>Lookup</h1>
                 <div class="header-actions">
-                    <button id="btn-import-csv" class="button-base" title="Import data from CSV">Import</button>
-                    <button id="btn-export-csv" class="button-base" title="Export data to CSV">Export</button>
+                    <!-- REFACTOR: Removed btn-import-csv and btn-export-csv -->
                     <button id="btn-settings" class="icon-btn" title="Settings">
                         </button>
                     <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
@@ -330,6 +329,9 @@
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
+    
+    <!-- REFACTOR: Removed placeholder <script> tag comment -->
+    
     <script>
     // Dependency Check
     (() => {
@@ -382,8 +384,8 @@
                     'btnAddNewEntry', 'btn-settings', 'btn-edit-mode',
                     'toast', 'modal-overlay', 'modal-content',
                     'navbar-container',
-                    'kb-results-container', 'btn-kb-search', 'kb-empty-state',
-                    'btn-import-csv', 'btn-export-csv'
+                    'kb-results-container', 'btn-kb-search', 'kb-empty-state'
+                    /* REFACTOR: Removed 'btn-import-csv', 'btn-export-csv' */
                 ]
             });
 
@@ -936,61 +938,92 @@
                         sortAndSaveState();
                         renderAll();
                         SafeUI.showToast(`Imported ${toAdd + toOverwrite} entries.`);
+                        SafeUI.hideModal(); // REFACTOR: Close the settings modal
                     }, true)
                 );
+                return false; // REFACTOR: Prevent CsvManager from closing modal
             }
 
 
             /**
              * Shows the Settings modal (Now using SharedSettingsModal)
              */
-            function showSettingsModal() {
-                
-                // Content for the KB URL input, which is page-specific
-                const kbSettingsContent = `
+            // REFACTOR: Replaced the old showSettingsModal with setupSettingsModal
+            function setupSettingsModal() {
+                // 1. Define page-specific HTML (for Settings AND CSV)
+                const settingsHtml = `
                     <div class="form-group">
                         <label for="kb-url-input">KnowledgeBase Search URL</label>
                         <input type="text" id="kb-url-input" class="sidebar-input" placeholder="https://my-kb.com/search?q={query}" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}">
                         <p class="form-help">Enter the full URL from a search on your KB. Use <strong>{query}</strong> as a placeholder for the search term.</p>
                     </div>
-                    <div class="divider"></div>
+                `;
+                const pageDataHtml = `
+                    <button id="modal-export-csv-btn" class="button-base">Export DB (CSV)</button>
+                    <button id="modal-import-csv-btn" class="button-base">Import DB (CSV)</button>
                 `;
 
-                // Logic for saving the KB URL, which is page-specific
-                const kbSaveCallback = () => {
+                // 2. Define page-specific "save" callback
+                const onSave = () => {
                     const newUrl = document.getElementById('kb-url-input').value.trim();
-                            
                     const validation = validateKbUrl(newUrl);
                     if (!validation.valid) {
                         SafeUI.showValidationError("Invalid URL", validation.message, "kb-url-input");
-                        return false;
+                        return false; // Keep modal open
                     }
-
                     state.settings.kbBaseUrl = newUrl;
                     saveState();
                     SafeUI.showToast("Settings saved.");
                     handleSearch();
-                    return true;
+                    return true; // Close modal
+                };
+                
+                // 3. Define page-specific "open" callback (to wire up CSV buttons)
+                const onModalOpen = () => {
+                    // Wire up CSV Export
+                    CsvManager.setupExport({
+                        exportBtn: document.getElementById('modal-export-csv-btn'),
+                        headers: APP_CONFIG.CSV_HEADERS,
+                        dataGetter: () => state.items,
+                        filename: 'lookup-export.csv'
+                    });
+                    
+                    // Wire up CSV Import
+                    CsvManager.setupImport({
+                        importBtn: document.getElementById('modal-import-csv-btn'),
+                        headers: APP_CONFIG.CSV_HEADERS,
+                        onValidate: validateCsvRow, 
+                        onConfirm: (validatedData, importErrors) => {
+                            // confirmCsvImport shows its own modal, so we return false
+                            // to prevent the CsvManager from closing the settings modal.
+                            return confirmCsvImport(validatedData, importErrors);
+                        }
+                    });
                 };
 
-                // Initialize the SharedSettingsModal
+                // 4. Define page-specific "restore" callback
+                const onRestore = (dataToRestore) => {
+                    state.items = dataToRestore.items || [];
+                    state.settings = dataToRestore.settings || { kbBaseUrl: '' };
+                    sortAndSaveState();
+                    renderAll();
+                    handleSearch();
+                    SafeUI.hideModal();
+                };
+
+                // 5. Initialize the shared modal
                 window.SharedSettingsModal.init({
                     buttonId: 'btn-settings',
                     appName: APP_CONFIG.NAME,
                     state: state,
-                    modalContentHtml: kbSettingsContent, // Inject KB form
-                    onModalSave: kbSaveCallback,
+                    customSettingsHtml: settingsHtml,     // <-- NEW
+                    pageSpecificDataHtml: pageDataHtml,  // <-- NEW
+                    onModalOpen: onModalOpen,            // <-- NEW
+                    onModalSave: onSave,                 // <-- Pass the save callback
+                    onRestoreCallback: onRestore,
                     itemValidators: {
                         items: APP_CONFIG.CSV_HEADERS,
                         settings: ['kbBaseUrl']
-                    },
-                    onRestoreCallback: (dataToRestore) => {
-                        state.items = dataToRestore.items || [];
-                        state.settings = dataToRestore.settings || { kbBaseUrl: '' };
-                        sortAndSaveState();
-                        renderAll();
-                        handleSearch();
-                        SafeUI.hideModal();
                     }
                 });
             }
@@ -1006,7 +1039,7 @@
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
                 
                 // Initialize the Settings Modal
-                showSettingsModal();
+                setupSettingsModal(); // REFACTOR: Renamed function call
                 
                 DOMElements.btnEditMode.addEventListener('click', () => {
                     if (currentEditState.id) {
@@ -1058,19 +1091,7 @@
                     }
                 });
 
-                CsvManager.setupExport({
-                    exportBtn: DOMElements.btnExportCsv,
-                    headers: APP_CONFIG.CSV_HEADERS,
-                    dataGetter: () => state.items,
-                    filename: 'lookup-export.csv'
-                });
-                
-                CsvManager.setupImport({
-                    importBtn: DOMElements.btnImportCsv,
-                    headers: APP_CONFIG.CSV_HEADERS,
-                    onValidate: validateCsvRow, 
-                    onConfirm: confirmCsvImport
-                });
+                // REFACTOR: Removed CsvManager.setupExport and setupImport
             }
             
             function toggleEditMode() {
