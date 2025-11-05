@@ -808,10 +808,37 @@
                             throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
                         }
 
+                        // Log file info for debugging
+                        console.log('File info:', {
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            bufferSize: arrayBuffer.byteLength
+                        });
+
                         // Convert ArrayBuffer to plain Array that msgreader.js expects
                         const uint8View = new Uint8Array(arrayBuffer);
                         const plainArray = Array.from(uint8View);
+                        
+                        // Validate we have actual numeric data
+                        if (plainArray.length === 0) {
+                            throw new Error('File conversion failed - no data extracted.');
+                        }
+                        
+                        // Check OLE signature (should start with D0 CF 11 E0 or 0E 11 FC 0D)
+                        const signature = plainArray.slice(0, 8);
+                        const isValidOLE = (
+                            (signature[0] === 0xD0 && signature[1] === 0xCF && signature[2] === 0x11 && signature[3] === 0xE0) ||
+                            (signature[0] === 0x0E && signature[1] === 0x11 && signature[2] === 0xFC && signature[3] === 0x0D)
+                        );
+                        
+                        if (!isValidOLE) {
+                            throw new Error('File does not appear to be a valid MSG/OFT file (invalid OLE signature). The file may be corrupted or is not an Outlook message file.');
+                        }
+                        
+                        console.log('Parsing file with MsgReader...');
                         const fileData = window.MsgReader.read(plainArray);
+                        console.log('Parse successful!');
 
                         DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
                         DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
@@ -821,13 +848,22 @@
                         DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
                         DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
 
-                        
                         DOMElements.outputWrapper.classList.add('hidden'); 
                         setTimeout(() => resizeResultBody(), 0);
                     } catch (err) {
                         console.error('File parsing error:', err);
-                        SafeUI.showModal('File Error', `<p>Failed to parse file: ${err.message}</p>`, [{label: 'OK'}]);
-                        // Do not re-throw, just show modal to user.
+                        
+                        // Provide more helpful error messages
+                        let userMessage = err.message;
+                        if (err.name === 'CorruptFileError') {
+                            userMessage = 'The MSG file appears to be corrupted or uses an unsupported format. ' + err.message;
+                        } else if (err.message.includes('Root Entry not found')) {
+                            userMessage = 'Unable to read the MSG file structure. The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.';
+                        } else if (err.message.includes('signature')) {
+                            userMessage = 'This file is not a valid MSG/OFT file. Please ensure you are uploading an Outlook message file (.msg) or template file (.oft).';
+                        }
+                        
+                        SafeUI.showModal('File Error', `<p>${userMessage}</p>`, [{label: 'OK'}]);
                     }
                 };
                 reader.onerror = () => {
