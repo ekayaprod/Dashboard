@@ -610,8 +610,9 @@ var OleCompoundDoc = function () {
         
         file.seek(offset);
 
-        // 4 entries per sector (128 bytes each)
-        for (var j = 0; j < 4; j++) {
+        // Calculate entries per sector dynamically (128 bytes per entry)
+        var entriesPerSector = header.uSectorSize / 128;
+        for (var j = 0; j < entriesPerSector; j++) {
           var entryStartOffset = file.offset;
 
           try {
