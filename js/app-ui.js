@@ -224,14 +224,17 @@ const NotepadManager = (() => {
             DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
         });
 
-        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
-            if (!activeNoteId) return;
-            const note = findById('notes', activeNoteId);
+        // DEBUG: Step 3 - Force Immediate Notepad Save
+        DOMElements.notepadEditor.addEventListener('input', () => {
+            if (!activeNoteId) return; // (Keep any existing guards)
+            const note = findById('notes', activeNoteId); // (Or however you get the note)
             if (note) {
                 note.content = DOMElements.notepadEditor.value;
-                saveState();
+                saveState(); // Remove debounce for testing
+                console.log('Notepad saved immediately');
             }
-        }, 300));
+        });
+        // End DEBUG Step 3
         
         DOMElements.newNoteBtn.addEventListener('click', () => {
             SafeUI.showModal('New Note', '<input id="new-note-title" class="sidebar-input" placeholder="Note title">', [
@@ -600,4 +603,3 @@ window.SearchHelper = SearchHelper;
 window.NotepadManager = NotepadManager;
 window.QuickListManager = QuickListManager; // Expose the new module
 window.SharedSettingsModal = SharedSettingsModal;
-
