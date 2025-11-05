@@ -126,25 +126,6 @@
             font-weight: 500;
         }
 
-        /* --- DARK MODE --- */
-        @media (prefers-color-scheme: dark) {
-            .upload-wrapper.dragover {
-                background-color: var(--primary-hover-bg-light);
-            }
-            .list-item:hover {
-                background-color: var(--info-bg);
-                border-color: var(--border-color);
-            }
-            .list-item a.list-item-name {
-                color: var(--text-color);
-            }
-            .breadcrumb-container {
-                background-color: var(--info-bg);
-            }
-            .breadcrumb-current {
-                color: var(--text-color);
-            }
-        }
     </style>
 </head>
 <body>
@@ -153,7 +134,6 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <!-- This banner's style is now in style.css -->
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
                 
                 <!-- VIEW 1: CATALOGUE / LIBRARY (DEFAULT VIEW) -->
@@ -274,7 +254,7 @@
     <script>
     // Dependency Check
     (() => {
-        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'MsgReader'];
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         if (missing.length > 0) {
             const errorTitle = "Application Failed to Load";
@@ -672,45 +652,8 @@
         };
 
         // ===================================================================
-        // DATA MANAGEMENT HANDLERS (JSON & CSV)
+        // DATA MANAGEMENT HANDLERS (CSV)
         // ===================================================================
-        
-        // Settings Modal
-        const showSettingsModal = () => {
-            const modalContent = `
-                <div class="form-group">
-                    <label>Advanced Data Management (Backup)</label>
-                    <p class="form-help">Use these tools for disaster recovery. This is a technical backup of the *entire* library in JSON format.</p>
-                    <div class="button-group">
-                        <button id="modal-backup-btn" class="button-base">Backup (JSON)</button>
-                        <button id="modal-restore-btn" class="button-base">Restore (JSON)</button>
-                    </div>
-                </div>
-            `;
-            
-            SafeUI.showModal("Settings", modalContent, [{ label: 'Close' }]);
-
-            // Attach listeners to modal buttons using consolidated helper
-            BackupRestore.setupBackupRestoreHandlers({
-                state: { library: state.library, version: state.version }, // Pass a snapshot of state
-                appName: APP_CONFIG.NAME,
-                backupBtn: document.getElementById('modal-backup-btn'),
-                restoreBtn: document.getElementById('modal-restore-btn'),
-                itemValidators: {
-                    library: [] 
-                },
-                restoreConfirmMessage: 'This will overwrite your entire mailto library with the JSON backup. This cannot be undone.',
-                onRestoreCallback: (dataToRestore) => {
-                    // dataToRestore is the 'data' object from the backup file
-                    state.library = dataToRestore.library || [];
-                    currentFolderId = 'root';
-                    saveState();
-                    renderCatalogue();
-                    SafeUI.showToast('Library restored successfully.');
-                    SafeUI.hideModal(); 
-                }
-            });
-        };
         
         // CSV "Human-Friendly" Import (Setup)
         const setupCsvImport = () => {
@@ -797,10 +740,26 @@
         // ===================================================================
 
         const attachEventListeners = () => {
+            // Initialize the Shared Settings Modal for JSON Backup/Restore
+            window.SharedSettingsModal.init({
+                buttonId: 'btn-settings',
+                appName: APP_CONFIG.NAME,
+                state: { library: state.library, version: state.version }, // Pass only the relevant data
+                onRestoreCallback: (dataToRestore) => {
+                    state.library = dataToRestore.library || [];
+                    currentFolderId = 'root';
+                    saveState();
+                    renderCatalogue();
+                    SafeUI.hideModal(); 
+                },
+                itemValidators: {
+                    library: [] // We don't need deep validation on recursive structures
+                }
+            });
+
             // Catalogue View
             DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
             DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
-            DOMElements.btnSettings.addEventListener('click', showSettingsModal);
             
             // CSV I/O
             CsvManager.setupExport({
@@ -858,7 +817,7 @@
             const uploadWrapper = DOMElements.uploadWrapper; 
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, (ev) => ev.preventDefault()));
             ['dragenter', 'dragover'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.add('dragover')));
-            ['dragleave', 'drop'].EaforEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.remove('dragover')));
+            ['dragleave', 'drop'].forEach(e => uploadWrapper.addEventListener(e, () => uploadWrapper.classList.remove('dragover')));
             uploadWrapper.addEventListener('drop', (e) => {
                 e.preventDefault();
                 const files = e.dataTransfer.files;
@@ -932,8 +891,10 @@
 
         // Init
         const init = () => {
-            // FIX 3 & 5: Removed redundant icon setup
-            
+            // Setup icons
+            // REFACTORED: Removed btnSettings.innerHTML
+            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>';
+
             // Setup textareas
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
             DOMHelpers.setupTextareaAutoResize(DOMElements.resultMailto, 150);
@@ -943,8 +904,6 @@
             // Initial render
             showView('catalogue');
             renderCatalogue();
-            
-            // FIX 2: Removed redundant navbar load
         };
 
         init();
