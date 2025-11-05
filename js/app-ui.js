@@ -141,23 +141,15 @@ const SearchHelper = (() => {
 })();
 
 // ============================================================================
-// MODULE: DashboardUI (Dashboard-specific logic migrated from index-app.js)
+// MODULE: NotepadManager (Extracted from DashboardUI)
 // ============================================================================
-const DashboardUI = (() => {
-    const DEBOUNCE_DELAY = 300;
-    
-    // Scoped variables for state and DOM access
+const NotepadManager = (() => {
     let DOMElements;
     let state;
     let saveState;
-    let APP_CONFIG;
-
-    let shortcutsManager;
-    let selectedAppId = null;
     let activeNoteId = null;
-    let initialAppData = null;
-    
-    // --- Scoped Helpers ---
+
+    // --- Helpers ---
     const getCollection = (type) => state[type];
     const hasItems = (type) => getCollection(type).length > 0;
     const findById = (collectionType, id) => {
@@ -169,201 +161,17 @@ const DashboardUI = (() => {
         const itemTypeLabel = labels[type] || 'Item';
         UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
     };
-    const checkFormDirty = () => {
-        if (!initialAppData) return false;
-        if (initialAppData.id === null) {
-            return DOMElements.editAppName.value.trim() !== '' ||
-                   DOMElements.editAppUrls.value.trim() !== '' ||
-                   DOMElements.editAppEscalation.value.trim() !== '';
-        }
-        return DOMElements.editAppName.value.trim() !== initialAppData.name ||
-               DOMElements.editAppUrls.value.trim() !== initialAppData.urls ||
-               DOMElements.editAppEscalation.value.trim() !== initialAppData.escalation;
-    };
-    const updateSaveButtonState = () => {
-        if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
-    };
 
+    // --- Core Logic ---
     const saveActiveNote = () => {
-        if (!activeNoteId || !DOMElements || !DOMElements.notepadEditor) return;
+        if (!activeNoteId) return;
         const note = findById('notes', activeNoteId);
-        if (note && note.content !== DOMElements.notepadEditor.value) {
+        if (note && DOMElements.notepadEditor) {
             note.content = DOMElements.notepadEditor.value;
             saveState();
         }
     };
     
-    // --- Shortcuts Manager ---
-    const createShortcutsManager = (services) => {
-        const container = DOMElements.shortcutsContainer;
-        let draggedItemId = null;
-
-        const addDragAndDropListeners = (element) => {
-            element.addEventListener('dragstart', (e) => {
-                draggedItemId = element.dataset.id;
-                setTimeout(() => element.classList.add('dragging'), 0);
-                container.classList.add('drag-active'); // Add visual feedback
-            });
-            element.addEventListener('dragend', () => {
-                element.classList.remove('dragging');
-                draggedItemId = null;
-                container.classList.remove('drag-active'); // Remove visual feedback
-            });
-        };
-
-        const createShortcutElement = (shortcut) => {
-            const div = document.createElement('div');
-            div.className = 'shortcut-item';
-            div.dataset.id = shortcut.id;
-            div.draggable = true;
-            div.innerHTML = `
-                <span class="drag-handle" title="Drag to reorder">☰</span>
-                <a href="${shortcut.url}" target="_blank" rel="noopener noreferrer">${services.escapeHTML(shortcut.name)}</a>
-                <button class="icon-btn delete-btn" data-id="${shortcut.id}" title="Delete">${services.SVGIcons.trash}</button>
-            `;
-            addDragAndDropListeners(div);
-            return div;
-        };
-
-        const render = () => {
-            container.innerHTML = '';
-            if (!hasItems('shortcuts')) {
-                container.innerHTML = `<span style="color: var(--subtle-text); font-size: 0.8rem; grid-column: 1 / -1;">No shortcuts. Add from 'Actions'.</span>`;
-            } else {
-                const fragment = document.createDocumentFragment();
-                getCollection('shortcuts').forEach(shortcut => {
-                    const element = createShortcutElement(shortcut);
-                    fragment.appendChild(element);
-                });
-                container.appendChild(fragment);
-            }
-        };
-
-        const remove = (shortcutId) => {
-            const itemIndex = getCollection('shortcuts').findIndex(s => s.id === shortcutId);
-            if (itemIndex === -1) return;
-            const itemCopy = { ...getCollection('shortcuts')[itemIndex] };
-
-            confirmDelete('shortcuts', itemCopy.name, () => {
-                getCollection('shortcuts').splice(itemIndex, 1);
-                saveState();
-                render();
-            });
-        };
-
-        const add = () => {
-            SafeUI.showModal('Add Shortcut',
-                `<input type="text" id="shortcut-name" placeholder="Name" class="sidebar-input">
-                 <input type="text" id="shortcut-url" placeholder="URL" class="sidebar-input">`,
-                [{ label: 'Cancel' }, {
-                    label: 'Add', class: 'button-primary', callback: () => {
-                        const nameInput = document.getElementById('shortcut-name');
-                        const urlInput = document.getElementById('shortcut-url');
-                        const name = nameInput.value;
-                        const url = urlInput.value;
-                        if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
-                            getCollection('shortcuts').push({ id: SafeUI.generateId(), name, url });
-                            saveState();
-                            render();
-                        } else {
-                            SafeUI.showToast('Invalid name or URL');
-                            return false;
-                        }
-                    }
-                }]
-            );
-        };
-
-        const init = () => {
-            container.addEventListener('click', (e) => {
-                const deleteBtn = e.target.closest('.delete-btn');
-                if (deleteBtn && deleteBtn.dataset.id) {
-                    remove(deleteBtn.dataset.id);
-                }
-            });
-
-            container.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                container.classList.add('drag-active');
-            });
-            
-            container.addEventListener('dragleave', (e) => {
-                 container.classList.remove('drag-active');
-            });
-
-
-            container.addEventListener('drop', (e) => {
-                e.preventDefault();
-                container.classList.remove('drag-active');
-                if (!draggedItemId) return;
-
-                const targetElement = e.target.closest('.shortcut-item, .shortcuts-container');
-                if (!targetElement) return;
-
-                const shortcuts = getCollection('shortcuts');
-                const draggedIndex = shortcuts.findIndex(s => s.id === draggedItemId);
-                if (draggedIndex === -1) return;
-
-                const [draggedItem] = shortcuts.splice(draggedIndex, 1);
-
-                if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id !== draggedItemId) {
-                    const targetIndex = shortcuts.findIndex(s => s.id === targetElement.dataset.id);
-                    // Determine if dropping before or after the target element
-                    const rect = targetElement.getBoundingClientRect();
-                    const dropIndex = (e.clientY - rect.top) < (rect.height / 2) ? targetIndex : targetIndex + 1;
-                    
-                    if (dropIndex !== -1) {
-                         shortcuts.splice(dropIndex, 0, draggedItem);
-                    } else {
-                        shortcuts.push(draggedItem);
-                    }
-                } else if (targetElement.classList.contains('shortcut-item') && targetElement.dataset.id === draggedItemId) {
-                    shortcuts.splice(draggedIndex, 0, draggedItem);
-                } else {
-                    shortcuts.push(draggedItem);
-                }
-                saveState();
-                render();
-                draggedItemId = null;
-            });
-        };
-
-        return { init, render, add };
-    };
-
-    // --- Data Renderers ---
-    const renderAppDropdown = () => {
-        const appSelect = DOMElements.appSelect;
-        const selectedValue = appSelect.value;
-        appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-
-        const sortedApps = [...getCollection('apps')].sort((a,b) => a.name.localeCompare(b.name));
-        
-        sortedApps.forEach(app => {
-            appSelect.add(new Option(app.name, app.id));
-        });
-        
-        if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
-            appSelect.value = selectedValue;
-        } else {
-            appSelect.value = '';
-            if (selectedAppId && !sortedApps.some(app => app.id === selectedAppId)) {
-                selectedAppId = null;
-            }
-        }
-    };
-
-    const renderAppData = () => {
-        if (!hasItems('apps')) {
-            DOMElements.appSelectGroup.classList.add('hidden');
-            DOMElements.appEmptyState.classList.remove('hidden');
-        } else {
-            DOMElements.appSelectGroup.classList.remove('hidden');
-            DOMElements.appEmptyState.classList.add('hidden');
-            renderAppDropdown();
-        }
-    };
-
     const renderNotesData = () => {
         const noteSelect = DOMElements.noteSelect;
         noteSelect.innerHTML = '';
@@ -391,323 +199,24 @@ const DashboardUI = (() => {
         DOMElements.renameNoteBtn.disabled = !hasItems('notes');
     };
 
-    const renderAll = () => {
-        if (shortcutsManager) shortcutsManager.render();
-        renderAppData();
-        renderNotesData();
-    };
-
-    // --- App Detail Handlers ---
-    const displayAppDetails = (appId) => {
-        selectedAppId = appId;
-        const isVisible = !!appId;
-
-        DOMElements.editAppName.value = '';
-        DOMElements.editAppUrls.value = '';
-        DOMElements.editAppEscalation.value = '';
-        DOMElements.editAppNameWrapper.classList.add('hidden');
-
-        DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
-
-        if (isVisible) {
-            const app = findById('apps', appId);
-            if (!app) {
-                console.error(`Failed to find app with ID: ${appId}`);
-                DOMElements.appDetailsContainer.classList.add('hidden');
-                selectedAppId = null;
-                initialAppData = null;
-                return;
+    const attachListeners = () => {
+        // Register immediate-save listeners
+        const immediateSave = () => {
+            // Only save if content has actually changed
+            const currentNote = findById('notes', activeNoteId);
+            if (currentNote && DOMElements.notepadEditor.value !== currentNote.content) {
+                saveActiveNote();
             }
-            
-            initialAppData = {...app};
-            DOMElements.editAppName.value = app.name;
-            
-            DOMElements.editAppUrls.value = (app.urls || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            DOMElements.editAppEscalation.value = (app.escalation || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-        } else {
-            initialAppData = null;
+        };
+        DOMElements.noteSelect.addEventListener('mousedown', immediateSave);
+        DOMElements.deleteNoteBtn.addEventListener('mousedown', immediateSave);
+        
+        // Register for global exit-save
+        if (window.AppLifecycle && typeof window.AppLifecycle.registerSaveOnExit === 'function') {
+            window.AppLifecycle.registerSaveOnExit(immediateSave);
         }
 
-        const escalationTextarea = DOMElements.editAppEscalation;
-        const isCollapsed = escalationTextarea.value.trim() === '';
-        escalationTextarea.style.height = isCollapsed ? '40px' : 'auto'; 
-        
-        setTimeout(() => {
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
-        }, 0);
-        
-        updateSaveButtonState();
-    };
-
-    const createNewAppForm = () => {
-        DOMElements.appSelect.value = '';
-        displayAppDetails(null);
-        DOMElements.appDetailsContainer.classList.remove('hidden');
-        DOMElements.editAppNameWrapper.classList.remove('hidden');
-        DOMElements.editAppName.focus();
-        initialAppData = {id: null, name: '', urls: '', escalation: ''};
-        updateSaveButtonState();
-    };
-    
-    // --- Settings Modal ---
-    const showSettingsModal = () => {
-        const modalContent = `
-            <div class="form-group">
-                <label>Advanced Data Management</label>
-                <p class="form-help">Use these tools for disaster recovery. "Import/Export" (on the main page) is for managing application data via CSV.</p>
-                <div class="button-group">
-                    <button id="modal-backup-btn" class="button-base">Backup ALL (JSON)</button>
-                    <button id="modal-restore-btn" class="button-base">Restore ALL (JSON)</button>
-                </div>
-            </div>
-        `;
-        
-        SafeUI.showModal("Settings", modalContent, [{ label: 'Close' }]);
-
-        // Attach listeners to modal buttons
-        BackupRestore.setupBackupRestoreHandlers({
-            state: state,
-            appName: APP_CONFIG.NAME,
-            backupBtn: document.getElementById('modal-backup-btn'),
-            restoreBtn: document.getElementById('modal-restore-btn'),
-            itemValidators: {
-                apps: APP_CONFIG.APP_CSV_HEADERS,
-                notes: ['id', 'title', 'content'],
-                shortcuts: ['id', 'name', 'url']
-            },
-            restoreConfirmMessage: 'This will overwrite all dashboard data (Apps, Notes, and Shortcuts). This cannot be undone.',
-            onRestoreCallback: (dataToRestore) => {
-                state.apps = dataToRestore.apps || [];
-                state.notes = dataToRestore.notes || [];
-                state.shortcuts = dataToRestore.shortcuts || [];
-                
-                if (!hasItems('notes')) {
-                    getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
-                }
-                
-                saveState();
-                
-                selectedAppId = null;
-                activeNoteId = null;
-                displayAppDetails(null);
-                renderAll();
-                SafeUI.showToast('Dashboard data restored.');
-                SafeUI.hideModal();
-            }
-        });
-    };
-
-    // --- App Initializer (called by app-core.js) ---
-    const initDashboard = (ctx, appConfig) => {
-        DOMElements = ctx.elements;
-        state = ctx.state;
-        saveState = ctx.saveState;
-        APP_CONFIG = appConfig;
-
-        // Register the silent save function for page exit
-        AppLifecycle.registerSaveOnExit(saveActiveNote);
-        
-        // Register the prompt function for page exit
-        AppLifecycle.registerPromptOnExit(() => {
-            if (checkFormDirty()) {
-                return 'You have unsaved changes to an application. Are you sure you want to leave?';
-            }
-            return null; // Return null or undefined to allow exit
-        });
-
-        // Setup textareas
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
-        DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
-
-        // REMOVED: Redundant icon setup block (Fixes 3 & 5)
-
-        // Initialize shortcuts
-        shortcutsManager = createShortcutsManager({
-            escapeHTML: SafeUI.escapeHTML, confirmDelete, saveState, showModal: SafeUI.showModal, 
-            showToast: SafeUI.showToast, validators: SafeUI.validators, generateId: SafeUI.generateId, SVGIcons: SafeUI.SVGIcons
-        });
-        shortcutsManager.init();
-
-        // Setup CSV listeners
-        CsvManager.setupExport({
-            exportBtn: DOMElements.btnExportCsv,
-            dataGetter: () => state.apps,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            filename: `${APP_CONFIG.NAME}-export.csv`
-        });
-        
-        CsvManager.setupImport({
-            importBtn: DOMElements.btnImportCsv,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            stateItemsGetter: () => state.apps, // Pass current apps for validation
-            onValidate: (row, index, allApps) => {
-                 const entry = {
-                    id: row.id || SafeUI.generateId(),
-                    name: (row.name || '').trim(),
-                    urls: (row.urls || '').trim(),
-                    escalation: (row.escalation || '').trim()
-                };
-
-                if (!SafeUI.validators.notEmpty(entry.name)) {
-                    return { error: `Row ${index + 2}: 'name' is required.` };
-                }
-                
-                // Check for duplicate names, excluding the item itself if it's an update
-                if (DataValidator.hasDuplicate(allApps, 'name', entry.name, entry.id)) {
-                    return { error: `Row ${index + 2}: App name '${entry.name}' already exists.` };
-                }
-
-                return { entry };
-            },
-            onConfirm: (validatedData, importErrors) => {
-                const newEntries = [];
-                const updatedEntries = [];
-                const existingIds = new Set(state.apps.map(app => app.id));
-
-                validatedData.forEach(entry => {
-                    if (existingIds.has(entry.id)) {
-                        updatedEntries.push(entry);
-                    } else {
-                        newEntries.push(entry);
-                    }
-                });
-
-                const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-                const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
-
-                let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
-                
-                if (importErrors.length > 0) {
-                    summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
-                                    <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
-                                        ${errorList}${moreErrors}
-                                    </ul>`;
-                }
-
-                summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
-
-                SafeUI.showModal("Confirm CSV Import", summaryHtml, [
-                    { label: 'Cancel' },
-                    { 
-                        label: 'Import and Overwrite', 
-                        class: 'button-primary', 
-                        callback: () => {
-                            let importedCount = 0;
-                            
-                            newEntries.forEach(entry => {
-                                // Final check for ID collision, though unlikely with UUIDs
-                                if (state.apps.some(app => app.id === entry.id)) {
-                                    console.warn(`ID collision detected for "${entry.name}" (${entry.id}). Assigning new ID.`);
-                                    entry.id = SafeUI.generateId();
-                                }
-                                state.apps.push(entry);
-                                importedCount++;
-                            });
-
-                            updatedEntries.forEach(entry => {
-                                const existingIndex = state.apps.findIndex(app => app.id === entry.id);
-                                if (existingIndex > -1) {
-                                    state.apps[existingIndex] = entry;
-                                    importedCount++;
-                                }
-                            });
-
-                            saveState();
-                            renderAll();
-                            SafeUI.showToast(`Imported ${importedCount} applications.`);
-                        }
-                    }
-                ]);
-            }
-        });
-
-        // Add main event listeners
-        
-        DOMElements.appSelect.addEventListener('change', () => {
-            if (checkFormDirty()) {
-                UIPatterns.confirmUnsavedChanges(() => {
-                    const appId = DOMElements.appSelect.value || null;
-                    displayAppDetails(appId);
-                });
-                // Revert selection
-                DOMElements.appSelect.value = selectedAppId || '';
-                return;
-            }
-            const appId = DOMElements.appSelect.value || null;
-            displayAppDetails(appId);
-        });
-
-        const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
-        DOMElements.editAppName.addEventListener('input', debouncedSave);
-        DOMElements.editAppUrls.addEventListener('input', debouncedSave);
-        DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
-
-        DOMElements.saveChangesBtn.addEventListener('click', () => {
-            const newName = DOMElements.editAppName.value.trim();
-            if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
-                return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
-            }
-
-            const isNewApp = initialAppData.id === null;
-            const appToExcludeId = isNewApp ? null : selectedAppId;
-            
-            if (DataValidator.hasDuplicate(state.apps, 'name', newName, appToExcludeId)) {
-                return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
-            }
-
-            const appData = {
-                name: newName,
-                urls: DOMElements.editAppUrls.value.trim(),
-                escalation: DOMElements.editAppEscalation.value.trim()
-            };
-
-            if (isNewApp) {
-                appData.id = SafeUI.generateId();
-                getCollection('apps').push(appData);
-                SafeUI.showToast('Application created');
-            } else {
-                const app = findById('apps', selectedAppId);
-                if (app) {
-                    app.name = appData.name;
-                    app.urls = appData.urls;
-                    app.escalation = appData.escalation;
-                    SafeUI.showToast('Application updated');
-                }
-            }
-            
-            saveState();
-            renderAppData();
-            DOMElements.appSelect.value = appData.id || selectedAppId;
-            displayAppDetails(appData.id || selectedAppId);
-        });
-
-        DOMElements.deleteAppBtn.addEventListener('click', () => {
-            if (!selectedAppId) return;
-            const app = findById('apps', selectedAppId);
-            if (!app) return;
-            
-            confirmDelete('apps', app.name, () => {
-                state.apps = state.apps.filter(a => a.id !== selectedAppId);
-                saveState();
-                selectedAppId = null;
-                displayAppDetails(null);
-                renderAppData();
-            });
-        });
-
-        DOMElements.addShortcutBtnMenu.addEventListener('click', () => shortcutsManager.add());
-        DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
-        DOMElements.btnSettings.addEventListener('click', showSettingsModal);
-
-        // Notepad listeners
-        DOMElements.noteSelect.addEventListener('mousedown', () => {
-            // Save immediately on click, before 'change' event fires
-            saveActiveNote();
-        });
-        
+        // Standard listeners
         DOMElements.noteSelect.addEventListener('change', () => {
             activeNoteId = DOMElements.noteSelect.value;
             const note = findById('notes', activeNoteId);
@@ -715,10 +224,16 @@ const DashboardUI = (() => {
             DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
         });
 
-        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(saveActiveNote, DEBOUNCE_DELAY));
+        DOMElements.notepadEditor.addEventListener('input', SafeUI.debounce(() => {
+            if (!activeNoteId) return;
+            const note = findById('notes', activeNoteId);
+            if (note) {
+                note.content = DOMElements.notepadEditor.value;
+                saveState();
+            }
+        }, 300));
         
         DOMElements.newNoteBtn.addEventListener('click', () => {
-            saveActiveNote(); // Save before opening modal
             SafeUI.showModal('New Note', '<input id="new-note-title" class="sidebar-input" placeholder="Note title">', [
                 {label: 'Cancel'},
                 {label: 'Create', class: 'button-primary', callback: () => {
@@ -735,7 +250,6 @@ const DashboardUI = (() => {
         
         DOMElements.renameNoteBtn.addEventListener('click', () => {
             if (!activeNoteId) return;
-            saveActiveNote(); // Save before opening modal
             const note = findById('notes', activeNoteId);
             if (!note) return;
             
@@ -757,7 +271,6 @@ const DashboardUI = (() => {
         
         DOMElements.deleteNoteBtn.addEventListener('click', () => {
             if (!activeNoteId || !hasItems('notes')) return;
-            saveActiveNote(); // Save before deleting
             const note = findById('notes', activeNoteId);
             if (!note) return;
             
@@ -768,17 +281,176 @@ const DashboardUI = (() => {
                 renderNotesData();
             });
         });
-
-        // First-run check for notes
-        if (!hasItems('notes')) {
-            getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
-            saveState();
-        }
-
-        renderAll();
     };
 
-    return { initDashboard };
+    return {
+        /**
+         * Initializes the Notepad manager.
+         * @param {object} config
+         * @param {object} config.elements - Cached DOM elements (noteSelect, notepadEditor, etc.)
+         * @param {object} config.state - The global state object.
+         * @param {function} config.saveState - The global saveState function.
+         */
+        init: (config) => {
+            if (!config.elements || !config.state || !config.saveState) {
+                console.error("NotepadManager.init: Missing required config.");
+                return;
+            }
+            DOMElements = config.elements;
+            state = config.state;
+            saveState = config.saveState;
+
+            // Setup textareas
+            DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
+
+            // Setup icons
+            DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
+            DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
+            DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
+
+            attachListeners();
+
+            // First-run check for notes
+            if (!hasItems('notes')) {
+                getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+                saveState();
+            }
+
+            renderNotesData();
+        }
+    };
+})();
+
+// ============================================================================
+// MODULE: QuickListManager (New Refactored Module)
+// ============================================================================
+const QuickListManager = (() => {
+    let config;
+    let container;
+
+    const createItemElement = (item) => {
+        const div = document.createElement('div');
+        div.className = 'shortcut-item'; // Use the same class for consistent styling
+        div.dataset.id = item.id;
+        
+        const name = SafeUI.escapeHTML(config.getItemName(item));
+        let nameElement;
+
+        const href = config.getItemHref ? config.getItemHref(item) : null;
+        if (href) {
+            // It's a link (for Dashboard Shortcuts)
+            nameElement = document.createElement('a');
+            nameElement.href = href;
+            nameElement.target = '_blank';
+            nameElement.rel = 'noopener noreferrer';
+            nameElement.textContent = name;
+        } else {
+            // It's a button (for Password Quick Actions)
+            nameElement = document.createElement('button');
+            nameElement.className = 'quick-action-btn';
+            nameElement.textContent = name;
+            // Add styling to make it look like the old link
+            nameElement.style.all = 'unset';
+            nameElement.style.color = 'var(--primary-color)';
+            nameElement.style.textDecoration = 'none';
+            nameElement.style.whiteSpace = 'nowrap';
+            nameElement.style.overflow = 'hidden';
+            nameElement.style.textOverflow = 'ellipsis';
+            nameElement.style.flexGrow = '1';
+            nameElement.style.fontSize = '0.9rem';
+            nameElement.style.cursor = 'pointer';
+        }
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'icon-btn delete-btn';
+        deleteBtn.title = 'Delete';
+        deleteBtn.innerHTML = SafeUI.SVGIcons.trash;
+        deleteBtn.dataset.id = item.id;
+        
+        // Removed the drag handle and custom icons per our plan
+
+        div.appendChild(nameElement);
+        div.appendChild(deleteBtn);
+        return div;
+    };
+
+    const render = () => {
+        ListRenderer.renderList({
+            container: container,
+            items: config.items,
+            emptyMessage: config.emptyMessage,
+            createItemElement: createItemElement
+        });
+    };
+
+    const handleContainerClick = (e) => {
+        const itemElement = e.target.closest('.shortcut-item');
+        if (!itemElement) return;
+
+        const id = itemElement.dataset.id;
+        const item = config.items.find(i => i.id === id);
+        if (!item) return;
+
+        // Handle Delete
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
+            e.preventDefault();
+            config.onDeleteClick(item, render);
+            return;
+        }
+
+        // Handle Item Click (if it's a button)
+        const actionBtn = e.target.closest('.quick-action-btn');
+        if (actionBtn) {
+            e.preventDefault();
+            config.onItemClick(item);
+            return;
+        }
+        
+        // If it's a link, the browser will handle it.
+    };
+
+    return {
+        /**
+         * Initializes the Quick List manager.
+         * @param {object} config
+         * @param {HTMLElement} config.container - The DOM element to render the list into.
+         * @param {Array} config.items - The array of data objects.
+         * @param {string} config.emptyMessage - Text to show when list is empty.
+         * @param {function} config.getItemName - (item) => string. Returns the display name.
+         * @param {function} config.onDeleteClick - (item, renderCallback) => void.
+         * @param {string} [config.addNewButtonId] - (Optional) ID of a button to trigger onAddNewClick.
+         * @param {function} [config.onAddNewClick] - (renderCallback) => void. (Optional)
+         * @param {function} [config.getItemHref] - (item) => string. (Optional) If provided, renders a link.
+         * @param {function} [config.onItemClick] - (item) => void. (Optional) If provided, item is a button.
+         */
+        init: (cfg) => {
+            config = cfg;
+            container = cfg.container;
+
+            if (!container || !config.items || !config.getItemName || !config.onDeleteClick) {
+                console.error("QuickListManager.init: Missing required config.");
+                return;
+            }
+
+            // Attach delegated listener
+            container.innerHTML = ''; // Clear it
+            container.addEventListener('click', handleContainerClick);
+            
+            // Attach "Add New" listener if provided
+            if (config.addNewButtonId && config.onAddNewClick) {
+                const addBtn = document.getElementById(config.addNewButtonId);
+                if (addBtn) {
+                    addBtn.addEventListener('click', () => {
+                        config.onAddNewClick(render);
+                    });
+                }
+            }
+            
+            // Initial render
+            render();
+        }
+    };
 })();
 
 
@@ -786,4 +458,5 @@ const DashboardUI = (() => {
 window.UIPatterns = UIPatterns;
 window.ListRenderer = ListRenderer;
 window.SearchHelper = SearchHelper;
-window.DashboardUI = DashboardUI;
+window.NotepadManager = NotepadManager;
+window.QuickListManager = QuickListManager; // Expose the new module
