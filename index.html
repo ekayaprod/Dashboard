@@ -27,8 +27,10 @@
                     <div class="actions-menu-wrapper button-group">
                         <button id="add-shortcut-btn-menu" class="button-base icon-btn" title="Add Shortcut"></button>
                         <button id="add-new-app-btn-menu" class="button-base icon-btn" title="Add App"></button>
-                        <button id="btn-export-csv" class="button-base">Export (CSV)</button>
-                        <button id="btn-import-csv" class="button-base">Import (CSV)</button>
+                        <!-- 
+                          REFACTOR: Removed btn-export-csv and btn-import-csv.
+                          These are now inside the SharedSettingsModal.
+                        -->
                         <button id="btn-settings" class="icon-btn" title="Settings"></button>
                     </div>
                 </div>
@@ -107,7 +109,8 @@
             'DataConverter', 
             'CsvManager',
             'NotepadManager',
-            'QuickListManager' // <-- Added check for new module
+            'QuickListManager',
+            'SharedSettingsModal' // <-- REFACTOR: Added check for shared modal
         ];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
@@ -345,38 +348,116 @@
     };
     
     // --- Settings Modal (Page-Specific) ---
-    const initSettingsModal = () => {
-        // This page's settings modal is simple, only showing Backup/Restore
-        // We can reuse the SharedSettingsModal module from app-data.js
+    // REFACTOR: Replaced old initSettingsModal with new setupSettingsModal
+    const setupSettingsModal = () => {
+        // 1. Define page-specific HTML (for CSV buttons)
+        const pageDataHtml = `
+            <button id="modal-export-csv-btn" class="button-base">Export Apps (CSV)</button>
+            <button id="modal-import-csv-btn" class="button-base">Import Apps (CSV)</button>
+        `;
+
+        // 2. Define page-specific "open" callback (to wire up buttons)
+        const onModalOpen = () => {
+            // Wire up CSV Export
+            CsvManager.setupExport({
+                exportBtn: document.getElementById('modal-export-csv-btn'),
+                dataGetter: () => state.apps,
+                headers: APP_CONFIG.APP_CSV_HEADERS,
+                filename: `${APP_CONFIG.NAME}-export.csv`
+            });
+            
+            // Wire up CSV Import
+            CsvManager.setupImport({
+                importBtn: document.getElementById('modal-import-csv-btn'),
+                headers: APP_CONFIG.APP_CSV_HEADERS,
+                onValidate: (row, index) => {
+                    const entry = {
+                        id: row.id || SafeUI.generateId(),
+                        name: (row.name || '').trim(),
+                        urls: (row.urls || '').trim(),
+                        escalation: (row.escalation || '').trim()
+                    };
+                    if (!SafeUI.validators.notEmpty(entry.name)) {
+                        return { error: `Row ${index + 2}: 'name' is required.` };
+                    }
+                    if (!SafeUI.validators.maxLength(entry.name, 100)) {
+                        return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
+                    }
+                    if (DataValidator.hasDuplicate(state.apps, 'name', entry.name, row.id)) {
+                        return { error: `Row ${index + 2}: App name "${entry.name}" already exists.` };
+                    }
+                    return { entry: entry };
+                },
+                onConfirm: (validatedData, importErrors) => {
+                    // (This is the CsvManager confirm logic you already had)
+                    const newEntries = [];
+                    const updatedEntries = [];
+                    const existingIds = new Set(state.apps.map(app => app.id));
+                    validatedData.forEach(entry => {
+                        if (existingIds.has(entry.id)) { updatedEntries.push(entry); } else { newEntries.push(entry); }
+                    });
+                    const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                    const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+                    let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
+                    if (importErrors.length > 0) {
+                        summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
+                                        <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
+                                            ${errorList}${moreErrors}
+                                        </ul>`;
+                    }
+                    summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
+                    SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Import and Overwrite', 
+                            class: 'button-primary', 
+                            callback: () => {
+                                let importedCount = 0;
+                                newEntries.forEach(entry => {
+                                    if (state.apps.some(app => app.id === entry.id)) { entry.id = SafeUI.generateId(); }
+                                    state.apps.push(entry);
+                                    importedCount++;
+                                });
+                                updatedEntries.forEach(entry => {
+                                    const existingIndex = state.apps.findIndex(app => app.id === entry.id);
+                                    if (existingIndex > -1) { state.apps[existingIndex] = entry; importedCount++; }
+                                });
+                                saveState();
+                                renderAppData();
+                                SafeUI.showToast(`Imported ${importedCount} applications.`);
+                                SafeUI.hideModal(); // Close the settings modal
+                            }
+                        }
+                    ]);
+                    return false; // Prevent modal from closing
+                }
+            });
+        };
+
+        // 3. Define page-specific "restore" callback
+        const onRestore = (dataToRestore) => {
+            state.apps = dataToRestore.apps || [];
+            state.notes = dataToRestore.notes || [];
+            state.shortcuts = dataToRestore.shortcuts || [];
+            saveState();
+            selectedAppId = null;
+            displayAppDetails(null);
+            renderAllPageSpecific();
+        };
+
+        // 4. Initialize the shared modal
         if (window.SharedSettingsModal) {
-            SharedSettingsModal.init({
+            window.SharedSettingsModal.init({
                 buttonId: 'btn-settings',
-                modalTitle: 'Settings',
                 appName: APP_CONFIG.NAME,
                 state: state,
+                pageSpecificDataHtml: pageDataHtml, // <-- NEW
+                onModalOpen: onModalOpen,           // <-- NEW
+                onRestoreCallback: onRestore,
                 itemValidators: {
                     apps: APP_CONFIG.APP_CSV_HEADERS,
                     notes: ['id', 'title', 'content'],
                     shortcuts: ['id', 'name', 'url']
-                },
-                onRestoreCallback: (dataToRestore) => {
-                    state.apps = dataToRestore.apps || [];
-                    state.notes = dataToRestore.notes || [];
-                    state.shortcuts = dataToRestore.shortcuts || [];
-                    
-                    saveState();
-                    
-                    selectedAppId = null;
-                    displayAppDetails(null);
-                    renderAllPageSpecific(); // Render apps/shortcuts
-                    
-                    // Manually trigger notepad reload - DEFERRED FIX (Mode A, Issue 2) removed
-                    if (window.NotepadManager) {
-                        // The NotepadManager will be re-initialized by AppLifecycle.run's main flow
-                        // after the settings modal closes, so we don't need to manually re-init here.
-                    }
-
-                    SafeUI.showToast('Dashboard data restored.');
                 }
             });
         } else {
@@ -405,101 +486,7 @@
         // Initialize shortcuts
         initQuickList();
 
-        // Setup CSV listeners
-        CsvManager.setupExport({
-            exportBtn: DOMElements.btnExportCsv,
-            dataGetter: () => state.apps,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            filename: `${APP_CONFIG.NAME}-export.csv`
-        });
-        
-        CsvManager.setupImport({
-            importBtn: DOMElements.btnImportCsv,
-            headers: APP_CONFIG.APP_CSV_HEADERS,
-            onValidate: (row, index) => {
-                 const entry = {
-                    id: row.id || SafeUI.generateId(),
-                    name: (row.name || '').trim(),
-                    urls: (row.urls || '').trim(),
-                    escalation: (row.escalation || '').trim()
-                };
-
-                if (!SafeUI.validators.notEmpty(entry.name)) {
-                    return { error: `Row ${index + 2}: 'name' is required.` };
-                }
-                
-                // FIX (Mode B, Issue 3): Add Max Length Validation for CSV Import
-                if (!SafeUI.validators.maxLength(entry.name, 100)) {
-                    return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
-                }
-                
-                // Fix: Check for duplicate names, not just IDs
-                if (DataValidator.hasDuplicate(state.apps, 'name', entry.name, row.id)) {
-                     return { error: `Row ${index + 2}: App name "${entry.name}" already exists.` };
-                }
-                
-                return { entry: entry };
-            },
-            onConfirm: (validatedData, importErrors) => {
-                const newEntries = [];
-                const updatedEntries = [];
-                const existingIds = new Set(state.apps.map(app => app.id));
-
-                validatedData.forEach(entry => {
-                    if (existingIds.has(entry.id)) {
-                        updatedEntries.push(entry);
-                    } else {
-                        newEntries.push(entry);
-                    }
-                });
-
-                const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-                const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
-
-                let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
-                
-                if (importErrors.length > 0) {
-                    summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
-                                    <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
-                                        ${errorList}${moreErrors}
-                                    </ul>`;
-                }
-
-                summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
-
-                SafeUI.showModal("Confirm CSV Import", summaryHtml, [
-                    { label: 'Cancel' },
-                    { 
-                        label: 'Import and Overwrite', 
-                        class: 'button-primary', 
-                        callback: () => {
-                            let importedCount = 0;
-                            
-                            newEntries.forEach(entry => {
-                                if (state.apps.some(app => app.id === entry.id)) {
-                                    console.warn(`ID collision detected for "${entry.name}" (${entry.id}). Assigning new ID.`);
-                                    entry.id = SafeUI.generateId();
-                                }
-                                state.apps.push(entry);
-                                importedCount++;
-                            });
-
-                            updatedEntries.forEach(entry => {
-                                const existingIndex = state.apps.findIndex(app => app.id === entry.id);
-                                if (existingIndex > -1) {
-                                    state.apps[existingIndex] = entry;
-                                    importedCount++;
-                                }
-                            });
-
-                            saveState();
-                            renderAppData(); // Only update app data
-                            SafeUI.showToast(`Imported ${importedCount} applications.`);
-                        }
-                    }
-                ]);
-            }
-        });
+        // REFACTOR: Removed CsvManager setup. It's now in setupSettingsModal.
 
         // Add main event listeners
         window.addEventListener('beforeunload', (e) => { 
@@ -586,7 +573,7 @@
         DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
         
         // Settings modal init
-        initSettingsModal();
+        setupSettingsModal(); // REFACTOR: Renamed function call
         
         // Initial render of page-specific parts
         renderAppData();
@@ -620,7 +607,8 @@
                 'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
                 'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
                 'add-new-app-btn-menu',
-                'btn-export-csv', 'btn-import-csv', 'btn-settings',
+                /* REFACTOR: Removed 'btn-export-csv', 'btn-import-csv' */
+                'btn-settings',
                 'notepad-header',
                 'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
                 'navbar-container'
@@ -651,4 +639,3 @@
     </script>
 </body>
 </html>
-
