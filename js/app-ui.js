@@ -167,8 +167,18 @@ const NotepadManager = (() => {
         if (!activeNoteId) return;
         const note = findById('notes', activeNoteId);
         if (note && DOMElements.notepadEditor) {
+            // --- START FIX: ISSUE 4 (Legacy ID Regeneration) ---
+            if (note.id.length < 20) {
+                console.warn(`Regenerating legacy ID for note "${note.title}": ${note.id}`);
+                const newId = SafeUI.generateId();
+                note.id = newId;
+                activeNoteId = newId;
+            }
+            // --- END FIX: ISSUE 4 ---
+            
             note.content = DOMElements.notepadEditor.value;
             saveState();
+            console.log(`Saved note "${note.title}" (ID: ${note.id})`);
         }
     };
     
