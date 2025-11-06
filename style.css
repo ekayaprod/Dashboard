@@ -5,32 +5,23 @@
     --text-color: #1e293b; 
     --subtle-text: #64748b; 
     --primary-color: #3b82f6;
+    --danger-color: #ef4444; 
+    --success-color: #22c55e; 
     --info-bg: #f8fafc;
+    --danger-hover-bg: #fee2e2;
     --primary-hover-bg-light: #e0e7ff;
     --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     
-    /* === Consolidated Color Theme Variables === */
-    /* Used for buttons, banners, etc. */
-    --danger-bg: #fef2f2;
-    --danger-border: #fecaca;
-    --danger-text: #dc2626;
-    --danger-bg-hover: #fee2e2;
-    --danger-border-hover: #fca5a5;
-    
-    --success-bg: #f0fdf4;
-    --success-border: #bbf7d0;
-    --success-text: #16a34a;
-    --success-bg-hover: #dcfce7;
-    --success-border-hover: #86efac;
-
-    /* === Component-Specific Variables === */
-    /* Used for button/input overrides */
-    --button-bg: var(--panel-bg);
-    --button-bg-hover: var(--info-bg);
-    --input-bg: var(--info-bg);
-    --input-bg-focus: var(--panel-bg);
-    --danger-hover-bg: #fee2e2; /* Kept for delete-btn */
-
+    --color-danger-bg: #fef2f2;
+    --color-danger-border: #fecaca;
+    --color-danger: #dc2626;
+    --color-danger-bg-hover: #fee2e2;
+    --color-danger-border-hover: #fca5a5;
+    --color-success-bg: #f0fdf4;
+    --color-success-border: #bbf7d0;
+    --color-success: #16a34a;
+    --color-success-bg-hover: #dcfce7;
+    --color-success-border-hover: #86efac;
 
     --border-radius: 0.375rem;
     --box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
@@ -78,7 +69,7 @@ body {
     flex-direction: column;
 }
 
-/* REMOVED .input-base from selector */
+.input-base, 
 .sidebar-input, 
 .sidebar-textarea {
     width: 100%; 
@@ -89,28 +80,28 @@ body {
     border: 1px solid var(--border-color); 
     margin-bottom: 0.4rem;
     font-family: inherit; 
-    background-color: var(--input-bg);
+    background-color: var(--info-bg);
 }
 
-/* REMOVED .input-base::placeholder from selector */
+.input-base::placeholder,
 .sidebar-input::placeholder,
 .sidebar-textarea::placeholder { 
     color: var(--subtle-text); 
     opacity: 0.8; 
 }
 
-/* REMOVED .input-base:focus from selector */
+.input-base:focus, 
 .sidebar-input:focus, 
 .sidebar-textarea:focus {
     outline: 2px solid var(--primary-color); 
     outline-offset: -1px; 
-    background-color: var(--input-bg-focus);
+    background-color: white;
 }
 
 .sidebar-textarea { 
-    resize: vertical; 
+    resize: none; 
     min-height: 40px;
-    overflow-y: auto;
+    overflow-y: hidden;
     line-height: 1.6;
 }
 
@@ -120,7 +111,7 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 0.375rem; 
     cursor: pointer; 
-    background-color: var(--button-bg); 
+    background-color: #fff; 
     transition: all 0.2s;
     font-weight: 500; 
     display: inline-flex; 
@@ -130,12 +121,7 @@ body {
 }
 
 .button-base:hover { 
-    background-color: var(--button-bg-hover); 
-}
-
-.button-base:active {
-    transform: scale(0.97);
-    filter: brightness(0.95);
+    background-color: #f8fafc; 
 }
 
 .button-base:disabled { 
@@ -154,23 +140,29 @@ body {
     background-color: #2563eb; 
 }
 .button-danger { 
-    background-color: var(--danger-text); 
+    background-color: var(--danger-color); 
     color: white; 
-    border-color: var(--danger-text); 
+    border-color: var(--danger-color); 
 }
 .button-danger:hover { 
     background-color: #dc2626; 
 }
 .button-success { 
-    background-color: var(--success-text); 
+    background-color: var(--success-color); 
     color: white; 
-    border-color: var(--success-text); 
+    border-color: var(--success-color); 
 }
 
-/* REMOVED .button-save-success and .button-save-danger.
-  They were identical to .button-success and .button-danger 
-  and were not used in any of the 5 HTML files.
-*/
+.button-save-success {
+    background-color: var(--success-color) !important;
+    color: white !important;
+    border-color: var(--success-color) !important;
+}
+.button-save-danger {
+    background-color: var(--danger-color) !important;
+    color: white !important;
+    border-color: var(--danger-color) !important;
+}
 
 
 .icon-btn {
@@ -187,10 +179,6 @@ body {
 .icon-btn:hover {
     background-color: var(--info-bg);
     color: var(--text-color);
-}
-.icon-btn:active {
-    transform: scale(0.95);
-    background-color: var(--border-color);
 }
 .icon-btn svg {
     width: 16px;
@@ -274,9 +262,9 @@ body {
     flex-wrap: wrap; 
     gap: 0.3rem; 
 }
-/* REMOVED .shortcuts-container.drag-active.
-  This was dead code; not used by any HTML file.
-*/
+.shortcuts-container.drag-active { 
+    background-color: var(--primary-hover-bg-light); 
+}
 
 
 .label-group { 
@@ -294,7 +282,7 @@ body {
 }
 .delete-btn:hover { 
     background-color: var(--danger-hover-bg); 
-    color: var(--danger-text); 
+    color: var(--danger-color); 
 }
 
 .delete-btn svg { 
@@ -325,11 +313,22 @@ body {
     text-decoration: underline; 
 }
 
-/* REMOVED .drag-handle, .drag-handle:active, .shortcut-item.dragging,
-  and .shortcut-item > .drag-handle.
-  This was dead code; not used by any HTML file.
-*/
-
+.drag-handle { 
+    cursor: grab; 
+    color: var(--subtle-text); 
+    padding-right: 0.4rem; 
+    touch-action: none; 
+}
+.drag-handle:active { 
+    cursor: grabbing; 
+}
+.shortcut-item.dragging { 
+    opacity: 0.5; 
+    background: var(--primary-color); 
+}
+.shortcut-item > .drag-handle { 
+    flex-shrink: 0; 
+}
 .shortcut-item > a { 
     flex-grow: 1; 
 }
@@ -365,8 +364,8 @@ body {
     line-height: 1.6; 
     box-sizing: border-box; 
     font-family: inherit; 
-    resize: vertical; 
-    overflow-y: auto; 
+    resize: none; 
+    overflow-y: hidden; 
 }
 .notepad-editor:focus { 
     outline: none; 
@@ -380,9 +379,30 @@ body {
 .actions-menu-wrapper { 
     position: relative; 
 }
-/* REMOVED .actions-menu and .actions-menu-item rules.
-   These classes were not used in any of the 5 HTML files.
-*/
+.actions-menu {
+    position: absolute; 
+    top: 100%; 
+    right: 0;
+    background-color: var(--panel-bg); 
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem; 
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    z-index: 100; 
+    width: 150px; 
+    padding: 0.25rem 0; 
+    margin-top: 0.25rem;
+}
+.actions-menu-item { 
+    display: block; 
+    padding: 0.5rem 0.75rem; 
+    color: var(--text-color); 
+    text-decoration: none; 
+    font-size: 0.875rem; 
+    transition: background-color 0.2s;
+}
+.actions-menu-item:hover { 
+    background-color: var(--bg-color); 
+}
 
 .modal-overlay { 
     position: fixed; 
@@ -417,11 +437,7 @@ body {
 body.modal-open {
     overflow: hidden;
 }
-/*
-  This selector is now safer: it only targets the .app-container
-  to prevent disabling other top-level UI elements.
-*/
-body.modal-open > .app-container {
+body.modal-open > *:not(.modal-overlay) {
     pointer-events: none;
 }
 
@@ -495,7 +511,7 @@ body.modal-open > .app-container {
 }
 
 /* This class was moved from an inline style on index.html 
-  to this global stylesheet and updated to use CSS variables.
+  to this global stylesheet.
 */
 .app-startup-banner {
     position: sticky;
@@ -503,9 +519,9 @@ body.modal-open > .app-container {
     left: 0;
     width: 100%;
     padding: 1rem;
-    background-color: var(--danger-bg);
-    color: var(--danger-text);
-    border-bottom: 2px solid var(--danger-border);
+    background-color: #fef2f2;
+    color: #dc2626;
+    border-bottom: 2px solid #fecaca;
     font-family: sans-serif;
     font-size: 1rem;
     font-weight: 600;
@@ -520,344 +536,52 @@ body.modal-open > .app-container {
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg-color: #111827; 
-        --panel-bg: #1f2937; 
-        --border-color: #374151;
-        --text-color: #f9fafb; 
-        --subtle-text: #9ca3af; 
-        --primary-color: #60a5fa;
+        --bg-color: #111827; --panel-bg: #1f2937; --border-color: #374151;
+        --text-color: #f9fafb; --subtle-text: #9ca3af; --primary-color: #60a5fa;
         --info-bg: #1f2937;
-        --primary-hover-bg-light: #374151;
-
-        /* === Consolidated Color Theme Variables (Dark) === */
-        --danger-bg: #4b1d1d;
-        --danger-border: #991b1b;
-        --danger-text: #f87171;
-        --danger-bg-hover: #7f1d1d;
-        --danger-border-hover: #b91c1c;
-        
-        --success-bg: #164e34;
-        --success-border: #166534;
-        --success-text: #4ade80;
-        --success-bg-hover: #166534;
-        --success-border-hover: #15803d;
-
-        /* === Component-Specific Variables (Dark) === */
-        --button-bg: #374151;
-        --button-bg-hover: #4b5563;
-        --input-bg: #374151;
-        --input-bg-focus: var(--panel-bg); /* #1f2937 */
         --danger-hover-bg: #4b1d1d;
+        --primary-hover-bg-light: #374151;
+        --color-danger-bg: #4b1d1d;
+        --color-danger-border: #991b1b;
+        --color-danger: #f87171;
+        --color-danger-bg-hover: #7f1d1d;
+        --color-danger-border-hover: #b91c1c;
+        --color-success-bg: #164e34;
+        --color-success-border: #166534;
+        --color-success: #4ade80;
+        --color-success-bg-hover: #166534;
+        --color-success-border-hover: #15803d;
     }
-
-    /* REMOVED .actions-menu-item:hover dark mode rule. */
+    .button-base { background-color: #374151; border-color: #4b5563; }
+    .button-base:hover { background-color: #4b5563; }
+    .input-base, .sidebar-input, .sidebar-textarea { background-color: #374151; border-color: #4b5563; color: var(--text-color); }
+    .input-base:focus, .sidebar-input:focus, .sidebar-textarea:focus { background-color: #1f2937; }
+    .actions-menu { border-color: #4b5563; }
+    .actions-menu-item:hover { background-color: #374151; }
     
-    .nav-link:hover { 
-        /* UPDATED: Replaced hardcoded #374151 with variable */
-        background-color: var(--button-bg); 
-    }
-    /* REMOVED .nav-link.active override.
-      It was identical to the base rule.
-    */
+    .nav-link:hover { background-color: #374151; }
+    .nav-link.active { background-color: var(--primary-color); color: #fff; }
 }
 
 .button-base:focus-visible,
-/* REMOVED .actions-menu-item:focus-visible from selector */
+.actions-menu-item:focus-visible,
 .icon-btn:focus-visible,
 .nav-link:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--primary-color);
 }
 
-/* ======================================= */
-/* === Lookup Page Styles === */
-/* ======================================= */
-
-/* Specific layout tweaks for lookup page */
-.lookup-page .container {
-    padding: 0.5rem;
-    flex-grow: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.lookup-page .lookup-header {
-    background-color: var(--panel-bg);
-    padding: 0.5rem;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--box-shadow);
-    flex-shrink: 0; 
-}
-.lookup-page .header-top-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-.lookup-page .lookup-header h1 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-.lookup-page .header-actions {
-    display: flex;
-    gap: 0.25rem;
-}
-.lookup-page .header-actions .button-base,
-.lookup-page .header-actions .icon-btn {
-    padding: 0.3rem 0.5rem;
-}
-.lookup-page .search-controls {
-    display: flex;
-    gap: 0.5rem;
-}
-.lookup-page #search-input {
-    flex-grow: 1;
-    margin: 0;
-}
-
-/* REFACTOR: CONSOLIDATED.
-  This rule is now shared between lookup.html and passwords.html.
-  Padding was changed from 0.75rem to 0.6rem to match the passwords.html refactor.
-*/
-.generator-section {
-    padding: 0.6rem;
-    background-color: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-}
-/* REFACTOR: CONSOLIDATED.
-  This rule is shared between lookup.html and passwords.html.
-  The more-complete version from lookup.html is used.
-*/
-.btn-full-width-padded {
-    width: 100%; 
-    padding: 0.75rem; 
-    font-size: 0.9rem;
-    box-sizing: border-box;
-    text-align: center;
-    text-decoration: none;
-}
-/* Style for <a> tags to look like disabled buttons */
-.button-disabled-link {
-    opacity: 0.7;
-    cursor: not-allowed;
-    background-color: var(--subtle-text);
-    border-color: var(--subtle-text);
-    color: white;
-}
-.button-disabled-link:hover {
-    background-color: var(--subtle-text);
-    border-color: var(--subtle-text);
-    color: white;
-    text-decoration: none;
-}
-
-
-
-.lookup-page .results-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    flex-grow: 1;
-    min-height: 0;
-}
-.lookup-page .column {
-    background-color: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 0.5rem;
-    box-shadow: var(--box-shadow);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-}
-
-
-.lookup-page #local-column {
-    width: 100%;
-    flex-grow: 1;
-}
-
-.lookup-page .column h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--primary-color);
-}
-
-.lookup-page .local-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-.lookup-page .local-header h2 {
-    margin: 0;
-    padding: 0;
-    border: none;
-}
-.lookup-page .local-header .button-base {
-    padding: 0.2rem 0.5rem;
-}
-
-
-.lookup-page .result-list, .kb-result-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-
-.lookup-page .result-item {
-    background-color: var(--info-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    margin-bottom: 0.5rem;
-    font-size: 0.85rem;
-}
-.lookup-page .item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.4rem 0.5rem;
-    background-color: var(--bg-color);
-    border-bottom: 1px solid var(--border-color);
-}
-.lookup-page .item-keyword {
-    font-weight: 600;
-    font-size: 0.9rem;
-    word-break: break-all;
-}
-.lookup-page .item-actions {
-    display: flex;
-    gap: 0.25rem;
-    flex-shrink: 0;
-    margin-left: 0.5rem;
-}
-.lookup-page .item-actions .icon-btn {
-    padding: 0.25rem;
-}
-.lookup-page .item-actions .btn-delete:hover {
-    background-color: var(--danger-hover-bg);
-    color: var(--danger-color);
-}
-
-.lookup-page .item-grid {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.4rem 0.6rem;
-    padding: 0.5rem;
-    align-items: center;
-}
-.lookup-page .item-grid strong {
-    font-weight: 500;
-    color: var(--subtle-text);
-    text-align: right;
-    font-size: 0.8rem;
-}
-.lookup-page .item-grid div {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.25rem;
-    word-break: break-all;
-}
-.lookup-page .item-grid .btn-copy {
-    padding: 0.25rem;
-    font-size: 0.8rem;
-    flex-shrink: 0;
-}
-
-.lookup-page .edit-form-li {
-    background-color: #fff; 
-    border: 1px solid var(--primary-color);
-    border-radius: var(--border-radius);
-    margin-bottom: 0.5rem;
-    padding: 0.5rem;
-}
-.lookup-page .edit-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.lookup-page .form-grid {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.5rem;
-    align-items: center;
-}
-.lookup-page .form-grid label {
-    font-weight: 500;
-    font-size: 0.8rem;
-    color: var(--subtle-text);
-    text-align: right;
-}
-.lookup-page .form-grid input,
-.lookup-page .form-grid textarea {
-    margin: 0;
-    font-size: 0.85rem;
-}
-.lookup-page .form-grid textarea {
-    min-height: 60px;
-}
-.lookup-page .edit-form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    border-top: 1px solid var(--border-color);
-    padding-top: 0.5rem;
-    margin-top: 0.25rem;
-}
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-    .lookup-page .lookup-header {
-        background-color: var(--panel-bg);
-        border-color: var(--border-color);
-    }
-    
-    /* REFACTOR: This rule is now shared and dark-modes both pages */
-    .generator-section {
-        background-color: var(--panel-bg);
-        border-color: var(--border-color);
-    }
-    .lookup-page .column {
-        background-color: var(--panel-bg);
-        border-color: var(--border-color);
-    }
-    
-    .lookup-page .result-item {
-        background-color: var(--bg-color);
-        border-color: var(--border-color);
-    }
-    .lookup-page .item-header {
-        background-color: var(--panel-bg);
-        border-color: var(--border-color);
-    }
-    .lookup-page .edit-form-li {
-        background-color: var(--panel-bg); 
-        border-color: var(--primary-color);
-    }
-}
 
 /* ======================================= */
-/* === Passwords Page Styles === */
+/* === PAGE: PASSWORDS (MOVED FROM HTML) === */
 /* ======================================= */
 
 /* Use app-container from style.css for consistent padding/layout */
-.passwords-page .app-container {
+.app-container {
     padding: 0; /* Let panel handle padding */
 }
 /* REFACTOR: Reduced gap from 0.75rem to 0.5rem */
-.passwords-page .main-content {
+.main-content {
     padding: 0.5rem; /* REFACTOR: Reduced padding */
     display: flex;
     flex-direction: column;
@@ -869,59 +593,66 @@ body.modal-open > .app-container {
 }
 
 /* Simplified Quick List Item styles */
-.passwords-page .shortcuts-container .shortcut-item {
+.shortcuts-container .shortcut-item {
     cursor: pointer;
     padding-right: 0.5rem; 
 }
-.passwords-page .shortcuts-container .shortcut-item a,
-.passwords-page .shortcuts-container .shortcut-item button {
+.shortcuts-container .shortcut-item a,
+.shortcuts-container .shortcut-item button {
      /* Ensure text flows correctly inside the list items */
      word-break: break-all;
      overflow-wrap: break-word;
      text-align: left;
 }
 
-.passwords-page .shortcuts-container .shortcut-item .delete-btn {
+.shortcuts-container .shortcut-item .delete-btn {
     display: none;
     margin-left: 0.5rem;
 }
-.passwords-page .shortcuts-container .shortcut-item:hover .delete-btn {
+.shortcuts-container .shortcut-item:hover .delete-btn {
     display: inline-flex;
 }
-.passwords-page .shortcuts-container .shortcut-item a {
+.shortcuts-container .shortcut-item a {
     flex-grow: 1;
 }
-.passwords-page .shortcuts-container .shortcut-item:hover {
+.shortcuts-container .shortcut-item:hover {
     background-color: var(--info-bg);
 }
 
 /* Section wrapper for generator, results, etc. */
-/* REFACTOR: .generator-section rule was CONSOLIDATED above */
-
+.generator-section {
+    /* REDESIGN: Reduce padding */
+    padding: 0.4rem;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
 
 /* Results Section */
-.passwords-page .results-wrapper {
+.results-wrapper {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    /* REFACTOR: Make results wrapper fill remaining space */
+    /* REDESIGN: Make results wrapper fill remaining space */
     flex-grow: 1;
     min-height: 0; /* Allow flex-grow to work in a flex column */
 }
 
 /* New Results List */
-.passwords-page .result-list {
+.result-list {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    /* REFACTOR: Remove max-height, add flex-grow and overflow */
+    /* REDESIGN: Make results list fill available space */
     flex-grow: 1;
     overflow-y: auto;
+    max-height: none; /* Remove any height limits */
 }
-.passwords-page .result-item {
+.result-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -931,71 +662,119 @@ body.modal-open > .app-container {
     padding: 0.5rem 0.5rem 0.5rem 0.75rem;
     gap: 0.5rem;
 }
-.passwords-page .result-item span {
+.result-item span {
     font-family: monospace;
     font-size: 0.95rem;
     word-break: break-all;
     flex-grow: 1;
 }
 /* Style for error messages */
-.passwords-page .result-item span.error {
+.result-item span.error {
     font-family: var(--font-family);
-    color: var(--danger-text);
+    color: var(--danger-color);
     font-weight: 500;
     font-size: 0.85rem;
 }
-.passwords-page .result-item .copy-btn {
+.result-item .copy-btn {
     flex-shrink: 0;
     color: var(--subtle-text);
 }
-.passwords-page .result-item .copy-btn:hover {
+.result-item .copy-btn:hover {
     color: var(--primary-color);
     background-color: var(--primary-hover-bg-light);
 }
 
-.passwords-page .config-section {
+.config-section {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem; 
+    /* REDESIGN: Tighter spacing */
+    gap: 0.4rem; 
     margin-bottom: 0.75rem; 
 }
 
-/* --- UX Shrink: Changed to 4-Column Compact Grid --- */
-.passwords-page .config-grid-compact {
+/* --- REDESIGN: Accordion system for collapsible sections --- */
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    /* REFACTOR: Removed margin-bottom, handled by section gap */
+    user-select: none;
+}
+
+.accordion-content {
+    max-height: 500px; /* arbitrary large height */
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+    opacity: 1;
+    margin-top: 0.5rem;
+}
+
+.accordion-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+}
+
+.accordion-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    font-size: 0.75rem;
+    padding: 0.25rem;
+}
+
+/* Combined selector for accordion icon rotation */
+.accordion-content.collapsed + .accordion-header .accordion-icon,
+.accordion-header.collapsed .accordion-icon {
+    transform: rotate(-90deg);
+}
+/* --- END ACCORDION --- */
+
+
+/* --- REDESIGN: Replaced 4-col with 2-col grid --- */
+.config-grid-2col {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr; /* 4-column grid */
-    gap: 0.5rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem 0.5rem; /* Tighter spacing */
 }
 
 /* --- Cleanup: New generic rule for all config labels --- */
-.passwords-page .config-section .form-group label {
-    font-size: 0.75rem;
+.config-section .form-group label,
+.config-grid-2col .form-group label {
+    /* REDESIGN: Smaller labels */
+    font-size: 0.7rem;
     font-weight: 600;
+    /* REDESIGN: Smaller margin */
     margin-bottom: 0.1rem;
     color: var(--subtle-text);
     display: block;
     white-space: nowrap; /* Prevent label wrapping */
 }
 
-/* Inherit styles from .config-grid */
-.passwords-page .config-grid-compact .form-group {
+.config-grid-2col .form-group {
     margin: 0;
     min-width: 0; /* Allow grid items to shrink */
 }
-.passwords-page .config-grid-compact .sidebar-input {
+.config-grid-2col .sidebar-input {
     margin: 0;
-    padding: 0.35rem 0.5rem;
-    font-size: 0.85rem; /* Ensure input text is readable */
+    /* REDESIGN: Smaller padding */
+    padding: 0.3rem 0.4rem;
+    /* REDESIGN: Smaller font */
+    font-size: 0.8rem;
     width: 100%; /* Ensure inputs fill their grid cell */
     box-sizing: border-box;
 }
 
-/* REFACTOR: Removed .config-item-spaced */
-/* --- End UX Shrink --- */
+/* Checkbox spans both columns for better layout */
+.config-grid-2col .checkbox-label {
+    grid-column: 1 / -1;
+    height: auto; /* Let it size naturally */
+    padding: 0.25rem 0; /* Add some padding for tap target */
+}
+/* --- End REDESIGN --- */
 
-/* REFACTOR: Removed .config-grid-2col */
 
-.passwords-page .checkbox-label {
+.checkbox-label {
     font-size: 0.8rem;
     font-weight: 500;
     margin-bottom: 0; 
@@ -1003,39 +782,44 @@ body.modal-open > .app-container {
     align-items: center; /* REFACTOR: Center vertically */
     gap: 0.35rem;
     cursor: pointer;
-    /* REFACTOR: Align checkbox in its grid cell */
     height: 100%;
     white-space: nowrap;
-    /* REFACTOR: Removed padding-bottom */
 }
 
 /* --- Mode C: Classes for moved inline styles --- */
-/* REFACTOR: REMOVED #app-startup-error.sticky-banner.
-   HTML was updated to use the global .app-startup-banner class.
-*/
-/* REFACTOR: (Fix 2) Replaced utility class with semantic selector */
-.passwords-page header.section-header-wrapper {
+#app-startup-error.sticky-banner {
+    position:sticky;
+    top:0;
+    left:0;
+    width:100%;
+    padding:1rem;
+    background-color:#fef2f2;
+    color:#dc2626;
+    border-bottom:2px solid #fecaca;
+    font-family:sans-serif;
+    font-size:1rem;
+    font-weight:600;
+    z-index:10000;
+    box-sizing:border-box;
+}
+.header-wrapper-padded {
      padding: 0 0.25rem;
 }
-/* REFACTOR: REMOVED .btn-full-width-padded.
-   This is now a consolidated global rule.
-*/
-/* REFACTOR: (Fix 3) Removed unused .divider-short-margin */
-
-/* REFACTOR: (Fix 2) Replaced utility class with semantic selector */
-.passwords-page .generator-section .section-header-wrapper {
+.btn-full-width-padded {
+    width: 100%; 
+    padding: 0.75rem; 
+    font-size: 0.9rem;
+}
+.divider-short-margin {
+    margin: 0.25rem 0;
+}
+.section-header-bottom-margin {
     margin-bottom: 0.75rem;
 }
-.passwords-page .generator-section > h3.section-header {
-    margin-bottom: 0.75rem;
+.checkbox-label-padded {
+    margin-bottom: 0;
 }
-
-/* REFACTOR: Removed wordbank-status-padded */
-/* REFACTOR: (Fix 2) Removed redundant .checkbox-label-padded */
-
-
-/* REFACTOR: (Fix 2) Replaced utility class with semantic selector */
-.passwords-page #btn-generate {
+.btn-generate-padded {
     width: 100%; 
     padding: 0.75rem;
 }
@@ -1044,176 +828,15 @@ body.modal-open > .app-container {
 
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
-    /* REFACTOR: .generator-section dark mode is now global */
-    
-    .passwords-page .results-wrapper {
+    .generator-section, .results-wrapper {
         background-color: var(--panel-bg);
         border-color: var(--border-color);
     }
-    .passwords-page .result-item {
+    .result-item {
         background-color: var(--bg-color);
         border-color: var(--border-color);
     }
-    .passwords-page .result-item .copy-btn:hover {
+    .result-item .copy-btn:hover {
         background-color: var(--primary-hover-bg-light);
     }
-}
-
-/* ======================================= */
-/* === MailTo Page Styles === */
-/* ======================================= */
-
-.mailto-page .view { display: none; }
-.mailto-page .view.active { display: block; }
-
-/* --- Upload Box --- */
-.mailto-page .upload-wrapper {
-    border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 1.5rem;
-    text-align: center;
-    background-color: var(--info-bg);
-    transition: background-color 0.2s;
-}
-.mailto-page .upload-wrapper.dragover {
-    background-color: var(--primary-hover-bg-light);
-    border-color: var(--primary-color);
-}
-.mailto-page .upload-wrapper input[type="file"] {
-    display: none;
-}
-.mailto-page .upload-wrapper .button-base {
-    cursor: pointer;
-}
-.mailto-page .upload-wrapper p {
-    color: var(--subtle-text);
-    margin: 0.5rem 0 0 0;
-}
-
-/* --- Tree/List Styles --- */
-.mailto-page .list-item {
-    display: flex;
-    align-items: center;
-    padding: 0.6rem 0.5rem;
-    border-radius: var(--border-radius);
-    border: 1px solid transparent;
-    cursor: default;
-    transition: background-color 0.2s;
-    gap: 0.75rem;
-}
-.mailto-page .list-item:hover {
-    background-color: var(--info-bg);
-    border-color: var(--border-color);
-}
-.mailto-page .list-item-icon {
-    flex-shrink: 0;
-    color: var(--subtle-text);
-    width: 20px;
-    height: 20px;
-}
-.mailto-page .list-item-icon.folder {
-    color: var(--primary-color);
-    cursor: pointer;
-}
-.mailto-page .list-item-icon.template {
-    color: var(--subtle-text);
-}
-
-/* MODE F FIX: 
-  Consolidated 6 shared properties from .list-item-name 
-  and .list-item-name-folder into this single rule.
-*/
-.mailto-page .list-item a.list-item-name,
-.mailto-page .list-item .list-item-name-folder {
-    flex-grow: 1;
-    font-size: 0.9rem;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* MODE F FIX: This rule now only contains unique properties. */
-.mailto-page .list-item a.list-item-name {
-    color: var(--text-color);
-    text-decoration: none;
-    cursor: pointer;
-}
-.mailto-page .list-item a.list-item-name:hover {
-    color: var(--primary-color);
-    text-decoration: underline;
-}
-/* MODE F FIX: This rule now only contains unique properties. */
-.mailto-page .list-item .list-item-name-folder {
-    cursor: pointer;
-}
- .mailto-page .list-item .list-item-name-folder:hover {
-    color: var(--primary-color);
- }
-
-
-.mailto-page .list-item-actions {
-    flex-shrink: 0;
-}
-
-/* --- Move Modal Styles --- */
-.mailto-page .move-folder-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-}
-.mailto-page .move-folder-item {
-    padding: 0.6rem 0.75rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-    border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.mailto-page .move-folder-item:last-child {
-    border-bottom: none;
-}
-.mailto-page .move-folder-item:hover {
-    background-color: var(--info-bg);
-}
-.mailto-page .move-folder-item.disabled {
-    opacity: 0.5;
-    background-color: var(--bg-color);
-    cursor: not-allowed;
-}
-
-/* --- Breadcrumb Styles --- */
-.mailto-page .breadcrumb-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    align-items: center;
-    background-color: var(--info-bg);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--border-radius);
-    margin-bottom: 0.75rem;
-    font-size: 0.85rem;
-}
-.mailto-page .breadcrumb-link {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-    cursor: pointer;
-}
-.mailto-page .breadcrumb-link:hover {
-    text-decoration: underline;
-}
-.mailto-page .breadcrumb-separator {
-    color: var(--subtle-text);
-    margin: 0 0.25rem;
-}
-.mailto-page .breadcrumb-current {
-    color: var(--text-color);
-    font-weight: 500;
 }
