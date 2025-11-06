@@ -683,8 +683,29 @@
                         // Populate form fields
                         DOMElements.resultSubject.value = msgData.subject || '';
                         
+                        //
+                        // START FIX #3: Better Body Processing
+                        //
                         // Prefer plain text body over HTML
                         let bodyText = msgData.body || '';
+                        
+                        // If body is a Uint8Array (binary), try to convert it
+                        if (bodyText instanceof Uint8Array) {
+                            console.warn('Body is binary data, attempting conversion...');
+                            try {
+                                // Try UTF-16LE
+                                const decoder = new TextDecoder('utf-16le');
+                                bodyText = decoder.decode(bodyText);
+                            } catch (e) {
+                                // Try UTF-8
+                                try {
+                                    const decoder = new TextDecoder('utf-8');
+                                    bodyText = decoder.decode(bodyText);
+                                } catch (e2) {
+                                    bodyText = '(Unable to decode message body)';
+                                }
+                            }
+                        }
                         
                         // If no plain text body but HTML exists, strip HTML tags
                         if (!bodyText && msgData.bodyHTML) {
@@ -697,32 +718,65 @@
                                 .replace(/&gt;/g, '>')
                                 .replace(/&amp;/g, '&')
                                 .replace(/&quot;/g, '"')
+                                .replace(/&#39;/g, "'")
                                 .trim();
                         }
                         
+                        // Clean up excessive line breaks (max 2 consecutive)
+                        bodyText = bodyText.replace(/\n{3,}/g, '\n\n');
+                        
                         DOMElements.resultBody.value = bodyText;
+                        //
+                        // END FIX #3
+                        //
                 
+                        //
+                        // START FIX #2: Better Recipient Processing
+                        //
                         // Process recipients
                         const recipients = msgData.recipients || [];
                         
-                        const toRecipients = recipients
-                            .filter(r => r.recipientType === 1)
-                            .map(r => r.email || r.name)
-                            .filter(Boolean);
+                        console.log('Processing recipients:', recipients);
+                        
+                        const toRecipients = [];
+                        const ccRecipients = [];
+                        const bccRecipients = [];
+                        
+                        recipients.forEach(r => {
+                            const addr = r.email || r.name || '';
+                            if (!addr) return;
                             
-                        const ccRecipients = recipients
-                            .filter(r => r.recipientType === 2)
-                            .map(r => r.email || r.name)
-                            .filter(Boolean);
+                            // Clean up address (remove display name wrapper if present)
+                            let cleanAddr = addr;
+                            const match = addr.match(/<([^>]+)>/);
+                            if (match) {
+                                cleanAddr = match[1];
+                            }
                             
-                        const bccRecipients = recipients
-                            .filter(r => r.recipientType === 3)
-                            .map(r => r.email || r.name)
-                            .filter(Boolean);
-                
+                            cleanAddr = cleanAddr.trim();
+                            if (!cleanAddr) return;
+                            
+                            // Categorize by recipient type
+                            // Type 1 = TO, Type 2 = CC, Type 3 = BCC
+                            if (r.recipientType === 2) {
+                                ccRecipients.push(cleanAddr);
+                            } else if (r.recipientType === 3) {
+                                bccRecipients.push(cleanAddr);
+                            } else {
+                                toRecipients.push(cleanAddr);
+                            }
+                        });
+                        
                         DOMElements.resultTo.value = toRecipients.join(', ');
                         DOMElements.resultCc.value = ccRecipients.join(', ');
                         DOMElements.resultBcc.value = bccRecipients.join(', ');
+                        
+                        console.log('TO:', toRecipients);
+                        console.log('CC:', ccRecipients);
+                        console.log('BCC:', bccRecipients);
+                        //
+                        // END FIX #2
+                        //
                 
                         // Hide output section initially
                         DOMElements.outputWrapper.classList.add('hidden');
