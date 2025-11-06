@@ -13,43 +13,49 @@
 
     <div id="navbar-container"></div>
 
-    <div class="container">
-        <div id="app-startup-error" class="hidden app-startup-banner" style="margin-bottom: 0.5rem;"></div>
-        
-        <header class="lookup-header">
-            <div class="header-top-row">
-                <h1>Lookup</h1>
-                <div class="header-actions">
-                    <!-- REFACTOR: Removed btn-import-csv and btn-export-csv -->
-                    <button id="btn-settings" class="icon-btn" title="Settings">
-                        </button>
-                    <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
-                </div>
-            </div>
-            <div class="search-controls">
-                <input type="text" id="search-input" placeholder="Search KB and Local Database...">
-            </div>
-        </header>
+    <!-- START STYLE FIX: Added standard app-container/panel/main-content layout -->
+    <div class="app-container">
+        <div class="panel">
+            <div class="main-content">
+                <div id="app-startup-error" class="hidden app-startup-banner" style="margin-bottom: 0.5rem;"></div>
+                
+                <header class="lookup-header">
+                    <div class="header-top-row">
+                        <h1>Lookup</h1>
+                        <div class="header-actions">
+                            <!-- REFACTOR: Removed btn-import-csv and btn-export-csv -->
+                            <button id="btn-settings" class="icon-btn" title="Settings">
+                                </button>
+                            <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
+                        </div>
+                    </div>
+                    <div class="search-controls">
+                        <input type="text" id="search-input" placeholder="Search KB and Local Database...">
+                    </div>
+                </header>
 
-        <!-- REFACTOR: Moved KB section here and restyled it -->
-        <section id="kb-section" class="generator-section">
-             <a id="btn-kb-search" href="#" class="button-base button-primary btn-full-width-padded" target="_blank" rel="noopener noreferrer">
-                <!-- Text is set by JavaScript -->
-             </a>
-        </section>
+                <!-- REFACTOR: Moved KB section here and restyled it -->
+                <section id="kb-section" class="generator-section">
+                     <a id="btn-kb-search" href="#" class="button-base button-primary btn-full-width-padded" target="_blank" rel="noopener noreferrer">
+                        <!-- Text is set by JavaScript -->
+                     </a>
+                </section>
 
-        <main class="results-container">
-            <!-- REFACTOR: Removed kb-column and divider -->
-            
-            <section class="column" id="local-column">
-                <div class="local-header">
-                    <h2>Local Database Results</h2>
-                    <button id="btn-add-new-entry" class="button-base button-primary hidden" title="Create new entry">+ Create Entry</button>
-                </div>
-                <ul id="local-results" class="result-list"></ul>
-            </section>
-        </main>
+                <main class="results-container">
+                    <!-- REFACTOR: Removed kb-column and divider -->
+                    
+                    <section class="column" id="local-column">
+                        <div class="local-header">
+                            <h2>Local Database Results</h2>
+                            <button id="btn-add-new-entry" class="button-base button-primary hidden" title="Create new entry">+ Create Entry</button>
+                        </div>
+                        <ul id="local-results" class="result-list"></ul>
+                    </section>
+                </main>
+            </div>
+        </div>
     </div>
+    <!-- END STYLE FIX -->
 
     <div id="toast" class="toast"></div>
     <div id="modal-overlay" class="modal-overlay">
@@ -847,4 +853,3 @@
     </script>
 </body>
 </html>
-
