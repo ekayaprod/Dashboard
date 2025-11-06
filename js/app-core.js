@@ -249,20 +249,43 @@ const UIUtils = (() => {
             return data;
         };
 
+        // --- START FIX: ISSUE 4 (Storage Error Logging) ---
         const save = (state) => {
+            let serialized; // Hoist serialized to be accessible in catch block
             try {
                 state.version = version;
-                const serialized = JSON.stringify(state);
-                // DEBUG: Log save attempts
+                serialized = JSON.stringify(state);
+                
                 console.log('Saving state to localStorage:', key, serialized.length, 'chars');
+                
+                // Check if we're near quota (5MB typical limit)
+                if (serialized.length > 4.5 * 1024 * 1024) {
+                    console.warn('WARNING: State approaching localStorage 5MB limit');
+                }
+                
                 localStorage.setItem(key, serialized);
                 console.log('Save successful');
-                // End DEBUG
+                
+                // Verify save worked by reading back
+                const verification = localStorage.getItem(key);
+                if (!verification || verification.length !== serialized.length) {
+                    throw new Error('Save verification failed - data mismatch');
+                }
             } catch (err) {
                 console.error("Failed to save state:", err);
-                _showModal("Save Error", "<p>Failed to save data. Storage may be full.</p>", [{ label: 'OK' }]);
+                // Use hoisted variable, check if it was defined before error
+                const stateSize = (typeof serialized !== 'undefined') ? serialized.length : 'unknown';
+                console.error("State size:", stateSize, 'bytes');
+                console.error("localStorage available:", typeof Storage !== 'undefined');
+                
+                _showModal("Save Error", 
+                    `<p>Failed to save data: ${SafeUI.escapeHTML(err.message)}</p>
+                     <p>State size: ${Math.round(((typeof serialized !== 'undefined') ? serialized.length : 0) / 1024)}KB</p>`, 
+                    [{ label: 'OK' }]
+                );
             }
         };
+        // --- END FIX: ISSUE 4 ---
 
         return { load, save };
     };
