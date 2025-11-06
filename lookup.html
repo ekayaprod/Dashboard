@@ -16,23 +16,29 @@
     <!-- START STYLE FIX: Added standard app-container/panel/main-content layout -->
     <div class="app-container">
         <div class="panel">
+            <!-- 
+              NOTE: The 'gap: 0.5rem' style from the previous fix was removed.
+              It is already applied globally by the .main-content rule in style.css
+              (inside the "PAGE: PASSWORDS" block, which affects all pages).
+            -->
             <div class="main-content">
-                <div id="app-startup-error" class="hidden app-startup-banner" style="margin-bottom: 0.5rem;"></div>
+                <div id="app-startup-error" class="hidden app-startup-banner"></div>
                 
-                <header class="lookup-header">
-                    <div class="header-top-row">
-                        <h1>Lookup</h1>
-                        <div class="header-actions">
-                            <!-- REFACTOR: Removed btn-import-csv and btn-export-csv -->
+                <!-- START STYLE FIX 3: Re-structured header to match other pages -->
+                <div class="generator-section"> <!-- Use generator-section as a wrapper -->
+                    <header class="section-header-wrapper">
+                        <h3 class="section-header">Lookup</h3> <!-- Use h3.section-header instead of h1 -->
+                        <div class="header-actions button-group">
                             <button id="btn-settings" class="icon-btn" title="Settings">
-                                </button>
+                            </button>
                             <button id="btn-edit-mode" class="button-base" title="Toggle Edit Mode">Edit Mode</button>
                         </div>
+                    </header>
+                    <div class="search-controls" style="margin-top: 0.5rem;"> <!-- Add margin-top for spacing -->
+                        <input type="text" id="search-input" class="sidebar-input" placeholder="Search KB and Local Database...">
                     </div>
-                    <div class="search-controls">
-                        <input type="text" id="search-input" placeholder="Search KB and Local Database...">
-                    </div>
-                </header>
+                </div>
+                <!-- END STYLE FIX 3 -->
 
                 <!-- REFACTOR: Moved KB section here and restyled it -->
                 <section id="kb-section" class="generator-section">
@@ -41,12 +47,12 @@
                      </a>
                 </section>
 
-                <main class="results-container">
+                <main class="results-container generator-section"> <!-- Added generator-section class for consistency -->
                     <!-- REFACTOR: Removed kb-column and divider -->
                     
                     <section class="column" id="local-column">
-                        <div class="local-header">
-                            <h2>Local Database Results</h2>
+                        <div class="local-header section-header-wrapper"> <!-- Use section-header-wrapper -->
+                            <h3 class="section-header">Local Database Results</h3> <!-- Use h3.section-header -->
                             <button id="btn-add-new-entry" class="button-base button-primary hidden" title="Create new entry">+ Create Entry</button>
                         </div>
                         <ul id="local-results" class="result-list"></ul>
@@ -433,16 +439,16 @@
                 form.innerHTML = `
                     <div class="form-grid">
                         <label for="edit-keyword-${item.id}">Keyword(s)</label>
-                        <input type="text" id="edit-keyword-${item.id}" value="${SafeUI.escapeHTML(item.keyword)}" placeholder="Comma-separated keywords">
+                        <input type="text" id="edit-keyword-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.keyword)}" placeholder="Comma-separated keywords">
                         
                         <label for="edit-group-${item.id}">Assignment Group</label>
-                        <input type="text" id="edit-group-${item.id}" value="${SafeUI.escapeHTML(item.assignmentGroup)}" placeholder="Group name">
+                        <input type="text" id="edit-group-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.assignmentGroup)}" placeholder="Group name">
                         
                         <label for="edit-notes-${item.id}">Notes</label>
-                        <textarea id="edit-notes-${item.id}" placeholder="Procedural notes...">${SafeUI.escapeHTML(item.notes)}</textarea>
+                        <textarea id="edit-notes-${item.id}" class="sidebar-textarea" placeholder="Procedural notes...">${SafeUI.escapeHTML(item.notes)}</textarea>
                         
                         <label for="edit-path-${item.id}">Phone Log Path</label>
-                        <input type="text" id="edit-path-${item.id}" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="Cat > SubCat > Item">
+                        <input type="text" id="edit-path-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="Cat > SubCat > Item">
                     </div>
                     <div class="edit-form-actions">
                         <button type="button" class="btn-delete button-base button-danger" title="Delete">Delete</button>
