@@ -2,8 +2,7 @@
  * msg-reader.js v1.4.0
  * Production-grade Microsoft Outlook MSG and OFT file parser
  * Compatible with Outlook 365 and modern MSG formats
- * 
- * Based on msg.reader by Peter Theill
+ * * Based on msg.reader by Peter Theill
  * Licensed under MIT
  */
 
@@ -341,19 +340,27 @@
         return data.slice(0, dataOffset);
     };
 
+    //
+    // START FIX #3: Better Property Extraction
+    //
     MsgReader.prototype.extractProperties = function() {
         var self = this;
-
+    
+        console.log('Extracting properties from', this.directoryEntries.length, 'entries...');
+    
         // Find property streams
         this.directoryEntries.forEach(function(entry) {
             if (entry.name.indexOf('__substg1.0_') === 0) {
                 var propTag = entry.name.substring(12, 20);
                 var propId = parseInt(propTag.substring(0, 4), 16);
                 var propType = parseInt(propTag.substring(4, 8), 16);
-
+    
                 var streamData = self.readStream(entry);
                 var value = self.convertPropertyValue(streamData, propType);
-
+    
+                console.log('Property', propId.toString(16), 'type', propType.toString(16), '=', 
+                            typeof value === 'string' ? value.substring(0, 50) : value);
+    
                 self.properties[propId] = {
                     id: propId,
                     type: propType,
@@ -361,103 +368,244 @@
                 };
             }
         });
-
+    
         // Extract recipients
         this.extractRecipients();
-
-        console.log('Extracted properties:', Object.keys(this.properties).length);
+    
+        console.log('Total properties extracted:', Object.keys(this.properties).length);
     };
+    //
+    // END FIX #3
+    //
 
+    //
+    // START FIX #2: Better Body Type Detection
+    //
     MsgReader.prototype.convertPropertyValue = function(data, type) {
         if (!data || data.length === 0) {
             return null;
         }
-
+    
         var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-
+    
         switch (type) {
-            case PROP_TYPE_STRING8: // UTF-16LE string
+            case 0x001F: // PT_UNICODE (UTF-16LE string)
                 return dataViewToString(view, 'utf16le');
-
-            case PROP_TYPE_STRING: // ASCII string
+    
+            case 0x001E: // PT_STRING8 (ASCII/UTF-8 string)
                 return dataViewToString(view, 'ascii');
-
-            case PROP_TYPE_INTEGER32:
+    
+            case 0x0003: // PT_LONG (32-bit integer)
                 return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
-
-            case PROP_TYPE_BOOLEAN:
+    
+            case 0x000B: // PT_BOOLEAN
                 return view.byteLength > 0 ? view.getUint8(0) !== 0 : false;
-
-            case PROP_TYPE_TIME:
+    
+            case 0x0040: // PT_SYSTIME (FILETIME)
                 if (view.byteLength >= 8) {
                     var low = view.getUint32(0, true);
                     var high = view.getUint32(4, true);
                     return filetimeToDate(low, high);
                 }
                 return null;
-
-            case PROP_TYPE_BINARY:
+    
+            case 0x0102: // PT_BINARY
+                // SPECIAL CASE: Check if this looks like text data
+                // (for OFT files that misidentify text as binary)
+                if (this.looksLikeText(data)) {
+                    console.log('Binary data looks like text, converting...');
+                    // Try UTF-16LE first
+                    var text = dataViewToString(view, 'utf16le');
+                    if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
+                        return text;
+                    }
+                    // Try ASCII
+                    text = dataViewToString(view, 'ascii');
+                    if (text && text.length > 0) {
+                        return text;
+                    }
+                }
                 return data;
-
+    
             default:
+                // Unknown type - try to detect if it's text
+                if (this.looksLikeText(data)) {
+                    var text = dataViewToString(view, 'utf16le');
+                    if (text && text.length > 0) {
+                        return text;
+                    }
+                }
                 return data;
         }
     };
+    
+    MsgReader.prototype.looksLikeText = function(data) {
+        if (!data || data.length < 4) {
+            return false;
+        }
+    
+        // Check if data starts with common text patterns
+        var printableCount = 0;
+        var totalChecked = Math.min(100, data.length);
+    
+        for (var i = 0; i < totalChecked; i++) {
+            var byte = data[i];
+            // Printable ASCII, newline, carriage return, tab, or null (for UTF-16)
+            if ((byte >= 0x20 && byte <= 0x7E) || byte === 0x0A || byte === 0x0D || byte === 0x09 || byte === 0x00) {
+                printableCount++;
+            }
+        }
+    
+        // If more than 70% looks like text, treat it as text
+        return (printableCount / totalChecked) > 0.7;
+    };
+    //
+    // END FIX #2
+    //
 
+    //
+    // START FIX #1: Better Recipient Extraction
+    //
     MsgReader.prototype.extractRecipients = function() {
         var self = this;
         var recipients = [];
-
-        // Find recipient directories
-        var recipientDirs = this.directoryEntries.filter(function(entry) {
+    
+        console.log('Extracting recipients...');
+    
+        // Method 1: Look for recipient properties in directory structure
+        var recipientStorages = this.directoryEntries.filter(function(entry) {
             return entry.type === 1 && entry.name.indexOf('__recip_version1.0_') === 0;
         });
-
-        recipientDirs.forEach(function(recipDir) {
+    
+        console.log('Found recipient storages:', recipientStorages.length);
+    
+        recipientStorages.forEach(function(recipStorage) {
             var recipient = {
-                recipientType: null,
-                name: null,
-                email: null
+                recipientType: 1, // Default to TO
+                name: '',
+                email: ''
             };
-
-            // Find properties for this recipient
-            var recipPrefix = recipDir.name + '/';
-            
+    
+            var recipientIndex = recipStorage.name.replace('__recip_version1.0_#', '').replace('__recip_version1.0_', '');
+            console.log('Processing recipient:', recipientIndex);
+    
+            // Find all properties for this recipient
             self.directoryEntries.forEach(function(entry) {
-                if (entry.name.indexOf(recipPrefix + '__substg1.0_') === 0) {
-                    var propTag = entry.name.substring(recipPrefix.length + 12, recipPrefix.length + 20);
+                // Match pattern: __recip_version1.0_#00000000/__substg1.0_XXXXYYYY
+                var pattern = '__recip_version1.0_';
+                if (recipientIndex) {
+                    // Handle both #NUMBER and flat structure
+                    var patternWithNum = pattern + '#' + recipientIndex.padStart(8, '0') + '/';
+                    var patternFlat = pattern + recipientIndex + '/'; // Fallback for names like '__recip_version1.0_0/'
+                    
+                    if (entry.name.indexOf(patternWithNum) !== 0 && entry.name.indexOf(patternFlat) !== 0) {
+                         // Check if the entry name matches the storage name (for flat structures)
+                         if (entry.name.indexOf(recipStorage.name + '/') !== 0) {
+                            return; // Not a property of this recipient
+                         }
+                         pattern = recipStorage.name + '/';
+                    } else if (entry.name.indexOf(patternWithNum) === 0) {
+                        pattern = patternWithNum;
+                    } else {
+                        pattern = patternFlat;
+                    }
+                } else {
+                    return; // Should not happen if recipientStorages is correct
+                }
+    
+                if (entry.name.indexOf(pattern + '__substg1.0_') === 0) {
+                    var propTag = entry.name.substring(entry.name.length - 8);
                     var propId = parseInt(propTag.substring(0, 4), 16);
                     var propType = parseInt(propTag.substring(4, 8), 16);
-
+    
                     var streamData = self.readStream(entry);
                     var value = self.convertPropertyValue(streamData, propType);
-
-                    // 0x0C15 = Display name
+    
+                    console.log('  Property', propId.toString(16), '=', value);
+    
+                    // Property IDs for recipients:
+                    // 0x0E03 = PR_RECIPIENT_TYPE (This was wrong in your patch, 0x0C15 is DisplayName)
+                    // 0x3001 = PR_DISPLAY_NAME
+                    // 0x3003 = PR_EMAIL_ADDRESS
+                    // 0x39FE = PR_SMTP_ADDRESS  
+                    // 0x0C1E = PR_SENDER_EMAIL_ADDRESS (less common for recipient)
+                    // 0x0C15 = PR_RECIPIENT_DISPLAY_NAME
+    
                     if (propId === 0x0C15 || propId === 0x3001) {
-                        recipient.name = value;
-                    }
-                    // 0x39FE = SMTP address
-                    else if (propId === 0x39FE || propId === 0x5D01) {
-                        recipient.email = value;
-                    }
-                    // 0x0E03 = Recipient type
-                    else if (propId === 0x0C15) {
+                        recipient.name = value || recipient.name;
+                    } else if (propId === 0x39FE || propId === 0x3003 || propId === 0x0C1E) {
+                        recipient.email = value || recipient.email;
+                    } else if (propId === 0x0E03) { // Recipient type
                         recipient.recipientType = value;
                     }
                 }
             });
-
+    
             if (recipient.name || recipient.email) {
+                console.log('  Adding recipient:', recipient);
                 recipients.push(recipient);
             }
         });
-
+    
+        // Method 2: Fallback - Extract from display fields
+        if (recipients.length === 0) {
+            console.log('No recipients in structures, trying display fields...');
+            
+            var displayTo = self.properties[0x0E04] ? self.properties[0x0E04].value : null;
+            var displayCc = self.properties[0x0E03] ? self.properties[0x0E03].value : null;
+            var displayBcc = self.properties[0x0E02] ? self.properties[0x0E02].value : null;
+    
+            if (displayTo) {
+                displayTo.split(';').forEach(function(addr) {
+                    addr = addr.trim();
+                    if (addr) {
+                        recipients.push({
+                            recipientType: 1,
+                            name: addr,
+                            email: addr
+                        });
+                    }
+                });
+            }
+    
+            if (displayCc) {
+                displayCc.split(';').forEach(function(addr) {
+                    addr = addr.trim();
+                    if (addr) {
+                        recipients.push({
+                            recipientType: 2,
+                            name: addr,
+                            email: addr
+                        });
+                    }
+                });
+            }
+    
+            if (displayBcc) {
+                displayBcc.split(';').forEach(function(addr) {
+                    addr = addr.trim();
+                    if (addr) {
+                        recipients.push({
+                            recipientType: 3,
+                            name: addr,
+                            email: addr
+                        });
+                    }
+                });
+            }
+        }
+    
+        console.log('Total recipients extracted:', recipients.length);
+        
         this.properties['recipients'] = {
             id: 0,
             type: 0,
             value: recipients
         };
     };
+    //
+    // END FIX #1
+    //
 
     MsgReader.prototype.getFieldValue = function(fieldName) {
         var propId;
