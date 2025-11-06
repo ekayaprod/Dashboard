@@ -1041,24 +1041,29 @@ body.modal-open > .app-container {
 /* REFACTOR: REMOVED #app-startup-error.sticky-banner.
    HTML was updated to use the global .app-startup-banner class.
 */
-.passwords-page .header-wrapper-padded {
+/* REFACTOR: (Fix 2) Replaced utility class with semantic selector */
+.passwords-page header.section-header-wrapper {
      padding: 0 0.25rem;
 }
 /* REFACTOR: REMOVED .btn-full-width-padded.
    This is now a consolidated global rule.
 */
-.passwords-page .divider-short-margin {
-    margin: 0.25rem 0;
-}
-.passwords-page .section-header-bottom-margin {
+/* REFACTOR: (Fix 3) Removed unused .divider-short-margin */
+
+/* REFACTOR: (Fix 2) Replaced utility class with semantic selector */
+.passwords-page .generator-section .section-header-wrapper {
     margin-bottom: 0.75rem;
 }
-/* REFACTOR: Removed wordbank-status-padded */
-.passwords-page .checkbox-label-padded {
-    /* REFACTOR: Removed margin-top */
-    margin-bottom: 0;
+.passwords-page .generator-section > h3.section-header {
+    margin-bottom: 0.75rem;
 }
-.passwords-page .btn-generate-padded {
+
+/* REFACTOR: Removed wordbank-status-padded */
+/* REFACTOR: (Fix 2) Removed redundant .checkbox-label-padded */
+
+
+/* REFACTOR: (Fix 2) Replaced utility class with semantic selector */
+.passwords-page #btn-generate {
     width: 100%; 
     padding: 0.75rem;
 }
