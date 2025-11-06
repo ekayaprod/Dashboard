@@ -20,8 +20,8 @@
     // Property types
     var PROP_TYPE_INTEGER32 = 0x0003;
     var PROP_TYPE_BOOLEAN = 0x000B;
-    var PROP_TYPE_STRING = 0x001E;
-    var PROP_TYPE_STRING8 = 0x001F;
+    var PROP_TYPE_STRING = 0x001E; // String8 (ASCII/UTF-8)
+    var PROP_TYPE_STRING8 = 0x001F; // Unicode (UTF-16LE)
     var PROP_TYPE_TIME = 0x0040;
     var PROP_TYPE_BINARY = 0x0102;
 
@@ -34,6 +34,13 @@
     var PROP_ID_DISPLAY_TO = 0x0E04;
     var PROP_ID_DISPLAY_CC = 0x0E03;
     var PROP_ID_DISPLAY_BCC = 0x0E02;
+    
+    // Recipient Property IDs
+    var PROP_ID_RECIPIENT_TYPE = 0x0C15;
+    var PROP_ID_RECIPIENT_DISPLAY_NAME = 0x3001;
+    var PROP_ID_RECIPIENT_EMAIL_ADDRESS = 0x3003;
+    var PROP_ID_RECIPIENT_SMTP_ADDRESS = 0x39FE;
+
 
     // Recipient types
     var RECIPIENT_TYPE_TO = 1;
@@ -42,6 +49,7 @@
 
     /**
      * Helper: Convert DataView to string
+     * FIX: Added 'utf-8' support via TextDecoder
      */
     function dataViewToString(view, encoding) {
         var result = '';
@@ -55,8 +63,28 @@
                     result += String.fromCharCode(charCode);
                 }
             }
+        } else if (encoding === 'utf-8') {
+             // Use TextDecoder for proper UTF-8 handling
+            try {
+                // Pass the DataView directly
+                const decoder = new TextDecoder('utf-8', { fatal: false }); // fatal:false to avoid crash on bad chars
+                result = decoder.decode(view);
+                // Remove null terminators
+                const nullIdx = result.indexOf('\0');
+                if (nullIdx !== -1) {
+                    result = result.substring(0, nullIdx);
+                }
+            } catch (e) {
+                console.warn('UTF-8 decoding failed, falling back to ASCII');
+                // Fallback to ASCII (original logic)
+                for (var i = 0; i < length; i++) {
+                    var charCode = view.getUint8(i);
+                    if (charCode === 0) break;
+                    result += String.fromCharCode(charCode);
+                }
+            }
         } else {
-            // ASCII/UTF-8
+            // ASCII (original logic)
             for (var i = 0; i < length; i++) {
                 var charCode = view.getUint8(i);
                 if (charCode === 0) break;
@@ -350,7 +378,11 @@
     
         // Find property streams
         this.directoryEntries.forEach(function(entry) {
-            if (entry.name.indexOf('__substg1.0_') === 0) {
+            // Look for property streams inside root OR inside recipient storages
+            var isRootProperty = entry.name.indexOf('__substg1.0_') === 0;
+            var isRecipientProperty = entry.name.indexOf('__recip_version1.0_') > -1 && entry.name.indexOf('__substg1.0_') > -1;
+
+            if (isRootProperty && !isRecipientProperty) { // Ensure it's not a recipient property
                 var propTag = entry.name.substring(12, 20);
                 var propId = parseInt(propTag.substring(0, 4), 16);
                 var propType = parseInt(propTag.substring(4, 8), 16);
@@ -389,19 +421,19 @@
         var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     
         switch (type) {
-            case 0x001F: // PT_UNICODE (UTF-16LE string)
+            case PROP_TYPE_STRING8: // 0x001F (PT_UNICODE / UTF-16LE string)
                 return dataViewToString(view, 'utf16le');
     
-            case 0x001E: // PT_STRING8 (ASCII/UTF-8 string)
-                return dataViewToString(view, 'ascii');
+            case PROP_TYPE_STRING: // 0x001E (PT_STRING8 / ASCII/UTF-8 string)
+                return dataViewToString(view, 'utf-8'); // Use UTF-8 decoder
     
-            case 0x0003: // PT_LONG (32-bit integer)
+            case PROP_TYPE_INTEGER32: // 0x0003 (PT_LONG)
                 return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
     
-            case 0x000B: // PT_BOOLEAN
+            case PROP_TYPE_BOOLEAN: // 0x000B (PT_BOOLEAN)
                 return view.byteLength > 0 ? view.getUint8(0) !== 0 : false;
     
-            case 0x0040: // PT_SYSTIME (FILETIME)
+            case PROP_TYPE_TIME: // 0x0040 (PT_SYSTIME / FILETIME)
                 if (view.byteLength >= 8) {
                     var low = view.getUint32(0, true);
                     var high = view.getUint32(4, true);
@@ -409,19 +441,31 @@
                 }
                 return null;
     
-            case 0x0102: // PT_BINARY
+            case PROP_TYPE_BINARY: // 0x0102 (PT_BINARY)
                 // SPECIAL CASE: Check if this looks like text data
                 // (for OFT files that misidentify text as binary)
                 if (this.looksLikeText(data)) {
                     console.log('Binary data looks like text, converting...');
                     // Try UTF-16LE first
                     var text = dataViewToString(view, 'utf16le');
-                    if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
-                        return text;
+                    // Check for null bytes which are common in UTF-16LE but rare in UTF-8/ASCII
+                    var hasNulls = false;
+                    for(var i = 1; i < Math.min(data.length, 50); i+=2) {
+                        if (data[i] === 0) {
+                            hasNulls = true;
+                            break;
+                        }
                     }
-                    // Try ASCII
-                    text = dataViewToString(view, 'ascii');
+
+                    if (hasNulls && text.length > 0) {
+                         console.log('Detected UTF-16LE');
+                         return text;
+                    }
+
+                    // Try UTF-8
+                    text = dataViewToString(view, 'utf-8');
                     if (text && text.length > 0) {
+                        console.log('Detected UTF-8');
                         return text;
                     }
                 }
@@ -481,39 +525,23 @@
     
         recipientStorages.forEach(function(recipStorage) {
             var recipient = {
-                recipientType: 1, // Default to TO
+                recipientType: RECIPIENT_TYPE_TO, // Default to TO
                 name: '',
                 email: ''
             };
     
-            var recipientIndex = recipStorage.name.replace('__recip_version1.0_#', '').replace('__recip_version1.0_', '');
-            console.log('Processing recipient:', recipientIndex);
+            var recipStorageName = recipStorage.name;
+            console.log('Processing recipient storage:', recipStorageName);
     
             // Find all properties for this recipient
             self.directoryEntries.forEach(function(entry) {
-                // Match pattern: __recip_version1.0_#00000000/__substg1.0_XXXXYYYY
-                var pattern = '__recip_version1.0_';
-                if (recipientIndex) {
-                    // Handle both #NUMBER and flat structure
-                    var patternWithNum = pattern + '#' + recipientIndex.padStart(8, '0') + '/';
-                    var patternFlat = pattern + recipientIndex + '/'; // Fallback for names like '__recip_version1.0_0/'
-                    
-                    if (entry.name.indexOf(patternWithNum) !== 0 && entry.name.indexOf(patternFlat) !== 0) {
-                         // Check if the entry name matches the storage name (for flat structures)
-                         if (entry.name.indexOf(recipStorage.name + '/') !== 0) {
-                            return; // Not a property of this recipient
-                         }
-                         pattern = recipStorage.name + '/';
-                    } else if (entry.name.indexOf(patternWithNum) === 0) {
-                        pattern = patternWithNum;
-                    } else {
-                        pattern = patternFlat;
-                    }
-                } else {
-                    return; // Should not happen if recipientStorages is correct
+                // Property must be a stream (type 2) and be inside this recipient's storage
+                if (entry.type !== 2 || entry.name.indexOf(recipStorageName + '/') !== 0) {
+                    return;
                 }
-    
-                if (entry.name.indexOf(pattern + '__substg1.0_') === 0) {
+                
+                // Check if it's a property stream
+                if (entry.name.indexOf('__substg1.0_') > -1) {
                     var propTag = entry.name.substring(entry.name.length - 8);
                     var propId = parseInt(propTag.substring(0, 4), 16);
                     var propType = parseInt(propTag.substring(4, 8), 16);
@@ -521,27 +549,36 @@
                     var streamData = self.readStream(entry);
                     var value = self.convertPropertyValue(streamData, propType);
     
-                    console.log('  Property', propId.toString(16), '=', value);
+                    console.log('  Property', propId.toString(16), '(', propType.toString(16), ') =', value);
     
-                    // Property IDs for recipients:
-                    // 0x0E03 = PR_RECIPIENT_TYPE (This was wrong in your patch, 0x0C15 is DisplayName)
-                    // 0x3001 = PR_DISPLAY_NAME
-                    // 0x3003 = PR_EMAIL_ADDRESS
-                    // 0x39FE = PR_SMTP_ADDRESS  
-                    // 0x0C1E = PR_SENDER_EMAIL_ADDRESS (less common for recipient)
-                    // 0x0C15 = PR_RECIPIENT_DISPLAY_NAME
-    
-                    if (propId === 0x0C15 || propId === 0x3001) {
-                        recipient.name = value || recipient.name;
-                    } else if (propId === 0x39FE || propId === 0x3003 || propId === 0x0C1E) {
-                        recipient.email = value || recipient.email;
-                    } else if (propId === 0x0E03) { // Recipient type
-                        recipient.recipientType = value;
+                    // Assign properties based on official IDs
+                    switch(propId) {
+                        case PROP_ID_RECIPIENT_DISPLAY_NAME: // 0x3001
+                            recipient.name = value || recipient.name;
+                            break;
+                        case PROP_ID_RECIPIENT_EMAIL_ADDRESS: // 0x3003
+                        case PROP_ID_RECIPIENT_SMTP_ADDRESS: // 0x39FE
+                            recipient.email = value || recipient.email;
+                            break;
+                        case PROP_ID_RECIPIENT_TYPE: // 0x0C15
+                            if (typeof value === 'number') {
+                                recipient.recipientType = value;
+                            }
+                            break;
                     }
                 }
             });
     
             if (recipient.name || recipient.email) {
+                // Fallback: If email is missing but name looks like an email, use it.
+                if (!recipient.email && recipient.name && recipient.name.indexOf('@') > -1) {
+                    recipient.email = recipient.name;
+                }
+                // Fallback: If name is missing but email is present, use email as name.
+                if (!recipient.name && recipient.email) {
+                    recipient.name = recipient.email;
+                }
+                
                 console.log('  Adding recipient:', recipient);
                 recipients.push(recipient);
             }
@@ -551,18 +588,18 @@
         if (recipients.length === 0) {
             console.log('No recipients in structures, trying display fields...');
             
-            var displayTo = self.properties[0x0E04] ? self.properties[0x0E04].value : null;
-            var displayCc = self.properties[0x0E03] ? self.properties[0x0E03].value : null;
-            var displayBcc = self.properties[0x0E02] ? self.properties[0x0E02].value : null;
+            var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
+            var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
+            var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
     
             if (displayTo) {
                 displayTo.split(';').forEach(function(addr) {
                     addr = addr.trim();
                     if (addr) {
                         recipients.push({
-                            recipientType: 1,
+                            recipientType: RECIPIENT_TYPE_TO,
                             name: addr,
-                            email: addr
+                            email: addr // In this case, name and email are the same
                         });
                     }
                 });
@@ -573,7 +610,7 @@
                     addr = addr.trim();
                     if (addr) {
                         recipients.push({
-                            recipientType: 2,
+                            recipientType: RECIPIENT_TYPE_CC,
                             name: addr,
                             email: addr
                         });
@@ -586,7 +623,7 @@
                     addr = addr.trim();
                     if (addr) {
                         recipients.push({
-                            recipientType: 3,
+                            recipientType: RECIPIENT_TYPE_BCC,
                             name: addr,
                             email: addr
                         });
