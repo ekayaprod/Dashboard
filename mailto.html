@@ -130,8 +130,7 @@
 
     <!-- External Libs -->
     <script src="js/msgreader.js"></script>
-    <!-- TIER 1.5: Add simple parser -->
-    <script src="js/simple-msg-parser.js"></script>
+    <!-- TIER 2: Removed simple-msg-parser.js as it's no longer used -->
     
     <script>
     // ===================================================================
@@ -176,8 +175,8 @@
     // Dependency Check
     (() => {
         // REFACTOR: Added SharedSettingsModal to dependency check
-        // TIER 1.5: Added SimpleMsgParser to dependency check
-        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader', 'SimpleMsgParser'];
+        // TIER 2: Removed SimpleMsgParser from dependency check
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
         // REFACTOR: Changed check for MsgReader to be 'object' (not 'function')
@@ -189,12 +188,7 @@
             }
         }
         
-        // TIER 1.5: Add check for SimpleMsgParser
-        if (typeof window.SimpleMsgParser !== 'function') {
-             if (!missing.includes('SimpleMsgParser')) {
-                missing.push('SimpleMsgParser (Invalid Type)');
-            }
-        }
+        // TIER 2: Removed check for SimpleMsgParser
 
 
         if (missing.length > 0) {
@@ -656,140 +650,99 @@
                 
                 clearEditorFields();
 
+                //
+                // === START OF TIER 2 REPLACEMENT ===
+                //
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
-                        if (!window.MsgReader || typeof window.MsgReader.read !== 'function') { 
-                            throw new Error('MsgReader library not loaded or invalid.'); 
+                        if (!window.MsgReader || typeof window.MsgReader.read !== 'function') {
+                            throw new Error('MsgReader library not loaded or invalid.');
                         }
-
-                        // Validate file size
+                
                         const arrayBuffer = e.target.result;
                         if (!arrayBuffer || arrayBuffer.byteLength < 512) {
                             throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
                         }
-
-                        // Log file info for debugging
+                
                         console.log('File info:', {
                             name: file.name,
                             size: file.size,
                             type: file.type,
                             bufferSize: arrayBuffer.byteLength
                         });
-
-                        // --- START FIX: ISSUE 3 (Correct Implementation) ---
+                
+                        console.log('Parsing MSG file...');
                         
-                        // Convert ArrayBuffer to plain Array that msgreader.js expects
-                        const uint8View = new Uint8Array(arrayBuffer);
-                        const plainArray = Array.from(uint8View);
+                        // Parse the MSG file
+                        const msgData = window.MsgReader.read(arrayBuffer);
                         
-                        // Validate we have actual numeric data
-                        if (plainArray.length === 0) {
-                            throw new Error('File conversion failed - no data extracted.');
+                        console.log('Parse successful!');
+                        console.log('Extracted data:', msgData);
+                
+                        // Populate form fields
+                        DOMElements.resultSubject.value = msgData.subject || '';
+                        
+                        // Prefer plain text body over HTML
+                        let bodyText = msgData.body || '';
+                        
+                        // If no plain text body but HTML exists, strip HTML tags
+                        if (!bodyText && msgData.bodyHTML) {
+                            bodyText = msgData.bodyHTML
+                                .replace(/<style[^>]*>.*?<\/style>/gi, '')
+                                .replace(/<script[^>]*>.*?<\/script>/gi, '')
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .replace(/&lt;/g, '<')
+                                .replace(/&gt;/g, '>')
+                                .replace(/&amp;/g, '&')
+                                .replace(/&quot;/g, '"')
+                                .trim();
                         }
                         
-                        // Check OLE signature (should start with D0 CF 11 E0)
-                        const signature = plainArray.slice(0, 8);
-                        const isValidOLE = (
-                            signature[0] === 0xD0 && signature[1] === 0xCF && 
-                            signature[2] === 0x11 && signature[3] === 0xE0
-                        );
-
-                        if (!isValidOLE) {
-                            // Log the signature for debugging
-                            console.warn('File signature:', signature.map(b => b.toString(16).padStart(2, '0')).join(' '));
-                            throw new Error('File does not appear to be a valid MSG/OFT file (invalid OLE signature). The file may be corrupted or is not an Outlook message file.');
-                        }
+                        DOMElements.resultBody.value = bodyText;
+                
+                        // Process recipients
+                        const recipients = msgData.recipients || [];
                         
-                        // --- START TIER 1.5 IMPLEMENTATION ---
-                        try {
-                            // --- LOGIC REVERSED: Try the FULL parser FIRST ---
-                            console.log('Parsing file with MsgReader...');
-                            let fileData;
+                        const toRecipients = recipients
+                            .filter(r => r.recipientType === 1)
+                            .map(r => r.email || r.name)
+                            .filter(Boolean);
                             
-                            // CRITICAL FIX: Wrap the read() call in its own try...catch
-                            try {
-                                fileData = window.MsgReader.read(plainArray);
-                                
-                                // Add validation that we got data back
-                                if (!fileData || typeof fileData.getFieldValue !== 'function') {
-                                    throw new Error('MSG parsing returned invalid data structure');
-                                }
-                                
-                                console.log('Parse successful with full parser!');
-                            } catch (readError) {
-                                // This catch block handles errors from MsgReader.read() itself
-                                console.error('MsgReader.read() failed:', readError);
-                                
-                                // Re-throw a more specific error for the outer catch block
-                                if (readError.name === 'CorruptFileError') {
-                                    throw new Error(`Unable to read the MSG file structure (${readError.message}). The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.`);
-                                }
-                                throw new Error(`MSG parsing failed: ${readError.message}`);
-                            }
-
-                            // CRITICAL FIX: Wrap field extraction in a try...catch
-                            try {
-                                DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
-                                DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
-
-                                const recipients = fileData.getFieldValue('recipients') || [];
-                                DOMElements.resultTo.value = recipients.filter(r => r.recipientType === 1)
-                                    .map(r => r.recipientEmail || r.recipientEmailAddress)
-                                    .filter(Boolean).join(', ');
-                                DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2)
-                                    .map(r => r.recipientEmail || r.recipientEmailAddress)
-                                    .filter(Boolean).join(', ');
-                                DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3)
-                                    .map(r => r.recipientEmail || r.recipientEmailAddress)
-                                    .filter(Boolean).join(', ');
-
-                                DOMElements.outputWrapper.classList.add('hidden'); 
-                                setTimeout(() => resizeResultBody(), 0);
-                            } catch (fieldError) {
-                                console.error('Error extracting MSG fields:', fieldError);
-                                throw new Error('Successfully parsed MSG file, but failed to extract email fields. The file structure may be non-standard.');
-                            }
-                            // --- END FULL MsgReader ---
-
-                        } catch (fullParserError) {
-                            console.warn('Full parser failed, trying simple parser as a last resort:', fullParserError);
+                        const ccRecipients = recipients
+                            .filter(r => r.recipientType === 2)
+                            .map(r => r.email || r.name)
+                            .filter(Boolean);
                             
-                            // Fallback to SimpleMsgParser
-                            try {
-                                const simpleParser = new SimpleMsgParser();
-                                const data = simpleParser.parse(plainArray);
-                                
-                                DOMElements.resultSubject.value = data.subject || '';
-                                DOMElements.resultBody.value = data.body || '';
-                                DOMElements.resultTo.value = data.to || '';
-                                DOMElements.resultCc.value = data.cc || '';
-                                DOMElements.resultBcc.value = '';
-                                
-                                console.log('Parsed with simple parser (fallback)');
-                                
-                                DOMElements.outputWrapper.classList.add('hidden'); 
-                                setTimeout(() => resizeResultBody(), 0);
-
-                            } catch (simpleError) {
-                                console.error("Both full and simple parsers failed.", simpleError);
-                                // Throw the *original* error from the full parser, as it's more informative
-                                throw fullParserError;
-                            }
-                        }
-                        // --- END TIER 1.5 IMPLEMENTATION ---
-                        // --- END FIX: ISSUE 3 ---
-
+                        const bccRecipients = recipients
+                            .filter(r => r.recipientType === 3)
+                            .map(r => r.email || r.name)
+                            .filter(Boolean);
+                
+                        DOMElements.resultTo.value = toRecipients.join(', ');
+                        DOMElements.resultCc.value = ccRecipients.join(', ');
+                        DOMElements.resultBcc.value = bccRecipients.join(', ');
+                
+                        // Hide output section initially
+                        DOMElements.outputWrapper.classList.add('hidden');
+                        
+                        // Resize textarea
+                        setTimeout(() => resizeResultBody(), 0);
+                        
+                        SafeUI.showToast('MSG file loaded successfully!');
+                
                     } catch (err) {
-                        console.error('File parsing error:', err);
+                        console.error('MSG parsing error:', err);
                         
-                        // Provide more helpful error messages
-                        let userMessage = err.message;
-                        // This condition will now be met by the re-thrown error
-                        if (err.message.includes('Root Entry not found') || err.message.includes('Unable to read the MSG file structure')) {
-                            userMessage = 'Unable to read the MSG file structure. The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.';
-                        } else if (err.message.includes('signature')) {
-                            userMessage = 'This file is not a valid MSG/OFT file. Please ensure you are uploading an Outlook message file (.msg) or template file (.oft).';
+                        let userMessage = 'Failed to parse MSG file. ';
+                        
+                        if (err.message.includes('signature')) {
+                            userMessage += 'This file does not appear to be a valid Outlook message file (.msg or .oft).';
+                        } else if (err.message.includes('too small')) {
+                            userMessage += 'The file is too small or corrupted.';
+                        } else {
+                            userMessage += err.message;
                         }
                         
                         SafeUI.showModal('File Error', `<p>${userMessage}</p>`, [{label: 'OK'}]);
@@ -799,6 +752,9 @@
                     SafeUI.showModal('File Error', '<p>File reading failed. Could not access file content.</p>', [{label: 'OK'}]);
                 };
                 reader.readAsArrayBuffer(file);
+                //
+                // === END OF TIER 2 REPLACEMENT ===
+                //
             } catch (e) {
                 console.error('File operation failed:', e);
                 SafeUI.showToast('File operation failed due to internal error.');
