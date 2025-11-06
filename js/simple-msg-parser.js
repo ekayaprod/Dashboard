@@ -1,138 +1,1152 @@
-/**
- * Simplified MSG Parser
- * Only extracts basic email fields from MSG files
- */
-(function(global) {
-    'use strict';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailTo Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 
+      REMOVED: The entire <style> block was moved to style.css
+      and prefixed with .mailto-page
+    -->
+</head>
+<body class="mailto-page">
+    <div id="navbar-container"></div>
+
+    <div class="app-container">
+        <div class="panel">
+            <div class="main-content">
+                <div id="app-startup-error" class="hidden app-startup-banner"></div>
+                
+                <!-- VIEW 1: CATALOGUE / LIBRARY (DEFAULT VIEW) -->
+                <div id="catalogue-view" class="view active">
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Email Template Library</h3>
+                        <div class="button-group">
+                            <!-- REFACTOR: Removed btn-import-csv and btn-export-csv -->
+                            <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
+                            <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
+                            <button id="btn-new-template" class="button-base button-primary">New Template</button>
+                        </div>
+                    </div>
+
+                    <div id="breadcrumb-container" class="breadcrumb-container">
+                    </div>
+
+                    <div id="tree-list-container">
+                    </div>
+                </div>
+
+                <!-- VIEW 2: TEMPLATE EDITOR (GENERATOR) -->
+                <div id="editor-view" class="view">
+                    
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Phase 1: Create or Upload</h3>
+                        <div class="button-group">
+                            <button id="btn-editor-cancel" class="button-base">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div id="upload-wrapper" class="upload-wrapper form-group">
+                        <input type="file" id="msg-upload" accept=".msg,.oft">
+                        <label for="msg-upload" class="button-base button-primary">
+                            Upload .msg or .oft file
+                        </label>
+                        <p>or drag and drop a file here</p>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="section-header-wrapper">
+                        <h3 class="section-header">Phase 2: Review and Edit Fields</h3>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="result-to">To</label>
+                        <input type="text" id="result-to" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-cc">CC</label>
+                        <input type="text" id="result-cc" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-bcc">BCC</label>
+                        <input type="text" id="result-bcc" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-subject">Subject</label>
+                        <input type="text" id="result-subject" class="sidebar-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="result-body">Body (Text)</label>
+                        <textarea id="result-body" class="sidebar-textarea"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                         <button id="btn-generate" class="button-base button-primary" style="width: 100%;">Generate Command</button>
+                    </div>
+
+                    <!-- Phase 3: Output & Save -->
+                    <div id="output-wrapper" class="hidden">
+                        <div class="divider"></div>
+                        <div class="section-header-wrapper">
+                            <h3 class="section-header">Phase 3: Generated Output</h3>
+                            <a href="#" id="result-link" target="_blank" class="button-base button-primary">Open in Email Client</a>
+                        </div>
+                        <div class="form-group">
+                            <div class="label-group">
+                                <label for="result-mailto">MailTo Command</label>
+                                <button id="copy-mailto-btn" class="button-base">Copy</button>
+                            </div>
+                            <textarea id="result-mailto" class="sidebar-textarea" readonly placeholder="Generated command will appear here..."></textarea>
+                        </div>
+                        
+                        <!-- Save to Library Section -->
+                        <div class="app-section-box">
+                             <div class="form-group">
+                                <label for="save-template-name">Template Name</label>
+                                <input type="text" id="save-template-name" class="sidebar-input" placeholder="e.g., Weekly Report Stub">
+                            </div>
+                            <div class="button-group">
+                                <button id="btn-save-to-library" class="button-base button-success">Save to Library</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global UI Elements -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <!-- App Libs -->
+    <script src="js/app-core.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-data.js"></script>
+
+    <!-- External Libs -->
+    <script src="js/msgreader.js"></script>
+    <!-- TIER 1.5: Add simple parser -->
+    <script src="js/simple-msg-parser.js"></script>
     
-    function SimpleMsgParser() {}
+    <script>
+    // ===================================================================
+    // CONSTANTS & HELPERS (Issue 1, 10, 13, 15)
+    // ===================================================================
     
-    SimpleMsgParser.prototype.parse = function(arrayBuffer) {
-        // Convert to regular array if needed
-        var bytes;
-        if (arrayBuffer instanceof ArrayBuffer) {
-            bytes = Array.from(new Uint8Array(arrayBuffer));
-        } else if (arrayBuffer instanceof Uint8Array) {
-            bytes = Array.from(arrayBuffer);
-        } else if (Array.isArray(arrayBuffer)) {
-            bytes = arrayBuffer;
-        } else {
-            throw new Error('Invalid input');
+    // C15: Global constant for file size limit
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+    // Issue 1: Centralized MailTo field names
+    const MAILTO_FIELDS = ['to', 'cc', 'bcc', 'subject', 'body'];
+
+    // Issue 10: Extracted Icon SVGs
+    const ICONS = {
+        folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
+        /* * BUG FIX 1: Corrected SVG path data. 
+         * The string ".I-" was replaced with ".79l-" to fix the syntax error.
+         */
+        template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79l-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
+    };
+
+    // Issue 13: Extracted CSV path validation regex
+    const CSV_PATH_REGEX = /^\/[\w\s\/-]*$/;
+
+    // Issue 15: Centralized duplicate validation
+    /**
+     * Checks for a duplicate item in a container and shows a validation error if found.
+     * @param {Array} container - The array of items/folders (children).
+     * @param {string} name - The name to check.
+     * @param {string} errorContext - The context for the error message ('folder' or 'item').
+     * @param {string} inputId - The ID of the input field to highlight.
+     * @returns {boolean} True if a duplicate exists, false otherwise.
+     */
+    const validateUniqueInContainer = (container, name, errorContext, inputId) => {
+         if (DataValidator.hasDuplicate(container, 'name', name)) {
+             SafeUI.showValidationError('Duplicate Name', 'An ' + errorContext + ' with this name already exists in this folder.', inputId);
+             return true;
+        }
+        return false;
+    };
+
+    // Dependency Check
+    (() => {
+        // REFACTOR: Added SharedSettingsModal to dependency check
+        // TIER 1.5: Added SimpleMsgParser to dependency check
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader', 'SimpleMsgParser'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        
+        // REFACTOR: Changed check for MsgReader to be 'object' (not 'function')
+        // and check for its 'read' method.
+        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
+            if (!missing.includes('MsgReader')) {
+                // If it was loaded but isn't the correct structure, mark it as missing
+                missing.push('MsgReader (Invalid Type)');
+            }
         }
         
-        // Basic validation
-        if (bytes.length < 512) {
-            throw new Error('File too small');
+        // TIER 1.5: Add check for SimpleMsgParser
+        if (typeof window.SimpleMsgParser !== 'function') {
+             if (!missing.includes('SimpleMsgParser')) {
+                missing.push('SimpleMsgParser (Invalid Type)');
+            }
         }
-        
-        // Check OLE signature
-        var sig = String.fromCharCode.apply(null, bytes.slice(0, 8));
-        if (sig !== '\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1') {
-            throw new Error('Invalid MSG file signature');
+
+
+        if (missing.length > 0) {
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, msgreader.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+            
+            console.error(errorMessage);
+            
+            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+            } else {
+                const banner = document.getElementById('app-startup-error');
+                if(banner) {
+                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                    banner.classList.remove('hidden');
+                }
+            }
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
         }
-        
-        // Search for common MAPI property strings in the file
-        // Note: This is a brute-force method and may not be 100% reliable
-        // We are searching for the *stream names* which are stored as Unicode.
-        var result = {
-            subject: this.extractField(bytes, '__substg1.0_0037'),
-            body: this.extractField(bytes, '__substg1.0_1000'),
-            to: this.extractField(bytes, '__substg1.0_0E04'), // PR_DISPLAY_TO
-            cc: this.extractField(bytes, '__substg1.0_0E03'), // PR_DISPLAY_CC
-            from: this.extractField(bytes, '__substg1.0_0C1A') // PR_SENDER_NAME
+    })();
+
+
+    AppLifecycle.run(async () => {
+    
+        const APP_CONFIG = {
+            NAME: 'mailto_library',
+            VERSION: '1.1.0', 
+            DATA_KEY: 'mailto_library_v1',
+            CSV_HEADERS: ['name', 'path', ...MAILTO_FIELDS] // Issue 1
+        };
+
+        const defaultState = {
+            version: APP_CONFIG.VERSION,
+            library: [] 
+        };
+    
+        const ctx = await AppLifecycle.initPage({
+            storageKey: APP_CONFIG.DATA_KEY,
+            defaultState: defaultState,
+            version: APP_CONFIG.VERSION,
+            requiredElements: [
+                'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                'catalogue-view', 'editor-view', 
+                'btn-new-template', 'btn-new-folder', 
+                'btn-settings', 
+                'breadcrumb-container', 'tree-list-container', 
+                'btn-editor-cancel', 'btn-generate', 
+                'upload-wrapper', 'msg-upload', 
+                'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', 
+                'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', 
+                'save-template-name', 'btn-save-to-library' 
+            ]
+        });
+    
+        if (!ctx || !ctx.elements) {
+            console.error('AppLifecycle failed to initialize context or DOM elements.');
+            return;
+        }
+    
+        const { elements: DOMElements, state, saveState } = ctx;
+        let currentFolderId = 'root'; 
+        let currentMailtoCommand = null; 
+
+        const clearEditorFields = () => {
+            currentMailtoCommand = null;
+            MAILTO_FIELDS.forEach(field => { 
+                const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
+                if (element) element.value = '';
+            });
+            DOMElements.saveTemplateName.value = '';
+            DOMElements.outputWrapper.classList.add('hidden');
         };
         
-        // If a field is empty, try an alternative property
-        if (!result.to) {
-            result.to = this.extractField(bytes, '__substg1.0_3001'); // PR_RECIPIENT_DISPLAY_NAME (often in recipients)
-        }
-         if (!result.from) {
-            result.from = this.extractField(bytes, '__substg1.0_0C1E'); // PR_SENDER_EMAIL_ADDRESS
-        }
+        const hasUnsavedEditorChanges = () => {
+            return currentMailtoCommand || MAILTO_FIELDS.some(field => {
+                const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
+                return element && element.value;
+            });
+        };
+        
+        const resizeResultBody = () => DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
+        const resizeResultMailto = () => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
 
-        return result;
-    };
-    
-    /**
-     * Finds a Unicode (UTF-16LE) string marker in the byte array and
-     * attempts to extract a nearby data string. This is a highly
-     * experimental and fragile method.
-     */
-    SimpleMsgParser.prototype.extractField = function(bytes, marker) {
-        // Find the marker string in the byte array (as UTF-16LE)
-        var markerBytes = [];
-        for (var i = 0; i < marker.length; i++) {
-            markerBytes.push(marker.charCodeAt(i) & 0xFF);
-            markerBytes.push(0x00); // Unicode null
-        }
-        
-        // Search for marker
-        var index = this.findSequence(bytes, markerBytes);
-        if (index === -1) {
-            return '';
-        }
+        const navigateToFolder = (id) => {
+            currentFolderId = id;
+            renderCatalogue();
+        };
 
-        // This is heuristic: We assume the data is *somewhere* after the marker
-        // Let's search for a long-ish sequence of printable chars after it
-        var start = index + markerBytes.length;
-        var maxLength = 10000; // Reasonable limit
-        var result = '';
-        
-        // We are looking for the *data* stream, which might be near the *name* stream
-        // This simple parser is very limited. It will likely find the stream *name*
-        // but not its *content*.
-        
-        // A better simple approach: find the *marker*, then look backwards
-        // for the 128-byte directory entry, get the stream start sector and size.
-        // That is too complex for this simple parser.
-        
-        // A *simpler* approach: just find printable strings near the marker
-        // This might find the subject/to in the directory entry itself
-        var searchStart = index + 64; // Look around the directory entry
-        var bestCandidate = '';
+        const createFolderModalHTML = () => {
+            return '<input id="folder-name-input" class="sidebar-input" placeholder="Folder Name">';
+        };
 
-        for (var i = searchStart; i < Math.min(searchStart + 2048, bytes.length - 1); i += 2) {
-            var charCode = bytes[i] | (bytes[i + 1] << 8);
-            if (charCode === 0) {
-                if (result.length > bestCandidate.length) {
-                    bestCandidate = result;
-                }
-                if (bestCandidate.length > 5) break; // Good enough
-                result = '';
-                continue;
-            }
-            if (charCode >= 32 && charCode <= 0x7F) { // Printable ASCII
-                 result += String.fromCharCode(charCode);
-            } else if (charCode > 0x7F) {
-                 // Probably unicode, but let's stick to ASCII for this simple parser
-                 result += String.fromCharCode(charCode); // Try anyway
+        const handleTreeItemCopy = (item, copyBtn) => {
+            const mailtoCommand = copyBtn.dataset.mailto;
+            if (mailtoCommand && mailtoCommand !== 'undefined' && mailtoCommand !== 'null') {
+                SafeUI.copyToClipboard(mailtoCommand);
+                SafeUI.showToast(`Copied "${item.name}" to clipboard!`);
             } else {
-                // Control char, reset
-                if (result.length > bestCandidate.length) {
-                    bestCandidate = result;
-                }
-                result = '';
+                SafeUI.showToast('No command to copy from this template.');
             }
-        }
+        };
+
+        // REFACTOR: Modified to find the item's parent container for deletion
+        const handleTreeItemDelete = (id, item) => {
+            UIPatterns.confirmDelete(item.type, item.name, () => {
+                // Find the parent container (folder) of the item to delete it
+                const parent = findParentOfItem(id);
+                if (parent) {
+                    const index = parent.children.findIndex(i => i.id === id);
+                    if (index > -1) {
+                        parent.children.splice(index, 1);
+                        saveState();
+                        renderCatalogue();
+                    }
+                }
+            });
+        };
         
-        return bestCandidate.trim();
-    };
-    
-    SimpleMsgParser.prototype.findSequence = function(bytes, sequence) {
-        for (var i = 0; i < bytes.length - sequence.length; i++) {
-            var found = true;
-            for (var j = 0; j < sequence.length; j++) {
-                if (bytes[i + j] !== sequence[j]) {
-                    found = false;
-                    break;
+        // NEW FEATURE: Handle moving a template
+        const handleTreeItemMove = (id, item) => {
+            // 1. Generate list of possible target folders
+            const folders = [];
+            // Helper to recursively find folders
+            function findFolders(container, path, currentFolderId) {
+                // Add current folder
+                folders.push({
+                    id: currentFolderId,
+                    name: path,
+                    disabled: currentFolderId === findParentOfItem(id)?.id // Disable moving to current folder
+                });
+                // Find subfolders
+                container.forEach(i => {
+                    if (i.type === 'folder') {
+                        findFolders(i.children, path + i.name + '/', i.id);
+                    }
+                });
+            }
+            
+            // Find all folders starting from root
+            findFolders(state.library, '/', 'root');
+
+            // 2. Build Modal HTML
+            const folderListHtml = folders.map(folder => `
+                <li class="move-folder-item ${folder.disabled ? 'disabled' : ''}" data-folder-id="${SafeUI.escapeHTML(folder.id)}">
+                    ${ICONS.folder} ${SafeUI.escapeHTML(folder.name)}
+                </li>
+            `).join('');
+
+            const modalHtml = `
+                <p>Move "<strong>${SafeUI.escapeHTML(item.name)}</strong>" to:</p>
+                <ul class="move-folder-list">
+                    ${folderListHtml}
+                </ul>
+            `;
+            
+            // 3. Show Modal
+            SafeUI.showModal('Move Template', modalHtml, [{ label: 'Cancel' }]);
+            
+            // 4. Add listeners to the new folder list
+            document.querySelector('.move-folder-list').addEventListener('click', (e) => {
+                const targetFolderEl = e.target.closest('.move-folder-item');
+                if (!targetFolderEl || targetFolderEl.classList.contains('disabled')) {
+                    return;
+                }
+                
+                const targetFolderId = targetFolderEl.dataset.folderId;
+                
+                // Find item's original parent and remove it
+                const originalParent = findParentOfItem(id);
+                if (!originalParent) return; // Should not happen
+                
+                const itemIndex = originalParent.children.findIndex(i => i.id === id);
+                if (itemIndex === -1) return;
+                
+                // Remove item and get a reference to it
+                const [itemToMove] = originalParent.children.splice(itemIndex, 1);
+                
+                // Find new parent and add it
+                let newParentContainer;
+                if (targetFolderId === 'root') {
+                    newParentContainer = state.library;
+                } else {
+                    newParentContainer = findItemById(targetFolderId)?.children;
+                }
+                
+                if (!newParentContainer) {
+                    // Failsafe: put it back
+                    originalParent.children.splice(itemIndex, 0, itemToMove);
+                    return;
+                }
+                
+                newParentContainer.push(itemToMove);
+                
+                saveState();
+                renderCatalogue();
+                SafeUI.hideModal();
+                SafeUI.showToast('Template moved!');
+            });
+        };
+
+        const handleDragEnterOver = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.add('dragover');
+        };
+
+        const handleDragLeave = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.remove('dragover');
+        };
+
+        const handleDrop = (e) => {
+            e.preventDefault();
+            DOMElements.uploadWrapper.classList.remove('dragover'); 
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) handleFile(files[0]);
+        };
+
+
+        // ===================================================================
+        // CORE DATA FUNCTIONS
+        // ===================================================================
+
+        const parseMailto = (mailtoStr) => {
+            const data = {};
+            MAILTO_FIELDS.forEach(field => data[field] = ''); 
+
+            if (!mailtoStr || !mailtoStr.startsWith('mailto:')) {
+                return data;
+            }
+            
+            if (!/^mailto:[^\s]*/.test(mailtoStr)) {
+                return data;
+            }
+
+            try {
+                const url = new URL(mailtoStr.replace(/ /g, '%20'));
+                data.to = decodeURIComponent(url.pathname || '');
+                MAILTO_FIELDS.slice(1).forEach(field => { 
+                    data[field] = decodeURIComponent(url.searchParams.get(field) || '');
+                });
+                return data;
+            } catch (e) {
+                console.warn("Mailto string parsing failed:", mailtoStr, e);
+                if (mailtoStr.indexOf('?') === -1) {
+                     try { 
+                        data.to = decodeURIComponent(mailtoStr.substring(7)); 
+                     } catch { 
+                        data.to = mailtoStr.substring(7);
+                     }
+                }
+                return data;
+            }
+        };
+
+        const buildMailto = (data) => {
+            let mailto = 'mailto:';
+            if (data.to) {
+                const recipients = data.to.split(',').map(r => r.trim()).filter(Boolean);
+                mailto += recipients.map(r => encodeURIComponent(r)).join(',');
+            }
+            
+            const params = [];
+            
+            MAILTO_FIELDS.slice(1).forEach(field => { 
+                 if (data[field]) {
+                    if (field === 'body') {
+                        const normalizedBody = data.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                        const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
+                        params.push('body=' + encodedBody);
+                    } else {
+                        params.push(field + '=' + encodeURIComponent(data[field]));
+                    }
+                }
+            });
+            
+            if (params.length > 0) {
+                mailto += '?' + params.join('&');
+            }
+            return mailto;
+        };
+
+        const findItemById = (id, items = state.library, visited = new Set()) => {
+            if (id === 'root') return { id: 'root', name: 'Root', children: state.library, path: '/' };
+            for (const item of items) {
+                if (visited.has(item.id)) continue; 
+                visited.add(item.id); 
+
+                if (item.id === id) return item;
+                if (item.type === 'folder' && item.children) {
+                    const found = findItemById(id, item.children, visited); 
+                    if (found) return found;
                 }
             }
-            if (found) return i;
-        }
-        return -1;
-    };
-    
-    // Export
-    global.SimpleMsgParser = SimpleMsgParser;
-    
-})(typeof window !== 'undefined' ? window : this);
+            return null;
+        };
+        
+        // NEW FEATURE: Helper to find the parent object of an item
+        const findParentOfItem = (childId, parent = { id: 'root', children: state.library }, visited = new Set()) => {
+            if (visited.has(parent.id)) return null;
+            visited.add(parent.id);
+            
+            if (parent.children) {
+                if (parent.children.some(child => child.id === childId)) {
+                    return parent;
+                }
+                for (const item of parent.children) {
+                    if (item.type === 'folder') {
+                        const foundParent = findParentOfItem(childId, item, visited);
+                        if (foundParent) return foundParent;
+                    }
+                }
+            }
+            return null;
+        };
+        
+        const getItemsInCurrentFolder = () => {
+            if (currentFolderId === 'root') {
+                return state.library;
+            }
+            const folder = findItemById(currentFolderId);
+            return folder ? folder.children : [];
+        };
+
+        const getBreadcrumbPath = (folderId) => {
+            if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
+
+            const path = [];
+            let targetItem = null;
+            
+            const visitedIds = new Set(); 
+            let iterations = 0; 
+            const maxIterations = state.library.length * 10; 
+
+            const stack = state.library.map(item => [item, []]);
+
+            while (stack.length > 0) {
+                if (++iterations > maxIterations) { 
+                    console.error("Breadcrumb path generation exceeded max iterations, circular reference suspected.");
+                    break; 
+                }
+
+                const [currentItem, parentPath] = stack.pop();
+                
+                if (visitedIds.has(currentItem.id)) continue; 
+                visitedIds.add(currentItem.id);
+
+                const currentPath = [...parentPath, { id: currentItem.id, name: currentItem.name }];
+
+                if (currentItem.id === folderId) {
+                    targetItem = currentItem;
+                    path.push(...currentPath);
+                    break; 
+                }
+
+                if (currentItem.type === 'folder' && currentItem.children) {
+                    for (let i = currentItem.children.length - 1; i >= 0; i--) {
+                        stack.push([currentItem.children[i], currentPath]);
+                    }
+                }
+            }
+            
+            path.unshift({ id: 'root', name: 'Root' });
+            return path;
+        };
+
+
+        // ===================================================================
+        // RENDER & VIEW FUNCTIONS
+        // ===================================================================
+
+        const renderBreadcrumbs = (path) => {
+            const html = path.map((part, index) => {
+                const escapedId = SafeUI.escapeHTML(part.id);
+                const escapedName = SafeUI.escapeHTML(part.name);
+
+                if (index === path.length - 1) {
+                    return `<span class="breadcrumb-current">${escapedName}</span>`;
+                } else {
+                    return `<a class="breadcrumb-link" data-id="${escapedId}">${escapedName}</a><span class="breadcrumb-separator">&gt;</span>`;
+                }
+            }).join('');
+            DOMElements.breadcrumbContainer.innerHTML = html;
+        };
+
+        // Main Render Function
+        const renderCatalogue = () => {
+            const path = getBreadcrumbPath(currentFolderId);
+            renderBreadcrumbs(path);
+
+            const items = getItemsInCurrentFolder();
+            const sortedItems = [...items].sort((a, b) => {
+                if (a.type === 'folder' && b.type !== 'folder') return -1;
+                if (a.type !== 'folder' && b.type === 'folder') return 1;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+            
+            ListRenderer.renderList({
+                container: DOMElements.treeListContainer,
+                items: sortedItems,
+                emptyMessage: "This folder is empty. Click 'New Template' to add one.",
+                createItemElement: (item) => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item';
+                    div.dataset.id = item.id;
+                    div.dataset.type = item.type;
+                    
+                    const iconType = item.type === 'folder' ? 'folder' : 'template';
+                    const iconSvg = ICONS[iconType]; 
+                    
+                    let nameElement = '';
+                    const escapedName = SafeUI.escapeHTML(item.name);
+
+                    if (item.type === 'folder') {
+                        nameElement = `<span class="list-item-name-folder">${escapedName}</span>`;
+                    } else {
+                        const escapedMailto = SafeUI.escapeHTML(item.mailto);
+                        nameElement = `<a href="${escapedMailto}" class="list-item-name" title="Launch: ${escapedName}">${escapedName}</a>`;
+                    }
+
+                    // NEW FEATURE: Added Move button
+                    const moveButton = item.type === 'item' ? 
+                        `<button class="icon-btn move-btn" title="Move to...">${SVGIcons.pencil}</button>` : '';
+
+                    div.innerHTML = `
+                        <div class="list-item-icon ${iconType}">${iconSvg}</div>
+                        ${nameElement}
+                        <div class="list-item-actions">
+                            ${item.type === 'item' ? `<button class="icon-btn copy-btn" title="Copy mailto: command" data-mailto="${SafeUI.escapeHTML(item.mailto)}">${SafeUI.SVGIcons.copy}</button>` : ''}
+                            ${moveButton}
+                            <button class="icon-btn delete-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                        </div>
+                    `;
+                    return div;
+                }
+            });
+        };
+
+        const showView = (viewName) => {
+            DOMElements.catalogueView.classList.toggle('active', viewName === 'catalogue');
+            DOMElements.editorView.classList.toggle('active', viewName === 'editor');
+        };
+
+        // ===================================================================
+        // EDITOR FUNCTIONS (UPLOAD & GENERATE)
+        // ===================================================================
+
+        const handleFile = (file) => {
+            try { 
+                if (!file) {
+                    return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
+                }
+                if (file.size > MAX_FILE_SIZE_BYTES) { 
+                    return SafeUI.showModal('File Too Large', '<p>File must be under 10MB.</p>', [{label: 'OK'}]); 
+                }
+
+                if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft')) {
+                    return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg</strong> or <strong>.oft</strong> file.</p>', [{label: 'OK'}]);
+                }
+                
+                clearEditorFields();
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        if (!window.MsgReader || typeof window.MsgReader.read !== 'function') { 
+                            throw new Error('MsgReader library not loaded or invalid.'); 
+                        }
+
+                        // Validate file size
+                        const arrayBuffer = e.target.result;
+                        if (!arrayBuffer || arrayBuffer.byteLength < 512) {
+                            throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
+                        }
+
+                        // Log file info for debugging
+                        console.log('File info:', {
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            bufferSize: arrayBuffer.byteLength
+                        });
+
+                        // --- START FIX: ISSUE 3 (Correct Implementation) ---
+                        
+                        // Convert ArrayBuffer to plain Array that msgreader.js expects
+                        const uint8View = new Uint8Array(arrayBuffer);
+                        const plainArray = Array.from(uint8View);
+                        
+                        // Validate we have actual numeric data
+                        if (plainArray.length === 0) {
+                            throw new Error('File conversion failed - no data extracted.');
+                        }
+                        
+                        // Check OLE signature (should start with D0 CF 11 E0)
+                        const signature = plainArray.slice(0, 8);
+                        const isValidOLE = (
+                            signature[0] === 0xD0 && signature[1] === 0xCF && 
+                            signature[2] === 0x11 && signature[3] === 0xE0
+                        );
+
+                        if (!isValidOLE) {
+                            // Log the signature for debugging
+                            console.warn('File signature:', signature.map(b => b.toString(16).padStart(2, '0')).join(' '));
+                            throw new Error('File does not appear to be a valid MSG/OFT file (invalid OLE signature). The file may be corrupted or is not an Outlook message file.');
+                        }
+                        
+                        // --- START TIER 1.5 IMPLEMENTATION ---
+                        try {
+                            // Try the simple parser first
+                            const simpleParser = new SimpleMsgParser();
+                            const data = simpleParser.parse(plainArray);
+                            
+                            DOMElements.resultSubject.value = data.subject || '';
+                            DOMElements.resultBody.value = data.body || '';
+                            DOMElements.resultTo.value = data.to || '';
+                            DOMElements.resultCc.value = data.cc || ''; // Simple parser gets CC
+                            DOMElements.resultBcc.value = '';
+                            
+                            console.log('Parsed with simple parser');
+                            
+                            DOMElements.outputWrapper.classList.add('hidden'); 
+                            setTimeout(() => resizeResultBody(), 0);
+
+                        } catch (simpleError) {
+                            console.warn('Simple parser failed, trying full parser:', simpleError);
+                            
+                            // Fallback to full MsgReader
+                            console.log('Parsing file with MsgReader...');
+                            let fileData;
+                            
+                            // CRITICAL FIX: Wrap the read() call in its own try...catch
+                            try {
+                                fileData = window.MsgReader.read(plainArray);
+                                
+                                // Add validation that we got data back
+                                if (!fileData || typeof fileData.getFieldValue !== 'function') {
+                                    throw new Error('MSG parsing returned invalid data structure');
+                                }
+                                
+                                console.log('Parse successful!');
+                            } catch (readError) {
+                                // This catch block handles errors from MsgReader.read() itself
+                                console.error('MsgReader.read() failed:', readError);
+                                
+                                // Re-throw a more specific error for the outer catch block
+                                if (readError.name === 'CorruptFileError') {
+                                    throw new Error(`Unable to read the MSG file structure (${readError.message}). The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.`);
+                                }
+                                throw new Error(`MSG parsing failed: ${readError.message}`);
+                            }
+
+                            // CRITICAL FIX: Wrap field extraction in a try...catch
+                            try {
+                                DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
+                                DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
+
+                                const recipients = fileData.getFieldValue('recipients') || [];
+                                DOMElements.resultTo.value = recipients.filter(r => r.recipientType === 1)
+                                    .map(r => r.recipientEmail || r.recipientEmailAddress)
+                                    .filter(Boolean).join(', ');
+                                DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2)
+                                    .map(r => r.recipientEmail || r.recipientEmailAddress)
+                                    .filter(Boolean).join(', ');
+                                DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3)
+                                    .map(r => r.recipientEmail || r.recipientEmailAddress)
+                                    .filter(Boolean).join(', ');
+
+                                DOMElements.outputWrapper.classList.add('hidden'); 
+                                setTimeout(() => resizeResultBody(), 0);
+                            } catch (fieldError) {
+                                console.error('Error extracting MSG fields:', fieldError);
+                                throw new Error('Successfully parsed MSG file, but failed to extract email fields. The file structure may be non-standard.');
+                            }
+                            // --- END Fallback to full MsgReader ---
+                        }
+                        // --- END TIER 1.5 IMPLEMENTATION ---
+                        // --- END FIX: ISSUE 3 ---
+
+                    } catch (err) {
+                        console.error('File parsing error:', err);
+                        
+                        // Provide more helpful error messages
+                        let userMessage = err.message;
+                        // This condition will now be met by the re-thrown error
+                        if (err.message.includes('Root Entry not found') || err.message.includes('Unable to read the MSG file structure')) {
+                            userMessage = 'Unable to read the MSG file structure. The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.';
+                        } else if (err.message.includes('signature')) {
+                            userMessage = 'This file is not a valid MSG/OFT file. Please ensure you are uploading an Outlook message file (.msg) or template file (.oft).';
+                        }
+                        
+                        SafeUI.showModal('File Error', `<p>${userMessage}</p>`, [{label: 'OK'}]);
+                    }
+                };
+                reader.onerror = () => {
+                    SafeUI.showModal('File Error', '<p>File reading failed. Could not access file content.</p>', [{label: 'OK'}]);
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (e) {
+                console.error('File operation failed:', e);
+                SafeUI.showToast('File operation failed due to internal error.');
+            }
+        };
+
+        const generateAndShowMailto = () => {
+            const mailtoData = {
+                to: DOMElements.resultTo.value.trim(),
+                cc: DOMElements.resultCc.value.trim(),
+                bcc: DOMElements.resultBcc.value.trim(),
+                subject: DOMElements.resultSubject.value.trim(),
+                body: DOMElements.resultBody.value 
+            };
+
+            const mailto = buildMailto(mailtoData);
+
+            currentMailtoCommand = mailto; 
+            DOMElements.resultMailto.value = mailto;
+            DOMElements.resultLink.href = mailto;
+            DOMElements.outputWrapper.classList.remove('hidden');
+            
+            const templateNameValue = DOMElements.saveTemplateName.value;
+            if (!templateNameValue.trim() && !templateNameValue) {
+                 DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
+            }
+
+            setTimeout(() => resizeResultMailto(), 0);
+        };
+        
+        // ===================================================================
+        // LIBRARY ACTION HANDLERS
+        // ===================================================================
+        
+        const handleNewTemplate = () => {
+            if (hasUnsavedEditorChanges()) {
+                UIPatterns.confirmUnsavedChanges(() => {
+                    clearEditorFields(); 
+                    resizeResultBody(); 
+                    showView('editor');
+                });
+                return;
+            }
+
+            clearEditorFields(); 
+            resizeResultBody(); 
+            showView('editor');
+        };
+        
+        const handleNewFolder = () => {
+            SafeUI.showModal('New Folder', createFolderModalHTML(), [ 
+                {label: 'Cancel'},
+                {label: 'Create', class: 'button-primary', callback: () => {
+                    try { 
+                        const nameInput = document.getElementById('folder-name-input');
+                        const name = nameInput.value.trim();
+                        
+                        if (name.includes('/') || name.includes('\\')) {
+                             return SafeUI.showValidationError('Invalid Name', 'Folder name cannot contain path separators (/, \\).', 'folder-name-input');
+                        }
+
+                        if (!SafeUI.validators.notEmpty(name)) {
+                            return SafeUI.showValidationError('Invalid Name', 'Folder name cannot be empty.', 'folder-name-input');
+                        }
+                        
+                        const container = getItemsInCurrentFolder();
+                        if (validateUniqueInContainer(container, name, 'folder', 'folder-name-input')) {
+                             return;
+                        }
+                        
+                        container.push({
+                            id: SafeUI.generateId(),
+                            type: 'folder',
+                            name: name,
+                            children: []
+                        });
+                        saveState();
+                        renderCatalogue();
+                    } catch(e) {
+                        console.error('Folder creation failed:', e);
+                        SafeUI.showToast('Folder creation failed due to internal error.');
+                    }
+                }}
+            ]);
+        };
+        
+        const handleSaveToLibrary = () => {
+            if (!currentMailtoCommand) {
+                SafeUI.showValidationError('No Command Generated', 'Click "Generate Command" first.', 'btn-generate');
+                return;
+            }
+
+            const name = DOMElements.saveTemplateName.value.trim();
+            if (!SafeUI.validators.notEmpty(name)) {
+                return SafeUI.showValidationError('Invalid Name', 'Template name cannot be empty.', 'save-template-name');
+            }
+            
+            const container = getItemsInCurrentFolder();
+            if (validateUniqueInContainer(container, name, 'item', 'save-template-name')) {
+                return;
+            }
+            
+            container.push({
+                id: SafeUI.generateId(),
+                type: 'item',
+                name: name,
+                mailto: currentMailtoCommand
+            });
+            saveState();
+            SafeUI.showToast('Template saved!');
+            showView('catalogue');
+            renderCatalogue();
+        };
+
+        // ===================================================================
+        // DATA MANAGEMENT HANDLERS (CSV)
+        // ===================================================================
+        
+        const setupSettingsModal = () => {
+            const pageDataHtml = `
+                <button id="modal-export-csv-btn" class="button-base">Export Library (CSV)</button>
+                <button id="modal-import-csv-btn" class="button-base">Import Library (CSV)</button>
+            `;
+
+            const onModalOpen = () => {
+                CsvManager.setupExport({
+                    exportBtn: document.getElementById('modal-export-csv-btn'),
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    dataGetter: () => {
+                        const csvData = [];
+                        function walk(items, currentPath) {
+                            for (const item of items) {
+                                if (item.type === 'folder') {
+                                    walk(item.children, currentPath + item.name + '/');
+                                } else if (item.type === 'item') {
+                                    const mailtoParts = parseMailto(item.mailto);
+                                    const row = { name: item.name, path: currentPath };
+                                    MAILTO_FIELDS.forEach(field => { row[field] = mailtoParts[field]; });
+                                    csvData.push(row);
+                                }
+                            }
+                        }
+                        walk(state.library, '/');
+                        if (csvData.length === 0) {
+                             SafeUI.showToast("Library is empty, nothing to export.");
+                             return []; 
+                        }
+                        return csvData;
+                    },
+                    filename: `${APP_CONFIG.NAME}-export.csv`
+                });
+                
+                const validateCsvRow = (row, index) => {
+                    if (!row.name || !row.name.trim()) {
+                        return { error: `Row ${index + 2}: 'name' column is required.` };
+                    }
+                    if (!row.path || !CSV_PATH_REGEX.test(row.path.trim())) { 
+                        return { error: `Row ${index + 2}: 'path' must be a valid folder path like /folder or /folder/subfolder` };
+                    }
+                    return { entry: row };
+                };
+                const confirmCsvImport = (validatedData, importErrors) => {
+                    const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library. It will skip duplicates (same name in the same path).</p>
+                                         ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
+                                         <p>Do you want to continue?</p>`;
+                    SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                        { label: 'Cancel' },
+                        { 
+                            label: 'Import', 
+                            class: 'button-primary', 
+                            callback: () => {
+                                let importedCount = 0;
+                                let skippedCount = 0;
+                                for (const row of validatedData) {
+                                    const pathParts = row.path.split('/').filter(p => p.trim().length > 0); 
+                                    let currentContainer = state.library;
+                                    for (const part of pathParts) {
+                                        let folder = currentContainer.find(i => i.type === 'folder' && i.name.toLowerCase() === part.toLowerCase());
+                                        if (!folder) {
+                                            folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
+                                            currentContainer.push(folder);
+                                        }
+                                        currentContainer = folder.children;
+                                    }
+                                    if (DataValidator.hasDuplicate(currentContainer, 'name', row.name)) {
+                                        skippedCount++;
+                                    } else {
+                                        const newMailto = buildMailto(row);
+                                        currentContainer.push({ id: SafeUI.generateId(), type: 'item', name: row.name.trim(), mailto: newMailto });
+                                        importedCount++;
+                                    }
+                                }
+                                if (importedCount > 0) { saveState(); renderCatalogue(); }
+                                SafeUI.showToast(`Import complete. Added ${importedCount}, skipped ${skippedCount}.`);
+                                SafeUI.hideModal(); 
+                            }
+                        }
+                    ]);
+                    return false; 
+                };
+                CsvManager.setupImport({
+                    importBtn: document.getElementById('modal-import-csv-btn'),
+                    headers: APP_CONFIG.CSV_HEADERS,
+                    onValidate: validateCsvRow,
+                    onConfirm: confirmCsvImport
+                });
+            };
+
+            const onRestore = (dataToRestore) => {
+                state.library = dataToRestore.library || [];
+                currentFolderId = 'root';
+                saveState();
+                renderCatalogue();
+            };
+
+            window.SharedSettingsModal.init({
+                buttonId: 'btn-settings',
+                appName: APP_CONFIG.NAME,
+                state: { library: state.library, version: state.version },
+                pageSpecificDataHtml: pageDataHtml, 
+                onModalOpen: onModalOpen,           
+                onRestoreCallback: onRestore,
+                itemValidators: {
+                    library: []
+                }
+            });
+        };
+
+
+        // ===================================================================
+        // EVENT LISTENERS
+        // ===================================================================
+
+        const attachEventListeners = () => {
+            setupSettingsModal();
+
+            // Catalogue View
+            DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
+            DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
+            
+            // Editor View
+            DOMElements.btnEditorCancel.addEventListener('click', () => {
+                if (hasUnsavedEditorChanges()) {
+                    UIPatterns.confirmUnsavedChanges(() => {
+                        showView('catalogue');
+                        renderCatalogue();
+                    });
+                } else {
+                    showView('catalogue');
+                    renderCatalogue();
+                }
+            });
+
+            DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
+            DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
+            
+            DOMElements.copyMailtoBtn.addEventListener('click', async () => {
+                if (!currentMailtoCommand) {
+                    SafeUI.showToast('No command to copy'); 
+                    return;
+                }
+                const success = await SafeUI.copyToClipboard(currentMailtoCommand);
+                SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
+            });
+            
+            // Setup Drag and Drop (Editor) (C26)
+            DOMElements.uploadWrapper.addEventListener('dragenter', handleDragEnterOver);
+            DOMElements.uploadWrapper.addEventListener('dragover', handleDragEnterOver);
+            DOMElements.uploadWrapper.addEventListener('dragleave', handleDragLeave);
+            DOMElements.uploadWrapper.addEventListener('drop', handleDrop);
+            
+            DOMElements.msgUpload.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
+            });
+
+            // Event Delegation for Lists
+            DOMElements.treeListContainer.addEventListener('click', (e) => {
+                const itemEl = e.target.closest('.list-item');
+                if (!itemEl) return;
+                
+                if (e.target.closest('.list-item-name')) {
+                    return; 
+                }
+                
+                e.preventDefault(); 
+
+                const id = itemEl.dataset.id;
+                // REFACTOR: Use findItemById to search the whole tree, not just current folder
+                const item = findItemById(id); 
+                if (!item) return;
+
+                if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
+                    if (item.type === 'folder') {
+                        navigateToFolder(item.id); 
+                    }
+                    return;
+                }
+
+                const copyBtn = e.target.closest('.copy-btn');
+                if (copyBtn) {
+                    handleTreeItemCopy(item, copyBtn);
+                    return;
+                }
+                
+                // NEW FEATURE: Handle Move Button
+                const moveBtn = e.target.closest('.move-btn');
+                if (moveBtn) {
+                    handleTreeItemMove(id, item);
+                    return;
+                }
+                
+                if (e.target.closest('.delete-btn')) {
+                    handleTreeItemDelete(id, item);
+                    return; 
+                }
+            });
+            
+            DOMElements.breadcrumbContainer.addEventListener('click', (e) => {
+                 const link = e.target.closest('.breadcrumb-link');
+                 if (link && link.dataset.id) {
+                     const targetId = link.dataset.id;
+                     if (targetId === 'root' || findItemById(targetId)) { 
+                         navigateToFolder(targetId); 
+                     } else {
+                         console.warn('Folder not found, returning to root');
+                         navigateToFolder('root'); 
+                     }
+                 }
+            });
+        };
+
+        // Init
+        const init = () => {
+            if (!state.library || !Array.isArray(state.library)) { 
+                console.error('State corrupted, resetting library'); 
+                state.library = []; 
+                saveState(); 
+            }
+            
+            // Setup icons
+            DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + ICONS.folder; 
+
+            // Setup textareas
+            DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
+            DOMHelpers.setupTextareaAutoResize(DOMElements.resultMailto, 150);
+            
+            attachEventListeners();
+            
+            // Initial render
+            showView('catalogue');
+            renderCatalogue();
+        };
+
+        init();
+    });
+    </script>
+</body>
+</html>
