@@ -690,16 +690,17 @@
                         let bodyText = msgData.body || '';
                         
                         // If body is a Uint8Array (binary), try to convert it
+                        // This check is now redundant because convertPropertyValue handles it
                         if (bodyText instanceof Uint8Array) {
                             console.warn('Body is binary data, attempting conversion...');
                             try {
                                 // Try UTF-16LE
-                                const decoder = new TextDecoder('utf-16le');
+                                const decoder = new TextDecoder('utf-16le', { fatal: false });
                                 bodyText = decoder.decode(bodyText);
                             } catch (e) {
                                 // Try UTF-8
                                 try {
-                                    const decoder = new TextDecoder('utf-8');
+                                    const decoder = new TextDecoder('utf-8', { fatal: false });
                                     bodyText = decoder.decode(bodyText);
                                 } catch (e2) {
                                     bodyText = '(Unable to decode message body)';
@@ -723,7 +724,9 @@
                         }
                         
                         // Clean up excessive line breaks (max 2 consecutive)
-                        bodyText = bodyText.replace(/\n{3,}/g, '\n\n');
+                        if (typeof bodyText === 'string') {
+                            bodyText = bodyText.replace(/(\r\n|\r|\n){3,}/g, '\n\n').trim();
+                        }
                         
                         DOMElements.resultBody.value = bodyText;
                         //
@@ -743,8 +746,12 @@
                         const bccRecipients = [];
                         
                         recipients.forEach(r => {
-                            const addr = r.email || r.name || '';
-                            if (!addr) return;
+                            // PRIORITIZE EMAIL ADDRESS
+                            const addr = r.email || ''; 
+                            if (!addr) {
+                                console.warn('Recipient found with no email, skipping:', r.name);
+                                return;
+                            }
                             
                             // Clean up address (remove display name wrapper if present)
                             let cleanAddr = addr;
@@ -763,6 +770,7 @@
                             } else if (r.recipientType === 3) {
                                 bccRecipients.push(cleanAddr);
                             } else {
+                                // Default to TO
                                 toRecipients.push(cleanAddr);
                             }
                         });
