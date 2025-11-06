@@ -788,8 +788,8 @@ var OleCompoundDoc = function () {
           } else {
              // If no entries at all, create a dummy root to prevent crash, though parsing will fail
              console.error('No directory entries found at all. File is severely corrupted.');
-             rootStream = { name: 'Root', type: 5, streams: {}, size: 4096, sectStart: 0, storageDirId: 0xFFFFFFFF, leftChild: 0xFFFFFFFF, rightChild: 0xFFFFFFFF };
-             this.rootStreamEntry = rootStream;
+             // *** THIS IS THE FIX: We MUST throw an error here ***
+             throw new CorruptFileError('No directory entries found at all. File is severely corrupted.');
           }
         }
       }
