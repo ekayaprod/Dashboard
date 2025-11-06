@@ -78,7 +78,7 @@ body {
     flex-direction: column;
 }
 
-.input-base, 
+/* REMOVED .input-base from selector */
 .sidebar-input, 
 .sidebar-textarea {
     width: 100%; 
@@ -92,14 +92,14 @@ body {
     background-color: var(--input-bg);
 }
 
-.input-base::placeholder,
+/* REMOVED .input-base::placeholder from selector */
 .sidebar-input::placeholder,
 .sidebar-textarea::placeholder { 
     color: var(--subtle-text); 
     opacity: 0.8; 
 }
 
-.input-base:focus, 
+/* REMOVED .input-base:focus from selector */
 .sidebar-input:focus, 
 .sidebar-textarea:focus {
     outline: 2px solid var(--primary-color); 
@@ -380,30 +380,9 @@ body {
 .actions-menu-wrapper { 
     position: relative; 
 }
-.actions-menu {
-    position: absolute; 
-    top: 100%; 
-    right: 0;
-    background-color: var(--panel-bg); 
-    border: 1px solid var(--border-color);
-    border-radius: 0.375rem; 
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    z-index: 100; 
-    width: 150px; 
-    padding: 0.25rem 0; 
-    margin-top: 0.25rem;
-}
-.actions-menu-item { 
-    display: block; 
-    padding: 0.5rem 0.75rem; 
-    color: var(--text-color); 
-    text-decoration: none; 
-    font-size: 0.875rem; 
-    transition: background-color 0.2s;
-}
-.actions-menu-item:hover { 
-    background-color: var(--bg-color); 
-}
+/* REMOVED .actions-menu and .actions-menu-item rules.
+   These classes were not used in any of the 5 HTML files.
+*/
 
 .modal-overlay { 
     position: fixed; 
@@ -571,14 +550,7 @@ body.modal-open > .app-container {
         --danger-hover-bg: #4b1d1d;
     }
 
-    /* REMOVED .actions-menu override.
-      The base rule .actions-menu already uses var(--border-color),
-      which is correctly redefined in the dark mode :root.
-    */
-    .actions-menu-item:hover { 
-        /* UPDATED: Replaced hardcoded #374151 with variable */
-        background-color: var(--button-bg); 
-    }
+    /* REMOVED .actions-menu-item:hover dark mode rule. */
     
     .nav-link:hover { 
         /* UPDATED: Replaced hardcoded #374151 with variable */
@@ -590,7 +562,7 @@ body.modal-open > .app-container {
 }
 
 .button-base:focus-visible,
-.actions-menu-item:focus-visible,
+/* REMOVED .actions-menu-item:focus-visible from selector */
 .icon-btn:focus-visible,
 .nav-link:focus-visible {
     outline: none;
@@ -1147,21 +1119,11 @@ body.modal-open > .app-container {
     color: var(--subtle-text);
 }
 
-.mailto-page .list-item a.list-item-name {
-    color: var(--text-color);
-    text-decoration: none;
-    cursor: pointer;
-    flex-grow: 1;
-    font-size: 0.9rem;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.mailto-page .list-item a.list-item-name:hover {
-    color: var(--primary-color);
-    text-decoration: underline;
-}
+/* MODE F FIX: 
+  Consolidated 6 shared properties from .list-item-name 
+  and .list-item-name-folder into this single rule.
+*/
+.mailto-page .list-item a.list-item-name,
 .mailto-page .list-item .list-item-name-folder {
     flex-grow: 1;
     font-size: 0.9rem;
@@ -1169,6 +1131,20 @@ body.modal-open > .app-container {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* MODE F FIX: This rule now only contains unique properties. */
+.mailto-page .list-item a.list-item-name {
+    color: var(--text-color);
+    text-decoration: none;
+    cursor: pointer;
+}
+.mailto-page .list-item a.list-item-name:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+/* MODE F FIX: This rule now only contains unique properties. */
+.mailto-page .list-item .list-item-name-folder {
     cursor: pointer;
 }
  .mailto-page .list-item .list-item-name-folder:hover {
