@@ -666,16 +666,17 @@
                             bufferSize: arrayBuffer.byteLength
                         });
 
-                        // --- START FIX: ISSUE 3 (MailTo.html MSG Parser) ---
+                        // --- START FIX: ISSUE 3 (Correct Implementation) ---
+                        
                         // Convert ArrayBuffer to plain Array that msgreader.js expects
                         const uint8View = new Uint8Array(arrayBuffer);
                         const plainArray = Array.from(uint8View);
-
+                        
                         // Validate we have actual numeric data
                         if (plainArray.length === 0) {
                             throw new Error('File conversion failed - no data extracted.');
                         }
-
+                        
                         // Check OLE signature (should start with D0 CF 11 E0)
                         const signature = plainArray.slice(0, 8);
                         const isValidOLE = (
@@ -688,10 +689,11 @@
                             console.warn('File signature:', signature.map(b => b.toString(16).padStart(2, '0')).join(' '));
                             throw new Error('File does not appear to be a valid MSG/OFT file (invalid OLE signature). The file may be corrupted or is not an Outlook message file.');
                         }
-
+                        
                         console.log('Parsing file with MsgReader...');
-                        // CRITICAL FIX: MsgReader.read expects the array directly, not wrapped
                         let fileData;
+                        
+                        // CRITICAL FIX: Wrap the read() call in its own try...catch
                         try {
                             fileData = window.MsgReader.read(plainArray);
                             
@@ -701,16 +703,18 @@
                             }
                             
                             console.log('Parse successful!');
-                            // Continue with existing code...
-                        } catch (parseError) {
-                            console.error('MsgReader.read() failed:', parseError);
-                            if (parseError.message && parseError.message.includes("Root Entry not found")) {
-                                throw new Error('Unable to read the MSG file structure (Root Entry not found). The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.');
+                        } catch (readError) {
+                            // This catch block handles errors from MsgReader.read() itself
+                            console.error('MsgReader.read() failed:', readError);
+                            
+                            // Re-throw a more specific error for the outer catch block
+                            if (readError.name === 'CorruptFileError') {
+                                throw new Error(`Unable to read the MSG file structure (${readError.message}). The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.`);
                             }
-                            throw new Error(`MSG parsing failed: ${parseError.message}`);
+                            throw new Error(`MSG parsing failed: ${readError.message}`);
                         }
-                        
-                        // --- START FIX: ISSUE 3 (Wrap field extraction in try-catch) ---
+
+                        // CRITICAL FIX: Wrap field extraction in a try...catch
                         try {
                             DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
                             DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
@@ -732,16 +736,15 @@
                             console.error('Error extracting MSG fields:', fieldError);
                             throw new Error('Successfully parsed MSG file, but failed to extract email fields. The file structure may be non-standard.');
                         }
-                        // --- END FIX: ISSUE 3 (Wrap field extraction in try-catch) ---
+                        // --- END FIX: ISSUE 3 ---
 
                     } catch (err) {
                         console.error('File parsing error:', err);
                         
                         // Provide more helpful error messages
                         let userMessage = err.message;
-                        if (err.name === 'CorruptFileError') {
-                            userMessage = 'The MSG file appears to be corrupted or uses an unsupported format. ' + err.message;
-                        } else if (err.message.includes('Root Entry not found')) {
+                        // This condition will now be met by the re-thrown error
+                        if (err.message.includes('Root Entry not found') || err.message.includes('Unable to read the MSG file structure')) {
                             userMessage = 'Unable to read the MSG file structure. The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.';
                         } else if (err.message.includes('signature')) {
                             userMessage = 'This file is not a valid MSG/OFT file. Please ensure you are uploading an Outlook message file (.msg) or template file (.oft).';
