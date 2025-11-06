@@ -666,40 +666,74 @@
                             bufferSize: arrayBuffer.byteLength
                         });
 
+                        // --- START FIX: ISSUE 3 (MailTo.html MSG Parser) ---
                         // Convert ArrayBuffer to plain Array that msgreader.js expects
                         const uint8View = new Uint8Array(arrayBuffer);
                         const plainArray = Array.from(uint8View);
-                        
+
                         // Validate we have actual numeric data
                         if (plainArray.length === 0) {
                             throw new Error('File conversion failed - no data extracted.');
                         }
-                        
-                        // Check OLE signature (should start with D0 CF 11 E0 or 0E 11 FC 0D)
+
+                        // Check OLE signature (should start with D0 CF 11 E0)
                         const signature = plainArray.slice(0, 8);
                         const isValidOLE = (
-                            (signature[0] === 0xD0 && signature[1] === 0xCF && signature[2] === 0x11 && signature[3] === 0xE0) ||
-                            (signature[0] === 0x0E && signature[1] === 0x11 && signature[2] === 0xFC && signature[3] === 0x0D)
+                            signature[0] === 0xD0 && signature[1] === 0xCF && 
+                            signature[2] === 0x11 && signature[3] === 0xE0
                         );
-                        
+
                         if (!isValidOLE) {
+                            // Log the signature for debugging
+                            console.warn('File signature:', signature.map(b => b.toString(16).padStart(2, '0')).join(' '));
                             throw new Error('File does not appear to be a valid MSG/OFT file (invalid OLE signature). The file may be corrupted or is not an Outlook message file.');
                         }
-                        
+
                         console.log('Parsing file with MsgReader...');
-                        const fileData = window.MsgReader.read(plainArray);
-                        console.log('Parse successful!');
+                        // CRITICAL FIX: MsgReader.read expects the array directly, not wrapped
+                        let fileData;
+                        try {
+                            fileData = window.MsgReader.read(plainArray);
+                            
+                            // Add validation that we got data back
+                            if (!fileData || typeof fileData.getFieldValue !== 'function') {
+                                throw new Error('MSG parsing returned invalid data structure');
+                            }
+                            
+                            console.log('Parse successful!');
+                            // Continue with existing code...
+                        } catch (parseError) {
+                            console.error('MsgReader.read() failed:', parseError);
+                            if (parseError.message && parseError.message.includes("Root Entry not found")) {
+                                throw new Error('Unable to read the MSG file structure (Root Entry not found). The file may be corrupted, encrypted, or created by a newer version of Outlook that is not yet supported.');
+                            }
+                            throw new Error(`MSG parsing failed: ${parseError.message}`);
+                        }
+                        
+                        // --- START FIX: ISSUE 3 (Wrap field extraction in try-catch) ---
+                        try {
+                            DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
+                            DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
 
-                        DOMElements.resultSubject.value = fileData.getFieldValue('subject') || '';
-                        DOMElements.resultBody.value = fileData.getFieldValue('body') || '';
+                            const recipients = fileData.getFieldValue('recipients') || [];
+                            DOMElements.resultTo.value = recipients.filter(r => r.recipientType === 1)
+                                .map(r => r.recipientEmail || r.recipientEmailAddress)
+                                .filter(Boolean).join(', ');
+                            DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2)
+                                .map(r => r.recipientEmail || r.recipientEmailAddress)
+                                .filter(Boolean).join(', ');
+                            DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3)
+                                .map(r => r.recipientEmail || r.recipientEmailAddress)
+                                .filter(Boolean).join(', ');
 
-                        const recipients = fileData.getFieldValue('recipients') || [];
-                        DOMElements.resultTo.value = recipients.filter(r => r.recipientType === 1).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
-                        DOMElements.resultCc.value = recipients.filter(r => r.recipientType === 2).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
-                        DOMElements.resultBcc.value = recipients.filter(r => r.recipientType === 3).map(r => r.recipientEmail || r.recipientEmailAddress).filter(Boolean).join(', ');
+                            DOMElements.outputWrapper.classList.add('hidden'); 
+                            setTimeout(() => resizeResultBody(), 0);
+                        } catch (fieldError) {
+                            console.error('Error extracting MSG fields:', fieldError);
+                            throw new Error('Successfully parsed MSG file, but failed to extract email fields. The file structure may be non-standard.');
+                        }
+                        // --- END FIX: ISSUE 3 (Wrap field extraction in try-catch) ---
 
-                        DOMElements.outputWrapper.classList.add('hidden'); 
-                        setTimeout(() => resizeResultBody(), 0);
                     } catch (err) {
                         console.error('File parsing error:', err);
                         
@@ -1078,4 +1112,3 @@
     </script>
 </body>
 </html>
-
