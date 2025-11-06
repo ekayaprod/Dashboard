@@ -23,12 +23,12 @@
         let str = '';
         for (let i = 0; i < bytes.length; i++) {
             const charCode = bytes[i];
-            // Include printable ASCII, tabs, newlines
-            if (charCode === 9 || charCode === 10 || charCode === 13 || (charCode >= 32 && charCode <= 126)) {
+            // Include printable ASCII, tabs, newlines, and common extended ASCII
+            if (charCode === 9 || charCode === 10 || charCode === 13 || (charCode >= 32 && charCode <= 126) || (charCode >= 128 && charCode <= 255)) {
                 str += String.fromCharCode(charCode);
             }
             // Simple check for UTF-16LE null byte (common in MSG strings)
-            if (charCode === 0 && i + 1 < bytes.length && bytes[i+1] === 0) {
+            if (charCode === 0 && i + 1 < bytes.length && (bytes[i+1] >= 32 || bytes[i+1] === 0)) {
                  i += 1; // Skip pair
             }
         }
@@ -61,20 +61,52 @@
      * @returns {string}
      */
     function extractBody(text) {
-        // Look for the plain text content type marker
+        let bodyStartIndex = -1;
+        
+        // Strategy 1: Look for the plain text content type marker
         const plainTextMarker = 'Content-Type: text/plain;';
         const markerIndex = text.indexOf(plainTextMarker);
         
-        if (markerIndex === -1) {
-            // Can't find plain text, return empty
-            return '';
+        if (markerIndex !== -1) {
+            // Find the start of the body after the marker
+            bodyStartIndex = text.indexOf('\n\n', markerIndex);
+            if (bodyStartIndex === -1) {
+                 bodyStartIndex = text.indexOf('\r\n\r\n', markerIndex);
+            }
         }
 
-        // Find the start of the body after the marker
-        const bodyStartIndex = text.indexOf('\n\n', markerIndex);
+        // Strategy 2: If no marker, find Subject and look for first blank line after it
         if (bodyStartIndex === -1) {
-            return '';
+            const subjectIndex = text.toLowerCase().indexOf('subject:');
+            if (subjectIndex !== -1) {
+                 bodyStartIndex = text.indexOf('\n\n', subjectIndex);
+                 if (bodyStartIndex === -1) {
+                    bodyStartIndex = text.indexOf('\r\n\r\n', subjectIndex);
+                 }
+            }
         }
+        
+        // Strategy 3: If still nothing, find first blank line period.
+        if (bodyStartIndex === -1) {
+            bodyStartIndex = text.indexOf('\n\n');
+             if (bodyStartIndex === -1) {
+                bodyStartIndex = text.indexOf('\r\n\r\n');
+             }
+        }
+
+        if (bodyStartIndex === -1) {
+            return ''; // Give up
+        }
+
+        // We found a potential start, adjust for the newline characters
+        bodyStartIndex += 2; // (either \n\n or \r\n\r\n is at least 2 chars)
+        if (text[bodyStartIndex] === '\r' || text[bodyStartIndex] === '\n') {
+            bodyStartIndex++; // Handle \r\n\r\n case
+        }
+        if (text[bodyStartIndex] === '\r' || text[bodyStartIndex] === '\n') {
+            bodyStartIndex++; // Handle \r\n\r\n case
+        }
+
 
         // Find the end of the body (the next boundary marker)
         const boundaryMatch = text.match(/boundary="([^"]+)"/);
@@ -85,15 +117,21 @@
 
         let bodyEndIndex = -1;
         if (boundary) {
-            bodyEndIndex = text.indexOf(boundary, bodyStartIndex + 2);
+            bodyEndIndex = text.indexOf(boundary, bodyStartIndex);
         }
 
         let body = '';
         if (bodyEndIndex !== -1) {
-            body = text.substring(bodyStartIndex + 2, bodyEndIndex);
+            body = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
-            // If no boundary found, just take a large chunk
-            body = text.substring(bodyStartIndex + 2, bodyStartIndex + 20000);
+            // If no boundary found, just take a large chunk from the start
+            body = text.substring(bodyStartIndex, bodyStartIndex + 20000);
+            
+            // If we did this, check for an HTML body boundary
+            const htmlBoundary = body.indexOf('Content-Type: text/html;');
+            if (htmlBoundary !== -1) {
+                body = body.substring(0, htmlBoundary);
+            }
         }
 
         // Clean up the body
@@ -105,9 +143,12 @@
             .replace(/=3D/g, '=')
             // Remove lingering = signs at end of lines
             .replace(/=\n/g, '\n')
+            .replace(/=\r/g, '\r')
              // Handle some other common encodings
-            .replace(/=E2=80=99/g, "'")
-            .replace(/=E2=80=93/g, "–");
+            .replace(/=E2=80=99/g, "'") // ’
+            .replace(/=E2=8G=93/g, "–") // –
+            .replace(/=E2=80=9C/g, '"') // “
+            .replace(/=E2=80=9D/g, '"'); // ”
     }
 
     SimpleMsgParser.prototype.parse = function(arrayBuffer) {
@@ -127,9 +168,10 @@
         const rawText = bytesToString(bytes);
 
         // Define regex for standard email headers
-        const subjectRegex = /Subject:\s*([^\n\r]+)/i;
-        const toRegex = /To:\s*([^\n\r]+)/i;
-        const ccRegex = /Cc:\s*([^\n\r]+)/i;
+        // Make them case-insensitive and check for start of line
+        const subjectRegex = /^Subject:\s*([^\n\r]+)/im;
+        const toRegex = /^To:\s*([^\n\r]+)/im;
+        const ccRegex = /^Cc:\s*([^\n\r]+)/im;
         
         var result = {
             subject: extractField(rawText, subjectRegex),
