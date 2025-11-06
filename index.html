@@ -435,15 +435,83 @@
         };
 
         // 3. Define page-specific "restore" callback
+        // --- START FIX: ISSUE 5 (JSON Restore Overwrite & Legacy ID Regeneration) ---
         const onRestore = (dataToRestore) => {
+            console.warn('FULL RESTORE: Overwriting all localStorage data');
+            
+            // Clear the specific localStorage key first
+            try {
+                localStorage.removeItem('dashboard_state_v5');
+                console.log('Cleared existing localStorage');
+            } catch (e) {
+                console.error('Failed to clear localStorage:', e);
+            }
+            
+            // FIX LEGACY IDs: Regenerate short IDs before saving
+            let regeneratedCount = 0;
+            
+            // Fix app IDs
+            (dataToRestore.apps || []).forEach(app => {
+                if (app.id && app.id.length < 20) {
+                    console.warn(`Regenerating legacy app ID: ${app.id}`);
+                    app.id = SafeUI.generateId();
+                    regeneratedCount++;
+                }
+            });
+            
+            // Fix note IDs
+            (dataToRestore.notes || []).forEach(note => {
+                if (note.id && note.id.length < 20) {
+                    console.warn(`Regenerating legacy note ID: ${note.id} (${note.title})`);
+                    note.id = SafeUI.generateId();
+                    regeneratedCount++;
+                }
+            });
+            
+            // Fix shortcut IDs
+            (dataToRestore.shortcuts || []).forEach(shortcut => {
+                if (shortcut.id && shortcut.id.length < 20) {
+                    console.warn(`Regenerating legacy shortcut ID: ${shortcut.id}`);
+                    shortcut.id = SafeUI.generateId();
+                    regeneratedCount++;
+                }
+            });
+            
+            if (regeneratedCount > 0) {
+                console.log(`Regenerated ${regeneratedCount} legacy IDs`);
+            }
+            
+            // Overwrite state object completely
             state.apps = dataToRestore.apps || [];
             state.notes = dataToRestore.notes || [];
             state.shortcuts = dataToRestore.shortcuts || [];
+            state.version = dataToRestore.version || '6.2.0'; // Use APP_VERSION from context
+            
+            // Force immediate save
             saveState();
+            
+            // Verify save worked
+            setTimeout(() => {
+                const verification = localStorage.getItem('dashboard_state_v5');
+                if (!verification) {
+                    SafeUI.showModal('Restore Warning', 
+                        '<p>Restore completed but verification failed. Please refresh the page.</p>',
+                        [{label: 'OK'}]
+                    );
+                } else {
+                    console.log('Restore verified successfully');
+                    if (regeneratedCount > 0) {
+                        SafeUI.showToast(`Restored and regenerated ${regeneratedCount} legacy IDs`);
+                    }
+                }
+            }, 100);
+            
+            // Reset UI
             selectedAppId = null;
             displayAppDetails(null);
             renderAllPageSpecific();
         };
+        // --- END FIX: ISSUE 5 ---
 
         // 4. Initialize the shared modal
         if (window.SharedSettingsModal) {
@@ -667,5 +735,3 @@
     </script>
 </body>
 </html>
-
-
