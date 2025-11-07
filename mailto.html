@@ -172,49 +172,47 @@
         return false;
     };
 
-    // MOVED: Dependency Check was here. It is now inside AppLifecycle.run
+    // Dependency Check
+    (() => {
+        // REFACTOR: Added SharedSettingsModal to dependency check
+        // REMOVED: SimpleMsgParser from dependency check
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        
+        // REFACTOR: Changed check for MsgReader to be 'object' (not 'function')
+        // and check for its 'read' method.
+        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
+            if (!missing.includes('MsgReader')) {
+                // If it was loaded but isn't the correct structure, mark it as missing
+                missing.push('MsgReader (Invalid Type)');
+            }
+        }
+        
+        // REMOVED: Check for SimpleMsgParser
+
+
+        if (missing.length > 0) {
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, msgreader.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+            
+            console.error(errorMessage);
+            
+            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+            } else {
+                const banner = document.getElementById('app-startup-error');
+                if(banner) {
+                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                    banner.classList.remove('hidden');
+                }
+            }
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
+
 
     AppLifecycle.run(async () => {
     
-        // MOVED: Dependency Check is now the first thing to run.
-        (() => {
-            // REFACTOR: Added SharedSettingsModal to dependency check
-            // REMOVED: SimpleMsgParser from dependency check
-            // REMOVED: MsgReader from this array, will be checked separately
-            const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal'];
-            const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
-            
-            // REMOVED: Special check for MsgReader
-            // REMOVED: Check for SimpleMsgParser
-
-            if (missing.length > 0) {
-                const errorTitle = "Application Failed to Load";
-                const errorMessage = `One or more required JavaScript files (e.g., app-core.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
-                
-                if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                    window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-                } else {
-                    const banner = document.getElementById('app-startup-error');
-                    if(banner) {
-                        banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
-                        banner.classList.remove('hidden');
-                    }
-                }
-                throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
-            }
-        })();
-        
-        // ADDED: New, separate check for MsgReader after core dependencies are confirmed.
-        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
-             const errorTitle = "Application Failed to Load";
-             const errorMessage = `The external library 'msgreader.js' failed to load correctly. Please ensure the file is present and accessible.`;
-             if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-             }
-             throw new Error('MsgReader failed to load');
-        }
-
-
         const APP_CONFIG = {
             NAME: 'mailto_library',
             VERSION: '1.2.2', // Updated version
@@ -246,6 +244,7 @@
         });
     
         if (!ctx || !ctx.elements) {
+            console.error('AppLifecycle failed to initialize context or DOM elements.');
             return;
         }
     
@@ -432,6 +431,7 @@
                 });
                 return data;
             } catch (e) {
+                console.warn("Mailto string parsing failed:", mailtoStr, e);
                 if (mailtoStr.indexOf('?') === -1) {
                      try { 
                         data.to = decodeURIComponent(mailtoStr.substring(7)); 
@@ -526,6 +526,7 @@
 
             while (stack.length > 0) {
                 if (++iterations > maxIterations) { 
+                    console.error("Breadcrumb path generation exceeded max iterations, circular reference suspected.");
                     break; 
                 }
 
@@ -667,6 +668,13 @@
                             throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
                         }
                 
+                        console.log('File info:', {
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            bufferSize: arrayBuffer.byteLength
+                        });
+                
                         //
                         // START HYBRID PARSER LOGIC
                         //
@@ -674,9 +682,14 @@
                             // ---
                             // ATTEMPT 1: Try the robust Tier 2 parser first
                             // ---
+                            console.log('Parsing MSG file with robust parser (Tier 2)...');
                             fileData = window.MsgReader.read(arrayBuffer);
+                            console.log('Parse successful with robust parser!');
+                            console.log('Extracted data:', fileData);
 
                         } catch (robustError) {
+                            console.warn('Robust parser (Tier 2) failed:', robustError.message);
+                            
                             // ---
                             // ATTEMPT 2: Fallback to the simple Tier 1.5 parser
                             // ---
@@ -685,6 +698,7 @@
                                 throw new Error('SimpleMsgParser (fallback) is not loaded.');
                             }
 
+                            console.log('Trying simple parser (Tier 1.5 fallback)...');
                             const simpleParser = new SimpleMsgParser();
                             const simpleData = simpleParser.parse(arrayBuffer);
                             
@@ -709,6 +723,8 @@
                                     if(addr) fileData.recipients.push({ recipientType: 2, email: addr, name: addr });
                                 });
                             }
+                            console.log('Parse successful with simple parser (fallback)!');
+                            console.log('Extracted data:', fileData);
                         }
                         //
                         // END HYBRID PARSER LOGIC
@@ -731,6 +747,7 @@
                         
                         // If body is a Uint8Array (binary), try to convert it
                         if (bodyText instanceof Uint8Array) {
+                            console.warn('Body is binary data, attempting conversion...');
                             try {
                                 // FIX: Try UTF-8 first. This is more common for modern files.
                                 const decoder = new TextDecoder('utf-8', { fatal: false });
@@ -752,6 +769,7 @@
                             let htmlBody = fileData.bodyHTML;
                             // Check if HTML body is also binary
                             if (htmlBody instanceof Uint8Array) {
+                                console.warn('HTML Body is binary data, attempting conversion...');
                                 try {
                                     htmlBody = new TextDecoder('utf-8', { fatal: false }).decode(htmlBody);
                                 } catch (e) {
@@ -794,6 +812,8 @@
                         // Process recipients
                         const recipients = fileData.recipients || [];
                         
+                        console.log('Processing recipients:', recipients);
+                        
                         const toRecipients = [];
                         const ccRecipients = [];
                         const bccRecipients = [];
@@ -802,6 +822,7 @@
                             // PRIORITIZE EMAIL ADDRESS
                             const addr = r.email || ''; 
                             if (!addr) {
+                                console.warn('Recipient found with no email, skipping:', r.name);
                                 return;
                             }
                             
@@ -831,6 +852,9 @@
                         DOMElements.resultCc.value = ccRecipients.join(', ');
                         DOMElements.resultBcc.value = bccRecipients.join(', ');
 
+                        console.log('TO:', toRecipients);
+                        console.log('CC:', ccRecipients);
+                        console.log('BCC:', bccRecipients);
                         //
                         // END FIX #2
                         //
@@ -844,6 +868,8 @@
                         SafeUI.showToast('MSG file loaded successfully!');
                 
                     } catch (err) {
+                        console.error('MSG parsing error:', err);
+                        
                         let userMessage = 'Failed to parse MSG file. ';
                         
                         if (err.message.includes('signature')) {
@@ -865,6 +891,7 @@
                 // === END OF TIER 2 REPLACEMENT ===
                 //
             } catch (e) {
+                console.error('File operation failed:', e);
                 SafeUI.showToast('File operation failed due to internal error.');
             }
         };
@@ -887,7 +914,7 @@
             
             const templateNameValue = DOMElements.saveTemplateName.value;
             if (!templateNameValue.trim() && !templateNameValue) {
-                DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
+                 DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
             }
 
             setTimeout(() => resizeResultMailto(), 0);
@@ -942,6 +969,7 @@
                         saveState();
                         renderCatalogue();
                     } catch(e) {
+                        console.error('Folder creation failed:', e);
                         SafeUI.showToast('Folder creation failed due to internal error.');
                     }
                 }}
@@ -1006,8 +1034,8 @@
                         }
                         walk(state.library, '/');
                         if (csvData.length === 0) {
-                            SafeUI.showToast("Library is empty, nothing to export.");
-                            return []; 
+                             SafeUI.showToast("Library is empty, nothing to export.");
+                             return []; 
                         }
                         return csvData;
                     },
@@ -1025,8 +1053,8 @@
                 };
                 const confirmCsvImport = (validatedData, importErrors) => {
                     const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library. It will skip duplicates (same name in the same path).</p>
-                                            ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
-                                            <p>Do you want to continue?</p>`;
+                                         ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
+                                         <p>Do you want to continue?</p>`;
                     SafeUI.showModal("Confirm CSV Import", summaryHtml, [
                         { label: 'Cancel' },
                         { 
@@ -1180,23 +1208,23 @@
             });
             
             DOMElements.breadcrumbContainer.addEventListener('click', (e) => {
-                const link = e.target.closest('.breadcrumb-link');
-                if (link && link.dataset.id) {
-                    const targetId = link.dataset.id;
-                    if (targetId === 'root' || findItemById(targetId)) { 
-                        navigateToFolder(targetId); 
-                    } else {
-                        // console.warn('Folder not found, returning to root');
-                        navigateToFolder('root'); 
-                    }
-                }
+                 const link = e.target.closest('.breadcrumb-link');
+                 if (link && link.dataset.id) {
+                     const targetId = link.dataset.id;
+                     if (targetId === 'root' || findItemById(targetId)) { 
+                         navigateToFolder(targetId); 
+                     } else {
+                         console.warn('Folder not found, returning to root');
+                         navigateToFolder('root'); 
+                     }
+                 }
             });
         };
 
         // Init
         const init = () => {
             if (!state.library || !Array.isArray(state.library)) { 
-                // console.error('State corrupted, resetting library'); 
+                console.error('State corrupted, resetting library'); 
                 state.library = []; 
                 saveState(); 
             }
@@ -1216,8 +1244,7 @@
         };
 
         init();
-        
-    }); // <-- End of 'load' event listener
+    });
     </script>
 </body>
 </html>
