@@ -1,20 +1,17 @@
 /**
- * msg-reader.js v1.4.3
+ * msg-reader.js v1.4.4
  * Production-grade Microsoft Outlook MSG and OFT file parser
  * Compatible with Outlook 365 and modern MSG formats
  * * Based on msg.reader by Peter Theill
  * Licensed under MIT
  *
- * CHANGELOG (v1.4.3):
- * 1. [FIX] Merged v1.4.0's UTF-8 decoding for PROP_TYPE_STRING (0x001E).
- * This restores Subject/Body parsing for modern UTF-8 based MSG files
- * that were broken in v1.4.2's ASCII-only logic.
- * 2. [FIX] Added _scanBufferForMimeText helper to parse raw text headers.
- * 3. [FIX] Replaced the simple regex fallback in extractRecipients with a
- * call to the new MIME scanner. This correctly parses To: and Cc:
- * headers from MIME-wrapped files and assigns recipient types.
- * 4. [ENHANCE] Added MIME scan fallback to extractProperties for Subject/Body
- * if OLE streams are empty.
+ * CHANGELOG (v1.4.4):
+ * 1. [FIX] Re-ordered recipient extraction fallbacks.
+ * - Method 3 (MIME Scan) now runs BEFORE Method 2 (Display Fields).
+ * - This prioritizes the correct MIME headers (To:, Cc:) found in
+ * raw text over the potentially corrupt OLE properties
+ * (PROP_ID_DISPLAY_TO, PROP_ID_DISPLAY_CC) in hybrid files.
+ * - This fixes the "CC data in TO field" bug.
  */
 
 (function(root, factory) {
@@ -872,65 +869,15 @@
             }
         });
     
-        // FIX #1: ALWAYS run Method 2 (fallback) and merge
-        // Method 2: Fallback - Extract from display fields
-        console.log('Running fallback recipient extraction (Method 2 - Display Fields)...');
-        var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
-        var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
-        var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
-
-        if (displayTo) {
-            displayTo.split(';').forEach(function(addrStr) {
-                var parsed = parseAddress(addrStr);
-                if (parsed.email) {
-                    var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) {
-                        recipientMap[key] = {
-                            recipientType: RECIPIENT_TYPE_TO,
-                            name: parsed.name || parsed.email,
-                            email: parsed.email
-                        };
-                    }
-                }
-            });
-        }
-
-        if (displayCc) {
-            displayCc.split(';').forEach(function(addrStr) {
-                var parsed = parseAddress(addrStr);
-                if (parsed.email) {
-                    var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) {
-                        recipientMap[key] = {
-                            recipientType: RECIPIENT_TYPE_CC,
-                            name: parsed.name || parsed.email,
-                            email: parsed.email
-                        };
-                    }
-                }
-            });
-        }
-
-        if (displayBcc) {
-            displayBcc.split(';').forEach(function(addrStr) {
-                 var parsed = parseAddress(addrStr);
-                 if (parsed.email) {
-                    var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) {
-                        recipientMap[key] = {
-                            recipientType: RECIPIENT_TYPE_BCC,
-                            name: parsed.name || parsed.email,
-                            email: parsed.email
-                        };
-                    }
-                }
-            });
-        }
+        //
+        // START FIX: Re-ordered fallbacks. Method 3 (MIME) now runs BEFORE Method 2 (Display Fields).
+        //
         
         //
-        // START FIX 2: Replace "dumb" regex scan with "smart" MIME-header scan
+        // Fallback Method 2: (Formerly Method 3) "Smart" MIME-header scan
+        // This is the most reliable fallback for hybrid O365 files.
         //
-        console.log('Running fallback recipient extraction (Method 3 - MIME Scan)...');
+        console.log('Running fallback recipient extraction (Method 2 - MIME Scan)...');
         var mimeData = this._scanBufferForMimeText();
         
         if (mimeData.to) {
@@ -968,8 +915,69 @@
                 }
             });
         }
+
         //
-        // END FIX 2
+        // Fallback Method 3: (Formerly Method 2) Extract from OLE display fields
+        // This runs last as it can be unreliable in hybrid files.
+        //
+        console.log('Running fallback recipient extraction (Method 3 - Display Fields)...');
+        var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
+        var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
+        var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
+
+        if (displayTo) {
+            displayTo.split(';').forEach(function(addrStr) {
+                var parsed = parseAddress(addrStr);
+                if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) { // Only add if key NOT added by OLE or MIME
+                        console.log('Adding recipient from Display Field (To):', parsed);
+                        recipientMap[key] = {
+                            recipientType: RECIPIENT_TYPE_TO,
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
+                        };
+                    }
+                }
+            });
+        }
+
+        if (displayCc) {
+            displayCc.split(';').forEach(function(addrStr) {
+                var parsed = parseAddress(addrStr);
+                if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) { // Only add if key NOT added by OLE or MIME
+                        console.log('Adding recipient from Display Field (Cc):', parsed);
+                        recipientMap[key] = {
+                            recipientType: RECIPIENT_TYPE_CC,
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
+                        };
+                    }
+                }
+            });
+        }
+
+        if (displayBcc) {
+            displayBcc.split(';').forEach(function(addrStr) {
+                 var parsed = parseAddress(addrStr);
+                 if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) { // Only add if key NOT added by OLE or MIME
+                        console.log('Adding recipient from Display Field (Bcc):', parsed);
+                        recipientMap[key] = {
+                            recipientType: RECIPIENT_TYPE_BCC,
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
+                        };
+                    }
+                }
+            });
+        }
+        
+        //
+        // END FIX
         //
 
         // Convert map back to array
