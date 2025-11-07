@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.5
+ * msg-reader.js v1.4.6
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,6 +11,11 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.6:
+ * 1. [FIX] Updated recipient extraction logic. Method 2 (MIME Scan) will now
+ * overwrite recipient types (TO/CC) found by Method 1 (OLE Storage).
+ * This corrects the bug where all recipients were tagged as TO.
+ *
  * v1.4.5:
  * 1. [CLEANUP] Performed a full professional pass on all comments and notes.
  * 2. [CLEANUP] Removed all console.log and console.warn statements for production use.
@@ -18,11 +23,6 @@
  *
  * v1.4.4:
  * 1. [FIX] Re-ordered recipient extraction fallbacks.
- * - Method 3 (MIME Scan) now runs BEFORE Method 2 (Display Fields).
- * - This prioritizes the correct MIME headers (To:, Cc:) found in
- * raw text over the potentially corrupt OLE properties
- * (PROP_ID_DISPLAY_TO, PROP_ID_DISPLAY_CC) in hybrid files.
- * - This fixes the "CC data in TO field" bug.
  */
 
 (function(root, factory) {
@@ -897,6 +897,8 @@
     
         // --- Fallback Method 2: MIME Header Scan ---
         // This is the most reliable fallback for hybrid O365 files.
+        // This method will OVERWRITE recipient types found in Method 1
+        // because it's sourced from reliable MIME headers.
         var mimeData = this._scanBufferForMimeText();
         
         if (mimeData.to) {
@@ -905,7 +907,11 @@
                 var parsed = parseAddress(addrStr);
                 if (parsed.email) {
                     var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) { // Only add if not already present
+                    if (recipientMap[key]) {
+                        // Email already found (likely by Method 1), update its type
+                        recipientMap[key].recipientType = RECIPIENT_TYPE_TO;
+                    } else {
+                        // New email, add it
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_TO,
                             name: parsed.name || parsed.email,
@@ -922,7 +928,11 @@
                 var parsed = parseAddress(addrStr);
                 if (parsed.email) {
                     var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) { // Only add if not already present
+                    if (recipientMap[key]) {
+                        // Email already found, update its type
+                        recipientMap[key].recipientType = RECIPIENT_TYPE_CC;
+                    } else {
+                        // New email, add it
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_CC,
                             name: parsed.name || parsed.email,
@@ -935,6 +945,7 @@
 
         // --- Fallback Method 3: OLE Display Fields ---
         // This runs last as it can be unreliable (e.g., CC data in TO field).
+        // This method will NOT overwrite types, only add new recipients.
         var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
         var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
         var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
