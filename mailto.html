@@ -129,7 +129,8 @@
     <script src="js/app-data.js"></script>
 
     <!-- External Libs -->
-    <script src="js/msgreader.js"></script>
+    <!-- UPDATED: Added cache-busting query string -->
+    <script src="js/msgreader.js?v=1.4.6"></script>
     <!-- REMOVED: simple-msg-parser.js script include -->
     
     <script>
@@ -242,6 +243,7 @@
         });
     
         if (!ctx || !ctx.elements) {
+            console.error('AppLifecycle failed to initialize context or DOM elements.');
             return;
         }
     
@@ -428,6 +430,7 @@
                 });
                 return data;
             } catch (e) {
+                console.warn("Mailto string parsing failed:", mailtoStr, e);
                 if (mailtoStr.indexOf('?') === -1) {
                      try { 
                         data.to = decodeURIComponent(mailtoStr.substring(7)); 
@@ -522,6 +525,7 @@
 
             while (stack.length > 0) {
                 if (++iterations > maxIterations) { 
+                    console.error("Breadcrumb path generation exceeded max iterations, circular reference suspected.");
                     break; 
                 }
 
@@ -663,6 +667,14 @@
                             throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
                         }
                 
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                        console.log('File info:', {
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            bufferSize: arrayBuffer.byteLength
+                        });
+                
                         //
                         // START HYBRID PARSER LOGIC
                         //
@@ -670,9 +682,17 @@
                             // ---
                             // ATTEMPT 1: Try the robust Tier 2 parser first
                             // ---
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                            console.log('Parsing MSG file with robust parser (Tier 2)...');
                             fileData = window.MsgReader.read(arrayBuffer);
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                            console.log('Parse successful with robust parser!');
+                            console.log('Extracted data:', fileData);
 
                         } catch (robustError) {
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                            console.warn('Robust parser (Tier 2) failed:', robustError.message);
+                            
                             // ---
                             // ATTEMPT 2: Fallback to the simple Tier 1.5 parser
                             // ---
@@ -681,6 +701,8 @@
                                 throw new Error('SimpleMsgParser (fallback) is not loaded.');
                             }
 
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                            console.log('Trying simple parser (Tier 1.5 fallback)...');
                             const simpleParser = new SimpleMsgParser();
                             const simpleData = simpleParser.parse(arrayBuffer);
                             
@@ -705,6 +727,9 @@
                                     if(addr) fileData.recipients.push({ recipientType: 2, email: addr, name: addr });
                                 });
                             }
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                            console.log('Parse successful with simple parser (fallback)!');
+                            console.log('Extracted data:', fileData);
                         }
                         //
                         // END HYBRID PARSER LOGIC
@@ -727,6 +752,8 @@
                         
                         // If body is a Uint8Array (binary), try to convert it
                         if (bodyText instanceof Uint8Array) {
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                            console.warn('Body is binary data, attempting conversion...');
                             try {
                                 // FIX: Try UTF-8 first. This is more common for modern files.
                                 const decoder = new TextDecoder('utf-8', { fatal: false });
@@ -748,6 +775,8 @@
                             let htmlBody = fileData.bodyHTML;
                             // Check if HTML body is also binary
                             if (htmlBody instanceof Uint8Array) {
+                                // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                                console.warn('HTML Body is binary data, attempting conversion...');
                                 try {
                                     htmlBody = new TextDecoder('utf-8', { fatal: false }).decode(htmlBody);
                                 } catch (e) {
@@ -790,6 +819,9 @@
                         // Process recipients
                         const recipients = fileData.recipients || [];
                         
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                        console.log('Processing recipients:', recipients);
+                        
                         const toRecipients = [];
                         const ccRecipients = [];
                         const bccRecipients = [];
@@ -798,6 +830,8 @@
                             // PRIORITIZE EMAIL ADDRESS
                             const addr = r.email || ''; 
                             if (!addr) {
+                                // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                                console.warn('Recipient found with no email, skipping:', r.name);
                                 return;
                             }
                             
@@ -827,6 +861,10 @@
                         DOMElements.resultCc.value = ccRecipients.join(', ');
                         DOMElements.resultBcc.value = bccRecipients.join(', ');
 
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                        console.log('TO:', toRecipients);
+                        console.log('CC:', ccRecipients);
+                        console.log('BCC:', bccRecipients);
                         //
                         // END FIX #2
                         //
@@ -840,6 +878,9 @@
                         SafeUI.showToast('MSG file loaded successfully!');
                 
                     } catch (err) {
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
+                        console.error('MSG parsing error:', err);
+                        
                         let userMessage = 'Failed to parse MSG file. ';
                         
                         if (err.message.includes('signature')) {
@@ -861,6 +902,7 @@
                 // === END OF TIER 2 REPLACEMENT ===
                 //
             } catch (e) {
+                console.error('File operation failed:', e);
                 SafeUI.showToast('File operation failed due to internal error.');
             }
         };
@@ -938,6 +980,7 @@
                         saveState();
                         renderCatalogue();
                     } catch(e) {
+                        console.error('Folder creation failed:', e);
                         SafeUI.showToast('Folder creation failed due to internal error.');
                     }
                 }}
@@ -1182,6 +1225,7 @@
                      if (targetId === 'root' || findItemById(targetId)) { 
                          navigateToFolder(targetId); 
                      } else {
+                         console.warn('Folder not found, returning to root');
                          navigateToFolder('root'); 
                      }
                  }
@@ -1191,6 +1235,7 @@
         // Init
         const init = () => {
             if (!state.library || !Array.isArray(state.library)) { 
+                console.error('State corrupted, resetting library'); 
                 state.library = []; 
                 saveState(); 
             }
