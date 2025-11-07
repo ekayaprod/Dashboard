@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.7
+ * msg-reader.js v1.4.8
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,6 +11,11 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.8:
+ * 1. [FIX] Method 3 (Display Fields) will now CORRECT the recipientType
+ * for recipients found by Method 1, fixing the bug where all recipients
+ * were marked as TO.
+ *
  * v1.4.7:
  * 1. [DEBUG] Re-added all console.log statements for diagnostics.
  * 2. [DEBUG] Added new log in `extractRecipients` to show raw MIME scan data.
@@ -952,7 +957,7 @@
         // This method will OVERWRITE recipient types found in Method 1
         // because it's sourced from reliable MIME headers.
         var mimeData = this._scanBufferForMimeText();
-        console.log('MIME Scan Fallback Data:', mimeData); // <-- NEW DEBUG LOG
+        console.log('MIME Scan Fallback Data:', mimeData);
         
         if (mimeData.to) {
             // Split by comma or semicolon
@@ -1002,7 +1007,8 @@
 
         // --- Fallback Method 3: OLE Display Fields ---
         // This runs last as it can be unreliable (e.g., CC data in TO field).
-        // This method will NOT overwrite types, only add new recipients.
+        // This method will NOW OVERWRITE types, only adding new recipients
+        // if they aren't already present. This is the tie-breaker.
         console.log('Running fallback recipient extraction (Method 3 - Display Fields)...');
         var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
         var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
@@ -1013,7 +1019,12 @@
                 var parsed = parseAddress(addrStr);
                 if (parsed.email) {
                     var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) { // Only add if not found by other methods
+                    if (recipientMap[key]) { // <-- START FIX v1.4.8
+                        // Already in map (from Method 1), update its type
+                        console.log('Updating recipient from Display Field (To):', parsed.email);
+                        recipientMap[key].recipientType = RECIPIENT_TYPE_TO;
+                    } else { // <-- END FIX v1.4.8
+                        // Not found by Method 1, add it
                         console.log('Adding recipient from Display Field (To):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_TO,
@@ -1030,7 +1041,12 @@
                 var parsed = parseAddress(addrStr);
                 if (parsed.email) {
                     var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) { // Only add if not found by other methods
+                    if (recipientMap[key]) { // <-- START FIX v1.4.8
+                        // Already in map (from Method 1), update its type
+                        console.log('Updating recipient from Display Field (Cc):', parsed.email);
+                        recipientMap[key].recipientType = RECIPIENT_TYPE_CC;
+                    } else { // <-- END FIX v1.4.8
+                        // Not found by Method 1, add it
                         console.log('Adding recipient from Display Field (Cc):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_CC,
@@ -1047,7 +1063,12 @@
                  var parsed = parseAddress(addrStr);
                  if (parsed.email) {
                     var key = parsed.email.toLowerCase();
-                    if (!recipientMap[key]) { // Only add if not found by other methods
+                    if (recipientMap[key]) { // <-- START FIX v1.4.8
+                        // Already in map (from Method 1), update its type
+                        console.log('Updating recipient from Display Field (Bcc):', parsed.email);
+                        recipientMap[key].recipientType = RECIPIENT_TYPE_BCC;
+                    } else { // <-- END FIX v1.4.8
+                        // Not found by Method 1, add it
                         console.log('Adding recipient from Display Field (Bcc):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_BCC,
