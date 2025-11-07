@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.6
+ * msg-reader.js v1.4.7
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,6 +11,10 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.7:
+ * 1. [DEBUG] Re-added all console.log statements for diagnostics.
+ * 2. [DEBUG] Added new log in `extractRecipients` to show raw MIME scan data.
+ *
  * v1.4.6:
  * 1. [FIX] Updated recipient extraction logic. Method 2 (MIME Scan) will now
  * overwrite recipient types (TO/CC) found by Method 1 (OLE Storage).
@@ -127,6 +131,7 @@
                 }
                 return str;
             } catch (e) {
+                console.warn('UTF-8 decode failed, falling back to ASCII');
                 // Fallback to ASCII if UTF-8 decoding fails
                 return dataViewToString(view, 'ascii');
             }
@@ -168,6 +173,7 @@
             var milliseconds = (filetime - FILETIME_EPOCH_DIFF) / TICKS_PER_MILLISECOND;
             return new Date(Number(milliseconds));
         } catch (e) {
+            console.warn('Failed to parse date:', e);
             return null;
         }
     }
@@ -234,6 +240,7 @@
                 recipients: this.getFieldValue('recipients')
             };
         } catch (e) {
+            console.error('MSG parsing error:', e);
             throw new Error('Failed to parse MSG file: ' + e.message);
         }
     };
@@ -271,6 +278,8 @@
         // Calculate actual sizes from shifts
         this.header.sectorSize = Math.pow(2, this.header.sectorShift);
         this.header.miniSectorSize = Math.pow(2, this.header.miniSectorShift);
+
+        console.log('MSG Header:', this.header);
     };
 
     /**
@@ -324,6 +333,8 @@
                 }
             }
         }
+
+        console.log('FAT entries:', this.fat.length);
     };
 
     /**
@@ -356,11 +367,14 @@
             }
 
             if (sector >= this.fat.length) {
+                 console.warn('MiniFAT sector chain error: sector index out of bounds.');
                  break; // Sector index out of bounds, chain is broken
             }
             sector = this.fat[sector]; // Find next MiniFAT sector in the main FAT
             sectorsRead++;
         }
+
+        console.log('MiniFAT entries:', this.miniFat.length);
     };
 
     /**
@@ -392,12 +406,15 @@
             }
             
             if (sector >= this.fat.length) {
+                 console.warn('Directory sector chain error: sector index out of bounds.');
                  break; // Sector index out of bounds, chain is broken
             }
             sector = this.fat[sector]; // Find next directory sector in the main FAT
             sectorsRead++;
         }
 
+        console.log('Directory entries:', this.directoryEntries.length);
+        
         // Assign a simple ID to each entry for tree traversal
         this.directoryEntries.forEach((de, idx) => de.id = idx);
     };
@@ -467,6 +484,7 @@
             // Read from MiniFAT
             var rootEntry = this.directoryEntries.find(function(e) { return e.type === 5; });
             if (!rootEntry) {
+                console.warn('Root entry not found for MiniFAT stream');
                 return new Uint8Array(0); // Should not happen
             }
 
@@ -486,6 +504,7 @@
                 }
 
                 if (sector >= this.miniFat.length) {
+                    console.warn('MiniFAT sector chain error: sector index out of bounds.');
                     break; // Sector index out of bounds
                 }
                 sector = this.miniFat[sector]; // Find next sector in MiniFAT
@@ -507,6 +526,7 @@
                 }
 
                 if (sector >= this.fat.length) {
+                    console.warn('FAT sector chain error: sector index out of bounds.');
                     break; // Sector index out of bounds
                 }
                 sector = this.fat[sector]; // Find next sector in main FAT
@@ -528,6 +548,7 @@
             return this._mimeScanCache; // Return from cache if already scanned
         }
 
+        console.log('Scanning raw buffer for MIME text fallback...');
         var rawText = '';
         try {
             // Try UTF-8 first, as it's common
@@ -537,6 +558,7 @@
             try {
                 rawText = new TextDecoder('latin1').decode(this.dataView);
             } catch (e2) {
+                console.warn('Could not decode raw buffer for MIME scan.');
                 // If decoding fails, we can't scan
                 return { subject: null, to: null, cc: null, body: null };
             }
@@ -554,16 +576,19 @@
         var subjectMatch = rawText.match(/\bSubject:\s*([^\r\n]+)/i);
         if (subjectMatch) {
             result.subject = subjectMatch[1].trim();
+            console.log('MIME Fallback found Subject:', result.subject);
         }
 
         var toMatch = rawText.match(/\bTo:\s*([^\r\n]+)/i);
         if (toMatch) {
             result.to = toMatch[1].trim();
+            console.log('MIME Fallback found To:', result.to);
         }
 
         var ccMatch = rawText.match(/\bCc:\s*([^\r\n]+)/i);
         if (ccMatch) {
             result.cc = ccMatch[1].trim();
+            console.log('MIME Fallback found Cc:', result.cc);
         }
         
         // Find body: Look for the first double-linebreak (header/body separator)
@@ -581,6 +606,7 @@
                 // just take the first chunk of text as the body.
                 result.body = bodyText.split(/--_?|\r\n\r\nContent-Type:/)[0].trim();
             }
+            console.log('MIME Fallback found Body (first 50 chars):', result.body ? result.body.substring(0, 50) : 'null');
         }
 
         this._mimeScanCache = result; // Cache the result
@@ -593,6 +619,8 @@
      */
     MsgReader.prototype.extractProperties = function() {
         var self = this;
+    
+        console.log('Extracting properties from', this.directoryEntries.length, 'entries...');
     
         // Find all property streams
         this.directoryEntries.forEach(function(entry) {
@@ -621,6 +649,9 @@
                 var streamData = self.readStream(entry);
                 var value = self.convertPropertyValue(streamData, propType, propId);
     
+                console.log('Property', propId.toString(16), 'type', propType.toString(16), '=', 
+                            typeof value === 'string' ? value.substring(0, 50) : (value instanceof Uint8Array ? "Uint8Array(" + value.length + ")" : value));
+    
                 self.properties[propId] = {
                     id: propId,
                     type: propType,
@@ -635,17 +666,21 @@
         
         if (!this.properties[PROP_ID_SUBJECT] || !this.properties[PROP_ID_SUBJECT].value) {
             if (mimeData.subject) {
+                 console.log('Applying MIME fallback for Subject');
                  this.properties[PROP_ID_SUBJECT] = { id: PROP_ID_SUBJECT, type: PROP_TYPE_STRING, value: mimeData.subject };
             }
         }
         if (!this.properties[PROP_ID_BODY] || !this.properties[PROP_ID_BODY].value) {
             if (mimeData.body) {
+                console.log('Applying MIME fallback for Body');
                 this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, type: PROP_TYPE_STRING, value: mimeData.body };
             }
         }
     
         // After all main properties are read, extract recipients
         this.extractRecipients();
+    
+        console.log('Total properties extracted:', Object.keys(this.properties).length);
     };
 
     /**
@@ -664,14 +699,17 @@
 
         // Special handling for OFT body, which is stored as binary but is text
         if (type === PROP_TYPE_BINARY && (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY)) {
+            console.log('Binary body property detected, forcing text conversion...');
             // Try UTF-8 first, as it's common in modern files
             var text = dataViewToString(view, 'utf-8');
             if (text.indexOf('<') > -1 && text.indexOf('>') > -1) {
+                console.log('  Detected UTF-8 body');
                 return text; // Basic heuristic: if it contains HTML tags, it's probably right.
             }
             // Fallback to UTF-16LE
             text = dataViewToString(view, 'utf16le');
             if (text.length > 0) {
+                console.log('  Detected UTF-16LE body');
                 return text;
             }
             // If both fail, return the raw data
@@ -703,14 +741,17 @@
             case PROP_TYPE_BINARY: // 0x0102 (PT_BINARY)
                 // Check if this binary data looks like text, as types can be wrong.
                 if (this.looksLikeText(data)) {
+                    console.log('Binary data for prop ' + (propId ? propId.toString(16) : 'N/A') + ' looks like text, converting...');
                     // Try UTF-8 first
                     var text = dataViewToString(view, 'utf-8');
                     if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
+                        console.log('  Detected UTF-8');
                         return text;
                     }
                     // Try UTF-16LE
                     text = dataViewToString(view, 'utf16le');
                     if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
+                        console.log('  Detected UTF-16LE');
                         return text;
                     }
                 }
@@ -794,11 +835,15 @@
         var recipients = [];
         var recipientMap = {}; // Use a map to de-duplicate based on email
     
+        console.log('Extracting recipients...');
+    
         // --- Method 1: OLE Recipient Storages ---
         // This is the "correct" way, reading from `__recip_version1.0_...` storages.
         var recipientStorages = this.directoryEntries.filter(function(entry) {
             return entry.type === 1 && entry.name.indexOf('__recip_version1.0_') === 0;
         });
+    
+        console.log('Found recipient storages:', recipientStorages.length);
     
         recipientStorages.forEach(function(recipStorage) {
             var recipient = {
@@ -807,7 +852,10 @@
                 email: ''
             };
     
+            var recipStorageName = recipStorage.name;
             // Perform a tree walk (DFS) to find all property streams under this recipient storage
+            console.log('  Looking for properties for storage:', recipStorageName, 'starting at childId:', recipStorage.childId);
+            
             var stack = [recipStorage.childId]; // Start with the storage's child
             var visited = new Set();
             var maxProps = 100; // Safety break
@@ -823,6 +871,7 @@
 
                 var entry = self.directoryEntries[entryId];
                 if (!entry) {
+                    console.warn('  Invalid entry ID in tree walk:', entryId);
                     continue;
                 }
 
@@ -844,6 +893,8 @@
     
                     var streamData = self.readStream(entry);
                     var value = self.convertPropertyValue(streamData, propType, propId);
+    
+                    console.log('    Found prop:', { name: entry.name, propId: propId.toString(16), value: (typeof value === 'string' ? value.substring(0, 50) : value) });
     
                     // Assign properties to our recipient object
                     switch(propId) {
@@ -889,6 +940,7 @@
                 if (recipient.email) {
                     var key = recipient.email.toLowerCase();
                     if (!recipientMap[key]) {
+                         console.log('  Adding recipient from OLE tree:', recipient);
                         recipientMap[key] = recipient;
                     }
                 }
@@ -900,6 +952,7 @@
         // This method will OVERWRITE recipient types found in Method 1
         // because it's sourced from reliable MIME headers.
         var mimeData = this._scanBufferForMimeText();
+        console.log('MIME Scan Fallback Data:', mimeData); // <-- NEW DEBUG LOG
         
         if (mimeData.to) {
             // Split by comma or semicolon
@@ -909,9 +962,11 @@
                     var key = parsed.email.toLowerCase();
                     if (recipientMap[key]) {
                         // Email already found (likely by Method 1), update its type
+                        console.log('Updating recipient from MIME (To):', parsed.email);
                         recipientMap[key].recipientType = RECIPIENT_TYPE_TO;
                     } else {
                         // New email, add it
+                        console.log('Adding recipient from MIME (To):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_TO,
                             name: parsed.name || parsed.email,
@@ -930,9 +985,11 @@
                     var key = parsed.email.toLowerCase();
                     if (recipientMap[key]) {
                         // Email already found, update its type
+                        console.log('Updating recipient from MIME (Cc):', parsed.email);
                         recipientMap[key].recipientType = RECIPIENT_TYPE_CC;
                     } else {
                         // New email, add it
+                         console.log('Adding recipient from MIME (Cc):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_CC,
                             name: parsed.name || parsed.email,
@@ -946,6 +1003,7 @@
         // --- Fallback Method 3: OLE Display Fields ---
         // This runs last as it can be unreliable (e.g., CC data in TO field).
         // This method will NOT overwrite types, only add new recipients.
+        console.log('Running fallback recipient extraction (Method 3 - Display Fields)...');
         var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
         var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
         var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
@@ -956,6 +1014,7 @@
                 if (parsed.email) {
                     var key = parsed.email.toLowerCase();
                     if (!recipientMap[key]) { // Only add if not found by other methods
+                        console.log('Adding recipient from Display Field (To):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_TO,
                             name: parsed.name || parsed.email,
@@ -972,6 +1031,7 @@
                 if (parsed.email) {
                     var key = parsed.email.toLowerCase();
                     if (!recipientMap[key]) { // Only add if not found by other methods
+                        console.log('Adding recipient from Display Field (Cc):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_CC,
                             name: parsed.name || parsed.email,
@@ -988,6 +1048,7 @@
                  if (parsed.email) {
                     var key = parsed.email.toLowerCase();
                     if (!recipientMap[key]) { // Only add if not found by other methods
+                        console.log('Adding recipient from Display Field (Bcc):', parsed);
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_BCC,
                             name: parsed.name || parsed.email,
@@ -1003,6 +1064,8 @@
             recipients.push(recipientMap[key]);
         }
     
+        console.log('Total recipients extracted:', recipients.length);
+        
         // Store the final recipient list
         this.properties['recipients'] = {
             id: 0,
