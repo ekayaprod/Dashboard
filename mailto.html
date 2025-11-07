@@ -172,48 +172,42 @@
         return false;
     };
 
-    // MOVED: Dependency Check was here. It is now inside AppLifecycle.run
+    // MOVED: Dependency Check is now the first thing to run.
+    (() => {
+        // REFACTOR: Added SharedSettingsModal AND AppLifecycle to dependency check
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'AppLifecycle'];
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+        
+        if (missing.length > 0) {
+            const errorTitle = "Application Failed to Load";
+            const errorMessage = `One or more required JavaScript files (e.g., app-core.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+            
+            // Cannot use AppLifecycle._showErrorBanner because AppLifecycle might be the one missing
+            const banner = document.getElementById('app-startup-error');
+            if(banner) {
+                banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                banner.classList.remove('hidden');
+            }
+            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+        }
+    })();
+    
+    // ADDED: New, separate check for MsgReader after core dependencies are confirmed.
+    if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
+         const errorTitle = "Application Failed to Load";
+         const errorMessage = `The external library 'msgreader.js' failed to load correctly. Please ensure the file is present and accessible.`;
+         
+         // We now know AppLifecycle exists from the check above, so we can use its banner function
+         if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+            window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+         }
+         throw new Error('MsgReader failed to load');
+    }
+
 
     AppLifecycle.run(async () => {
     
-        // MOVED: Dependency Check is now the first thing to run.
-        (() => {
-            // REFACTOR: Added SharedSettingsModal to dependency check
-            // REMOVED: SimpleMsgParser from dependency check
-            // REMOVED: MsgReader from this array, will be checked separately
-            const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal'];
-            const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
-            
-            // REMOVED: Special check for MsgReader
-            // REMOVED: Check for SimpleMsgParser
-
-            if (missing.length > 0) {
-                const errorTitle = "Application Failed to Load";
-                const errorMessage = `One or more required JavaScript files (e.g., app-core.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
-                
-                if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                    window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-                } else {
-                    const banner = document.getElementById('app-startup-error');
-                    if(banner) {
-                        banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
-                        banner.classList.remove('hidden');
-                    }
-                }
-                throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
-            }
-        })();
-        
-        // ADDED: New, separate check for MsgReader after core dependencies are confirmed.
-        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
-             const errorTitle = "Application Failed to Load";
-             const errorMessage = `The external library 'msgreader.js' failed to load correctly. Please ensure the file is present and accessible.`;
-             if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-             }
-             throw new Error('MsgReader failed to load');
-        }
-
+        // REMOVED: The old dependency check that was inside AppLifecycle.run()
 
         const APP_CONFIG = {
             NAME: 'mailto_library',
