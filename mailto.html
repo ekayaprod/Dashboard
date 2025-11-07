@@ -130,7 +130,7 @@
 
     <!-- External Libs -->
     <!-- UPDATED: Added cache-busting query string -->
-    <script src="js/msgreader.js?v=1.4.6"></script>
+    <script src="js/msgreader.js?v=1.4.7"></script>
     <!-- REMOVED: simple-msg-parser.js script include -->
     
     <script>
@@ -696,9 +696,11 @@
                             // ---
                             // ATTEMPT 2: Fallback to the simple Tier 1.5 parser
                             // ---
-                            if (!window.SimpleMsgParser) {
-                                // This should not happen if dependency check passed, but good to have
-                                throw new Error('SimpleMsgParser (fallback) is not loaded.');
+                            // (Note: This fallback logic is no longer present in app-core.js, but
+                            // we are leaving the handler here just in case)
+                            if (typeof window.SimpleMsgParser === 'undefined') {
+                                // This is the expected path now.
+                                throw robustError; // Re-throw the original error
                             }
 
                             // RE-ADDED CONSOLE LOGS FOR DEBUGGING
@@ -821,6 +823,9 @@
                         
                         // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                         console.log('Processing recipients:', recipients);
+                        
+                        // <-- NEW DEBUG PROBE
+                        console.log('Processing recipients (types):', recipients.map(r => ({ email: r.email, name: r.name, type: r.recipientType })));
                         
                         const toRecipients = [];
                         const ccRecipients = [];
