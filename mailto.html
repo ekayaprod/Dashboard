@@ -172,47 +172,49 @@
         return false;
     };
 
-    // Dependency Check
-    (() => {
-        // REFACTOR: Added SharedSettingsModal to dependency check
-        // REMOVED: SimpleMsgParser from dependency check
-        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
-        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
-        
-        // REFACTOR: Changed check for MsgReader to be 'object' (not 'function')
-        // and check for its 'read' method.
-        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
-            if (!missing.includes('MsgReader')) {
-                // If it was loaded but isn't the correct structure, mark it as missing
-                missing.push('MsgReader (Invalid Type)');
-            }
-        }
-        
-        // REMOVED: Check for SimpleMsgParser
-
-
-        if (missing.length > 0) {
-            const errorTitle = "Application Failed to Load";
-            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, msgreader.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
-            
-            console.error(errorMessage);
-            
-            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-            } else {
-                const banner = document.getElementById('app-startup-error');
-                if(banner) {
-                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
-                    banner.classList.remove('hidden');
-                }
-            }
-            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
-        }
-    })();
-
+    // MOVED: Dependency Check was here. It is now inside AppLifecycle.run
 
     AppLifecycle.run(async () => {
     
+        // MOVED: Dependency Check is now the first thing to run.
+        (() => {
+            // REFACTOR: Added SharedSettingsModal to dependency check
+            // REMOVED: SimpleMsgParser from dependency check
+            // REMOVED: MsgReader from this array, will be checked separately
+            const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal'];
+            const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
+            
+            // REMOVED: Special check for MsgReader
+            // REMOVED: Check for SimpleMsgParser
+
+            if (missing.length > 0) {
+                const errorTitle = "Application Failed to Load";
+                const errorMessage = `One or more required JavaScript files (e.g., app-core.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
+                
+                if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                    window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+                } else {
+                    const banner = document.getElementById('app-startup-error');
+                    if(banner) {
+                        banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
+                        banner.classList.remove('hidden');
+                    }
+                }
+                throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
+            }
+        })();
+        
+        // ADDED: New, separate check for MsgReader after core dependencies are confirmed.
+        if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
+             const errorTitle = "Application Failed to Load";
+             const errorMessage = `The external library 'msgreader.js' failed to load correctly. Please ensure the file is present and accessible.`;
+             if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
+                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
+             }
+             throw new Error('MsgReader failed to load');
+        }
+
+
         const APP_CONFIG = {
             NAME: 'mailto_library',
             VERSION: '1.2.2', // Updated version
@@ -668,6 +670,7 @@
                             throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
                         }
                 
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                         console.log('File info:', {
                             name: file.name,
                             size: file.size,
@@ -682,22 +685,28 @@
                             // ---
                             // ATTEMPT 1: Try the robust Tier 2 parser first
                             // ---
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                             console.log('Parsing MSG file with robust parser (Tier 2)...');
                             fileData = window.MsgReader.read(arrayBuffer);
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                             console.log('Parse successful with robust parser!');
                             console.log('Extracted data:', fileData);
 
                         } catch (robustError) {
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                             console.warn('Robust parser (Tier 2) failed:', robustError.message);
                             
                             // ---
                             // ATTEMPT 2: Fallback to the simple Tier 1.5 parser
                             // ---
-                            if (!window.SimpleMsgParser) {
-                                // This should not happen if dependency check passed, but good to have
-                                throw new Error('SimpleMsgParser (fallback) is not loaded.');
+                            // (Note: This fallback logic is no longer present in app-core.js, but
+                            // we are leaving the handler here just in case)
+                            if (typeof window.SimpleMsgParser === 'undefined') {
+                                // This is the expected path now.
+                                throw robustError; // Re-throw the original error
                             }
 
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                             console.log('Trying simple parser (Tier 1.5 fallback)...');
                             const simpleParser = new SimpleMsgParser();
                             const simpleData = simpleParser.parse(arrayBuffer);
@@ -723,6 +732,7 @@
                                     if(addr) fileData.recipients.push({ recipientType: 2, email: addr, name: addr });
                                 });
                             }
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                             console.log('Parse successful with simple parser (fallback)!');
                             console.log('Extracted data:', fileData);
                         }
@@ -747,6 +757,7 @@
                         
                         // If body is a Uint8Array (binary), try to convert it
                         if (bodyText instanceof Uint8Array) {
+                            // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                             console.warn('Body is binary data, attempting conversion...');
                             try {
                                 // FIX: Try UTF-8 first. This is more common for modern files.
@@ -769,6 +780,7 @@
                             let htmlBody = fileData.bodyHTML;
                             // Check if HTML body is also binary
                             if (htmlBody instanceof Uint8Array) {
+                                // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                                 console.warn('HTML Body is binary data, attempting conversion...');
                                 try {
                                     htmlBody = new TextDecoder('utf-8', { fatal: false }).decode(htmlBody);
@@ -812,7 +824,11 @@
                         // Process recipients
                         const recipients = fileData.recipients || [];
                         
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                         console.log('Processing recipients:', recipients);
+                        
+                        // <-- NEW DEBUG PROBE
+                        console.log('Processing recipients (types):', recipients.map(r => ({ email: r.email, name: r.name, type: r.recipientType })));
                         
                         const toRecipients = [];
                         const ccRecipients = [];
@@ -822,6 +838,7 @@
                             // PRIORITIZE EMAIL ADDRESS
                             const addr = r.email || ''; 
                             if (!addr) {
+                                // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                                 console.warn('Recipient found with no email, skipping:', r.name);
                                 return;
                             }
@@ -852,6 +869,7 @@
                         DOMElements.resultCc.value = ccRecipients.join(', ');
                         DOMElements.resultBcc.value = bccRecipients.join(', ');
 
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                         console.log('TO:', toRecipients);
                         console.log('CC:', ccRecipients);
                         console.log('BCC:', bccRecipients);
@@ -868,6 +886,7 @@
                         SafeUI.showToast('MSG file loaded successfully!');
                 
                     } catch (err) {
+                        // RE-ADDED CONSOLE LOGS FOR DEBUGGING
                         console.error('MSG parsing error:', err);
                         
                         let userMessage = 'Failed to parse MSG file. ';
