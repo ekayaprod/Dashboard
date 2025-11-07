@@ -279,6 +279,28 @@
         }
 
         console.log('Directory entries:', this.directoryEntries.length);
+        
+        //
+        // START PATCH 5: Assign IDs
+        //
+        // after directoryEntries built
+        this.directoryEntries.forEach((de, idx) => de.id = idx);
+        //
+        // END PATCH 5
+        //
+        
+        //
+        // START PATCH 1: Diagnostic directory dump
+        //
+        // DIAGNOSTIC: show directory entries with index and name
+        this.directoryEntries.forEach(function(de, idx){
+            try {
+                console.log('DIR[' + idx + ']:', { index: idx, name: de.name, type: de.type, startSector: de.startSector, size: de.size, childId: de.childId, leftSiblingId: de.leftSiblingId, rightSiblingId: de.rightSiblingId });
+            } catch(e){}
+        });
+        //
+        // END PATCH 1
+        //
     };
 
     MsgReader.prototype.readDirectoryEntry = function(offset) {
@@ -300,12 +322,26 @@
 
         var startSector = this.dataView.getUint32(offset + 116, true);
         var size = this.dataView.getUint32(offset + 120, true);
+        
+        //
+        // START PATCH 4: Add tree fields
+        //
+        var leftSiblingId = this.dataView.getInt32(offset + 68, true);
+        var rightSiblingId = this.dataView.getInt32(offset + 72, true);
+        var childId = this.dataView.getInt32(offset + 76, true);
+        //
+        // END PATCH 4
+        //
 
         return {
             name: name,
             type: type, // 1=storage, 2=stream, 5=root
             startSector: startSector,
-            size: size
+            size: size,
+            leftSiblingId: leftSiblingId,
+            rightSiblingId: rightSiblingId,
+            childId: childId,
+            // id will be assigned later (index in directoryEntries)
         };
     };
 
@@ -368,9 +404,6 @@
         return data.slice(0, dataOffset);
     };
 
-    //
-    // START FIX #3: Better Property Extraction
-    //
     MsgReader.prototype.extractProperties = function() {
         var self = this;
     
@@ -406,13 +439,7 @@
     
         console.log('Total properties extracted:', Object.keys(this.properties).length);
     };
-    //
-    // END FIX #3
-    //
 
-    //
-    // START FIX #2: Better Body Type Detection
-    //
     MsgReader.prototype.convertPropertyValue = function(data, type) {
         if (!data || data.length === 0) {
             return null;
@@ -503,13 +530,7 @@
         // If more than 70% looks like text, treat it as text
         return (printableCount / totalChecked) > 0.7;
     };
-    //
-    // END FIX #2
-    //
 
-    //
-    // START FIX #1: Better Recipient Extraction
-    //
     MsgReader.prototype.extractRecipients = function() {
         var self = this;
         var recipients = [];
@@ -531,27 +552,37 @@
             };
     
             var recipStorageName = recipStorage.name;
-            console.log('Processing recipient storage:', recipStorageName);
-    
-            // Find all properties for this recipient
-            self.directoryEntries.forEach(function(entry) {
-                // Property must be a stream (type 2) and be inside this recipient's storage
-                if (entry.type !== 2 || entry.name.indexOf(recipStorageName + '/') !== 0) {
-                    return;
-                }
+            //
+            // START PATCH 3: (Recommended) Log recipient storage contents
+            //
+            console.log('  Looking for properties for storage:', recipStorageName);
+            self.directoryEntries.forEach(function(entry, entryIndex) {
+                if (entry.type !== 2) return; // Must be a stream
                 
-                // Check if it's a property stream
+                // This is the check that will fail until the tree logic is built
+                // We are replacing it with a simple "log all properties"
+                // if (entry.name.indexOf(recipStorageName + '/') !== 0) {
+                //     return;
+                // }
+                
+                // Log all property streams to see what's available
                 if (entry.name.indexOf('__substg1.0_') > -1) {
-                    var propTag = entry.name.substring(entry.name.length - 8);
+                    var propTag = "00000000";
+                    if (entry.name.length >= 20) { // Basic check for __substg1.0_XXXXYYYY
+                        propTag = entry.name.substring(entry.name.length - 8);
+                    }
                     var propId = parseInt(propTag.substring(0, 4), 16);
                     var propType = parseInt(propTag.substring(4, 8), 16);
     
                     var streamData = self.readStream(entry);
                     var value = self.convertPropertyValue(streamData, propType);
     
-                    console.log('  Property', propId.toString(16), '(', propType.toString(16), ') =', value);
+                    console.log('    ENTRY[' + entryIndex + '] name=' + entry.name + ' prop=' + propId.toString(16) + ' type=' + propType.toString(16) + ' value=', (typeof value === 'string' ? value.substring(0,80) : value));
     
-                    // Assign properties based on official IDs
+                    // Assign properties based on official IDs (This part is still inside the loop)
+                    // This logic is flawed as it will assign properties from *all* streams,
+                    // but it's what you requested for debugging.
+                    // A proper fix would check if this entry is a child of recipStorage
                     switch(propId) {
                         case PROP_ID_RECIPIENT_DISPLAY_NAME: // 0x3001
                             recipient.name = value || recipient.name;
@@ -568,6 +599,9 @@
                     }
                 }
             });
+            //
+            // END PATCH 3
+            //
     
             if (recipient.name || recipient.email) {
                 // Fallback: If email is missing but name looks like an email, use it.
@@ -632,6 +666,32 @@
             }
         }
     
+        //
+        // START PATCH 2: Quick regex fallback
+        //
+        // QUICK FALLBACK: regex-scan the raw buffer for email addresses
+        if (recipients.length === 0) {
+            try {
+                console.log('Fallback: scanning raw buffer for email patterns...');
+                // Try decode buffer to text (utf-8 then latin1)
+                let rawText = '';
+                try { rawText = new TextDecoder('utf-8', {fatal:false}).decode(self.dataView.buffer); } catch(e) { rawText = String.fromCharCode.apply(null, new Uint8Array(self.dataView.buffer)); }
+                const emailRegex = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+                const found = Array.from(new Set((rawText.match(emailRegex) || []).map(s => s.trim())));
+                if (found.length > 0) {
+                    found.forEach(addr => {
+                        recipients.push({ recipientType: RECIPIENT_TYPE_TO, name: addr, email: addr });
+                    });
+                    console.warn('Fallback recipients added:', found.length);
+                }
+            } catch (e) {
+                console.warn('Fallback recipient scan failed:', e);
+            }
+        }
+        //
+        // END PATCH 2
+        //
+    
         console.log('Total recipients extracted:', recipients.length);
         
         this.properties['recipients'] = {
@@ -640,9 +700,6 @@
             value: recipients
         };
     };
-    //
-    // END FIX #1
-    //
 
     MsgReader.prototype.getFieldValue = function(fieldName) {
         var propId;
