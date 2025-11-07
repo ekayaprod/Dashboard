@@ -130,7 +130,7 @@
 
     <!-- External Libs -->
     <script src="js/msgreader.js"></script>
-    <!-- TIER 2: Removed simple-msg-parser.js as it's no longer used -->
+    <!-- REMOVED: simple-msg-parser.js script include -->
     
     <script>
     // ===================================================================
@@ -175,7 +175,7 @@
     // Dependency Check
     (() => {
         // REFACTOR: Added SharedSettingsModal to dependency check
-        // TIER 2: Removed SimpleMsgParser from dependency check
+        // REMOVED: SimpleMsgParser from dependency check
         const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'MsgReader'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
@@ -188,7 +188,7 @@
             }
         }
         
-        // TIER 2: Removed check for SimpleMsgParser
+        // REMOVED: Check for SimpleMsgParser
 
 
         if (missing.length > 0) {
@@ -215,7 +215,7 @@
     
         const APP_CONFIG = {
             NAME: 'mailto_library',
-            VERSION: '1.1.0', 
+            VERSION: '1.2.2', // Updated version
             DATA_KEY: 'mailto_library_v1',
             CSV_HEADERS: ['name', 'path', ...MAILTO_FIELDS] // Issue 1
         };
@@ -655,6 +655,9 @@
                 //
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    let userMessage = 'Failed to parse MSG file. ';
+                    let fileData = null;
+
                     try {
                         if (!window.MsgReader || typeof window.MsgReader.read !== 'function') {
                             throw new Error('MsgReader library not loaded or invalid.');
@@ -672,35 +675,87 @@
                             bufferSize: arrayBuffer.byteLength
                         });
                 
-                        console.log('Parsing MSG file...');
-                        
-                        // Parse the MSG file
-                        const msgData = window.MsgReader.read(arrayBuffer);
-                        
-                        console.log('Parse successful!');
-                        console.log('Extracted data:', msgData);
+                        //
+                        // START HYBRID PARSER LOGIC
+                        //
+                        try {
+                            // ---
+                            // ATTEMPT 1: Try the robust Tier 2 parser first
+                            // ---
+                            console.log('Parsing MSG file with robust parser (Tier 2)...');
+                            fileData = window.MsgReader.read(arrayBuffer);
+                            console.log('Parse successful with robust parser!');
+                            console.log('Extracted data:', fileData);
+
+                        } catch (robustError) {
+                            console.warn('Robust parser (Tier 2) failed:', robustError.message);
+                            
+                            // ---
+                            // ATTEMPT 2: Fallback to the simple Tier 1.5 parser
+                            // ---
+                            if (!window.SimpleMsgParser) {
+                                // This should not happen if dependency check passed, but good to have
+                                throw new Error('SimpleMsgParser (fallback) is not loaded.');
+                            }
+
+                            console.log('Trying simple parser (Tier 1.5 fallback)...');
+                            const simpleParser = new SimpleMsgParser();
+                            const simpleData = simpleParser.parse(arrayBuffer);
+                            
+                            // Manually map the simple data to the
+                            // structure expected by the rest of the code
+                            fileData = {
+                                subject: simpleData.subject || '',
+                                body: simpleData.body || '',
+                                bodyHTML: '', // Simple parser doesn't get HTML
+                                recipients: []
+                            };
+                            
+                            if (simpleData.to) {
+                                simpleData.to.split(/[;,]/).forEach(addr => {
+                                    addr = addr.trim();
+                                    if(addr) fileData.recipients.push({ recipientType: 1, email: addr, name: addr });
+                                });
+                            }
+                            if (simpleData.cc) {
+                                simpleData.cc.split(/[;,]/).forEach(addr => {
+                                    addr = addr.trim();
+                                    if(addr) fileData.recipients.push({ recipientType: 2, email: addr, name: addr });
+                                });
+                            }
+                            console.log('Parse successful with simple parser (fallback)!');
+                            console.log('Extracted data:', fileData);
+                        }
+                        //
+                        // END HYBRID PARSER LOGIC
+                        //
+
+                        if (!fileData) {
+                            // This should not happen, but as a safeguard
+                            throw new Error('Both parsers failed to return data.');
+                        }
                 
                         // Populate form fields
-                        DOMElements.resultSubject.value = msgData.subject || '';
+                        DOMElements.resultSubject.value = fileData.subject || '';
                         
                         //
                         // START FIX #3: Better Body Processing
                         //
-                        // Prefer plain text body over HTML
-                        let bodyText = msgData.body || '';
+                        
+                        // Prefer plain text body over HTML, or HTML over null
+                        let bodyText = fileData.body || fileData.bodyHTML || '';
                         
                         // If body is a Uint8Array (binary), try to convert it
-                        // This check is now redundant because convertPropertyValue handles it
                         if (bodyText instanceof Uint8Array) {
                             console.warn('Body is binary data, attempting conversion...');
                             try {
-                                // Try UTF-16LE
-                                const decoder = new TextDecoder('utf-16le', { fatal: false });
+                                // FIX: Try UTF-8 first. This is more common for modern files.
+                                const decoder = new TextDecoder('utf-8', { fatal: false });
                                 bodyText = decoder.decode(bodyText);
                             } catch (e) {
-                                // Try UTF-8
+                                // Fallback to UTF-16LE
                                 try {
-                                    const decoder = new TextDecoder('utf-8', { fatal: false });
+                                    const decoder = new TextDecoder('utf-16le', { fatal: false });
                                     bodyText = decoder.decode(bodyText);
                                 } catch (e2) {
                                     bodyText = '(Unable to decode message body)';
@@ -709,18 +764,36 @@
                         }
                         
                         // If no plain text body but HTML exists, strip HTML tags
-                        if (!bodyText && msgData.bodyHTML) {
-                            bodyText = msgData.bodyHTML
-                                .replace(/<style[^>]*>.*?<\/style>/gi, '')
-                                .replace(/<script[^>]*>.*?<\/script>/gi, '')
-                                .replace(/<[^>]+>/g, '')
-                                .replace(/&nbsp;/g, ' ')
-                                .replace(/&lt;/g, '<')
-                                .replace(/&gt;/g, '>')
-                                .replace(/&amp;/g, '&')
-                                .replace(/&quot;/g, '"')
-                                .replace(/&#39;/g, "'")
-                                .trim();
+                        // FIX: check bodyText *after* potential binary conversion
+                        if (!bodyText && fileData.bodyHTML) {
+                            let htmlBody = fileData.bodyHTML;
+                            // Check if HTML body is also binary
+                            if (htmlBody instanceof Uint8Array) {
+                                console.warn('HTML Body is binary data, attempting conversion...');
+                                try {
+                                    htmlBody = new TextDecoder('utf-8', { fatal: false }).decode(htmlBody);
+                                } catch (e) {
+                                    try {
+                                        htmlBody = new TextDecoder('utf-16le', { fatal: false }).decode(htmlBody);
+                                    } catch (e2) {
+                                        htmlBody = '';
+                                    }
+                                }
+                            }
+
+                            if (typeof htmlBody === 'string') {
+                                bodyText = htmlBody
+                                    .replace(/<style[^>]*>.*?<\/style>/gi, '')
+                                    .replace(/<script[^>]*>.*?<\/script>/gi, '')
+                                    .replace(/<[^>]+>/g, '')
+                                    .replace(/&nbsp;/g, ' ')
+                                    .replace(/&lt;/g, '<')
+                                    .replace(/&gt;/g, '>')
+                                    .replace(/&amp;/g, '&')
+                                    .replace(/&quot;/g, '"')
+                                    .replace(/&#39;/g, "'")
+                                    .trim();
+                            }
                         }
                         
                         // Clean up excessive line breaks (max 2 consecutive)
@@ -737,14 +810,14 @@
                         // START FIX #2: Better Recipient Processing
                         //
                         // Process recipients
-                        const recipients = msgData.recipients || [];
+                        const recipients = fileData.recipients || [];
                         
                         console.log('Processing recipients:', recipients);
                         
                         const toRecipients = [];
                         const ccRecipients = [];
                         const bccRecipients = [];
-                        
+
                         recipients.forEach(r => {
                             // PRIORITIZE EMAIL ADDRESS
                             const addr = r.email || ''; 
@@ -774,11 +847,11 @@
                                 toRecipients.push(cleanAddr);
                             }
                         });
-                        
+
                         DOMElements.resultTo.value = toRecipients.join(', ');
                         DOMElements.resultCc.value = ccRecipients.join(', ');
                         DOMElements.resultBcc.value = bccRecipients.join(', ');
-                        
+
                         console.log('TO:', toRecipients);
                         console.log('CC:', ccRecipients);
                         console.log('BCC:', bccRecipients);
