@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.0
+ * msg-reader.js v1.4.2
  * Production-grade Microsoft Outlook MSG and OFT file parser
  * Compatible with Outlook 365 and modern MSG formats
  * * Based on msg.reader by Peter Theill
@@ -20,8 +20,8 @@
     // Property types
     var PROP_TYPE_INTEGER32 = 0x0003;
     var PROP_TYPE_BOOLEAN = 0x000B;
-    var PROP_TYPE_STRING = 0x001E; // String8 (ASCII/UTF-8)
-    var PROP_TYPE_STRING8 = 0x001F; // Unicode (UTF-16LE)
+    var PROP_TYPE_STRING = 0x001E;
+    var PROP_TYPE_STRING8 = 0x001F; // This is UTF-16LE, despite the name
     var PROP_TYPE_TIME = 0x0040;
     var PROP_TYPE_BINARY = 0x0102;
 
@@ -34,7 +34,7 @@
     var PROP_ID_DISPLAY_TO = 0x0E04;
     var PROP_ID_DISPLAY_CC = 0x0E03;
     var PROP_ID_DISPLAY_BCC = 0x0E02;
-    
+
     // Recipient Property IDs
     var PROP_ID_RECIPIENT_TYPE = 0x0C15;
     var PROP_ID_RECIPIENT_DISPLAY_NAME = 0x3001;
@@ -49,7 +49,6 @@
 
     /**
      * Helper: Convert DataView to string
-     * FIX: Added 'utf-8' support via TextDecoder
      */
     function dataViewToString(view, encoding) {
         var result = '';
@@ -64,31 +63,44 @@
                 }
             }
         } else if (encoding === 'utf-8') {
-             // Use TextDecoder for proper UTF-8 handling
+             // Basic UTF-8 decoder
             try {
-                // Pass the DataView directly
-                const decoder = new TextDecoder('utf-8', { fatal: false }); // fatal:false to avoid crash on bad chars
-                result = decoder.decode(view);
-                // Remove null terminators
-                const nullIdx = result.indexOf('\0');
-                if (nullIdx !== -1) {
-                    result = result.substring(0, nullIdx);
+                // Use TextDecoder if available (modern browsers)
+                if (typeof TextDecoder !== 'undefined') {
+                    return new TextDecoder('utf-8', { fatal: false }).decode(view);
                 }
+                // Fallback for older environments
+                var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+                var str = '';
+                for (var i = 0; i < bytes.length; i++) {
+                    var charCode = bytes[i];
+                    if (charCode === 0) break; // Null terminator
+                    if (charCode < 0x80) {
+                        str += String.fromCharCode(charCode);
+                    } else if (charCode < 0xE0) {
+                        str += String.fromCharCode(((charCode & 0x1F) << 6) | (bytes[++i] & 0x3F));
+                    } else if (charCode < 0xF0) {
+                        str += String.fromCharCode(((charCode & 0x0F) << 12) | ((bytes[++i] & 0x3F) << 6) | (bytes[++i] & 0x3F));
+                    } else {
+                        var codePoint = ((charCode & 0x07) << 18) | ((bytes[++i] & 0x3F) << 12) | ((bytes[++i] & 0x3F) << 6) | (bytes[++i] & 0x3F);
+                        codePoint -= 0x10000;
+                        str += String.fromCharCode(0xD800 + (codePoint >> 10), 0xDC00 + (codePoint & 0x3FF));
+                    }
+                }
+                return str;
             } catch (e) {
-                console.warn('UTF-8 decoding failed, falling back to ASCII');
-                // Fallback to ASCII (original logic)
-                for (var i = 0; i < length; i++) {
-                    var charCode = view.getUint8(i);
-                    if (charCode === 0) break;
-                    result += String.fromCharCode(charCode);
-                }
+                console.warn('UTF-8 decode failed, falling back to ASCII');
+                return dataViewToString(view, 'ascii'); // Fallback
             }
         } else {
-            // ASCII (original logic)
+            // ASCII (default)
             for (var i = 0; i < length; i++) {
                 var charCode = view.getUint8(i);
                 if (charCode === 0) break;
-                result += String.fromCharCode(charCode);
+                // Only allow printable ASCII + common whitespace
+                if (charCode === 9 || charCode === 10 || charCode === 13 || (charCode >= 32 && charCode <= 126)) {
+                    result += String.fromCharCode(charCode);
+                }
             }
         }
         
@@ -187,7 +199,7 @@
         };
 
         this.header.sectorSize = Math.pow(2, this.header.sectorShift);
-        this.header.miniSectorSize = Math.pow(2, this.header.miniSectorShift);
+        this.header.miniSectorSize = Math.pow(2, this.header.miniSectorSize);
 
         console.log('MSG Header:', this.header);
     };
@@ -205,6 +217,26 @@
                 fatSectorPositions.push(sectorNum);
             }
         }
+        
+        // Read DIF sectors if present
+        if (this.header.difTotalSectors > 0) {
+            var difSector = this.header.difFirstSector;
+            var difSectorsRead = 0;
+            while(difSector !== 0xFFFFFFFE && difSector !== 0xFFFFFFFF && difSectorsRead < this.header.difTotalSectors) {
+                var difOffset = 512 + difSector * sectorSize;
+                // Read up to (entriesPerSector - 1) sector positions
+                for (var j = 0; j < entriesPerSector - 1; j++) {
+                    var sectorNum = this.dataView.getUint32(difOffset + j * 4, true);
+                    if (sectorNum !== 0xFFFFFFFE && sectorNum !== 0xFFFFFFFF) {
+                        fatSectorPositions.push(sectorNum);
+                    }
+                }
+                // Last int is the next DIF sector
+                difSector = this.dataView.getUint32(difOffset + (entriesPerSector - 1) * 4, true);
+                difSectorsRead++;
+            }
+        }
+
 
         // Read FAT entries
         for (var i = 0; i < fatSectorPositions.length; i++) {
@@ -234,7 +266,7 @@
         var entriesPerSector = sectorSize / 4;
         var sectorsRead = 0;
 
-        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < 1000) {
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
             var sectorOffset = 512 + sector * sectorSize;
             
             for (var i = 0; i < entriesPerSector; i++) {
@@ -244,6 +276,10 @@
                 }
             }
 
+            if (sector >= this.fat.length) {
+                 console.warn('MiniFAT sector chain error: sector index out of bounds.');
+                 break;
+            }
             sector = this.fat[sector];
             sectorsRead++;
         }
@@ -273,7 +309,11 @@
                     this.directoryEntries.push(entry);
                 }
             }
-
+            
+            if (sector >= this.fat.length) {
+                 console.warn('Directory sector chain error: sector index out of bounds.');
+                 break;
+            }
             sector = this.fat[sector];
             sectorsRead++;
         }
@@ -281,16 +321,16 @@
         console.log('Directory entries:', this.directoryEntries.length);
         
         //
-        // START PATCH 5: Assign IDs
+        // START PATCH 1
         //
         // after directoryEntries built
         this.directoryEntries.forEach((de, idx) => de.id = idx);
         //
-        // END PATCH 5
+        // END PATCH 1
         //
         
         //
-        // START PATCH 1: Diagnostic directory dump
+        // START PATCH 2: DIAGNOSTIC
         //
         // DIAGNOSTIC: show directory entries with index and name
         this.directoryEntries.forEach(function(de, idx){
@@ -299,7 +339,7 @@
             } catch(e){}
         });
         //
-        // END PATCH 1
+        // END PATCH 2
         //
     };
 
@@ -324,13 +364,13 @@
         var size = this.dataView.getUint32(offset + 120, true);
         
         //
-        // START PATCH 4: Add tree fields
+        // START PATCH 1
         //
         var leftSiblingId = this.dataView.getInt32(offset + 68, true);
         var rightSiblingId = this.dataView.getInt32(offset + 72, true);
         var childId = this.dataView.getInt32(offset + 76, true);
         //
-        // END PATCH 4
+        // END PATCH 1
         //
 
         return {
@@ -341,7 +381,7 @@
             leftSiblingId: leftSiblingId,
             rightSiblingId: rightSiblingId,
             childId: childId,
-            // id will be assigned later (index in directoryEntries)
+            id: -1 // Will be assigned later
         };
     };
 
@@ -379,6 +419,10 @@
                     data[dataOffset++] = miniStreamData[miniOffset + i];
                 }
 
+                if (sector >= this.miniFat.length) {
+                    console.warn('MiniFAT sector chain error: sector index out of bounds.');
+                    break;
+                }
                 sector = this.miniFat[sector];
                 sectorsRead++;
             }
@@ -396,6 +440,10 @@
                     data[dataOffset++] = this.dataView.getUint8(sectorOffset + i);
                 }
 
+                if (sector >= this.fat.length) {
+                    console.warn('FAT sector chain error: sector index out of bounds.');
+                    break;
+                }
                 sector = this.fat[sector];
                 sectorsRead++;
             }
@@ -411,20 +459,30 @@
     
         // Find property streams
         this.directoryEntries.forEach(function(entry) {
-            // Look for property streams inside root OR inside recipient storages
+            // FIX: Check if it's a root property AND NOT a recipient property
             var isRootProperty = entry.name.indexOf('__substg1.0_') === 0;
-            var isRecipientProperty = entry.name.indexOf('__recip_version1.0_') > -1 && entry.name.indexOf('__substg1.0_') > -1;
+            var isRecipientProperty = entry.name.indexOf('__recip_version1.0_') > -1;
 
             if (isRootProperty && !isRecipientProperty) { // Ensure it's not a recipient property
-                var propTag = entry.name.substring(12, 20);
+                var propTag = "00000000";
+                 if (entry.name.length >= 20) {
+                    propTag = entry.name.substring(entry.name.length - 8);
+                 } else {
+                    // Fallback for shorter names like "__substg1.0_0037001E"
+                    var parts = entry.name.split('_');
+                    if (parts.length >= 3) {
+                        propTag = parts[2];
+                    }
+                 }
+
                 var propId = parseInt(propTag.substring(0, 4), 16);
                 var propType = parseInt(propTag.substring(4, 8), 16);
     
                 var streamData = self.readStream(entry);
-                var value = self.convertPropertyValue(streamData, propType);
+                var value = self.convertPropertyValue(streamData, propType, propId);
     
                 console.log('Property', propId.toString(16), 'type', propType.toString(16), '=', 
-                            typeof value === 'string' ? value.substring(0, 50) : value);
+                            typeof value === 'string' ? value.substring(0, 50) : (value instanceof Uint8Array ? "Uint8Array(" + value.length + ")" : value));
     
                 self.properties[propId] = {
                     id: propId,
@@ -440,68 +498,77 @@
         console.log('Total properties extracted:', Object.keys(this.properties).length);
     };
 
-    MsgReader.prototype.convertPropertyValue = function(data, type) {
+    MsgReader.prototype.convertPropertyValue = function(data, type, propId) {
         if (!data || data.length === 0) {
             return null;
         }
-    
+
         var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-    
+
+        // FIX #2: Handle OFT body (binary type but text content)
+        if (type === PROP_TYPE_BINARY && (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY)) {
+            console.log('Binary body property detected, forcing text conversion...');
+            // Try UTF-8 first, as it's common in modern files
+            var text = dataViewToString(view, 'utf-8');
+            // Basic heuristic: if it contains HTML tags, it's probably right.
+            if (text.indexOf('<') > -1 && text.indexOf('>') > -1) {
+                console.log('  Detected UTF-8 body');
+                return text;
+            }
+            // Fallback to UTF-16LE
+            text = dataViewToString(view, 'utf16le');
+            if (text.length > 0) {
+                console.log('  Detected UTF-16LE body');
+                return text;
+            }
+            // If both fail, return the binary data
+            return data;
+        }
+
         switch (type) {
-            case PROP_TYPE_STRING8: // 0x001F (PT_UNICODE / UTF-16LE string)
+            case PROP_TYPE_STRING8: // UTF-16LE string
                 return dataViewToString(view, 'utf16le');
-    
-            case PROP_TYPE_STRING: // 0x001E (PT_STRING8 / ASCII/UTF-8 string)
-                return dataViewToString(view, 'utf-8'); // Use UTF-8 decoder
-    
-            case PROP_TYPE_INTEGER32: // 0x0003 (PT_LONG)
+
+            case PROP_TYPE_STRING: // ASCII string
+                return dataViewToString(view, 'ascii');
+
+            case PROP_TYPE_INTEGER32:
                 return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
-    
-            case PROP_TYPE_BOOLEAN: // 0x000B (PT_BOOLEAN)
+
+            case PROP_TYPE_BOOLEAN:
                 return view.byteLength > 0 ? view.getUint8(0) !== 0 : false;
-    
-            case PROP_TYPE_TIME: // 0x0040 (PT_SYSTIME / FILETIME)
+
+            case PROP_TYPE_TIME:
                 if (view.byteLength >= 8) {
                     var low = view.getUint32(0, true);
                     var high = view.getUint32(4, true);
                     return filetimeToDate(low, high);
                 }
                 return null;
-    
-            case PROP_TYPE_BINARY: // 0x0102 (PT_BINARY)
-                // SPECIAL CASE: Check if this looks like text data
-                // (for OFT files that misidentify text as binary)
+
+            case PROP_TYPE_BINARY:
+                // Check if this looks like text data
                 if (this.looksLikeText(data)) {
-                    console.log('Binary data looks like text, converting...');
-                    // Try UTF-16LE first
-                    var text = dataViewToString(view, 'utf16le');
-                    // Check for null bytes which are common in UTF-16LE but rare in UTF-8/ASCII
-                    var hasNulls = false;
-                    for(var i = 1; i < Math.min(data.length, 50); i+=2) {
-                        if (data[i] === 0) {
-                            hasNulls = true;
-                            break;
-                        }
+                    console.log('Binary data for prop ' + (propId ? propId.toString(16) : 'N/A') + ' looks like text, converting...');
+                    // Try UTF-8 first
+                    var text = dataViewToString(view, 'utf-8');
+                    if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
+                        console.log('  Detected UTF-8');
+                        return text;
                     }
-
-                    if (hasNulls && text.length > 0) {
-                         console.log('Detected UTF-16LE');
-                         return text;
-                    }
-
-                    // Try UTF-8
-                    text = dataViewToString(view, 'utf-8');
-                    if (text && text.length > 0) {
-                        console.log('Detected UTF-8');
+                    // Try UTF-16LE
+                    text = dataViewToString(view, 'utf16le');
+                    if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
+                        console.log('  Detected UTF-16LE');
                         return text;
                     }
                 }
                 return data;
-    
+
             default:
                 // Unknown type - try to detect if it's text
                 if (this.looksLikeText(data)) {
-                    var text = dataViewToString(view, 'utf16le');
+                    var text = dataViewToString(view, 'utf-16le');
                     if (text && text.length > 0) {
                         return text;
                     }
@@ -514,11 +581,13 @@
         if (!data || data.length < 4) {
             return false;
         }
-    
+
         // Check if data starts with common text patterns
         var printableCount = 0;
         var totalChecked = Math.min(100, data.length);
-    
+        
+        if (totalChecked === 0) return false;
+
         for (var i = 0; i < totalChecked; i++) {
             var byte = data[i];
             // Printable ASCII, newline, carriage return, tab, or null (for UTF-16)
@@ -526,7 +595,7 @@
                 printableCount++;
             }
         }
-    
+
         // If more than 70% looks like text, treat it as text
         return (printableCount / totalChecked) > 0.7;
     };
@@ -534,6 +603,7 @@
     MsgReader.prototype.extractRecipients = function() {
         var self = this;
         var recipients = [];
+        var recipientMap = {}; // Use a map to de-duplicate based on email
     
         console.log('Extracting recipients...');
     
@@ -553,36 +623,53 @@
     
             var recipStorageName = recipStorage.name;
             //
-            // START PATCH 3: (Recommended) Log recipient storage contents
+            // START FINAL FIX: Correct Tree Traversal
             //
-            console.log('  Looking for properties for storage:', recipStorageName);
-            self.directoryEntries.forEach(function(entry, entryIndex) {
-                if (entry.type !== 2) return; // Must be a stream
-                
-                // This is the check that will fail until the tree logic is built
-                // We are replacing it with a simple "log all properties"
-                // if (entry.name.indexOf(recipStorageName + '/') !== 0) {
-                //     return;
-                // }
-                
-                // Log all property streams to see what's available
-                if (entry.name.indexOf('__substg1.0_') > -1) {
+            console.log('  Looking for properties for storage:', recipStorageName, 'starting at childId:', recipStorage.childId);
+            
+            var stack = [recipStorage.childId];
+            var visited = new Set();
+            var maxProps = 100; // Safety break
+            var propsFound = 0;
+
+            while (stack.length > 0 && propsFound < maxProps) {
+                var entryId = stack.pop();
+
+                // Check for invalid/visited entry ID
+                if (entryId === -1 || entryId === 0xFFFFFFFF || !entryId || visited.has(entryId)) {
+                    continue;
+                }
+                visited.add(entryId);
+
+                var entry = self.directoryEntries[entryId];
+                if (!entry) {
+                    console.warn('  Invalid entry ID in tree walk:', entryId);
+                    continue;
+                }
+
+                // Process this entry
+                if (entry.type === 2 && entry.name.indexOf('__substg1.0_') > -1) {
+                    propsFound++;
                     var propTag = "00000000";
                     if (entry.name.length >= 20) { // Basic check for __substg1.0_XXXXYYYY
                         propTag = entry.name.substring(entry.name.length - 8);
+                    } else {
+                        // Fallback for shorter names
+                        var parts = entry.name.split('_');
+                        if (parts.length >= 3) {
+                            propTag = parts[2];
+                        }
                     }
+
                     var propId = parseInt(propTag.substring(0, 4), 16);
                     var propType = parseInt(propTag.substring(4, 8), 16);
     
                     var streamData = self.readStream(entry);
-                    var value = self.convertPropertyValue(streamData, propType);
+                    var value = self.convertPropertyValue(streamData, propType, propId);
     
-                    console.log('    ENTRY[' + entryIndex + '] name=' + entry.name + ' prop=' + propId.toString(16) + ' type=' + propType.toString(16) + ' value=', (typeof value === 'string' ? value.substring(0,80) : value));
+                    console.log('    Found prop:', { name: entry.name, propId: propId.toString(16), value: (typeof value === 'string' ? value.substring(0, 50) : value) });
     
-                    // Assign properties based on official IDs (This part is still inside the loop)
-                    // This logic is flawed as it will assign properties from *all* streams,
-                    // but it's what you requested for debugging.
-                    // A proper fix would check if this entry is a child of recipStorage
+                    // Assign properties based on official IDs
                     switch(propId) {
                         case PROP_ID_RECIPIENT_DISPLAY_NAME: // 0x3001
                             recipient.name = value || recipient.name;
@@ -598,13 +685,25 @@
                             break;
                     }
                 }
-            });
+
+                // Add children/siblings to stack for traversal
+                if (entry.leftSiblingId !== -1 && entry.leftSiblingId < self.directoryEntries.length && !visited.has(entry.leftSiblingId)) {
+                    stack.push(entry.leftSiblingId);
+                }
+                if (entry.rightSiblingId !== -1 && entry.rightSiblingId < self.directoryEntries.length && !visited.has(entry.rightSiblingId)) {
+                    stack.push(entry.rightSiblingId);
+                }
+                if (entry.childId !== -1 && entry.childId < self.directoryEntries.length && !visited.has(entry.childId)) {
+                    // This will traverse into sub-storages, which is also correct
+                    stack.push(entry.childId);
+                }
+            }
             //
-            // END PATCH 3
+            // END FINAL FIX
             //
     
             if (recipient.name || recipient.email) {
-                // Fallback: If email is missing but name looks like an email, use it.
+                // Fallback: If email is missing but name is, check if name is email
                 if (!recipient.email && recipient.name && recipient.name.indexOf('@') > -1) {
                     recipient.email = recipient.name;
                 }
@@ -613,57 +712,75 @@
                     recipient.name = recipient.email;
                 }
                 
-                console.log('  Adding recipient:', recipient);
-                recipients.push(recipient);
+                // Use email as the key to prevent duplicates
+                if (recipient.email) {
+                    var key = recipient.email.toLowerCase();
+                    if (!recipientMap[key]) {
+                         console.log('  Adding recipient:', recipient);
+                        recipientMap[key] = recipient;
+                    }
+                }
             }
         });
     
+        // FIX #1: ALWAYS run Method 2 (fallback) and merge
         // Method 2: Fallback - Extract from display fields
-        if (recipients.length === 0) {
-            console.log('No recipients in structures, trying display fields...');
-            
-            var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
-            var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
-            var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
-    
-            if (displayTo) {
-                displayTo.split(';').forEach(function(addr) {
-                    addr = addr.trim();
-                    if (addr) {
-                        recipients.push({
+        console.log('Running fallback recipient extraction (Method 2)...');
+        var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
+        var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
+        var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
+
+        if (displayTo) {
+            displayTo.split(';').forEach(function(addr) {
+                addr = addr.trim();
+                if (addr) {
+                    var key = addr.toLowerCase(); // Use address as key
+                    if (addr.indexOf('@') > -1 && !recipientMap[key]) { // Only add if it's an email and not already present
+                        recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_TO,
                             name: addr,
-                            email: addr // In this case, name and email are the same
-                        });
+                            email: addr
+                        };
                     }
-                });
-            }
-    
-            if (displayCc) {
-                displayCc.split(';').forEach(function(addr) {
-                    addr = addr.trim();
-                    if (addr) {
-                        recipients.push({
+                }
+            });
+        }
+
+        if (displayCc) {
+            displayCc.split(';').forEach(function(addr) {
+                addr = addr.trim();
+                if (addr) {
+                     var key = addr.toLowerCase();
+                    if (addr.indexOf('@') > -1 && !recipientMap[key]) {
+                        recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_CC,
                             name: addr,
                             email: addr
-                        });
+                        };
                     }
-                });
-            }
-    
-            if (displayBcc) {
-                displayBcc.split(';').forEach(function(addr) {
-                    addr = addr.trim();
-                    if (addr) {
-                        recipients.push({
+                }
+            });
+        }
+
+        if (displayBcc) {
+            displayBcc.split(';').forEach(function(addr) {
+                addr = addr.trim();
+                if (addr) {
+                     var key = addr.toLowerCase();
+                    if (addr.indexOf('@') > -1 && !recipientMap[key]) {
+                        recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_BCC,
                             name: addr,
                             email: addr
-                        });
+                        };
                     }
-                });
-            }
+                }
+            });
+        }
+        
+        // Convert map back to array
+        for (var key in recipientMap) {
+            recipients.push(recipientMap[key]);
         }
     
         //
