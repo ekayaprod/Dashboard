@@ -883,7 +883,7 @@
             
             const templateNameValue = DOMElements.saveTemplateName.value;
             if (!templateNameValue.trim() && !templateNameValue) {
-                 DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
+                DOMElements.saveTemplateName.value = (mailtoData.subject || 'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
             }
 
             setTimeout(() => resizeResultMailto(), 0);
@@ -1002,8 +1002,8 @@
                         }
                         walk(state.library, '/');
                         if (csvData.length === 0) {
-                             SafeUI.showToast("Library is empty, nothing to export.");
-                             return []; 
+                            SafeUI.showToast("Library is empty, nothing to export.");
+                            return []; 
                         }
                         return csvData;
                     },
@@ -1021,8 +1021,8 @@
                 };
                 const confirmCsvImport = (validatedData, importErrors) => {
                     const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library. It will skip duplicates (same name in the same path).</p>
-                                         ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
-                                         <p>Do you want to continue?</p>`;
+                                            ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
+                                            <p>Do you want to continue?</p>`;
                     SafeUI.showModal("Confirm CSV Import", summaryHtml, [
                         { label: 'Cancel' },
                         { 
@@ -1176,21 +1176,23 @@
             });
             
             DOMElements.breadcrumbContainer.addEventListener('click', (e) => {
-                 const link = e.target.closest('.breadcrumb-link');
-                 if (link && link.dataset.id) {
-                     const targetId = link.dataset.id;
-                     if (targetId === 'root' || findItemById(targetId)) { 
-                         navigateToFolder(targetId); 
-                     } else {
-                         navigateToFolder('root'); 
-                     }
-                 }
+                const link = e.target.closest('.breadcrumb-link');
+                if (link && link.dataset.id) {
+                    const targetId = link.dataset.id;
+                    if (targetId === 'root' || findItemById(targetId)) { 
+                        navigateToFolder(targetId); 
+                    } else {
+                        // console.warn('Folder not found, returning to root');
+                        navigateToFolder('root'); 
+                    }
+                }
             });
         };
 
         // Init
         const init = () => {
             if (!state.library || !Array.isArray(state.library)) { 
+                // console.error('State corrupted, resetting library'); 
                 state.library = []; 
                 saveState(); 
             }
@@ -1210,7 +1212,8 @@
         };
 
         init();
-    });
+        
+    }); // <-- End of 'load' event listener
     </script>
 </body>
 </html>
