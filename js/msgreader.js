@@ -1,9 +1,20 @@
 /**
- * msg-reader.js v1.4.2
+ * msg-reader.js v1.4.3
  * Production-grade Microsoft Outlook MSG and OFT file parser
  * Compatible with Outlook 365 and modern MSG formats
  * * Based on msg.reader by Peter Theill
  * Licensed under MIT
+ *
+ * CHANGELOG (v1.4.3):
+ * 1. [FIX] Merged v1.4.0's UTF-8 decoding for PROP_TYPE_STRING (0x001E).
+ * This restores Subject/Body parsing for modern UTF-8 based MSG files
+ * that were broken in v1.4.2's ASCII-only logic.
+ * 2. [FIX] Added _scanBufferForMimeText helper to parse raw text headers.
+ * 3. [FIX] Replaced the simple regex fallback in extractRecipients with a
+ * call to the new MIME scanner. This correctly parses To: and Cc:
+ * headers from MIME-wrapped files and assigns recipient types.
+ * 4. [ENHANCE] Added MIME scan fallback to extractProperties for Subject/Body
+ * if OLE streams are empty.
  */
 
 (function(root, factory) {
@@ -20,8 +31,8 @@
     // Property types
     var PROP_TYPE_INTEGER32 = 0x0003;
     var PROP_TYPE_BOOLEAN = 0x000B;
-    var PROP_TYPE_STRING = 0x001E;
-    var PROP_TYPE_STRING8 = 0x001F; // This is UTF-16LE, despite the name
+    var PROP_TYPE_STRING = 0x001E; // String8 (ASCII/UTF-8)
+    var PROP_TYPE_STRING8 = 0x001F; // Unicode (UTF-16LE)
     var PROP_TYPE_TIME = 0x0040;
     var PROP_TYPE_BINARY = 0x0102;
 
@@ -67,7 +78,13 @@
             try {
                 // Use TextDecoder if available (modern browsers)
                 if (typeof TextDecoder !== 'undefined') {
-                    return new TextDecoder('utf-8', { fatal: false }).decode(view);
+                    var decoded = new TextDecoder('utf-8', { fatal: false }).decode(view);
+                    // Remove null terminators
+                    const nullIdx = decoded.indexOf('\0');
+                    if (nullIdx !== -1) {
+                        return decoded.substring(0, nullIdx);
+                    }
+                    return decoded;
                 }
                 // Fallback for older environments
                 var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
@@ -147,6 +164,7 @@
         this.miniFat = null;
         this.directoryEntries = [];
         this.properties = {};
+        this._mimeScanCache = null; // Cache for the raw text scan
     }
 
     MsgReader.prototype.parse = function() {
@@ -199,7 +217,7 @@
         };
 
         this.header.sectorSize = Math.pow(2, this.header.sectorShift);
-        this.header.miniSectorSize = Math.pow(2, this.header.miniSectorSize);
+        this.header.miniSectorSize = Math.pow(2, this.header.miniSectorShift);
 
         console.log('MSG Header:', this.header);
     };
@@ -452,6 +470,78 @@
         return data.slice(0, dataOffset);
     };
 
+    /**
+     * NEW HELPER (FIX 2)
+     * Scans the raw file buffer for plain-text MIME headers.
+     * This is a fallback for O365 files that store data as text instead of in OLE streams.
+     */
+    MsgReader.prototype._scanBufferForMimeText = function() {
+        if (this._mimeScanCache) {
+            return this._mimeScanCache;
+        }
+
+        console.log('Scanning raw buffer for MIME text fallback...');
+        var rawText = '';
+        try {
+            // Try UTF-8 first
+            rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView);
+        } catch (e) {
+            // Fallback to latin1 (which handles arbitrary bytes)
+            try {
+                rawText = new TextDecoder('latin1').decode(this.dataView);
+            } catch (e2) {
+                console.warn('Could not decode raw buffer for MIME scan.');
+                return { subject: null, to: null, cc: null, body: null };
+            }
+        }
+
+        var result = {
+            subject: null,
+            to: null,
+            cc: null,
+            body: null
+        };
+
+        // Regex to find headers. Multiline and case-insensitive.
+        var subjectMatch = rawText.match(/^Subject:\s*(.*)/im);
+        if (subjectMatch) {
+            result.subject = subjectMatch[1].trim();
+            console.log('MIME Fallback found Subject:', result.subject);
+        }
+
+        var toMatch = rawText.match(/^To:\s*(.*)/im);
+        if (toMatch) {
+            result.to = toMatch[1].trim();
+            console.log('MIME Fallback found To:', result.to);
+        }
+
+        var ccMatch = rawText.match(/^Cc:\s*(.*)/im);
+        if (ccMatch) {
+            result.cc = ccMatch[1].trim();
+            console.log('MIME Fallback found Cc:', result.cc);
+        }
+        
+        // Find body: Look for the first double-linebreak after the headers
+        var headerEndMatch = rawText.match(/(\r\n\r\n|\n\n)/);
+        if (headerEndMatch) {
+            var bodyText = rawText.substring(headerEndMatch.index + headerEndMatch[0].length);
+            // Try to find the *plain text* body part
+            var plainBodyMatch = bodyText.match(/Content-Type:\s*text\/plain;[\s\S]*?(\r\n\r\n|\n\n)([\s\S]*?)(--_?|\r\n\r\nContent-Type:)/im);
+            
+            if (plainBodyMatch && plainBodyMatch[2]) {
+                result.body = plainBodyMatch[2].trim();
+            } else {
+                // If no plain text part, just take the first chunk
+                result.body = bodyText.split(/--_?|\r\n\r\nContent-Type:/)[0].trim();
+            }
+            console.log('MIME Fallback found Body (first 50 chars):', result.body ? result.body.substring(0, 50) : 'null');
+        }
+
+        this._mimeScanCache = result;
+        return result;
+    };
+
+
     MsgReader.prototype.extractProperties = function() {
         var self = this;
     
@@ -491,6 +581,27 @@
                 };
             }
         });
+        
+        //
+        // START ENHANCE (FIX 2): Fallback for empty OLE streams
+        //
+        var mimeData = this._scanBufferForMimeText();
+        
+        if (!this.properties[PROP_ID_SUBJECT] || !this.properties[PROP_ID_SUBJECT].value) {
+            if (mimeData.subject) {
+                 console.log('Applying MIME fallback for Subject');
+                 this.properties[PROP_ID_SUBJECT] = { id: PROP_ID_SUBJECT, type: PROP_TYPE_STRING, value: mimeData.subject };
+            }
+        }
+        if (!this.properties[PROP_ID_BODY] || !this.properties[PROP_ID_BODY].value) {
+            if (mimeData.body) {
+                console.log('Applying MIME fallback for Body');
+                this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, type: PROP_TYPE_STRING, value: mimeData.body };
+            }
+        }
+        //
+        // END ENHANCE (FIX 2)
+        //
     
         // Extract recipients
         this.extractRecipients();
@@ -526,19 +637,25 @@
         }
 
         switch (type) {
-            case PROP_TYPE_STRING8: // UTF-16LE string
+            case PROP_TYPE_STRING8: // 0x001F (PT_UNICODE / UTF-16LE string)
                 return dataViewToString(view, 'utf16le');
 
-            case PROP_TYPE_STRING: // ASCII string
-                return dataViewToString(view, 'ascii');
+            //
+            // START FIX 1: Restore UTF-8 decoding for 0x001E
+            //
+            case PROP_TYPE_STRING: // 0x001E (PT_STRING8 / ASCII/UTF-8 string)
+                return dataViewToString(view, 'utf-8');
+            //
+            // END FIX 1
+            //
 
-            case PROP_TYPE_INTEGER32:
+            case PROP_TYPE_INTEGER32: // 0x0003 (PT_LONG)
                 return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
 
-            case PROP_TYPE_BOOLEAN:
+            case PROP_TYPE_BOOLEAN: // 0x000B (PT_BOOLEAN)
                 return view.byteLength > 0 ? view.getUint8(0) !== 0 : false;
 
-            case PROP_TYPE_TIME:
+            case PROP_TYPE_TIME: // 0x0040 (PT_SYSTIME / FILETIME)
                 if (view.byteLength >= 8) {
                     var low = view.getUint32(0, true);
                     var high = view.getUint32(4, true);
@@ -546,7 +663,7 @@
                 }
                 return null;
 
-            case PROP_TYPE_BINARY:
+            case PROP_TYPE_BINARY: // 0x0102 (PT_BINARY)
                 // Check if this looks like text data
                 if (this.looksLikeText(data)) {
                     console.log('Binary data for prop ' + (propId ? propId.toString(16) : 'N/A') + ' looks like text, converting...');
@@ -600,6 +717,38 @@
         return (printableCount / totalChecked) > 0.7;
     };
 
+    /**
+     * Helper for FIX 2
+     * Safely parses an email address string, which might be "Name <email@domain.com>"
+     * or just "email@domain.com".
+     * @param {string} addr - The address string to parse.
+     * @returns {{name: string, email: string}}
+     */
+    function parseAddress(addr) {
+        addr = addr.trim();
+        var email = addr;
+        var name = addr;
+        
+        var match = addr.match(/^(.*)<([^>]+)>$/);
+        if (match) {
+            name = match[1].trim().replace(/^"|"$/g, ''); // Clean quotes from name
+            email = match[2].trim();
+        }
+
+        // If no angle brackets, check if it's a valid email.
+        // If not, it's just a name with no email.
+        if (email.indexOf('@') === -1) {
+            email = null; // It's just a display name
+        } else {
+             // If we have an email but the name is still the email, strip it
+             if (name === email) {
+                name = '';
+             }
+        }
+
+        return { name: name, email: email };
+    }
+
     MsgReader.prototype.extractRecipients = function() {
         var self = this;
         var recipients = [];
@@ -623,7 +772,7 @@
     
             var recipStorageName = recipStorage.name;
             //
-            // START FINAL FIX: Correct Tree Traversal
+            // START FINAL FIX: Correct Tree Traversal (from v1.4.2)
             //
             console.log('  Looking for properties for storage:', recipStorageName, 'starting at childId:', recipStorage.childId);
             
@@ -716,7 +865,7 @@
                 if (recipient.email) {
                     var key = recipient.email.toLowerCase();
                     if (!recipientMap[key]) {
-                         console.log('  Adding recipient:', recipient);
+                         console.log('  Adding recipient from OLE tree:', recipient);
                         recipientMap[key] = recipient;
                     }
                 }
@@ -725,21 +874,21 @@
     
         // FIX #1: ALWAYS run Method 2 (fallback) and merge
         // Method 2: Fallback - Extract from display fields
-        console.log('Running fallback recipient extraction (Method 2)...');
+        console.log('Running fallback recipient extraction (Method 2 - Display Fields)...');
         var displayTo = self.properties[PROP_ID_DISPLAY_TO] ? self.properties[PROP_ID_DISPLAY_TO].value : null;
         var displayCc = self.properties[PROP_ID_DISPLAY_CC] ? self.properties[PROP_ID_DISPLAY_CC].value : null;
         var displayBcc = self.properties[PROP_ID_DISPLAY_BCC] ? self.properties[PROP_ID_DISPLAY_BCC].value : null;
 
         if (displayTo) {
-            displayTo.split(';').forEach(function(addr) {
-                addr = addr.trim();
-                if (addr) {
-                    var key = addr.toLowerCase(); // Use address as key
-                    if (addr.indexOf('@') > -1 && !recipientMap[key]) { // Only add if it's an email and not already present
+            displayTo.split(';').forEach(function(addrStr) {
+                var parsed = parseAddress(addrStr);
+                if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) {
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_TO,
-                            name: addr,
-                            email: addr
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
                         };
                     }
                 }
@@ -747,15 +896,15 @@
         }
 
         if (displayCc) {
-            displayCc.split(';').forEach(function(addr) {
-                addr = addr.trim();
-                if (addr) {
-                     var key = addr.toLowerCase();
-                    if (addr.indexOf('@') > -1 && !recipientMap[key]) {
+            displayCc.split(';').forEach(function(addrStr) {
+                var parsed = parseAddress(addrStr);
+                if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) {
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_CC,
-                            name: addr,
-                            email: addr
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
                         };
                     }
                 }
@@ -763,51 +912,70 @@
         }
 
         if (displayBcc) {
-            displayBcc.split(';').forEach(function(addr) {
-                addr = addr.trim();
-                if (addr) {
-                     var key = addr.toLowerCase();
-                    if (addr.indexOf('@') > -1 && !recipientMap[key]) {
+            displayBcc.split(';').forEach(function(addrStr) {
+                 var parsed = parseAddress(addrStr);
+                 if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) {
                         recipientMap[key] = {
                             recipientType: RECIPIENT_TYPE_BCC,
-                            name: addr,
-                            email: addr
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
                         };
                     }
                 }
             });
         }
         
+        //
+        // START FIX 2: Replace "dumb" regex scan with "smart" MIME-header scan
+        //
+        console.log('Running fallback recipient extraction (Method 3 - MIME Scan)...');
+        var mimeData = this._scanBufferForMimeText();
+        
+        if (mimeData.to) {
+            // Split by comma or semicolon
+            mimeData.to.split(/[;,]/).forEach(function(addrStr) {
+                var parsed = parseAddress(addrStr);
+                if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) { // Only add if not already present
+                        console.log('Adding recipient from MIME (To):', parsed);
+                        recipientMap[key] = {
+                            recipientType: RECIPIENT_TYPE_TO,
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
+                        };
+                    }
+                }
+            });
+        }
+        
+        if (mimeData.cc) {
+            // Split by comma or semicolon
+            mimeData.cc.split(/[;,]/).forEach(function(addrStr) {
+                var parsed = parseAddress(addrStr);
+                if (parsed.email) {
+                    var key = parsed.email.toLowerCase();
+                    if (!recipientMap[key]) { // Only add if not already present
+                         console.log('Adding recipient from MIME (Cc):', parsed);
+                        recipientMap[key] = {
+                            recipientType: RECIPIENT_TYPE_CC,
+                            name: parsed.name || parsed.email,
+                            email: parsed.email
+                        };
+                    }
+                }
+            });
+        }
+        //
+        // END FIX 2
+        //
+
         // Convert map back to array
         for (var key in recipientMap) {
             recipients.push(recipientMap[key]);
         }
-    
-        //
-        // START PATCH 2: Quick regex fallback
-        //
-        // QUICK FALLBACK: regex-scan the raw buffer for email addresses
-        if (recipients.length === 0) {
-            try {
-                console.log('Fallback: scanning raw buffer for email patterns...');
-                // Try decode buffer to text (utf-8 then latin1)
-                let rawText = '';
-                try { rawText = new TextDecoder('utf-8', {fatal:false}).decode(self.dataView.buffer); } catch(e) { rawText = String.fromCharCode.apply(null, new Uint8Array(self.dataView.buffer)); }
-                const emailRegex = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-                const found = Array.from(new Set((rawText.match(emailRegex) || []).map(s => s.trim())));
-                if (found.length > 0) {
-                    found.forEach(addr => {
-                        recipients.push({ recipientType: RECIPIENT_TYPE_TO, name: addr, email: addr });
-                    });
-                    console.warn('Fallback recipients added:', found.length);
-                }
-            } catch (e) {
-                console.warn('Fallback recipient scan failed:', e);
-            }
-        }
-        //
-        // END PATCH 2
-        //
     
         console.log('Total recipients extracted:', recipients.length);
         
