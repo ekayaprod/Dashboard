@@ -4,6 +4,11 @@
  * Depends on: app-core.js
  */
 
+// --- FIX (Mode F) ---
+const UI_VERSION = '2.5.1';
+console.log(`AppLifecycle: Loading app-ui.js v${UI_VERSION}`);
+// --- END FIX ---
+
 const UIPatterns = (() => {
     // Cache for highlightSearchTerm regex patterns
     const regexCache = new Map();
@@ -149,23 +154,10 @@ const NotepadManager = (() => {
     let saveState;
     let activeNoteId = null;
 
-    // --- Helpers ---
-    const getCollection = (type) => state[type];
-    const hasItems = (type) => getCollection(type).length > 0;
-    const findById = (collectionType, id) => {
-        if (!id) return null;
-        return getCollection(collectionType).find(item => item.id === id);
-    };
-    const confirmDelete = (type, itemName, onConfirm) => {
-        const labels = {apps: 'Application', notes: 'Note', shortcuts: 'Shortcut'};
-        const itemTypeLabel = labels[type] || 'Item';
-        UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
-    };
-
     // --- Core Logic ---
     const saveActiveNote = () => {
         if (!activeNoteId) return;
-        const note = findById('notes', activeNoteId);
+        const note = DataHelpers.findById(state, 'notes', activeNoteId); // (FIX - Mode C)
         if (note && DOMElements.notepadEditor) {
             // --- START FIX: ISSUE 4 (Legacy ID Regeneration) ---
             if (note.id.length < 20) {
@@ -178,7 +170,7 @@ const NotepadManager = (() => {
             
             note.content = DOMElements.notepadEditor.value;
             saveState();
-            console.log(`Saved note "${note.title}" (ID: ${note.id})`);
+            // console.log(`Saved note "${note.title}" (ID: ${note.id})`);
         }
     };
     
@@ -186,17 +178,20 @@ const NotepadManager = (() => {
         const noteSelect = DOMElements.noteSelect;
         noteSelect.innerHTML = '';
 
+        const notesCollection = DataHelpers.getCollection(state, 'notes'); // (FIX - Mode C)
+        const hasNotes = notesCollection.length > 0; // (FIX - Mode C)
+
         const fragment = document.createDocumentFragment();
-        getCollection('notes').forEach(note => fragment.appendChild(new Option(note.title, note.id)));
+        notesCollection.forEach(note => fragment.appendChild(new Option(note.title, note.id))); // (FIX - Mode C)
         noteSelect.appendChild(fragment);
 
-        activeNoteId = activeNoteId && getCollection('notes').some(n => n.id === activeNoteId) ? activeNoteId : (hasItems('notes') ? getCollection('notes')[0].id : null);
+        activeNoteId = activeNoteId && notesCollection.some(n => n.id === activeNoteId) ? activeNoteId : (hasNotes ? notesCollection[0].id : null); // (FIX - Mode C)
 
         if (activeNoteId) {
              noteSelect.value = activeNoteId;
         }
 
-        const activeNote = findById('notes', activeNoteId);
+        const activeNote = DataHelpers.findById(state, 'notes', activeNoteId); // (FIX - Mode C)
         if (activeNote) {
             DOMElements.notepadEditor.value = activeNote.content;
             DOMElements.notepadEditor.disabled = false;
@@ -205,15 +200,15 @@ const NotepadManager = (() => {
             DOMElements.notepadEditor.disabled = true;
         }
         DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
-        DOMElements.deleteNoteBtn.disabled = !hasItems('notes');
-        DOMElements.renameNoteBtn.disabled = !hasItems('notes');
+        DOMElements.deleteNoteBtn.disabled = !hasNotes; // (FIX - Mode C)
+        DOMElements.renameNoteBtn.disabled = !hasNotes; // (FIX - Mode C)
     };
 
     const attachListeners = () => {
         // Register immediate-save listeners
         const immediateSave = () => {
             // Only save if content has actually changed
-            const currentNote = findById('notes', activeNoteId);
+            const currentNote = DataHelpers.findById(state, 'notes', activeNoteId); // (FIX - Mode C)
             if (currentNote && DOMElements.notepadEditor.value !== currentNote.content) {
                 saveActiveNote();
             }
@@ -229,7 +224,7 @@ const NotepadManager = (() => {
         // Standard listeners
         DOMElements.noteSelect.addEventListener('change', () => {
             activeNoteId = DOMElements.noteSelect.value;
-            const note = findById('notes', activeNoteId);
+            const note = DataHelpers.findById(state, 'notes', activeNoteId); // (FIX - Mode C)
             DOMElements.notepadEditor.value = note ? note.content : '';
             DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
         });
@@ -237,11 +232,11 @@ const NotepadManager = (() => {
         // DEBUG: Step 3 - Force Immediate Notepad Save
         DOMElements.notepadEditor.addEventListener('input', () => {
             if (!activeNoteId) return; // (Keep any existing guards)
-            const note = findById('notes', activeNoteId); // (Or however you get the note)
+            const note = DataHelpers.findById(state, 'notes', activeNoteId); // (FIX - Mode C)
             if (note) {
                 note.content = DOMElements.notepadEditor.value;
                 saveState(); // Remove debounce for testing
-                console.log('Notepad saved immediately');
+                // console.log('Notepad saved immediately');
             }
         });
         // End DEBUG Step 3
@@ -253,7 +248,7 @@ const NotepadManager = (() => {
                     const titleInput = document.getElementById('new-note-title');
                     const title = titleInput.value.trim() || 'Untitled Note';
                     const newNote = { id: SafeUI.generateId(), title, content: '' };
-                    getCollection('notes').push(newNote);
+                    DataHelpers.getCollection(state, 'notes').push(newNote); // (FIX - Mode C)
                     saveState();
                     activeNoteId = newNote.id;
                     renderNotesData();
@@ -263,7 +258,7 @@ const NotepadManager = (() => {
         
         DOMElements.renameNoteBtn.addEventListener('click', () => {
             if (!activeNoteId) return;
-            const note = findById('notes', activeNoteId);
+            const note = DataHelpers.findById(state, 'notes', activeNoteId); // (FIX - Mode C)
             if (!note) return;
             
             SafeUI.showModal('Rename Note', `<input id="rename-note-title" class="sidebar-input" value="${SafeUI.escapeHTML(note.title)}">`, [
@@ -283,11 +278,11 @@ const NotepadManager = (() => {
         });
         
         DOMElements.deleteNoteBtn.addEventListener('click', () => {
-            if (!activeNoteId || !hasItems('notes')) return;
-            const note = findById('notes', activeNoteId);
+            if (!activeNoteId || !DataHelpers.hasItems(state, 'notes')) return; // (FIX - Mode C)
+            const note = DataHelpers.findById(state, 'notes', activeNoteId); // (FIX - Mode C)
             if (!note) return;
             
-            confirmDelete('notes', note.title, () => {
+            UIPatterns.confirmDelete('Note', note.title, () => { // (FIX - Mode C)
                 state.notes = state.notes.filter(n => n.id !== activeNoteId);
                 saveState();
                 activeNoteId = null;
@@ -324,8 +319,8 @@ const NotepadManager = (() => {
             attachListeners();
 
             // First-run check for notes
-            if (!hasItems('notes')) {
-                getCollection('notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+            if (!DataHelpers.hasItems(state, 'notes')) { // (FIX - Mode C)
+                DataHelpers.getCollection(state, 'notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' }); // (FIX - Mode C)
                 saveState();
             }
 
@@ -472,6 +467,8 @@ const SharedSettingsModal = (() => {
      * @param {string} [customSettingsHtml=''] - Page-specific *settings* (like KB URL).
      * @param {string} [pageSpecificDataHtml=''] - Page-specific *data I/O* (like CSV or Wordbank).
      */
+    // --- FIX (Mode E Revert) ---
+    // Re-added the standard backup/restore section
     const _createModalHtml = (customSettingsHtml = '', pageSpecificDataHtml = '') => {
         
         // Section 1: Custom Settings (e.g., KB URL)
@@ -507,7 +504,10 @@ const SharedSettingsModal = (() => {
         // Inject custom HTML above the standard backup/restore section
         return customSettingsSection + pageDataSection + standardBackupSection;
     };
+    // --- END FIX ---
 
+    // --- FIX (Mode E Revert) ---
+    // Re-added this function
     /**
      * Attaches listeners for the standard Backup/Restore buttons.
      */
@@ -536,6 +536,7 @@ const SharedSettingsModal = (() => {
             });
         }
     };
+    // --- END FIX ---
 
     return {
         /**
@@ -593,8 +594,10 @@ const SharedSettingsModal = (() => {
                 // 4. Show the modal
                 SafeUI.showModal("Settings", modalHtml, modalActions);
 
-                // 5. Attach listeners for standard Backup/Restore
+                // --- FIX (Mode E Revert) ---
+                // 5. Attach listeners for standard Backup/Restore (RE-ADDED)
                 _attachStandardListeners(config);
+                // --- END FIX ---
 
                 // 6. Run page-specific "open" callback (for custom HTML buttons)
                 if (config.onModalOpen) {
@@ -613,3 +616,7 @@ window.SearchHelper = SearchHelper;
 window.NotepadManager = NotepadManager;
 window.QuickListManager = QuickListManager; // Expose the new module
 window.SharedSettingsModal = SharedSettingsModal;
+
+// --- FIX (Mode F) ---
+window.APP_UI_VERSION = UI_VERSION;
+// --- END FIX ---
