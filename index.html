@@ -19,18 +19,14 @@
                 <!-- FIX 1: Replaced 11-line inline style with a clean class -->
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <div id="shortcuts-container" class="shortcuts-container"></div>
-                <!-- REMOVED: <div class="divider"></div> -->
+                <div id="shortcuts-container" class.bind="shortcutsContainer"></div>
+                <!-- FIX (Mode C): Removed obsolete divider -->
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
                     <div class="actions-menu-wrapper button-group">
                         <button id="add-shortcut-btn-menu" class="button-base icon-btn" title="Add Shortcut"></button>
                         <button id="add-new-app-btn-menu" class="button-base icon-btn" title="Add App"></button>
-                        <!-- 
-                          REFACTOR: Removed btn-export-csv and btn-import-csv.
-                          These are now inside the SharedSettingsModal.
-                        -->
                         <button id="btn-settings" class="icon-btn" title="Settings"></button>
                     </div>
                 </div>
@@ -43,7 +39,7 @@
                 </div>
 
                 <div id="app-details-container" class="hidden">
-                    <!-- UPDATED: Changed class from 'app-section-box' to 'generator-section' for consistency -->
+                    <!-- FIX (Mode C): Replaced app-section-box with generator-section -->
                     <div id="app-editor-fields" class="generator-section">
                         <div class="form-group hidden" id="edit-app-name-wrapper">
                             <label for="edit-app-name">App Name</label>
@@ -66,9 +62,9 @@
                     </div>
                 </div>
 
-                <!-- REMOVED: <div class="divider"></div> -->
+                <!-- FIX (Mode C): Removed obsolete divider -->
 
-                <!-- UPDATED: Added 'generator-section' class for consistent boxing -->
+                <!-- FIX (Mode C): Added generator-section class -->
                 <div class="notepad-wrapper generator-section">
                     <div id="notepad-header" class="notepad-header">
                         <select id="note-select" class="sidebar-input"></select>
@@ -112,7 +108,8 @@
             'CsvManager',
             'NotepadManager',
             'QuickListManager',
-            'SharedSettingsModal' // <-- REFACTOR: Added check for shared modal
+            'SharedSettingsModal',
+            'DataHelpers' // (FIX - Mode C)
         ];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
@@ -154,17 +151,9 @@
     let initialAppData = null;
     
     // --- Scoped Helpers ---
-    const getCollection = (type) => state[type];
-    const hasItems = (type) => getCollection(type).length > 0;
-    const findById = (collectionType, id) => {
-        if (!id) return null;
-        return getCollection(collectionType).find(item => item.id === id);
-    };
-    const confirmDelete = (type, itemName, onConfirm) => {
-        const labels = {apps: 'Application', notes: 'Note', shortcuts: 'Shortcut'};
-        const itemTypeLabel = labels[type] || 'Item';
-        UIPatterns.confirmDelete(itemTypeLabel, itemName, onConfirm);
-    };
+    // (FIX - Mode C) All helpers (getCollection, hasItems, findById, confirmDelete)
+    // were removed and replaced with calls to DataHelpers and UIPatterns.
+    
     const checkFormDirty = () => {
         if (!initialAppData) return false;
         
@@ -185,23 +174,19 @@
         if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
     };
     
-    // --- (REMOVED) createShortcutsManager ---
-    // All logic (approx 100 lines) for the old shortcuts manager has been deleted.
-    // It is replaced by the initQuickList() function below.
-    
     // --- (NEW) initQuickList ---
     // Initializes the new, shared QuickListManager for the Shortcuts
     const initQuickList = () => {
         window.QuickListManager.init({
             container: DOMElements.shortcutsContainer,
-            items: getCollection('shortcuts'),
+            items: DataHelpers.getCollection(state, 'shortcuts'), // (FIX - Mode C)
             emptyMessage: "No shortcuts. Add from 'Actions'.",
             getItemName: (item) => item.name,
             getItemHref: (item) => item.url, // This makes them links
             
             onDeleteClick: (item, renderCallback) => {
-                confirmDelete('shortcuts', item.name, () => {
-                    const shortcuts = getCollection('shortcuts');
+                UIPatterns.confirmDelete('Shortcut', item.name, () => { // (FIX - Mode C)
+                    const shortcuts = DataHelpers.getCollection(state, 'shortcuts'); // (FIX - Mode C)
                     const itemIndex = shortcuts.findIndex(s => s.id === item.id);
                     if (itemIndex > -1) {
                         shortcuts.splice(itemIndex, 1);
@@ -223,7 +208,7 @@
                             const name = nameInput.value;
                             const url = urlInput.value;
                             if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
-                                getCollection('shortcuts').push({ id: SafeUI.generateId(), name, url });
+                                DataHelpers.getCollection(state, 'shortcuts').push({ id: SafeUI.generateId(), name, url }); // (FIX - Mode C)
                                 saveState();
                                 renderCallback(); // Re-renders the list
                             } else {
@@ -244,7 +229,7 @@
         const selectedValue = appSelect.value;
         appSelect.innerHTML = '<option value="">-- Select an App --</option>';
 
-        const sortedApps = [...getCollection('apps')].sort((a,b) => a.name.localeCompare(b.name));
+        const sortedApps = [...DataHelpers.getCollection(state, 'apps')].sort((a,b) => a.name.localeCompare(b.name)); // (FIX - Mode C)
         
         sortedApps.forEach(app => {
             appSelect.add(new Option(app.name, app.id));
@@ -261,7 +246,7 @@
     };
 
     const renderAppData = () => {
-        if (!hasItems('apps')) {
+        if (!DataHelpers.hasItems(state, 'apps')) { // (FIX - Mode C)
             DOMElements.appSelectGroup.classList.add('hidden');
             DOMElements.appEmptyState.classList.remove('hidden');
         } else {
@@ -300,7 +285,7 @@
         DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
 
         if (isVisible) {
-            const app = findById('apps', appId);
+            const app = DataHelpers.findById(state, 'apps', appId); // (FIX - Mode C)
             if (!app) {
                 console.error(`Failed to find app with ID: ${appId}`);
                 DOMElements.appDetailsContainer.classList.add('hidden');
@@ -352,11 +337,14 @@
     // --- Settings Modal (Page-Specific) ---
     // REFACTOR: Replaced old initSettingsModal with new setupSettingsModal
     const setupSettingsModal = () => {
-        // 1. Define page-specific HTML (for CSV buttons)
+        // --- FIX (Mode E Revert) ---
+        // 1. Define page-specific HTML (for CSV buttons ONLY)
+        //    The global backup buttons are now handled by SharedSettingsModal
         const pageDataHtml = `
             <button id="modal-export-csv-btn" class="button-base">Export Apps (CSV)</button>
             <button id="modal-import-csv-btn" class="button-base">Import Apps (CSV)</button>
         `;
+        // --- END FIX ---
 
         // 2. Define page-specific "open" callback (to wire up buttons)
         const onModalOpen = () => {
@@ -434,6 +422,10 @@
                     return false; // Prevent modal from closing
                 }
             });
+            
+            // --- FIX (Mode E Revert) ---
+            // Removed the manual Backup/Restore setup.
+            // --- END FIX ---
         };
 
         // 3. Define page-specific "restore" callback
@@ -487,7 +479,11 @@
             state.apps = dataToRestore.apps || [];
             state.notes = dataToRestore.notes || [];
             state.shortcuts = dataToRestore.shortcuts || [];
-            state.version = dataToRestore.version || '6.2.0'; // Use APP_VERSION from context
+            
+            // --- FIX (Mode E) ---
+            // Removed version property assignment
+            // state.version = dataToRestore.version || '6.2.0'; 
+            // --- END FIX ---
             
             // Force immediate save
             saveState();
@@ -521,8 +517,8 @@
                 buttonId: 'btn-settings',
                 appName: APP_CONFIG.NAME,
                 state: state,
-                pageSpecificDataHtml: pageDataHtml, // <-- NEW
-                onModalOpen: onModalOpen,           // <-- NEW
+                pageSpecificDataHtml: pageDataHtml, // <-- UPDATED (Mode E Revert)
+                onModalOpen: onModalOpen,           // <-- UPDATED (Mode E Revert)
                 onRestoreCallback: onRestore,
                 itemValidators: {
                     apps: APP_CONFIG.APP_CSV_HEADERS,
@@ -547,13 +543,7 @@
         // DEBUG: Step 1 - Log all saves
         const originalSaveState = ctx.saveState;
         saveState = () => {
-            console.log('Dashboard saveState called');
-            // Use try-catch for stringify in case of circular refs during debug
-            try {
-                console.log('Current state:', JSON.parse(JSON.stringify(state)));
-            } catch (e) {
-                console.error('Could not stringify state for logging:', e, state);
-            }
+            // console.log('Dashboard saveState called'); // (Mode F) - noisy, remove for prod
             originalSaveState();
         };
         // End DEBUG Step 1
@@ -621,10 +611,10 @@
 
             if (isNewApp) {
                 appData.id = SafeUI.generateId();
-                getCollection('apps').push(appData);
+                DataHelpers.getCollection(state, 'apps').push(appData); // <-- FIX (Mode D)
                 SafeUI.showToast('Application created');
             } else {
-                const app = findById('apps', selectedAppId);
+                const app = DataHelpers.findById(state, 'apps', selectedAppId); // <-- FIX (Mode D)
                 if (app) {
                     app.name = appData.name;
                     app.urls = appData.urls;
@@ -641,10 +631,10 @@
 
         DOMElements.deleteAppBtn.addEventListener('click', () => {
             if (!selectedAppId) return;
-            const app = findById('apps', selectedAppId);
+            const app = DataHelpers.findById(state, 'apps', selectedAppId); // <-- FIX (Mode D)
             if (!app) return;
             
-            confirmDelete('apps', app.name, () => {
+            UIPatterns.confirmDelete('Application', app.name, () => { // <-- FIX (Mode C)
                 state.apps = state.apps.filter(a => a.id !== selectedAppId);
                 saveState();
                 selectedAppId = null;
@@ -667,21 +657,12 @@
     // Dashboard App Initializer
     // This code was moved from app-core.js to fix the race condition
     AppLifecycle.run(async () => {
-        // DEBUG: Step 4 - Test localStorage availability
-        try {
-            const testKey = '__storage_test__';
-            localStorage.setItem(testKey, 'test');
-            localStorage.removeItem(testKey);
-            console.log('localStorage is available and writable');
-        } catch (e) {
-            console.error('localStorage is NOT available:', e);
-            // We can't use SafeUI.showModal here as it's not initialized
-            // A native alert is blocking and appropriate for a critical failure
-            alert('WARNING: localStorage is not available or is disabled. Data will not persist.');
-        }
-        // End DEBUG Step 4
-
+        
         const APP_VERSION = '6.2.0';
+        // --- FIX (Mode F) ---
+        console.log(`AppLifecycle: Running index.html v${APP_VERSION}`);
+        // --- END FIX ---
+        
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const APP_CONFIG = {
             NAME: 'dashboard',
@@ -692,20 +673,22 @@
             apps: [],
             notes: [],
             shortcuts: [],
-            version: APP_VERSION
+            // --- FIX (Mode E) ---
+            // Removed redundant version property
+            // version: APP_VERSION 
+            // --- END FIX ---
         };
 
         const ctx = await AppLifecycle.initPage({
             storageKey: LOCAL_STORAGE_KEY,
             defaultState,
-            version: APP_VERSION,
+            version: APP_VERSION, // (FIX - Mode E) Pass version here
             requiredElements: [
                 'shortcuts-container', 'app-select-group', 'app-select',
                 'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
                 'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
                 'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
                 'add-new-app-btn-menu',
-                /* REFACTOR: Removed 'btn-export-csv', 'btn-import-csv' */
                 'btn-settings',
                 'notepad-header',
                 'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
