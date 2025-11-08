@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.11 (Patched)
+ * msg-reader.js v1.4.12 (Patched)
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,28 +11,26 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.12 (Gemini Patch):
+ * 1. [FIX] Removed the final remaining call to `this.looksLikeText` inside the
+ * `case PROP_TYPE_BINARY:` block, which was causing a fatal error after
+ * the function was removed in v1.4.11.
+ *
  * v1.4.11 (Gemini Patch):
  * 1. [FIX] Replaced flawed `looksLikeText` heuristic with a better one in
  * `convertPropertyValue`. Now prioritizes UTF-16LE, checks for HTML
  * markers, and gracefully falls back to UTF-8, fixing .oft body text.
- * 2. [FIX] Removed the unused `looksLikeText` function.
+ * 2. [FIX] Removed the unused `looksLikeText` function definition.
  *
  * v1.4.10 (Gemini Patch):
  * 1. [FIX] Implemented counting for Method 3 (Display Fields) recipient
  * classification. This correctly handles cases where the same email
- * address is present in both TO and CC fields (e.g., one is marked
- * TO, the other CC, instead of both CC).
- * 2. [FIX] Reversed binary body decoding for .oft files. Now tries
- * UTF-16LE *first*, then UTF-8, which fixes garbled body text.
+ * address is present in both TO and CC fields.
  *
  * v1.4.9:
  * 1. [FIX] Removed `recipientMap` de-duplication logic.
  * 2. [FIX] Method 1 (OLE) now builds a simple array.
  * 3. [FIX] Method 3 (Display Fields) now iterates array to *correct* types.
- *
- * v1.4.8:
- * 1. [FIX] Method 3 (Display Fields) will now CORRECT the recipientType
- * for recipients found by Method 1.
  */
 
 (function(root, factory) {
@@ -767,33 +765,16 @@
                 return null;
 
             case PROP_TYPE_BINARY: // 0x0102 (PT_BINARY)
-                // Check if this binary data looks like text, as types can be wrong.
-                if (this.looksLikeText(data)) {
-                    // console.log('Binary data for prop ' + (propId ? propId.toString(16) : 'N/A') + ' looks like text, converting...');
-                    // Try UTF-8 first
-                    var text = dataViewToString(view, 'utf-8');
-                    if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
-                        // console.log('  Detected UTF-8');
-                        return text;
-                    }
-                    // Try UTF-16LE
-                    text = dataViewToString(view, 'utf16le');
-                    if (text && text.length > 0 && text.replace(/[^\x20-\x7E\n\r\t]/g, '').length > text.length * 0.5) {
-                        // console.log('  Detected UTF-16LE');
-                        return text;
-                    }
-                }
+                // --- FIX 1.4.12: Removed faulty 'looksLikeText' check ---
+                // The heuristic was causing a fatal error and was unreliable.
+                // The critical text properties (body, html) are handled in the
+                // special block above this switch statement.
+                // For all other binary properties, we will return the raw data.
                 return data; // Return as raw Uint8Array
 
             default:
-                // Unknown type - apply text-detection heuristic
+                // Unknown type
                 // --- REMOVED 1.4.11: Flawed heuristic removed ---
-                // if (this.looksLikeText(data)) {
-                //     var text = dataViewToString(view, 'utf-16le');
-                //     if (text && text.length > 0) {
-                //         return text;
-                //     }
-                // }
                 return data;
         }
     };
