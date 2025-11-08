@@ -3,6 +3,10 @@
  * Core application initialization, SafeUI wrapper, and DOM utilities.
  */
 
+// --- FIX (Mode F) ---
+const CORE_VERSION = '2.5.1';
+// --- END FIX ---
+
 // ============================================================================
 // MODULE: SVGIcons
 // ============================================================================
@@ -51,6 +55,45 @@ const CoreValidators = Object.freeze({
     maxLength: function(value, max) { return this._validate(value, 'maxLength', { max }); }
 });
 
+// ============================================================================
+// MODULE: DataHelpers (NEW MODULE from Mode C Refactor)
+// ============================================================================
+const DataHelpers = Object.freeze({
+    /**
+     * Safely gets a collection array from the state object.
+     * @param {object} state - The global state object.
+     * @param {string} type - The key of the collection (e.g., 'apps', 'notes').
+     * @returns {Array} The collection array or an empty array.
+     */
+    getCollection: (state, type) => {
+        return (state && Array.isArray(state[type])) ? state[type] : [];
+    },
+
+    /**
+     * Checks if a collection has items.
+     * @param {object} state - The global state object.
+     * @param {string} type - The key of the collection.
+     * @returns {boolean} True if the collection exists and has items.
+     */
+    hasItems: (state, type) => {
+        return (state && Array.isArray(state[type])) ? state[type].length > 0 : false;
+    },
+
+    /**
+     * Finds an item by its ID in a collection.
+     * @param {object} state - The global state object.
+     * @param {string} collectionType - The key of the collection.
+     * @param {string} id - The ID of the item to find.
+     * @returns {object|null} The found item or null.
+     */
+    findById: (state, collectionType, id) => {
+        if (!id || !state || !Array.isArray(state[collectionType])) {
+            return null;
+        }
+        return state[collectionType].find(item => item.id === id) || null;
+    }
+});
+
 
 // ============================================================================
 // MODULE: UIUtils (Low-level DOM, UI, and helper functions)
@@ -73,7 +116,9 @@ const UIUtils = (() => {
             }
 
             try {
-                const response = await fetch(`navbar.html?v=1.1`);
+                // --- FIX (Mode F) ---
+                // Removed ?v=1.1 query string per user request
+                const response = await fetch(`navbar.html`);
                 if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
                 navContainer.innerHTML = await response.text();
             } catch (error) {
@@ -167,30 +212,9 @@ const UIUtils = (() => {
         };
         input.click();
     };
-
+    
     /**
-     * Reads a file as JSON.
-     */
-    const readJSONFile = (file, onSuccess, onError) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                onSuccess(data);
-            } catch (err) {
-                console.error("Failed to parse JSON:", err);
-                onError("File is not valid JSON.");
-            }
-        };
-        reader.onerror = () => {
-            console.error("Failed to read file.");
-            onError("Failed to read the file.");
-        };
-        reader.readAsText(file);
-    };
-
-    /**
-     * Reads a file as plain text.
+     * Reads a file as plain text. (Internal helper)
      */
     const readTextFile = (file, onSuccess, onError) => {
         const reader = new FileReader();
@@ -211,6 +235,24 @@ const UIUtils = (() => {
     };
 
     /**
+     * Reads a file as JSON.
+     * --- FIX (Mode D) ---
+     * Refactored to call readTextFile, removing duplicate logic.
+     */
+    const readJSONFile = (file, onSuccess, onError) => {
+        readTextFile(file, (text) => {
+            try {
+                const data = JSON.parse(text);
+                onSuccess(data);
+            } catch (err) {
+                console.error("Failed to parse JSON:", err);
+                onError("File is not valid JSON.");
+            }
+        }, onError); // Pass the original onError handler
+    };
+
+
+    /**
      * Creates a state manager for localStorage.
      */
     const createStateManager = (key, defaults, version, onCorruption) => {
@@ -226,10 +268,17 @@ const UIUtils = (() => {
             if (rawData) {
                 try {
                     data = JSON.parse(rawData);
+                    
+                    // --- FIX (Mode E) ---
+                    // Removed the state-wiping version check.
+                    // The version is now only used for the key.
+                    // We will log if a mismatch is found but take no action.
                     if (data.version !== version) {
-                        console.warn(`State version mismatch (found ${data.version}, expected ${version}). Resetting to default.`);
-                        data = { ...defaults };
+                        console.warn(`State version mismatch (found ${data.version}, expected ${version}). Loading state anyway.`);
+                        // data = { ...defaults }; // <-- This line was removed
                     }
+                    // --- END FIX ---
+                    
                 } catch (err) {
                     console.error("Failed to parse state:", err);
                     if (onCorruption) {
@@ -246,6 +295,14 @@ const UIUtils = (() => {
             } else {
                 data = { ...defaults };
             }
+            
+            // --- FIX (Mode E) ---
+            // Ensure version property is set on new/default state
+            if (!data.version) {
+                data.version = version;
+            }
+            // --- END FIX ---
+            
             return data;
         };
 
@@ -253,10 +310,14 @@ const UIUtils = (() => {
         const save = (state) => {
             let serialized; // Hoist serialized to be accessible in catch block
             try {
+                // --- FIX (Mode E) ---
+                // Ensure version is always set on save
                 state.version = version;
+                // --- END FIX ---
+                
                 serialized = JSON.stringify(state);
                 
-                console.log('Saving state to localStorage:', key, serialized.length, 'chars');
+                // console.log('Saving state to localStorage:', key, serialized.length, 'chars');
                 
                 // Check if we're near quota (5MB typical limit)
                 if (serialized.length > 4.5 * 1024 * 1024) {
@@ -264,7 +325,7 @@ const UIUtils = (() => {
                 }
                 
                 localStorage.setItem(key, serialized);
-                console.log('Save successful');
+                // console.log('Save successful');
                 
                 // Verify save worked by reading back
                 const verification = localStorage.getItem(key);
@@ -380,7 +441,7 @@ const UIUtils = (() => {
         downloadJSON: downloadJSON,
         openFilePicker: openFilePicker,
         readJSONFile: readJSONFile,
-        readTextFile: readTextFile,
+        readTextFile: readTextFile, // Expose readTextFile
         createStateManager: createStateManager,
         hideModal: _hideModal,
         showModal: _showModal,
@@ -555,11 +616,11 @@ const AppLifecycle = (() => {
     // This listener handles silent saving for navigation, tab closing, etc.
     window.addEventListener('pagehide', () => {
         // DEBUG: Log pagehide saves
-        console.log('Page hiding, running save functions:', onExitSaveFunctions.length);
+        // console.log('Page hiding, running save functions:', onExitSaveFunctions.length);
         onExitSaveFunctions.forEach(fn => {
             try {
                 fn();
-                console.log('Save function executed successfully');
+                // console.log('Save function executed successfully');
             } catch (e) {
                 console.error("Error during pagehide save function:", e);
             }
@@ -588,6 +649,11 @@ const AppLifecycle = (() => {
          * Standard init wrapper with error handling.
          */
         run: (initFn) => {
+            // --- FIX (Mode F) ---
+            // Log core version as soon as this module runs.
+            console.log(`AppLifecycle: Running app-core.js v${CORE_VERSION}`);
+            // --- END FIX ---
+            
             document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     // Dependency check for UIUtils itself
@@ -614,7 +680,17 @@ const AppLifecycle = (() => {
          * Standard page initialization boilerplate.
          */
         initPage: async (config) => {
-            const { storageKey, defaultState, version, requiredElements, onCorruption } = config;
+            // --- FIX (Mode E) ---
+            // Removed version from the destructured config as it's no longer
+            // passed to createStateManager in this way.
+            const { storageKey, defaultState, requiredElements, onCorruption } = config;
+            
+            // (FIX - Mode E) Get version from config (which has it from the inline script)
+            const appVersion = config.version;
+            if (!appVersion) {
+                 console.error("AppLifecycle.initPage: No version found in config.");
+            }
+            // --- END FIX ---
 
             // Cache DOM elements
             const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
@@ -627,7 +703,9 @@ const AppLifecycle = (() => {
             }
 
             // Initialize state
-            const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
+            // --- FIX (Mode E) ---
+            // Pass the appVersion to createStateManager
+            const stateManager = SafeUI.createStateManager(storageKey, defaultState, appVersion, onCorruption);
             if (!stateManager) {
                 const errorTitle = "Application Failed to Start";
                 const errorMessage = "The StateManager (for localStorage) failed to initialize. Application cannot continue.";
@@ -688,3 +766,8 @@ window.UIUtils = UIUtils;
 window.SafeUI = SafeUI;
 window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
+window.DataHelpers = DataHelpers; // (FIX - Mode C)
+
+// --- FIX (Mode F) ---
+window.APP_CORE_VERSION = CORE_VERSION;
+// --- END FIX ---
