@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.13 (Patched)
+ * msg-reader.js v1.4.14 (Refactored)
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,29 +11,31 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.14 (Gemini Refactor):
+ * 1. [REFACTOR] (Mode D) Consolidated all body text processing into this file.
+ * The parser is now responsible for decoding, HTML stripping, and line-break
+ * normalization. The 'mailto.html' file no longer contains this logic.
+ * 2. [REFACTOR] (Mode D) `extractProperties` now populates the `body` field by
+ * stripping the `bodyHTML` field if the plain-text body is missing.
+ * 3. [REFACTOR] (Mode C) `convertPropertyValue` now contains all logic to handle
+ * binary-as-text and text-as-binary properties, intelligently trying
+ * UTF-16LE and UTF-8 and sanitizing the result.
+ * 4. [REFACTOR] (Mode E) Removed unused `senderName` and `senderEmail` properties
+ * from the parser to reduce complexity.
+ * 5. [REFACTOR] (Mode C) Error messages are now more user-friendly.
+ *
  * v1.4.13 (Gemini Patch):
- * 1. [FIX] Implemented a heuristic in `case PROP_TYPE_STRING` (0x001E).
- * It now decodes as both UTF-8 and UTF-16LE and compares the
- * number of printable ASCII characters to select the correct
- * encoding. This fixes garbled body text in .oft files that
- * incorrectly report their type as UTF-8.
+ * 1. [FIX] Corrected text-decoding for `PROP_TYPE_STRING` (0x001E) by
+ * adding heuristics to check for UTF-8 vs. UTF-16LE, fixing .oft body.
  *
  * v1.4.12 (Gemini Patch):
- * 1. [FIX] Removed the final remaining call to `this.looksLikeText` inside the
- * `case PROP_TYPE_BINARY:` block, which was causing a fatal error.
+ * 1. [FIX] Removed final call to `this.looksLikeText` to fix fatal error.
  *
  * v1.4.11 (Gemini Patch):
- * 1. [FIX] Replaced flawed `looksLikeText` heuristic in `convertPropertyValue`.
- * 2. [FIX] Removed the unused `looksLikeText` function definition.
+ * 1. [FIX] Replaced flawed `looksLikeText` heuristic.
  *
  * v1.4.10 (Gemini Patch):
- * 1. [FIX] Implemented counting for Method 3 (Display Fields) recipient
- * classification.
- *
- * v1.4.9:
- * 1. [FIX] Removed `recipientMap` de-duplication logic.
- * 2. [FIX] Method 1 (OLE) now builds a simple array.
- * 3. [FIX] Method 3 (Display Fields) now iterates array to *correct* types.
+ * 1. [FIX] Implemented counting for Method 3 (Display Fields) recipient logic.
  */
 
 (function(root, factory) {
@@ -62,8 +64,9 @@
     var PROP_ID_SUBJECT = 0x0037; // PidTagSubject
     var PROP_ID_BODY = 0x1000; // PidTagBody
     var PROP_ID_HTML_BODY = 0x1013; // PidTagBodyHtml
-    var PROP_ID_SENDER_NAME = 0x0C1A; // PidTagSenderName
-    var PROP_ID_SENDER_EMAIL = 0x5D01; // PidTagSenderSmtpAddress
+    // --- (Mode E) Removed Sender properties ---
+    // var PROP_ID_SENDER_NAME = 0x0C1A; // PidTagSenderName
+    // var PROP_ID_SENDER_EMAIL = 0x5D01; // PidTagSenderSmtpAddress
     var PROP_ID_DISPLAY_TO = 0x0E04; // PidTagDisplayTo
     var PROP_ID_DISPLAY_CC = 0x0E03; // PidTagDisplayCc
     var PROP_ID_DISPLAY_BCC = 0x0E02; // PidTagDisplayBcc
@@ -78,6 +81,38 @@
     var RECIPIENT_TYPE_TO = 1;
     var RECIPIENT_TYPE_CC = 2;
     var RECIPIENT_TYPE_BCC = 3;
+    
+    // --- (Mode C/D) Helper function for text processing ---
+    /**
+     * Strips HTML tags and decodes HTML entities.
+     * @param {string} html - The HTML string.
+     * @returns {string} The plain text.
+     */
+    function _stripHtml(html) {
+        if (!html) return '';
+        return html
+            .replace(/<style[^>]*>.*?<\/style>/gi, '')  // Remove style blocks
+            .replace(/<script[^>]*>.*?<\/script>/gi, '') // Remove script blocks
+            .replace(/<[^>]+>/g, '')                     // Remove all other tags
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .trim();
+    }
+    
+    /**
+     * Normalizes line breaks and cleans up text.
+     * @param {string} text - The text to clean.
+     * @returns {string} The cleaned text.
+     */
+    function _normalizeText(text) {
+        if (!text) return '';
+        return text.replace(/(\r\n|\r|\n){3,}/g, '\n\n').trim(); // Collapse 3+ newlines to 2
+    }
+    // --- END HELPER ---
 
     /**
      * Converts a DataView object to a string based on the specified encoding.
@@ -239,8 +274,9 @@
                 subject: this.getFieldValue('subject'),
                 body: this.getFieldValue('body'),
                 bodyHTML: this.getFieldValue('bodyHTML'),
-                senderName: this.getFieldValue('senderName'),
-                senderEmail: this.getFieldValue('senderEmail'),
+                // --- (Mode E) Removed Sender fields ---
+                // senderName: this.getFieldValue('senderName'),
+                // senderEmail: this.getFieldValue('senderEmail'),
                 recipients: this.getFieldValue('recipients')
             };
         } catch (e) {
@@ -255,7 +291,7 @@
     MsgReader.prototype.readHeader = function() {
         // The OLE header is 512 bytes
         if (this.buffer.byteLength < 512) {
-            throw new Error('File too small to be valid MSG file');
+            throw new Error('File too small to be valid MSG/OFT file');
         }
 
         // Check OLE signature: 0xD0CF11E0A1B11AE1
@@ -263,7 +299,8 @@
         var sig2 = this.dataView.getUint32(4, true);
         
         if (sig1 !== 0xE011CFD0 || sig2 !== 0xE11AB1A1) {
-            throw new Error('Invalid MSG file signature');
+            // --- (Mode C) User-friendly error ---
+            throw new Error('Invalid file signature. Not a valid OLE file (MSG/OFT).');
         }
 
         // Read key header fields
@@ -623,6 +660,7 @@
      */
     MsgReader.prototype.extractProperties = function() {
         var self = this;
+        var rawProperties = {}; // Temp store for raw stream data
     
         // console.log('Extracting properties from', this.directoryEntries.length, 'entries...');
     
@@ -651,18 +689,72 @@
                 var propType = parseInt(propTag.substring(4, 8), 16);
     
                 var streamData = self.readStream(entry);
-                var value = self.convertPropertyValue(streamData, propType, propId);
-    
-                // console.log('Property', propId.toString(16), 'type', propType.toString(16), '=', 
-                //             typeof value === 'string' ? value.substring(0, 50) : (value instanceof Uint8Array ? "Uint8Array(" + value.length + ")" : value));
-    
-                self.properties[propId] = {
+                
+                // --- (Mode C/D) Store raw data first ---
+                rawProperties[propId] = {
                     id: propId,
                     type: propType,
-                    value: value
+                    data: streamData // Store raw Uint8Array
                 };
             }
         });
+        
+        // --- (Mode C/D) Process properties ---
+        // This ensures we can process bodyHTML *before* body,
+        // and then re-process bodyHTML to populate body if needed.
+        
+        var bodyHtmlProp = rawProperties[PROP_ID_HTML_BODY];
+        if (bodyHtmlProp) {
+            this.properties[PROP_ID_HTML_BODY] = {
+                id: bodyHtmlProp.id,
+                type: bodyHtmlProp.type,
+                value: this.convertPropertyValue(bodyHtmlProp.data, bodyHtmlProp.type, bodyHtmlProp.id)
+            };
+        }
+        
+        var bodyProp = rawProperties[PROP_ID_BODY];
+        if (bodyProp) {
+            this.properties[PROP_ID_BODY] = {
+                id: bodyProp.id,
+                type: bodyProp.type,
+                value: this.convertPropertyValue(bodyProp.data, bodyProp.type, bodyProp.id)
+            };
+        }
+        
+        // --- (Mode C/D) Fallback: Populate body from bodyHTML if body is empty ---
+        var body = this.properties[PROP_ID_BODY] ? this.properties[PROP_ID_BODY].value : null;
+        var bodyHtml = this.properties[PROP_ID_HTML_BODY] ? this.properties[PROP_ID_HTML_BODY].value : null;
+
+        if ((!body || body.length === 0) && bodyHtml && bodyHtml.length > 0) {
+            // console.log("Body is empty, stripping from bodyHTML...");
+            // Re-use the raw data from bodyHTML, but process it as PROP_ID_BODY
+            // to trigger the HTML stripping and normalization logic.
+            this.properties[PROP_ID_BODY] = {
+                id: PROP_ID_BODY,
+                type: bodyHtmlProp.type, // Use the original type
+                value: this.convertPropertyValue(bodyHtmlProp.data, bodyHtmlProp.type, PROP_ID_BODY)
+            };
+        }
+        
+        // --- Process all other properties ---
+        for (var propId in rawProperties) {
+            if (propId != PROP_ID_BODY && propId != PROP_ID_HTML_BODY) {
+                var prop = rawProperties[propId];
+                
+                // --- (Mode E) Skip unused sender properties ---
+                // if (prop.id === PROP_ID_SENDER_NAME || prop.id === PROP_ID_SENDER_EMAIL) {
+                //     continue;
+                // }
+                // --- End (Mode E) ---
+
+                this.properties[prop.id] = {
+                    id: prop.id,
+                    type: prop.type,
+                    value: this.convertPropertyValue(prop.data, prop.type, prop.id)
+                };
+            }
+        }
+        
         
         // --- Fallback for empty OLE streams ---
         // In some O365 files, OLE streams are empty, but data exists in MIME text.
@@ -700,78 +792,77 @@
         }
 
         var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        
+        var isBody = (propId === PROP_ID_BODY);
+        var isHtmlBody = (propId === PROP_ID_HTML_BODY);
+        var isTextProp = (type === PROP_TYPE_STRING || type === PROP_TYPE_STRING8);
 
-        // Special handling for OFT body, which is stored as binary but is text
-        if (type === PROP_TYPE_BINARY && (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY)) {
-            // console.log('Binary body property detected, forcing text conversion...');
-
-            // --- FIX 1.4.11: Try UTF-16LE first, common in .oft files ---
-            var text = dataViewToString(view, 'utf16le');
+        // --- (Mode C/D) Refactored Text/Binary processing ---
+        // Process any property that is (or could be) text
+        if (isBody || isHtmlBody || isTextProp || (type === PROP_TYPE_BINARY && data.length > 0)) {
             
-            // --- FIX 1.4.11: Removed flawed looksLikeText validation.
-            // If UTF-16LE produces *any* text, we'll tentatively accept it.
-            if (text && text.length > 0) {
-                // If it looks like HTML, it's almost certainly correct.
-                if (text.trim().startsWith('<') || text.indexOf('<body') !== -1) {
-                     // console.log('  Detected UTF-16LE HTML body');
-                     return text;
-                }
-                // If not HTML, it's probably plain text. We'll hold this result.
+            var textUtf16 = null;
+            var textUtf8 = null;
+            var chosenText = null;
+
+            // 1. Try UTF-16LE (common for .oft)
+            try { textUtf16 = dataViewToString(view, 'utf16le'); } catch (e) {}
+
+            // 2. Try UTF-8 (common for .msg)
+            try { textUtf8 = dataViewToString(view, 'utf-8'); } catch (e) {}
+            
+            // 3. Heuristic: Decide which is better
+            // (v1.4.13) Check printable character ratio
+            var printableRatio = (s) => {
+                if (!s || s.length === 0) return 0;
+                // Check for common non-ASCII printable chars too
+                return s.replace(/[^\x20-\x7E\n\r\t\u00A0-\u00FF]/g, '').length / s.length;
+            };
+
+            var ratioUtf16 = printableRatio(textUtf16);
+            var ratioUtf8 = printableRatio(textUtf8);
+
+            // Favor UTF-16LE if it's significantly better or if types match
+            if (type === PROP_TYPE_STRING8 && ratioUtf16 > 0.7) {
+                 chosenText = textUtf16;
+            }
+            // Favor UTF-8 if it's significantly better or if types match
+            else if (type === PROP_TYPE_STRING && ratioUtf8 > 0.7) {
+                 chosenText = textUtf8;
+            }
+            // Fallback heuristic if types are wrong (e.g. BINARY)
+            else if (ratioUtf16 > ratioUtf8 && ratioUtf16 > 0.7) {
+                chosenText = textUtf16;
+            } else if (ratioUtf8 > ratioUtf16 && ratioUtf8 > 0.7) {
+                chosenText = textUtf8;
+            } else {
+                // If both are bad, or equal, pick based on original type
+                chosenText = (type === PROP_TYPE_STRING8) ? textUtf16 : textUtf8;
             }
             
-            // Fallback to UTF-8
-            var textUtf8 = dataViewToString(view, 'utf-8');
-            if (textUtf8 && textUtf8.length > 0) {
-                if (textUtf8.trim().startsWith('<') || textUtf8.indexOf('<body') !== -1) {
-                    // console.log('  Detected UTF-8 HTML body');
-                    return textUtf8;
-                }
+            // 4. Sanitize based on property ID
+            if (isBody) {
+                // For PROP_ID_BODY, we want plain text.
+                // This means we strip HTML and normalize.
+                return _normalizeText(_stripHtml(chosenText));
+            } else if (isHtmlBody) {
+                // For PROP_ID_HTML_BODY, we just want the HTML as-is.
+                return chosenText;
             }
             
-            // If no HTML was found by either, but UTF-16LE had content, return that.
-            // This favors the .oft standard (UTF-16LE) for plain text.
-            if (text && text.length > 0) {
-                 // console.log('  Falling back to UTF-16LE result (plain text)');
-                 return text;
+            // 5. If it wasn't a body prop but was text-like, return the text
+            if (isTextProp) {
+                return chosenText;
             }
-
-            // If UTF-16LE was empty but UTF-8 was not, return that.
-            if (textUtf8 && textUtf8.length > 0) {
-                // console.log('  Falling back to UTF-8 result (plain text)');
-                return textUtf8;
+            
+            // 6. If it was PROP_TYPE_BINARY (and not a body prop), return raw data
+            if (type === PROP_TYPE_BINARY) {
+                return data;
             }
-
-            // If both fail, return the raw data
-            return data;
         }
+        // --- END (Mode C/D) ---
 
         switch (type) {
-            case PROP_TYPE_STRING8: // 0x001F (PT_UNICODE / UTF-16LE string)
-                return dataViewToString(view, 'utf16le');
-
-            case PROP_TYPE_STRING: // 0x001E (PT_STRING8 / ASCII/UTF-8 string)
-                // --- FIX 1.4.13: Add heuristic to handle files that
-                // lie about being UTF-8 but are actually UTF-16LE.
-                var textUtf8 = dataViewToString(view, 'utf-8');
-                var textUtf16 = dataViewToString(view, 'utf16le');
-
-                // Count printable ASCII characters (and common whitespace)
-                // This is a reliable way to detect garbled text vs. real text.
-                var printableUtf8 = textUtf8.replace(/[^\x20-\x7E\n\r\t]/g, '').length;
-                var printableUtf16 = textUtf16.replace(/[^\x20-\x7E\n\r\t]/g, '').length;
-
-                // If textUtf16 has more printable characters, it's likely the correct encoding.
-                // This handles .oft templates that store UTF-16LE as PROP_TYPE_STRING.
-                if (printableUtf16 > printableUtf8) {
-                    // console.log('PROP_TYPE_STRING detected as UTF-16LE');
-                    return textUtf16;
-                }
-                
-                // Otherwise, assume the property type is correct and use UTF-8.
-                // This handles standard .msg files correctly.
-                // console.log('PROP_TYPE_STRING detected as UTF-8');
-                return textUtf8;
-
             case PROP_TYPE_INTEGER32: // 0x0003 (PT_LONG)
                 return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
 
@@ -786,25 +877,12 @@
                 }
                 return null;
 
-            case PROP_TYPE_BINARY: // 0x0102 (PT_BINARY)
-                // --- FIX 1.4.12: Removed faulty 'looksLikeText' check ---
-                // The heuristic was causing a fatal error and was unreliable.
-                // The critical text properties (body, html) are handled in the
-                // special block above this switch statement.
-                // For all other binary properties, we will return the raw data.
-                return data; // Return as raw Uint8Array
-
             default:
-                // Unknown type
-                // --- REMOVED 1.4.11: Flawed heuristic removed ---
+                // Return raw data for unknown types
                 return data;
         }
     };
     
-    /**
-     * --- REMOVED 1.4.11: Heuristic check to see if binary data is likely text. ---
-     */
-    // MsgReader.prototype.looksLikeText = function(data) { ... }
 
     /**
      * Safely parses an email address string, which might be in formats like
@@ -814,6 +892,7 @@
      * @returns {{name: string, email: string}}
      */
     function parseAddress(addr) {
+        if (!addr) return { name: '', email: null }; // (Mode C) Handle null input
         addr = addr.trim();
         var email = addr;
         var name = addr;
@@ -1096,12 +1175,13 @@
             case 'bodyHTML':
                 propId = PROP_ID_HTML_BODY;
                 break;
-            case 'senderName':
-                propId = PROP_ID_SENDER_NAME;
-                break;
-            case 'senderEmail':
-                propId = PROP_ID_SENDER_EMAIL;
-                break;
+            // --- (Mode E) Removed Sender fields ---
+            // case 'senderName':
+            //     propId = PROP_ID_SENDER_NAME;
+            //     break;
+            // case 'senderEmail':
+            //     propId = PROP_ID_SENDER_EMAIL;
+            //     break;
             case 'recipients':
                 // Recipients are stored differently
                 return this.properties['recipients'] ? this.properties['recipients'].value : [];
