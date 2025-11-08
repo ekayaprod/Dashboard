@@ -4,6 +4,11 @@
  * Depends on: app-core.js
  */
 
+// --- FIX (Mode F) ---
+const DATA_VERSION = '2.5.1';
+console.log(`AppLifecycle: Loading app-data.js v${DATA_VERSION}`);
+// --- END FIX ---
+
 const BackupRestore = (() => {
     return {
         /**
@@ -13,10 +18,14 @@ const BackupRestore = (() => {
             try {
                 const backupData = {
                     appName: appName,
-                    version: state.version || 'unknown',
+                    // --- FIX (Mode E) ---
+                    // Removed redundant version property.
+                    // version: state.version || 'unknown', 
                     timestamp: new Date().toISOString(),
                     data: state
                 };
+                // --- END FIX ---
+                
                 const dataStr = JSON.stringify(backupData, null, 2);
                 const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
 
@@ -486,3 +495,7 @@ window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
 window.CsvManager = CsvManager;
+
+// --- FIX (Mode F) ---
+window.APP_DATA_VERSION = DATA_VERSION;
+// --- END FIX ---
