@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.10 (Patched)
+ * msg-reader.js v1.4.11 (Patched)
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,6 +11,12 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.11 (Gemini Patch):
+ * 1. [FIX] Replaced flawed `looksLikeText` heuristic with a better one in
+ * `convertPropertyValue`. Now prioritizes UTF-16LE, checks for HTML
+ * markers, and gracefully falls back to UTF-8, fixing .oft body text.
+ * 2. [FIX] Removed the unused `looksLikeText` function.
+ *
  * v1.4.10 (Gemini Patch):
  * 1. [FIX] Implemented counting for Method 3 (Display Fields) recipient
  * classification. This correctly handles cases where the same email
@@ -20,12 +26,9 @@
  * UTF-16LE *first*, then UTF-8, which fixes garbled body text.
  *
  * v1.4.9:
- * 1. [FIX] Removed `recipientMap` de-duplication logic. This fixes the
- * bug where an email present in both TO and CC fields was only
- * assigned to one.
- * 2. [FIX] Method 1 (OLE) now builds a simple array, allowing duplicate emails.
- * 3. [FIX] Method 3 (Display Fields) now iterates the array to *correct*
- * recipient types, rather than adding/overwriting map entries.
+ * 1. [FIX] Removed `recipientMap` de-duplication logic.
+ * 2. [FIX] Method 1 (OLE) now builds a simple array.
+ * 3. [FIX] Method 3 (Display Fields) now iterates array to *correct* types.
  *
  * v1.4.8:
  * 1. [FIX] Method 3 (Display Fields) will now CORRECT the recipientType
@@ -701,19 +704,40 @@
         if (type === PROP_TYPE_BINARY && (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY)) {
             // console.log('Binary body property detected, forcing text conversion...');
 
-            // * --- FIX 1.4.10: Try UTF-16LE first, common in .oft files --- *
+            // --- FIX 1.4.11: Try UTF-16LE first, common in .oft files ---
             var text = dataViewToString(view, 'utf16le');
-            // * --- FIX 1.4.10: Add validation check --- *
-            if (text && text.length > 0 && this.looksLikeText(data)) {
-                // console.log('  Detected UTF-16LE body');
-                return text;
+            
+            // --- FIX 1.4.11: Removed flawed looksLikeText validation.
+            // If UTF-16LE produces *any* text, we'll tentatively accept it.
+            if (text && text.length > 0) {
+                // If it looks like HTML, it's almost certainly correct.
+                if (text.trim().startsWith('<') || text.indexOf('<body') !== -1) {
+                     // console.log('  Detected UTF-16LE HTML body');
+                     return text;
+                }
+                // If not HTML, it's probably plain text. We'll hold this result.
             }
             
             // Fallback to UTF-8
-            text = dataViewToString(view, 'utf-8');
-            if (text.indexOf('<') > -1 && text.indexOf('>') > -1) {
-                // console.log('  Detected UTF-8 body');
-                return text; // Basic heuristic: if it contains HTML tags, it's probably right.
+            var textUtf8 = dataViewToString(view, 'utf-8');
+            if (textUtf8 && textUtf8.length > 0) {
+                if (textUtf8.trim().startsWith('<') || textUtf8.indexOf('<body') !== -1) {
+                    // console.log('  Detected UTF-8 HTML body');
+                    return textUtf8;
+                }
+            }
+            
+            // If no HTML was found by either, but UTF-16LE had content, return that.
+            // This favors the .oft standard (UTF-16LE) for plain text.
+            if (text && text.length > 0) {
+                 // console.log('  Falling back to UTF-16LE result (plain text)');
+                 return text;
+            }
+
+            // If UTF-16LE was empty but UTF-8 was not, return that.
+            if (textUtf8 && textUtf8.length > 0) {
+                // console.log('  Falling back to UTF-8 result (plain text)');
+                return textUtf8;
             }
 
             // If both fail, return the raw data
@@ -763,42 +787,21 @@
 
             default:
                 // Unknown type - apply text-detection heuristic
-                if (this.looksLikeText(data)) {
-                    var text = dataViewToString(view, 'utf-16le');
-                    if (text && text.length > 0) {
-                        return text;
-                    }
-                }
+                // --- REMOVED 1.4.11: Flawed heuristic removed ---
+                // if (this.looksLikeText(data)) {
+                //     var text = dataViewToString(view, 'utf-16le');
+                //     if (text && text.length > 0) {
+                //         return text;
+                //     }
+                // }
                 return data;
         }
     };
     
     /**
-     * Heuristic check to see if binary data is likely text.
-     * @param {Uint8Array} data - The binary data.
-     * @returns {boolean} True if the data seems to be text.
+     * --- REMOVED 1.4.11: Heuristic check to see if binary data is likely text. ---
      */
-    MsgReader.prototype.looksLikeText = function(data) {
-        if (!data || data.length < 4) {
-            return false;
-        }
-
-        var printableCount = 0;
-        var totalChecked = Math.min(100, data.length);
-        
-        if (totalChecked === 0) return false;
-
-        for (var i = 0; i < totalChecked; i++) {
-            var byte = data[i];
-            // Check for printable ASCII, whitespace, or null (common in UTF-16)
-            if ((byte >= 0x20 && byte <= 0x7E) || byte === 0x0A || byte === 0x0D || byte === 0x09 || byte === 0x00) {
-                printableCount++;
-            }
-        }
-
-        // If > 70% of the first 100 bytes are "text-like", treat it as text.
-        return (printableCount / totalChecked) > 0.7;
-    };
+    // MsgReader.prototype.looksLikeText = function(data) { ... }
 
     /**
      * Safely parses an email address string, which might be in formats like
