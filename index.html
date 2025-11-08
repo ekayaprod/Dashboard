@@ -20,7 +20,7 @@
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
                 <div id="shortcuts-container" class="shortcuts-container"></div>
-                <div class="divider"></div>
+                <!-- REMOVED: <div class="divider"></div> -->
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
@@ -43,7 +43,8 @@
                 </div>
 
                 <div id="app-details-container" class="hidden">
-                    <div id="app-editor-fields" class="app-section-box">
+                    <!-- UPDATED: Changed class from 'app-section-box' to 'generator-section' for consistency -->
+                    <div id="app-editor-fields" class="generator-section">
                         <div class="form-group hidden" id="edit-app-name-wrapper">
                             <label for="edit-app-name">App Name</label>
                             <input type="text" id="edit-app-name" class="sidebar-input" placeholder="Official Name / Other Name">
@@ -65,9 +66,10 @@
                     </div>
                 </div>
 
-                <div class="divider"></div>
+                <!-- REMOVED: <div class="divider"></div> -->
 
-                <div class="notepad-wrapper">
+                <!-- UPDATED: Added 'generator-section' class for consistent boxing -->
+                <div class="notepad-wrapper generator-section">
                     <div id="notepad-header" class="notepad-header">
                         <select id="note-select" class="sidebar-input"></select>
                         <button id="new-note-btn" class="button-base icon-btn" title="New Note"></button>
