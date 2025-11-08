@@ -35,16 +35,16 @@
                         </div>
                     </header>
                     <div class="search-controls" style="margin-top: 0.5rem;"> <!-- Add margin-top for spacing -->
-                        <input type="text" id="search-input" class="sidebar-input" placeholder="Search KB and Local Database...">
+                        <input type="text" id="search-input" class="sidebar-input" placeholder="Search Local Database...">
                     </div>
                 </div>
                 <!-- END STYLE FIX 3 -->
 
-                <!-- REFACTOR: Moved KB section here and restyled it -->
-                <section id="kb-section" class="generator-section">
-                     <a id="btn-kb-search" href="#" class="button-base button-primary btn-full-width-padded" target="_blank" rel="noopener noreferrer">
-                        <!-- Text is set by JavaScript -->
-                     </a>
+                <!-- REFACTOR: Changed section ID from kb-section to custom-search-section -->
+                <section id="custom-search-section" class="generator-section">
+                     <div id="custom-search-buttons" class="button-group">
+                        <!-- Buttons are rendered here by JS -->
+                     </div>
                 </section>
 
                 <main class="results-container generator-section"> <!-- Added generator-section class for consistency -->
@@ -75,7 +75,7 @@
     <script>
     // Dependency Check
     (() => {
-        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal'];
+        const dependencies = ['SafeUI', 'UIPatterns', 'ListRenderer', 'SearchHelper', 'BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'SharedSettingsModal', 'DataHelpers'];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         if (missing.length > 0) {
             const errorTitle = "Application Failed to Load";
@@ -99,7 +99,7 @@
 
     const APP_CONFIG = {
         NAME: 'lookup',
-        VERSION: '2.1.0',
+        VERSION: '2.2.0', // Refactored Search
         DATA_KEY: 'lookup_v2_data',
         CSV_HEADERS: ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath']
     };
@@ -107,30 +107,54 @@
     const TEXTAREA_MAX_HEIGHT = 200;
 
     AppLifecycle.run(async () => {
+            // --- FIX (Mode F) ---
+            console.log(`AppLifecycle: Running lookup.html v${APP_CONFIG.VERSION}`);
+            // --- END FIX ---
 
             const defaultState = {
                 items: [],
                 settings: {
-                    kbBaseUrl: ''
+                    // REFACTOR: Changed kbBaseUrl to customSearches array
+                    customSearches: []
                 }
+                // --- FIX (Mode F) ---
+                // Removed redundant version property (already done in prev step)
+                // version: APP_CONFIG.VERSION
+                // --- END FIX ---
             };
 
             const ctx = await AppLifecycle.initPage({
                 storageKey: APP_CONFIG.DATA_KEY,
                 defaultState: defaultState,
-                version: APP_CONFIG.VERSION,
+                version: APP_CONFIG.VERSION, // Pass version here
                 requiredElements: [
                     'search-input', 'local-results',
                     'btn-add-new-entry', 'btn-settings', 'btn-edit-mode',
                     'toast', 'modal-overlay', 'modal-content',
                     'navbar-container',
-                    'kb-section', 'btn-kb-search' // REFACTOR: Updated required elements
+                    'custom-search-section', 'custom-search-buttons' // REFACTOR: Updated required elements
                 ]
             });
 
             if (!ctx) return;
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
+            
+            // --- START REFACTOR: Custom Search Migration ---
+            // One-time migration for users who had the old kbBaseUrl
+            if (state.settings.kbBaseUrl) {
+                console.warn("Migrating old kbBaseUrl to new customSearches format...");
+                if (state.settings.kbBaseUrl.includes('{query}')) {
+                    state.settings.customSearches = [{
+                        id: SafeUI.generateId(),
+                        name: 'KB Search',
+                        urlTemplate: state.settings.kbBaseUrl
+                    }];
+                }
+                delete state.settings.kbBaseUrl;
+                originalSaveState(); // Save immediately after migration
+            }
+            // --- END REFACTOR ---
 
             const saveState = () => {
                 try {
@@ -220,12 +244,15 @@
                 }
             };
 
-            const validateKbUrl = (url) => {
+            const validateSearchUrl = (url) => {
                 if (!url) {
-                    return { valid: true, message: '' };
+                    return { valid: false, message: 'URL Template cannot be empty.' };
                 }
                 
-                if (!url.includes('{query}')) {
+                // --- FIX (Mode B) ---
+                // Use case-insensitive regex
+                if (!/\{query\}/i.test(url)) {
+                // --- END FIX ---
                     return { 
                         valid: false, 
                         message: 'The URL must contain the {query} placeholder (case-sensitive).' 
@@ -233,7 +260,7 @@
                 }
                 
                 try {
-                    const testUrl = url.replace(/{query}/g, 'test');
+                    const testUrl = url.replace(/\{query\}/ig, 'test');
                     const urlObj = new URL(testUrl);
                     if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
                         return { 
@@ -250,8 +277,6 @@
                 
                 return { valid: true, message: '' };
             };
-
-            // REFACTOR: Removed showKbEmptyState and hideKbEmptyState
 
             const getEmptyMessage = (lowerTerm) => {
                 if (isEditMode) return 'No entries in the database. Click "+ Create Entry".';
@@ -326,77 +351,120 @@
             };
 
             /**
-             * Renders the dynamic KnowledgeBase link
+             * Renders the dynamic Custom Search links
              */
-            // REFACTOR: Rewritten to control the single button
-            const renderKbLink = (term) => {
-                const kbButton = DOMElements.btnKbSearch;
-                const baseUrl = state.settings.kbBaseUrl;
+            // REFACTOR: Renamed from renderKbLink
+            const renderCustomSearches = (term) => {
+                const container = DOMElements.customSearchButtons;
+                const searches = state.settings.customSearches || [];
                 
-                // This mimics the 'disabled' state for an <a> tag
-                const setButtonDisabled = (text) => {
-                    kbButton.textContent = text;
-                    kbButton.classList.add('button-disabled-link');
-                    kbButton.removeAttribute('href');
-                };
+                if (searches.length === 0) {
+                    DOMElements.customSearchSection.classList.add('hidden');
+                    return;
+                }
                 
-                const setButtonEnabled = (text, url) => {
-                    kbButton.textContent = text;
-                    kbButton.classList.remove('button-disabled-link');
-                    kbButton.href = url;
-                };
+                DOMElements.customSearchSection.classList.remove('hidden');
+                container.innerHTML = '';
+                const fragment = document.createDocumentFragment();
 
-                if (!term) {
-                    setButtonDisabled('Search KnowledgeBase (enter a term first)');
-                    return;
-                }
-                
-                if (!baseUrl) {
-                    setButtonDisabled('Search KnowledgeBase (KB URL not set in ⚙️)');
-                    return;
-                }
-                
-                const validation = validateKbUrl(baseUrl);
-                if (!validation.valid) {
-                    setButtonDisabled('Search KnowledgeBase (KB URL is invalid)');
-                    return;
-                }
+                searches.forEach(search => {
+                    const button = document.createElement('a');
+                    button.className = 'button-base button-primary btn-full-width-padded';
+                    button.target = '_blank';
+                    button.rel = 'noopener noreferrer';
+                    
+                    const escapedName = SafeUI.escapeHTML(search.name);
 
-                // All good, enable the button
-                const finalUrl = baseUrl.replace(/{query}/g, encodeURIComponent(term));
-                setButtonEnabled(`Search "${SafeUI.escapeHTML(term)}" in KnowledgeBase`, finalUrl);
+                    if (!term) {
+                        button.textContent = `Search ${escapedName} (enter a term first)`;
+                        button.classList.add('button-disabled-link');
+                        button.removeAttribute('href');
+                    } else {
+                        const validation = validateSearchUrl(search.urlTemplate);
+                        if (!validation.valid) {
+                            button.textContent = `Search ${escapedName} (URL is invalid)`;
+                            button.classList.add('button-disabled-link');
+                            button.removeAttribute('href');
+                        } else {
+                            // All good, enable the button
+                            const finalUrl = search.urlTemplate.replace(/\{query\}/ig, encodeURIComponent(term));
+                            button.textContent = `Search "${SafeUI.escapeHTML(term)}" in ${escapedName}`;
+                            button.classList.remove('button-disabled-link');
+                            button.href = finalUrl;
+                        }
+                    }
+                    fragment.appendChild(button);
+                });
+                container.appendChild(fragment);
             };
             
             /**
              * Renders all data sections (local list + KB link)
              */
             const renderAll = () => {
-                const searchTerm = DOMElements.searchInput.value;
+                // --- FIX (Mode D) ---
+                // Trim the search term here, in the canonical function
+                const searchTerm = DOMElements.searchInput.value.trim();
+                // --- END FIX ---
+                
                 if (isEditMode) {
                     DOMElements.btnAddNewEntry.classList.remove('hidden');
                 }
                 renderLocalList(searchTerm);
-                // REFACTOR: Also render KB link on all renders
-                renderKbLink(searchTerm); 
+                renderCustomSearches(searchTerm); // REFACTOR: Renamed
             };
 
             /**
              * Handles the main search logic
              */
+            // --- FIX (Mode D) ---
+            // Simplified to just call renderAll
             const handleSearch = () => {
-                const term = DOMElements.searchInput.value.trim();
-                renderLocalList(term);
-                renderKbLink(term);
+                renderAll();
             };
+            // --- END FIX ---
 
             /**
              * Creates the HTML for a read-only local database item
              */
+            // --- REFACTOR: UI Rewrite ---
             function createItemElement(item, searchTerm) {
                 const li = document.createElement('li');
                 li.className = 'result-item';
                 li.dataset.id = item.id;
                 
+                const hasGroup = item.assignmentGroup && item.assignmentGroup.length > 0;
+                const hasPath = item.phoneLogPath && item.phoneLogPath.length > 0;
+                const hasNotes = item.notes && item.notes.length > 0;
+
+                // Helper to create a data row with a copy button
+                const createDataRow = (label, value, highlightTerm) => {
+                    if (!value) return '';
+                    const highlightedValue = highlightTerm ? UIPatterns.highlightSearchTerm(value, highlightTerm) : SafeUI.escapeHTML(value);
+                    return `
+                        <div class="item-row">
+                            <strong>${label}:</strong>
+                            <div class="item-value">
+                                <span>${highlightedValue}</span>
+                                <button class="btn-copy icon-btn" title="Copy ${label}" data-copy="${SafeUI.escapeHTML(value)}">
+                                    ${SafeUI.SVGIcons.copy}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                };
+                
+                // Helper for notes (no copy button)
+                const createNotesRow = (notes) => {
+                    if (!notes) return '';
+                    return `
+                        <div class="item-row-notes">
+                            <strong>Notes:</strong>
+                            <span class="item-notes-text">${SafeUI.escapeHTML(notes)}</span>
+                        </div>
+                    `;
+                };
+
                 li.innerHTML = `
                     <div class="item-header">
                         <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
@@ -405,25 +473,15 @@
                             <button class="btn-delete icon-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
                         </div>
                     </div>
-                    <div class="item-grid">
-                        <strong>Group:</strong>
-                        <div>
-                            <span>${UIPatterns.highlightSearchTerm(item.assignmentGroup, searchTerm) || '...'}</span>
-                            <button class="btn-copy icon-btn" title="Copy Group" data-copy="${SafeUI.escapeHTML(item.assignmentGroup)}">📋</button>
-                        </div>
-                        <strong>Notes:</strong>
-                        <div>
-                            <span>${SafeUI.escapeHTML(item.notes) || '...'}</span>
-                        </div>
-                        <strong>Path:</strong>
-                        <div>
-                            <span>${UIPatterns.highlightSearchTerm(item.phoneLogPath, searchTerm) || '...'}</span>
-                            <button class="btn-copy icon-btn" title="Copy Path" data-copy="${SafeUI.escapeHTML(item.phoneLogPath)}">📋</button>
-                        </div>
+                    <div class="item-content">
+                        ${createDataRow('Group', item.assignmentGroup, searchTerm)}
+                        ${createDataRow('Path', item.phoneLogPath, searchTerm)}
+                        ${createNotesRow(item.notes)}
                     </div>
                 `;
                 return li;
             }
+            // --- END REFACTOR ---
 
             /**
              * Creates the HTML for an in-line edit form
@@ -451,9 +509,10 @@
                         <input type="text" id="edit-path-${item.id}" class="sidebar-input" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="Cat > SubCat > Item">
                     </div>
                     <div class="edit-form-actions">
-                        <button type="button" class="btn-delete button-base button-danger" title="Delete">Delete</button>
-                        <button type="button" class="btn-cancel button-base" title="Cancel">Cancel</button>
-                        <button type="submit" class="btn-save button-base button-primary" title="Save">Save</button>
+                        <!-- FIX (Mode C): Removed redundant title attributes -->
+                        <button type="button" class="btn-delete button-base button-danger">Delete</button>
+                        <button type="button" class="btn-cancel button-base">Cancel</button>
+                        <button type="submit" class="btn-save button-base button-primary">Save</button>
                     </div>
                 `;
 
@@ -694,15 +753,32 @@
             /**
              * Shows the Settings modal (Now using SharedSettingsModal)
              */
+            // --- REFACTOR: New Settings Modal for Custom Searches ---
             function setupSettingsModal() {
-                // 1. Define page-specific HTML (for Settings AND CSV)
-                const settingsHtml = `
-                    <div class="form-group">
-                        <label for="kb-url-input">KnowledgeBase Search URL</label>
-                        <input type="text" id="kb-url-input" class="sidebar-input" placeholder="https://my-kb.com/search?q={query}" value="${SafeUI.escapeHTML(state.settings.kbBaseUrl)}">
-                        <p class="form-help">Enter the full URL from a search on your KB. Use <strong>{query}</strong> as a placeholder for the search term.</p>
-                    </div>
-                `;
+                
+                const getSettingsHtml = () => {
+                    let searchesHtml = state.settings.customSearches.map(search => `
+                        <div class="custom-search-item" data-id="${search.id}">
+                            <input type="text" class="sidebar-input search-name" value="${SafeUI.escapeHTML(search.name)}" placeholder="Search Name">
+                            <input type="text" class="sidebar-input search-url" value="${SafeUI.escapeHTML(search.urlTemplate)}" placeholder="https://my-kb.com/search?q={query}">
+                            <button type="button" class="icon-btn delete-search-btn" title="Delete Search">${SafeUI.SVGIcons.trash}</button>
+                        </div>
+                    `).join('');
+                    
+                    if (searchesHtml.length === 0) {
+                        searchesHtml = '<p class="form-help" style="text-align: center; margin: 0.5rem 0;">No custom searches added yet.</p>';
+                    }
+
+                    return `
+                        <div class="form-group">
+                            <label>Custom Search Engines</label>
+                            <p class="form-help">Add links to external sites. Use <strong>{query}</strong> as a placeholder for the search term.</p>
+                            <div id="custom-search-list">${searchesHtml}</div>
+                            <button type="button" id="btn-add-search" class="button-base" style="margin-top: 0.5rem;">+ Add Search</button>
+                        </div>
+                    `;
+                };
+
                 const pageDataHtml = `
                     <button id="modal-export-csv-btn" class="button-base">Export DB (CSV)</button>
                     <button id="modal-import-csv-btn" class="button-base">Import DB (CSV)</button>
@@ -710,21 +786,83 @@
 
                 // 2. Define page-specific "save" callback
                 const onSave = () => {
-                    const newUrl = document.getElementById('kb-url-input').value.trim();
-                    const validation = validateKbUrl(newUrl);
-                    if (!validation.valid) {
-                        SafeUI.showValidationError("Invalid URL", validation.message, "kb-url-input");
+                    const searchItems = document.querySelectorAll('#custom-search-list .custom-search-item');
+                    const newCustomSearches = [];
+                    let validationFailed = false;
+                    
+                    searchItems.forEach(item => {
+                        const nameInput = item.querySelector('.search-name');
+                        const urlInput = item.querySelector('.search-url');
+                        const name = nameInput.value.trim();
+                        const urlTemplate = urlInput.value.trim();
+                        
+                        if (!name) {
+                            SafeUI.showValidationError("Invalid Name", "Search Name cannot be empty.", nameInput.id);
+                            validationFailed = true;
+                            return;
+                        }
+                        
+                        const validation = validateSearchUrl(urlTemplate);
+                        if (!validation.valid) {
+                            SafeUI.showValidationError("Invalid URL", validation.message, urlInput.id);
+                            validationFailed = true;
+                            return;
+                        }
+                        
+                        newCustomSearches.push({
+                            id: item.dataset.id,
+                            name: name,
+                            urlTemplate: urlTemplate
+                        });
+                    });
+                    
+                    if (validationFailed) {
                         return false; // Keep modal open
                     }
-                    state.settings.kbBaseUrl = newUrl;
+
+                    state.settings.customSearches = newCustomSearches;
                     saveState();
                     SafeUI.showToast("Settings saved.");
-                    handleSearch();
+                    renderAll(); // Re-render buttons
                     return true; // Close modal
                 };
                 
-                // 3. Define page-specific "open" callback (to wire up CSV buttons)
+                // 3. Define page-specific "open" callback
                 const onModalOpen = () => {
+                    const listContainer = document.getElementById('custom-search-list');
+                    
+                    // Add listener for "Add Search" button
+                    document.getElementById('btn-add-search').addEventListener('click', () => {
+                        const newId = SafeUI.generateId();
+                        const newItem = document.createElement('div');
+                        newItem.className = 'custom-search-item';
+                        newItem.dataset.id = newId;
+                        newItem.innerHTML = `
+                            <input type="text" id="search-name-${newId}" class="sidebar-input search-name" value="" placeholder="Search Name">
+                            <input type="text" id="search-url-${newId}" class="sidebar-input search-url" value="" placeholder="https://my-kb.com/search?q={query}">
+                            <button type="button" class="icon-btn delete-search-btn" title="Delete Search">${SafeUI.SVGIcons.trash}</button>
+                        `;
+                        
+                        // Remove empty message if it exists
+                        const emptyMsg = listContainer.querySelector('p');
+                        if (emptyMsg) emptyMsg.remove();
+                        
+                        listContainer.appendChild(newItem);
+                        document.getElementById(`search-name-${newId}`).focus();
+                    });
+                    
+                    // Add delegated listener for "Delete" buttons
+                    listContainer.addEventListener('click', (e) => {
+                        const deleteBtn = e.target.closest('.delete-search-btn');
+                        if (deleteBtn) {
+                            deleteBtn.closest('.custom-search-item').remove();
+                            // Show empty message if last item was removed
+                            if (listContainer.children.length === 0) {
+                                listContainer.innerHTML = '<p class="form-help" style="text-align: center; margin: 0.5rem 0;">No custom searches added yet.</p>';
+                            }
+                        }
+                    });
+
                     // Wire up CSV Export
                     CsvManager.setupExport({
                         exportBtn: document.getElementById('modal-export-csv-btn'),
@@ -739,8 +877,6 @@
                         headers: APP_CONFIG.CSV_HEADERS,
                         onValidate: validateCsvRow, 
                         onConfirm: (validatedData, importErrors) => {
-                            // confirmCsvImport shows its own modal, so we return false
-                            // to prevent the CsvManager from closing the settings modal.
                             return confirmCsvImport(validatedData, importErrors);
                         }
                     });
@@ -749,10 +885,20 @@
                 // 4. Define page-specific "restore" callback
                 const onRestore = (dataToRestore) => {
                     state.items = dataToRestore.items || [];
-                    state.settings = dataToRestore.settings || { kbBaseUrl: '' };
+                    // Handle both old and new settings formats
+                    if (dataToRestore.settings?.kbBaseUrl) {
+                        // Migrate old format
+                        state.settings.customSearches = [{
+                            id: SafeUI.generateId(),
+                            name: 'KB Search (Restored)',
+                            urlTemplate: dataToRestore.settings.kbBaseUrl
+                        }];
+                    } else {
+                        state.settings = dataToRestore.settings || { customSearches: [] };
+                    }
+                    
                     sortAndSaveState();
                     renderAll();
-                    handleSearch();
                     SafeUI.hideModal();
                 };
 
@@ -761,14 +907,14 @@
                     buttonId: 'btn-settings',
                     appName: APP_CONFIG.NAME,
                     state: state,
-                    customSettingsHtml: settingsHtml,
+                    customSettingsHtml: getSettingsHtml(),
                     pageSpecificDataHtml: pageDataHtml,
                     onModalOpen: onModalOpen,
                     onModalSave: onSave,
                     onRestoreCallback: onRestore,
                     itemValidators: {
                         items: APP_CONFIG.CSV_HEADERS,
-                        settings: ['kbBaseUrl']
+                        settings: [] // Allow flexible settings
                     }
                 });
             }
@@ -778,7 +924,7 @@
              */
             function attachEventListeners() {
                 // Search bar
-                SearchHelper.setupDebouncedSearch(DOMElements.searchInput, handleSearch, 300);
+                SearchHelper.setupDebouncedSearch(DOMElements.searchInput, renderAll, 300);
                 
                 // Header buttons
                 DOMElements.btnAddNewEntry.addEventListener('click', handleAddNewEntry);
@@ -830,6 +976,10 @@
 
                     const copyBtn = e.target.closest('.btn-copy');
                     if (copyBtn) {
+                        // --- FIX (Mode C) ---
+                        // Replaced hardcoded emoji with SVG
+                        copyBtn.innerHTML = SafeUI.SVGIcons.copy;
+                        // --- END FIX ---
                         const success = await SafeUI.copyToClipboard(copyBtn.dataset.copy);
                         SafeUI.showToast(success ? "Copied to clipboard!" : "Failed to copy.");
                         return;
@@ -850,7 +1000,7 @@
             function init() {
                 attachEventListeners();
                 renderAll();
-                handleSearch();
+                // handleSearch(); // renderAll() is called by init()
             }
 
             // Run the app
