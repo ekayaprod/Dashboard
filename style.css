@@ -67,6 +67,7 @@ body {
     flex-grow: 1;
     display: flex; 
     flex-direction: column;
+    gap: 0.5rem; /* --- ADDED --- */
 }
 
 .input-base, 
@@ -233,19 +234,16 @@ body {
     margin: 0.5rem 0; 
 }
 
-.app-section-box {
-    background-color: var(--info-bg);
+/* --- ADDED (Mode C) --- */
+/* Use the password page's section style as the standard */
+.generator-section {
+    padding: 0.4rem;
+    background-color: var(--panel-bg);
     border: 1px solid var(--border-color);
-    border-radius: 0.375rem;
-    padding: 0.5rem;
-    margin-bottom: 0.5rem;
-    display: flex;
-    flex-direction: column;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
 }
-
-.app-section-box .form-group:last-child {
-    margin-bottom: 0;
-}
+/* --- END ADDED --- */
 
 
 .empty-state-message {
@@ -577,11 +575,11 @@ body.modal-open > *:not(.modal-overlay) {
 /* ======================================= */
 
 /* Use app-container from style.css for consistent padding/layout */
-.app-container {
+.passwords-page .app-container {
     padding: 0; /* Let panel handle padding */
 }
 /* REFACTOR: Reduced gap from 0.75rem to 0.5rem */
-.main-content {
+.passwords-page .main-content {
     padding: 0.5rem; /* REFACTOR: Reduced padding */
     display: flex;
     flex-direction: column;
@@ -593,34 +591,34 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 /* Simplified Quick List Item styles */
-.shortcuts-container .shortcut-item {
+.passwords-page .shortcuts-container .shortcut-item {
     cursor: pointer;
     padding-right: 0.5rem; 
 }
-.shortcuts-container .shortcut-item a,
-.shortcuts-container .shortcut-item button {
+.passwords-page .shortcuts-container .shortcut-item a,
+.passwords-page .shortcuts-container .shortcut-item button {
      /* Ensure text flows correctly inside the list items */
      word-break: break-all;
      overflow-wrap: break-word;
      text-align: left;
 }
 
-.shortcuts-container .shortcut-item .delete-btn {
+.passwords-page .shortcuts-container .shortcut-item .delete-btn {
     display: none;
     margin-left: 0.5rem;
 }
-.shortcuts-container .shortcut-item:hover .delete-btn {
+.passwords-page .shortcuts-container .shortcut-item:hover .delete-btn {
     display: inline-flex;
 }
-.shortcuts-container .shortcut-item a {
+.passwords-page .shortcuts-container .shortcut-item a {
     flex-grow: 1;
 }
-.shortcuts-container .shortcut-item:hover {
+.passwords-page .shortcuts-container .shortcut-item:hover {
     background-color: var(--info-bg);
 }
 
 /* Section wrapper for generator, results, etc. */
-.generator-section {
+.passwords-page .generator-section {
     /* REDESIGN: Reduce padding */
     padding: 0.4rem;
     background-color: var(--panel-bg);
@@ -630,7 +628,7 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 /* Results Section */
-.results-wrapper {
+.passwords-page .results-wrapper {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -640,7 +638,7 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 /* New Results List */
-.result-list {
+.passwords-page .result-list {
     list-style: none;
     padding: 0;
     margin: 0;
@@ -652,7 +650,7 @@ body.modal-open > *:not(.modal-overlay) {
     overflow-y: auto;
     max-height: none; /* Remove any height limits */
 }
-.result-item {
+.passwords-page .result-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -662,29 +660,29 @@ body.modal-open > *:not(.modal-overlay) {
     padding: 0.5rem 0.5rem 0.5rem 0.75rem;
     gap: 0.5rem;
 }
-.result-item span {
+.passwords-page .result-item span {
     font-family: monospace;
     font-size: 0.95rem;
     word-break: break-all;
     flex-grow: 1;
 }
 /* Style for error messages */
-.result-item span.error {
+.passwords-page .result-item span.error {
     font-family: var(--font-family);
     color: var(--danger-color);
     font-weight: 500;
     font-size: 0.85rem;
 }
-.result-item .copy-btn {
+.passwords-page .result-item .copy-btn {
     flex-shrink: 0;
     color: var(--subtle-text);
 }
-.result-item .copy-btn:hover {
+.passwords-page .result-item .copy-btn:hover {
     color: var(--primary-color);
     background-color: var(--primary-hover-bg-light);
 }
 
-.config-section {
+.passwords-page .config-section {
     display: flex;
     flex-direction: column;
     /* REDESIGN: Tighter spacing */
@@ -693,7 +691,7 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 /* --- REDESIGN: Accordion system for collapsible sections --- */
-.accordion-header {
+.passwords-page .accordion-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -702,7 +700,7 @@ body.modal-open > *:not(.modal-overlay) {
     user-select: none;
 }
 
-.accordion-content {
+.passwords-page .accordion-content {
     max-height: 500px; /* arbitrary large height */
     overflow: hidden;
     transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
@@ -710,13 +708,13 @@ body.modal-open > *:not(.modal-overlay) {
     margin-top: 0.5rem;
 }
 
-.accordion-content.collapsed {
+.passwords-page .accordion-content.collapsed {
     max-height: 0;
     opacity: 0;
     margin-top: 0;
 }
 
-.accordion-icon {
+.passwords-page .accordion-icon {
     display: inline-block;
     transition: transform 0.3s ease;
     font-size: 0.75rem;
@@ -724,23 +722,23 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 /* Combined selector for accordion icon rotation */
-.accordion-content.collapsed + .accordion-header .accordion-icon,
-.accordion-header.collapsed .accordion-icon {
+.passwords-page .accordion-content.collapsed + .accordion-header .accordion-icon,
+.passwords-page .accordion-header.collapsed .accordion-icon {
     transform: rotate(-90deg);
 }
 /* --- END ACCORDION --- */
 
 
 /* --- REDESIGN: Replaced 4-col with 2-col grid --- */
-.config-grid-2col {
+.passwords-page .config-grid-2col {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.4rem 0.5rem; /* Tighter spacing */
 }
 
 /* --- Cleanup: New generic rule for all config labels --- */
-.config-section .form-group label,
-.config-grid-2col .form-group label {
+.passwords-page .config-section .form-group label,
+.passwords-page .config-grid-2col .form-group label {
     /* REDESIGN: Smaller labels */
     font-size: 0.7rem;
     font-weight: 600;
@@ -751,11 +749,11 @@ body.modal-open > *:not(.modal-overlay) {
     white-space: nowrap; /* Prevent label wrapping */
 }
 
-.config-grid-2col .form-group {
+.passwords-page .config-grid-2col .form-group {
     margin: 0;
     min-width: 0; /* Allow grid items to shrink */
 }
-.config-grid-2col .sidebar-input {
+.passwords-page .config-grid-2col .sidebar-input {
     margin: 0;
     /* REDESIGN: Smaller padding */
     padding: 0.3rem 0.4rem;
@@ -766,7 +764,7 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 /* Checkbox spans both columns for better layout */
-.config-grid-2col .checkbox-label {
+.passwords-page .config-grid-2col .checkbox-label {
     grid-column: 1 / -1;
     height: auto; /* Let it size naturally */
     padding: 0.25rem 0; /* Add some padding for tap target */
@@ -774,7 +772,7 @@ body.modal-open > *:not(.modal-overlay) {
 /* --- End REDESIGN --- */
 
 
-.checkbox-label {
+.passwords-page .checkbox-label {
     font-size: 0.8rem;
     font-weight: 500;
     margin-bottom: 0; 
@@ -787,6 +785,7 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 /* --- Mode C: Classes for moved inline styles --- */
+/* (This class is now redundant with .app-startup-banner, but harmless) */
 #app-startup-error.sticky-banner {
     position:sticky;
     top:0;
@@ -802,24 +801,24 @@ body.modal-open > *:not(.modal-overlay) {
     z-index:10000;
     box-sizing:border-box;
 }
-.header-wrapper-padded {
+.passwords-page .header-wrapper-padded {
      padding: 0 0.25rem;
 }
-.btn-full-width-padded {
+.passwords-page .btn-full-width-padded {
     width: 100%; 
     padding: 0.75rem; 
     font-size: 0.9rem;
 }
-.divider-short-margin {
+.passwords-page .divider-short-margin {
     margin: 0.25rem 0;
 }
-.section-header-bottom-margin {
+.passwords-page .section-header-bottom-margin {
     margin-bottom: 0.75rem;
 }
-.checkbox-label-padded {
+.passwords-page .checkbox-label-padded {
     margin-bottom: 0;
 }
-.btn-generate-padded {
+.passwords-page .btn-generate-padded {
     width: 100%; 
     padding: 0.75rem;
 }
@@ -828,129 +827,211 @@ body.modal-open > *:not(.modal-overlay) {
 
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
-    .generator-section, .results-wrapper {
+    .passwords-page .generator-section, .passwords-page .results-wrapper {
         background-color: var(--panel-bg);
         border-color: var(--border-color);
     }
-    .result-item {
+    .passwords-page .result-item {
         background-color: var(--bg-color);
         border-color: var(--border-color);
     }
-    .result-item .copy-btn:hover {
+    .passwords-page .result-item .copy-btn:hover {
         background-color: var(--primary-hover-bg-light);
     }
 }
 
+
 /* ======================================= */
-/* === PAGE: LOOKUP (ADDED) === */
+/* === PAGE: LOOKUP (MOVED FROM HTML) === */
 /* ======================================= */
 
-/* Style for the disabled <a> tag to look like a disabled button */
-button.button-disabled-link,
-a.button-disabled-link {
-    opacity: 0.6;
+.lookup-page .main-content {
+    /* gap: 0.5rem; */ /* Already set by global main-content */
+    padding: 0.5rem;
+}
+
+.lookup-page .search-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* --- FIX: Renamed from #kb-section --- */
+.lookup-page #custom-search-section .button-group {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.lookup-page #custom-search-section .button-base {
+    width: 100%; 
+    padding: 0.75rem; 
+    font-size: 0.9rem;
+    text-decoration: none; /* Make <a> tags look like buttons */
+}
+/* --- END FIX --- */
+
+/* Style for the disabled link-buttons */
+.lookup-page .button-disabled-link {
+    background-color: #f1f5f9;
+    color: var(--subtle-text);
     cursor: not-allowed;
-    pointer-events: none;
+    border-color: var(--border-color);
+    pointer-events: none; /* Make <a> tags unclickable */
+}
+@media (prefers-color-scheme: dark) {
+    .lookup-page .button-disabled-link {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: var(--subtle-text);
+    }
+}
+
+
+.lookup-page .results-container {
+    flex-grow: 1;
+    min-height: 0;
+    display: flex; /* Added */
+    flex-direction: column; /* Added */
+}
+
+.lookup-page .local-header {
+    margin-bottom: 0.5rem;
 }
 
 .lookup-page .result-list {
-    padding: 0.25rem 0; /* Add a little vertical space for the list */
-}
-
-/* Override .result-item's default flex row to be a column */
-.lookup-page .result-item {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
     flex-direction: column;
-    align-items: stretch;
-    padding: 0.75rem;
+    gap: 0.5rem;
+    overflow-y: auto;
+    max-height: none; 
+    flex-grow: 1; /* Added */
 }
 
-.lookup-page .item-header {
+/* --- REWRITE: New Result Item Style --- */
+.lookup-page .result-item {
+    background-color: var(--info-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* Space between header and content */
+}
+.lookup-page .result-item .item-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
 }
-
-.lookup-page .item-keyword {
-    font-size: 1rem;
+.lookup-page .result-item .item-keyword {
     font-weight: 600;
     word-break: break-all;
+    font-size: 0.95rem;
 }
-
-.lookup-page .item-actions {
+.lookup-page .result-item .item-actions {
     display: flex;
     gap: 0.25rem;
     flex-shrink: 0;
 }
-.lookup-page .item-actions .icon-btn {
-    color: var(--subtle-text);
-}
-
-.lookup-page .item-grid {
-    display: grid;
-    grid-template-columns: auto 1fr; /* Label column and data column */
-    gap: 0.5rem 0.75rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
-}
-.lookup-page .item-grid > strong {
-    font-weight: 500;
-    color: var(--subtle-text);
-    font-size: 0.8rem;
-    white-space: nowrap;
-}
-.lookup-page .item-grid > div {
+.lookup-page .result-item .item-content {
     display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+}
+.lookup-page .result-item .item-row {
+    display: flex;
+    flex-direction: column;
+}
+.lookup-page .result-item .item-row strong {
+    color: var(--subtle-text);
+    font-size: 0.75rem;
+    margin-bottom: 0.1rem;
+}
+.lookup-page .result-item .item-row .item-value {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     gap: 0.5rem;
-    word-break: break-all; /* Allow long paths/notes to wrap */
 }
-/* Make copy buttons in grid smaller */
-.lookup-page .item-grid .btn-copy {
-    padding: 0.2rem;
-    font-size: 0.8rem; /* Makes the 📋 icon smaller */
+.lookup-page .result-item .item-row .item-value span {
+    word-break: break-all;
+    flex-grow: 1;
 }
-
-/* --- Edit Form Styles --- */
-
-.lookup-page .edit-form-li {
-    list-style: none;
-    margin-bottom: 0.5rem;
+.lookup-page .result-item .item-row-notes {
+    display: flex;
+    flex-direction: column;
+}
+.lookup-page .result-item .item-row-notes strong {
+    color: var(--subtle-text);
+    font-size: 0.75rem;
+    margin-bottom: 0.1rem;
+}
+.lookup-page .result-item .item-row-notes .item-notes-text {
+    font-style: italic;
+    white-space: pre-wrap;
+    word-break: break-all;
     background-color: var(--panel-bg);
-    border: 1px solid var(--primary-color); /* Highlight active edit */
+    padding: 0.25rem 0.4rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--border-color);
+}
+.lookup-page .result-item .item-grid .btn-copy,
+.lookup-page .result-item .item-row .btn-copy {
+    padding: 0.25rem;
+}
+.lookup-page .result-item .btn-copy svg {
+    width: 14px;
+    height: 14px;
+}
+/* --- END REWRITE --- */
+
+
+/* In-line Edit Form */
+.lookup-page .edit-form-li {
+    background-color: var(--panel-bg);
+    border: 2px solid var(--primary-color);
     border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    overflow: hidden; /* To contain the form's radius */
-}
-
-.lookup-page .edit-form {
     padding: 0.75rem;
+    box-shadow: var(--box-shadow);
 }
-
-.lookup-page .form-grid {
+.lookup-page .edit-form .form-grid {
     display: grid;
-    grid-template-columns: auto 1fr; /* Labels and inputs */
-    gap: 0.5rem 0.75rem;
+    /* grid-template-columns: auto 1fr; */ /* Changed for vertical layout */
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
     align-items: center;
 }
-.lookup-page .form-grid label {
-    font-weight: 500;
+.lookup-page .edit-form .form-grid label {
     font-size: 0.8rem;
-    color: var(--subtle-text);
-    text-align: right;
-}
-.lookup-page .form-grid .sidebar-input,
-.lookup-page .form-grid .sidebar-textarea {
+    font-weight: 600;
     margin: 0;
-    font-size: 0.875rem;
 }
-
-.lookup-page .edit-form-actions {
+.lookup-page .edit-form .form-grid .sidebar-input,
+.lookup-page .edit-form .form-grid .sidebar-textarea {
+    margin: 0;
+}
+.lookup-page .edit-form .edit-form-actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
-    padding-top: 0.75rem;
     margin-top: 0.75rem;
-    border-top: 1px solid var(--border-color);
+}
+
+/* Modal styles for Lookup */
+.lookup-page .custom-search-item {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.lookup-page .custom-search-item .search-name {
+    flex-basis: 30%;
+}
+.lookup-page .custom-search-item .search-url {
+    flex-basis: 70%;
+}
+.lookup-page .custom-search-item .sidebar-input {
+    margin-bottom: 0;
 }
