@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.9
+ * msg-reader.js v1.4.10 (Patched)
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,6 +11,14 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.10 (Gemini Patch):
+ * 1. [FIX] Implemented counting for Method 3 (Display Fields) recipient
+ * classification. This correctly handles cases where the same email
+ * address is present in both TO and CC fields (e.g., one is marked
+ * TO, the other CC, instead of both CC).
+ * 2. [FIX] Reversed binary body decoding for .oft files. Now tries
+ * UTF-16LE *first*, then UTF-8, which fixes garbled body text.
+ *
  * v1.4.9:
  * 1. [FIX] Removed `recipientMap` de-duplication logic. This fixes the
  * bug where an email present in both TO and CC fields was only
@@ -692,18 +700,22 @@
         // Special handling for OFT body, which is stored as binary but is text
         if (type === PROP_TYPE_BINARY && (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY)) {
             // console.log('Binary body property detected, forcing text conversion...');
-            // Try UTF-8 first, as it's common in modern files
-            var text = dataViewToString(view, 'utf-8');
+
+            // * --- FIX 1.4.10: Try UTF-16LE first, common in .oft files --- *
+            var text = dataViewToString(view, 'utf16le');
+            // * --- FIX 1.4.10: Add validation check --- *
+            if (text && text.length > 0 && this.looksLikeText(data)) {
+                // console.log('  Detected UTF-16LE body');
+                return text;
+            }
+            
+            // Fallback to UTF-8
+            text = dataViewToString(view, 'utf-8');
             if (text.indexOf('<') > -1 && text.indexOf('>') > -1) {
                 // console.log('  Detected UTF-8 body');
                 return text; // Basic heuristic: if it contains HTML tags, it's probably right.
             }
-            // Fallback to UTF-16LE
-            text = dataViewToString(view, 'utf16le');
-            if (text.length > 0) {
-                // console.log('  Detected UTF-16LE body');
-                return text;
-            }
+
             // If both fail, return the raw data
             return data;
         }
@@ -997,24 +1009,49 @@
         // console.log('DisplayField TO emails:', displayToEmails);
         // console.log('DisplayField CC emails:', displayCcEmails);
         
-        // Now, iterate the recipients array from Method 1 and correct their types
+        // * --- FIX 1.4.10: Implement counting logic for accurate recipient classification --- *
+        
+        // Build counters
+        var toEmailCounts = {};
+        var ccEmailCounts = {};
+        var bccEmailCounts = {}; // Also count BCC for completeness
+
+        displayToEmails.forEach(function(email) {
+            toEmailCounts[email] = (toEmailCounts[email] || 0) + 1;
+        });
+
+        displayCcEmails.forEach(function(email) {
+            ccEmailCounts[email] = (ccEmailCounts[email] || 0) + 1;
+        });
+        
+        displayBccEmails.forEach(function(email) {
+            bccEmailCounts[email] = (bccEmailCounts[email] || 0) + 1;
+        });
+        
+        // Apply to recipients
         recipients.forEach(function(recipient) {
+            // Ensure email exists before trying toLower
+            if (!recipient.email) return; 
+            
             var emailKey = recipient.email.toLowerCase();
             
-            // Check CC first, as it's the more specific case (overwrites TO default)
-            if (displayCcEmails.indexOf(emailKey) > -1) {
+            // Check if this email has remaining CC slots
+            if (ccEmailCounts[emailKey] && ccEmailCounts[emailKey] > 0) {
                 // console.log('Updating recipient from Display Field (Cc):', emailKey);
                 recipient.recipientType = RECIPIENT_TYPE_CC;
-            } 
-            // Check TO
-            else if (displayToEmails.indexOf(emailKey) > -1) {
+                ccEmailCounts[emailKey]--;
+            }
+            // Check if this email has remaining TO slots
+            else if (toEmailCounts[emailKey] && toEmailCounts[emailKey] > 0) {
                 // console.log('Updating recipient from Display Field (To):', emailKey);
                 recipient.recipientType = RECIPIENT_TYPE_TO;
+                toEmailCounts[emailKey]--;
             }
-            // Check BCC
-            else if (displayBccEmails.indexOf(emailKey) > -1) {
+            // Check if this email has remaining BCC slots
+            else if (bccEmailCounts[emailKey] && bccEmailCounts[emailKey] > 0) {
                 // console.log('Updating recipient from Display Field (Bcc):', emailKey);
                 recipient.recipientType = RECIPIENT_TYPE_BCC;
+                bccEmailCounts[emailKey]--;
             }
             // Else, it remains the default (TO) or whatever Method 1 found
         });
