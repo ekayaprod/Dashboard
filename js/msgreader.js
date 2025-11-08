@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.12 (Patched)
+ * msg-reader.js v1.4.13 (Patched)
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,21 +11,24 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.13 (Gemini Patch):
+ * 1. [FIX] Implemented a heuristic in `case PROP_TYPE_STRING` (0x001E).
+ * It now decodes as both UTF-8 and UTF-16LE and compares the
+ * number of printable ASCII characters to select the correct
+ * encoding. This fixes garbled body text in .oft files that
+ * incorrectly report their type as UTF-8.
+ *
  * v1.4.12 (Gemini Patch):
  * 1. [FIX] Removed the final remaining call to `this.looksLikeText` inside the
- * `case PROP_TYPE_BINARY:` block, which was causing a fatal error after
- * the function was removed in v1.4.11.
+ * `case PROP_TYPE_BINARY:` block, which was causing a fatal error.
  *
  * v1.4.11 (Gemini Patch):
- * 1. [FIX] Replaced flawed `looksLikeText` heuristic with a better one in
- * `convertPropertyValue`. Now prioritizes UTF-16LE, checks for HTML
- * markers, and gracefully falls back to UTF-8, fixing .oft body text.
+ * 1. [FIX] Replaced flawed `looksLikeText` heuristic in `convertPropertyValue`.
  * 2. [FIX] Removed the unused `looksLikeText` function definition.
  *
  * v1.4.10 (Gemini Patch):
  * 1. [FIX] Implemented counting for Method 3 (Display Fields) recipient
- * classification. This correctly handles cases where the same email
- * address is present in both TO and CC fields.
+ * classification.
  *
  * v1.4.9:
  * 1. [FIX] Removed `recipientMap` de-duplication logic.
@@ -747,8 +750,27 @@
                 return dataViewToString(view, 'utf16le');
 
             case PROP_TYPE_STRING: // 0x001E (PT_STRING8 / ASCII/UTF-8 string)
-                // This type is often used for UTF-8 in modern files.
-                return dataViewToString(view, 'utf-8');
+                // --- FIX 1.4.13: Add heuristic to handle files that
+                // lie about being UTF-8 but are actually UTF-16LE.
+                var textUtf8 = dataViewToString(view, 'utf-8');
+                var textUtf16 = dataViewToString(view, 'utf16le');
+
+                // Count printable ASCII characters (and common whitespace)
+                // This is a reliable way to detect garbled text vs. real text.
+                var printableUtf8 = textUtf8.replace(/[^\x20-\x7E\n\r\t]/g, '').length;
+                var printableUtf16 = textUtf16.replace(/[^\x20-\x7E\n\r\t]/g, '').length;
+
+                // If textUtf16 has more printable characters, it's likely the correct encoding.
+                // This handles .oft templates that store UTF-16LE as PROP_TYPE_STRING.
+                if (printableUtf16 > printableUtf8) {
+                    // console.log('PROP_TYPE_STRING detected as UTF-16LE');
+                    return textUtf16;
+                }
+                
+                // Otherwise, assume the property type is correct and use UTF-8.
+                // This handles standard .msg files correctly.
+                // console.log('PROP_TYPE_STRING detected as UTF-8');
+                return textUtf8;
 
             case PROP_TYPE_INTEGER32: // 0x0003 (PT_LONG)
                 return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
