@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.14 (Refactored)
+ * msg-reader.js v1.4.15 (Refactored)
  * Production-grade Microsoft Outlook MSG and OFT file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -11,22 +11,22 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.15 (Gemini Patch):
+ * 1. [FIX] Prevents property overwrite in `extractProperties`.
+ * In some .oft files, a valid text body (e.g., ...1000001F) was
+ * being overwritten by a subsequent invalid binary stream (...10000102)
+ * with the same propId (0x1000). Added a check to keep the *first*
+ * stream found for any given property ID, solving the garbled body.
+ *
  * v1.4.14 (Gemini Refactor):
  * 1. [REFACTOR] (Mode D) Consolidated all body text processing into this file.
- * The parser is now responsible for decoding, HTML stripping, and line-break
- * normalization. The 'mailto.html' file no longer contains this logic.
- * 2. [REFACTOR] (Mode D) `extractProperties` now populates the `body` field by
- * stripping the `bodyHTML` field if the plain-text body is missing.
- * 3. [REFACTOR] (Mode C) `convertPropertyValue` now contains all logic to handle
- * binary-as-text and text-as-binary properties, intelligently trying
- * UTF-16LE and UTF-8 and sanitizing the result.
- * 4. [REFACTOR] (Mode E) Removed unused `senderName` and `senderEmail` properties
- * from the parser to reduce complexity.
+ * 2. [REFACTOR] (Mode D) `extractProperties` now populates the `body` field.
+ * 3. [REFACTOR] (Mode C) `convertPropertyValue` now handles all text decoding.
+ * 4. [REFACTOR] (Mode E) Removed unused `senderName` and `senderEmail` properties.
  * 5. [REFACTOR] (Mode C) Error messages are now more user-friendly.
  *
  * v1.4.13 (Gemini Patch):
- * 1. [FIX] Corrected text-decoding for `PROP_TYPE_STRING` (0x001E) by
- * adding heuristics to check for UTF-8 vs. UTF-16LE, fixing .oft body.
+ * 1. [FIX] Corrected text-decoding for `PROP_TYPE_STRING` (0x001E).
  *
  * v1.4.12 (Gemini Patch):
  * 1. [FIX] Removed final call to `this.looksLikeText` to fix fatal error.
@@ -667,11 +667,11 @@
         // Find all property streams
         this.directoryEntries.forEach(function(entry) {
             // === DEBUG: Log ALL entries ===
-            console.log('DIR ENTRY:', {
-                name: entry.name,
-                type: entry.type === 1 ? 'FOLDER' : entry.type === 2 ? 'STREAM' : 'OTHER',
-                size: entry.size
-            });
+            // console.log('DIR ENTRY:', {
+            //     name: entry.name,
+            //     type: entry.type === 1 ? 'FOLDER' : entry.type === 2 ? 'STREAM' : 'OTHER',
+            //     size: entry.size
+            // });
             // === END DEBUG ===
             // Property streams are named "__substg1.0_XXXXYYYY"
             var isRootProperty = entry.name.indexOf('__substg1.0_') === 0;
@@ -694,16 +694,26 @@
                 // YYYY = Property Type, XXXX = Property ID
                 var propId = parseInt(propTag.substring(0, 4), 16);
                 var propType = parseInt(propTag.substring(4, 8), 16);
+                
+                // --- FIX v1.4.15 ---
+                // Check if this property ID has already been read.
+                // This prevents a bad stream (e.g., binary) from overwriting
+                // a good stream (e.g., text) that has the same ID.
+                if (rawProperties[propId]) {
+                    // console.log('  Skipping duplicate property for id:', '0x' + propId.toString(16));
+                    return; // 'return' acts as 'continue' in a forEach
+                }
+                // --- END FIX ---
     
                 var streamData = self.readStream(entry);
                 // === DEBUG: Log property details ===
-                console.log('  PROPERTY:', {
-                tag: propTag,
-                id: '0x' + propId.toString(16),
-                type: '0x' + propType.toString(16),
-                size: streamData.length,
-                first20bytes: Array.from(streamData.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
-                });
+                // console.log('  PROPERTY:', {
+                // tag: propTag,
+                // id: '0x' + propId.toString(16),
+                // type: '0x' + propType.toString(16),
+                // size: streamData.length,
+                // first20bytes: Array.from(streamData.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+                // });
                 // === END DEBUG ===
                 // --- (Mode C/D) Store raw data first ---
                 rawProperties[propId] = {
@@ -753,21 +763,24 @@
         
         // --- Process all other properties ---
         for (var propId in rawProperties) {
-            if (propId != PROP_ID_BODY && propId != PROP_ID_HTML_BODY) {
-                var prop = rawProperties[propId];
-                
-                // --- (Mode E) Skip unused sender properties ---
-                // if (prop.id === PROP_ID_SENDER_NAME || prop.id === PROP_ID_SENDER_EMAIL) {
-                //     continue;
-                // }
-                // --- End (Mode E) ---
-
-                this.properties[prop.id] = {
-                    id: prop.id,
-                    type: prop.type,
-                    value: this.convertPropertyValue(prop.data, prop.type, prop.id)
-                };
+            // Skip properties we've already processed
+            if (propId == PROP_ID_BODY || propId == PROP_ID_HTML_BODY) {
+                continue;
             }
+
+            var prop = rawProperties[propId];
+            
+            // --- (Mode E) Skip unused sender properties ---
+            // if (prop.id === PROP_ID_SENDER_NAME || prop.id === PROP_ID_SENDER_EMAIL) {
+            //     continue;
+            // }
+            // --- End (Mode E) ---
+
+            this.properties[prop.id] = {
+                id: prop.id,
+                type: prop.type,
+                value: this.convertPropertyValue(prop.data, prop.type, prop.id)
+            };
         }
         
         
@@ -816,14 +829,14 @@
         // Process any property that is (or could be) text
         if (isBody || isHtmlBody || isTextProp || (type === PROP_TYPE_BINARY && data.length > 0)) {
             
-            if (isBody || isHtmlBody) {
-                console.log('=== BODY DEBUG ===');
-                console.log('propId:', propId.toString(16), isBody ? '(BODY)' : '(HTML)');
-                console.log('type:', type.toString(16));
-                console.log('data length:', data.length);
-                console.log('First 50 bytes (hex):', Array.from(data.slice(0, 50)).map(b => b.toString(16).padStart(2, '0')).join(' '));
-                console.log('First 50 bytes (as chars):', Array.from(data.slice(0, 50)).map(b => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join(''));
-            }
+            // if (isBody || isHtmlBody) {
+            //     console.log('=== BODY DEBUG ===');
+            //     console.log('propId:', propId.toString(16), isBody ? '(BODY)' : '(HTML)');
+            //     console.log('type:', type.toString(16));
+            //     console.log('data length:', data.length);
+            //     console.log('First 50 bytes (hex):', Array.from(data.slice(0, 50)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+            //     console.log('First 50 bytes (as chars):', Array.from(data.slice(0, 50)).map(b => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join(''));
+            // }
             var textUtf16 = null;
             var textUtf8 = null;
             var chosenText = null;
