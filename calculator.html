@@ -8,10 +8,14 @@
     <link rel="stylesheet" href="style.css">
     
     <!-- 
-      FIX: Removed entire inline <style> block. 
-      All styles are now in style.css under the .eod-targets-page namespace.
+      All styles have been moved to style.css 
+      under the .eod-targets-page namespace.
     -->
 </head>
+<!-- 
+  This class is essential. It scopes all the specific styles 
+  in style.css to *only* this page.
+-->
 <body class="eod-targets-page">
 
     <div class="app-container">
@@ -202,7 +206,6 @@
             startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
             
             const endTime = new Date(now);
-            // FIX: Was incorrectly using startTimeStr here. Now uses endTimeStr.
             endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
 
             const totalShiftMinutes = (endTime - startTime) / 60000;
@@ -258,7 +261,6 @@
             document.getElementById('currentAvgTicketTime').innerText = formatMinutesToMMSS(currentAvgTicketTime);
 
             // --- 5. Calculate EOD Totals ("What-If" Logic) ---
-            // REMOVED: Projection logic (callPace, projectedTotalCallTimeEOD)
             // The "Call Time (So Far)" input is treated as the EOD total.
             const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
 
@@ -282,7 +284,6 @@
                 let boxClass = 'target-warn';
 
                 // Scenario 1: Call time input is too high
-                // If total work time is 0 or less, you can't hit any ticket goal.
                 if (totalWorkTimeEOD <= 0) {
                     boxClass = 'target-danger';
                     html = `
@@ -336,7 +337,6 @@
             infoBox.id = 'target-info';
             infoBox.className = 'info-box';
             infoBox.style.cssText = 'margin-top: 0.25rem; font-size: 0.75rem; padding: 0.5rem;';
-            // UPDATE: Changed info text to reflect new logic
             infoBox.innerText = `Targets are based on your 'Call Time' input being the *total* for the day.`;
             targetsContent.appendChild(infoBox);
         }
@@ -347,7 +347,7 @@
             populateTimeOptions('shiftStart', 6, 12, '08:00'); // 6 AM to 12 PM, default 8:00
             populateTimeOptions('shiftEnd', 12, 18, '16:00'); // 12 PM to 6 PM, default 16:00
 
-            // De-bounce timer to prevent race condition on input
+            // De-bounce timer
             let calcTimer;
             const debouncedCalculate = () => {
                 clearTimeout(calcTimer);
@@ -373,7 +373,6 @@
                 startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
                 
                 const endTime = new Date(now);
-                // FIX: Was incorrectly using startTimeStr here. Now uses endTimeStr.
                 endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
 
                 const totalShiftMinutes = (endTime - startTime) / 60000;
