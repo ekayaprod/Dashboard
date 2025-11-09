@@ -6,160 +6,6 @@
     <title>EOD Targets</title>
     <!-- Using the shared style.css from the root directory -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Page-specific styles, namespaced to this page class -->
-    <style>
-        .eod-targets-page .app-container {
-            /* Overriding default app-container padding for a more compact sidebar view */
-            padding: 0.75rem;
-            height: auto;
-        }
-
-        .eod-targets-page .panel {
-            padding: 0;
-            border: none;
-            box-shadow: none;
-            background: none;
-        }
-
-        .eod-targets-page .main-content {
-            padding: 0;
-        }
-
-        /* --- Section Styling (COMPACT) --- */
-        .eod-targets-page .calc-section {
-            background-color: var(--panel-bg);
-            border-radius: var(--border-radius);
-            border: 1px solid var(--border-color);
-            margin-bottom: 0.5rem; /* REDUCED */
-            overflow: hidden; /* To contain rounded corners */
-        }
-        
-        .eod-targets-page .calc-section-header {
-            padding: 0.25rem 0.6rem; /* REDUCED */
-            background-color: var(--info-bg);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .eod-targets-page .calc-section-header h2 {
-            font-size: 0.8rem; /* REDUCED */
-            font-weight: 600;
-            color: var(--text-color);
-            margin: 0;
-        }
-
-        .eod-targets-page .calc-section-content {
-            padding: 0.6rem; /* REDUCED */
-            display: grid;
-            gap: 0.5rem; /* REDUCED */
-        }
-
-        /* Input grid */
-        .eod-targets-page .input-grid-2 {
-            grid-template-columns: 1fr 1fr;
-        }
-        
-        /* Stat boxes grid (COMPACT) */
-        .eod-targets-page .stat-grid-4 {
-            grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
-        }
-        @media (min-width: 400px) {
-            /* Only use 4 columns if sidebar is wide enough */
-            .eod-targets-page .stat-grid-4 {
-                grid-template-columns: 1fr 1fr 1fr 1fr;
-            }
-        }
-
-        .eod-targets-page .stat-box {
-             padding: 0.25rem 0.4rem; /* REDUCED */
-             background-color: var(--info-bg);
-             border-radius: var(--border-radius-sm);
-             text-align: center;
-             border: 1px solid var(--border-color);
-        }
-        .eod-targets-page .stat-label {
-            display: block;
-            font-size: 0.65rem; /* REDUCED */
-            font-weight: 500;
-            color: var(--subtle-text);
-            margin-bottom: 0.125rem;
-            line-height: 1.2;
-        }
-        .eod-targets-page .stat-value {
-            display: block;
-            font-size: 0.9rem; /* REDUCED */
-            font-weight: 600;
-            color: var(--text-color);
-            line-height: 1.2;
-        }
-
-        /* Target cards (COMPACT) */
-        .eod-targets-page .target-card {
-            padding: 0.5rem; /* REDUCED */
-            border-radius: var(--border-radius-sm);
-            text-align: center;
-        }
-        .eod-targets-page .target-label {
-            display: block;
-            font-size: 0.9rem; /* REDUCED */
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-        .eod-targets-page .target-value {
-            display: block;
-            font-size: 1.6rem; /* REDUCED */
-            font-weight: 700;
-            line-height: 1.1;
-        }
-        .eod-targets-page .target-desc {
-            font-size: 0.7rem; /* REDUCED */
-            opacity: 0.9;
-            margin-top: 0.2rem; /* REDUCED */
-        }
-        .eod-targets-page .target-desc strong {
-            font-weight: 600;
-        }
-
-        /* Color variants for targets */
-        .eod-targets-page .target-good {
-            background-color: var(--color-success-bg);
-            border: 1px solid var(--color-success-border);
-            color: var(--color-success);
-        }
-        .eod-targets-page .target-warn {
-            background-color: var(--color-danger-bg);
-            border: 1px solid var(--color-danger-border);
-            color: var(--color-danger);
-        }
-        .eod-targets-page .target-danger {
-            background-color: #f3f4f6;
-            border: 1px solid var(--border-color);
-            color: var(--subtle-text);
-        }
-        .eod-targets-page .target-danger .target-value {
-            color: var(--subtle-text);
-        }
-
-        /* Current time bar (COMPACT) */
-        .eod-targets-page .time-bar {
-            padding: 0.25rem 0.5rem; /* REDUCED */
-            background-color: #374151; /* Matching sidebar-header-bg */
-            color: #d1d5db; /* Matching sidebar-header-text */
-            border-radius: var(--border-radius-sm);
-            text-align: center;
-            font-size: 0.75rem; /* REDUCED */
-            font-weight: 500;
-            margin-bottom: 0.5rem; /* REDUCED */
-        }
-
-        /* Utility class for section dividers */
-        .eod-targets-page .section-divider {
-            border-top: 1px solid var(--border-color);
-            margin: 0.6rem 0; /* padding equivalent */
-        }
-
-    </style>
 </head>
 <body class="eod-targets-page">
 
@@ -167,13 +13,9 @@
         <div class="panel">
             <div class="main-content">
 
-                <!-- Header REMOVED for vertical space -->
-
                 <div class="time-bar">
                     <span id="currentTime">Loading clock...</span>
                 </div>
-
-                <!-- FIX 1: Consolidated Sections -->
 
                 <!-- Section 1: Inputs -->
                 <div class="calc-section">
@@ -181,8 +23,8 @@
                         <h2>1. Your Inputs</h2>
                     </div>
                     <div class="calc-section-content">
-                        <!-- Schedule Inputs -->
-                        <div class="input-grid-2">
+                        <!-- FIX: Use new input-grid-3 for a single row -->
+                        <div class="input-grid-3">
                             <div>
                                 <label for="shiftStart" class="sidebar-label">Shift Start</label>
                                 <select id="shiftStart" class="sidebar-select"></select>
@@ -191,15 +33,16 @@
                                 <label for="shiftEnd" class="sidebar-label">Shift End</label>
                                 <select id="shiftEnd" class="sidebar-select"></select>
                             </div>
-                            <div class="col-span-2">
-                                <label for="breakTime" class="sidebar-label">Break Time (min)</label>
+                            <div>
+                                <!-- FIX: Shortened label -->
+                                <label for="breakTime" class="sidebar-label">Break (min)</label>
                                 <select id="breakTime" class="sidebar-select">
-                                    <option value="0">0 minutes</option>
-                                    <option value="30">30 minutes</option>
-                                    <option value="45">45 minutes</option>
-                                    <option value="60" selected>60 minutes</option>
-                                    <option value="90">90 minutes</option>
-                                    <option value="120">120 minutes</option>
+                                    <option value="0">0</option>
+                                    <option value="30">30</option>
+                                    <option value="45">45</option>
+                                    <option value="60" selected>60</option>
+                                    <option value="90">90</option>
+                                    <option value="120">120</option>
                                 </select>
                             </div>
                         </div>
@@ -207,14 +50,16 @@
                         <!-- Divider -->
                         <div class="section-divider"></div>
 
-                        <!-- Progress Inputs -->
+                        <!-- FIX: Use input-grid-2, but with shortened labels -->
                         <div class="input-grid-2">
                             <div>
-                                <label for="currentCallTime" class="sidebar-label">Call Time (So Far) (HH:MM)</label>
+                                <!-- FIX: Shortened label -->
+                                <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM)</label>
                                 <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 01:30" value="00:00">
                             </div>
                             <div>
-                                <label for="currentTickets" class="sidebar-label">Tickets Closed (So Far)</label>
+                                <!-- FIX: Shortened label -->
+                                <label for="currentTickets" class="sidebar-label">Tickets Closed</label>
                                 <input type="number" id="currentTickets" class="sidebar-input" value="0">
                             </div>
                         </div>
@@ -227,8 +72,8 @@
                         <h2>2. Your Projections</h2>
                     </div>
                     <div class="calc-section-content">
-                        <!-- Current Status Stats -->
-                        <div class="stat-grid-4">
+                        <!-- FIX: Use new stat-grid-2x2 for 2x2 layout -->
+                        <div class="stat-grid-2x2">
                             <div class="stat-box">
                                 <span class="stat-label">Total Prod. Time</span>
                                 <span id="totalProductiveTime" class="stat-value">00:00</span>
@@ -250,15 +95,13 @@
                         <!-- Divider -->
                         <div class="section-divider"></div>
 
-                        <!-- EOD Targets -->
-                        <div id="targets-content" style="display: grid; gap: 0.5rem;">
+                        <!-- FIX: Use new target-grid-3 for 3-column card layout -->
+                        <div id="targets-content" class="target-grid-3">
                             <!-- Targets will be injected here by JS -->
-                            <div id="targetOutstanding" class="target-card"></div>
-                            <div id="targetExcellent" class="target-card"></div>
-                            <div id="targetSatisfactory" class="target-card"></div>
-                            <div id="target-info" class="info-box" style="margin-top: 0.25rem; font-size: 0.75rem; padding: 0.5rem;">
-                                Targets are based on your projected call pace.
-                            </div>
+                            <!-- Skeletons are now built by JS -->
+                        </div>
+                        <div id="target-info" class="info-box">
+                            Targets are based on your projected call pace.
                         </div>
                     </div>
                 </div>
@@ -281,6 +124,10 @@
             'Satisfactory': { name: 'Satisfactory', target: 10.8 },
             'Needs Improvement': { name: 'Needs Improvement', target: 11.8 }
         };
+
+        // --- DOM Element Cache ---
+        // FIX F-1: Cache DOM elements on startup
+        const DOMElements = {};
 
         // --- Time Helpers ---
         function parseHHMMToMinutes(timeStr) {
@@ -341,14 +188,13 @@
             }
         }
 
-        // --- Main Calculation Engine ---
-        function calculateDailyRatings() {
-            // --- 1. Get Schedule & Productive Time ---
+        // --- Schedule & Time Calculation ---
+        // FIX F-3: Broke out schedule calculation from main loop
+        function getScheduleInfo() {
             const now = new Date();
-            
-            const startTimeStr = document.getElementById('shiftStart').value;
-            const endTimeStr = document.getElementById('shiftEnd').value;
-            const breakTimeMinutes = parseInt(document.getElementById('breakTime').value, 10);
+            const startTimeStr = DOMElements.shiftStart.value;
+            const endTimeStr = DOMElements.shiftEnd.value;
+            const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10);
 
             const startTime = new Date(now);
             startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
@@ -361,20 +207,6 @@
             const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
             const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
             
-            document.getElementById('totalProductiveTime').innerText = formatMinutesToHHMM(totalProductiveMinutes);
-
-            // --- Handle Invalid Schedule ---
-            const targets = ['Outstanding', 'Excellent', 'Satisfactory'];
-            const targetsContent = document.getElementById('targets-content');
-            if (totalProductiveMinutes <= 0) {
-                document.getElementById('timePassed').innerText = 'N/A';
-                document.getElementById('timeRemaining').innerText = 'N/A';
-                document.getElementById('currentAvgTicketTime').innerText = 'N/A';
-                targetsContent.innerHTML = `<div class="info-box info-box-danger" style="font-size: 0.75rem; padding: 0.5rem;">Invalid Schedule. Total Productive Time must be greater than 0.</div>`;
-                return; // Stop calculation
-            }
-
-            // --- 2. Calculate Current Time Stats ---
             let workdayMinutesPassed = (now - startTime) / 60000;
             if (workdayMinutesPassed < 0) workdayMinutesPassed = 0; // Before shift
             if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes; // After shift
@@ -383,44 +215,92 @@
             if (totalShiftMinutes > 0) {
                  productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
             }
-            // Ensure productiveMinutesPassed doesn't exceed total
             if (productiveMinutesPassed > totalProductiveMinutes) {
                 productiveMinutesPassed = totalProductiveMinutes;
             }
             
             const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
 
-            document.getElementById('timePassed').innerText = formatMinutesToHHMM(productiveMinutesPassed);
-            document.getElementById('timeRemaining').innerText = formatMinutesToHHMM(productiveMinutesRemaining);
-            document.getElementById('currentTime').innerText = `Current Time: ${now.toLocaleTimeString()}`;
+            return {
+                now,
+                totalProductiveMinutes,
+                productiveMinutesPassed,
+                productiveMinutesRemaining,
+                totalShiftMinutes
+            };
+        }
+
+        // --- UI Update Functions ---
+        
+        // FIX F-2: Create dedicated render function to avoid innerHTML reset
+        function renderTarget(targetName, data) {
+            // Guard clause: If elements aren't built, exit.
+            if (!DOMElements.targets || !DOMElements.targets[targetName]) return;
+            
+            const card = DOMElements.targets[targetName].card;
+            const valueEl = DOMElements.targets[targetName].value;
+            const descEl = DOMElements.targets[targetName].desc;
+
+            card.className = `target-card ${data.boxClass}`;
+            valueEl.innerText = data.value;
+            descEl.innerHTML = data.desc; // Use innerHTML here for <strong> tag
+        }
+
+        function calculateAndRender() {
+            // --- 1. Get Schedule & Productive Time ---
+            const { 
+                now,
+                totalProductiveMinutes, 
+                productiveMinutesPassed, 
+                productiveMinutesRemaining,
+                totalShiftMinutes
+            } = getScheduleInfo();
+            
+            DOMElements.totalProductiveTime.innerText = formatMinutesToHHMM(totalProductiveMinutes);
+
+            // --- Handle Invalid Schedule ---
+            if (totalProductiveMinutes <= 0) {
+                DOMElements.timePassed.innerText = 'N/A';
+                DOMElements.timeRemaining.innerText = 'N/A';
+                DOMElements.currentAvgTicketTime.innerText = 'N/A';
+                DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger" style="grid-column: span 3;">Invalid Schedule. Total Productive Time must be > 0.</div>`;
+                DOMElements.targetInfo.style.display = 'none';
+                return; // Stop calculation
+            }
+            
+            // Restore info box if it was hidden
+            DOMElements.targetInfo.style.display = 'block';
+
+
+            // --- 2. Calculate Current Time Stats ---
+            DOMElements.timePassed.innerText = formatMinutesToHHMM(productiveMinutesPassed);
+            DOMElements.timeRemaining.innerText = formatMinutesToHHMM(productiveMinutesRemaining);
+            DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
 
             // --- 3. Get User Inputs (SO FAR) ---
-            const currentCallTimeSoFar = parseHHMMToMinutes(document.getElementById('currentCallTime').value);
-            const currentTicketsSoFar = parseInt(document.getElementById('currentTickets').value) || 0;
+            const currentCallTimeSoFar = parseHHMMToMinutes(DOMElements.currentCallTime.value);
+            const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
 
-            // --- 4. Calculate Current "So Far" Stats (FIXED LOGIC) ---
+            // --- 4. Calculate Current "So Far" Stats ---
             let currentWorkTimeSoFar = productiveMinutesPassed - currentCallTimeSoFar;
             if (currentWorkTimeSoFar < 0) currentWorkTimeSoFar = 0;
 
             let currentAvgTicketTime = 0;
             let avgTicketTimeText = '0:00'; // Default
             
-            // FIX 3: Clarify Avg. Ticket Time display
             if (productiveMinutesPassed <= 0 && currentTicketsSoFar > 0) {
                 avgTicketTimeText = 'N/A'; // Show N/A if before shift
             } else if (currentTicketsSoFar > 0 && currentWorkTimeSoFar > 0) {
                 currentAvgTicketTime = currentWorkTimeSoFar / currentTicketsSoFar;
                 avgTicketTimeText = formatMinutesToMMSS(currentAvgTicketTime);
             }
-            document.getElementById('currentAvgTicketTime').innerText = avgTicketTimeText;
+            DOMElements.currentAvgTicketTime.innerText = avgTicketTimeText;
 
-            // --- 5. Project EOD Totals (RE-IMPLEMENTED) ---
+            // --- 5. Project EOD Totals ---
             let callPace = 0;
             if (productiveMinutesPassed > 0) {
-                // Calculate pace based on time passed
                 callPace = currentCallTimeSoFar / productiveMinutesPassed;
             } else if (currentCallTimeSoFar > 0) {
-                // If before shift (productiveMinutesPassed = 0), assume pace will be 100% call time
                 callPace = 1.0;
             }
             
@@ -428,14 +308,18 @@
             const projectedTotalWorkTimeEOD = totalProductiveMinutes - projectedTotalCallTimeEOD;
 
             // --- 6. Calculate and Render Targets ---
-            targetsContent.innerHTML = ''; // Clear old targets
+            const targets = ['Outstanding', 'Excellent', 'Satisfactory'];
+            
+            // FIX F-2: Check if targetsContent is in a valid state
+            if (!DOMElements.targets || !DOMElements.targets.Outstanding) {
+                // If schedule was invalid, targetsContent was replaced. Rebuild it.
+                buildTargetSkeletons();
+            }
+
             for (const targetName of targets) {
                 const targetInfo = workEfficiencyTargets[targetName];
-                const targetBox = document.createElement('div');
-                targetBox.id = `target${targetName}`;
                 
                 let targetTotalTickets = 0;
-                // Only calculate tickets if there is projected work time
                 if (projectedTotalWorkTimeEOD > 0) {
                      targetTotalTickets = Math.ceil(projectedTotalWorkTimeEOD / targetInfo.target);
                 }
@@ -443,134 +327,141 @@
                 const ticketsNeeded = targetTotalTickets - currentTicketsSoFar;
                 const workTimeNeeded = ticketsNeeded > 0 ? ticketsNeeded * targetInfo.target : 0;
 
-                let html = '';
-                let boxClass = 'target-warn';
+                let renderData = {};
 
-                // Scenario 1: Pace is too high (FIXED BUG)
-                // If projected work time is 0 or less, you can't hit any ticket goal.
                 if (projectedTotalWorkTimeEOD <= 0) {
-                    boxClass = 'target-danger';
-                    html = `
-                        <span class="target-label">${targetInfo.name}</span>
-                        <span class="target-value">0</span>
-                        <span class="target-desc">
-                            Your call pace is too high. No time left for tickets.
-                        </span>
-                    `;
+                    renderData = {
+                        boxClass: 'target-danger',
+                        value: '0',
+                        desc: 'High call pace. No time for tickets.'
+                    };
                 }
-                // Scenario 2: Goal is already met
                 else if (ticketsNeeded <= 0) {
-                    boxClass = 'target-good';
-                    // FIX 2: Corrected HTML typo (span.class.target-desc)
-                    html = `
-                        <span class="target-label">${targetInfo.name}</span>
-                        <span class="target-value">GOAL MET!</span>
-                        <span class="target-desc">
-                            You've hit the projected goal of <strong>${targetTotalTickets}</strong> tickets.
-                        </span>
-                    `;
+                    renderData = {
+                        boxClass: 'target-good',
+                        value: 'MET',
+                        desc: `Goal: <strong>${targetTotalTickets}</strong> tickets`
+                    };
                 } 
-                // Scenario 3: Day is over and goal not met
                 else if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
-                     boxClass = 'target-danger';
-                     html = `
-                        <span class="target-label">${targetInfo.name}</span>
-                        <span class="target-value">${ticketsNeeded}</span>
-                        <span class="target-desc">
-                           Tickets short. The day is over.
-                        </span>
-                    `;
+                     renderData = {
+                        boxClass: 'target-danger',
+                        value: `${ticketsNeeded}`,
+                        desc: 'Short. Day is over.'
+                    };
                 }
-                // Scenario 4: Tickets are still needed
                 else {
-                     html = `
-                        <span class="target-label">${targetInfo.name}</span>
-                        <span class="target-value">${ticketsNeeded}</span>
-                        <span class="target-desc">
-                            Tickets short
-                            (<strong>~${formatMinutesToShortTime(workTimeNeeded)}</strong> of ticket work)
-                        </span>
-                    `;
+                     renderData = {
+                        boxClass: 'target-warn',
+                        value: `${ticketsNeeded}`,
+                        desc: `(<strong>~${formatMinutesToShortTime(workTimeNeeded)}</strong> work)`
+                    };
                 }
-                targetBox.className = `target-card ${boxClass}`;
-                targetBox.innerHTML = html;
-                targetsContent.appendChild(targetBox);
+                renderTarget(targetName, renderData);
             }
-            
-            // Add back the info box
-            const infoBox = document.createElement('div');
-            infoBox.id = 'target-info';
-            infoBox.className = 'info-box';
-            infoBox.style.cssText = 'margin-top: 0.25rem; font-size: 0.75rem; padding: 0.5rem;';
-            infoBox.innerText = `Targets are based on your projected call pace.`;
-            targetsContent.appendChild(infoBox);
+        }
+        
+        // FIX F-2: Function to build the target card skeletons once
+        function buildTargetSkeletons() {
+            DOMElements.targetsContent.innerHTML = ''; // Clear
+            const targets = ['Outstanding', 'Excellent', 'Satisfactory'];
+            DOMElements.targets = {};
+
+            for (const targetName of targets) {
+                const card = document.createElement('div');
+                card.id = `target${targetName}`;
+                card.className = 'target-card';
+                
+                const label = document.createElement('span');
+                label.className = 'target-label';
+                label.innerText = workEfficiencyTargets[targetName].name;
+                
+                const value = document.createElement('span');
+                value.className = 'target-value';
+                value.innerText = '...';
+
+                const desc = document.createElement('span');
+                desc.className = 'target-desc';
+                desc.innerText = '...';
+
+                card.appendChild(label);
+                card.appendChild(value);
+                card.appendChild(desc);
+                DOMElements.targetsContent.appendChild(card);
+
+                // Cache the elements for updating
+                DOMElements.targets[targetName] = { card, value, desc };
+            }
         }
 
         // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
+            // FIX F-1: Populate DOM element cache
+            DOMElements.shiftStart = document.getElementById('shiftStart');
+            DOMElements.shiftEnd = document.getElementById('shiftEnd');
+            DOMElements.breakTime = document.getElementById('breakTime');
+            DOMElements.currentCallTime = document.getElementById('currentCallTime');
+            DOMElements.currentTickets = document.getElementById('currentTickets');
+            DOMElements.currentTime = document.getElementById('currentTime');
+            DOMElements.totalProductiveTime = document.getElementById('totalProductiveTime');
+            DOMElements.timePassed = document.getElementById('timePassed');
+            // FIX: Corrected typo in element ID
+            DOMElements.timeRemaining = document.getElementById('timeRemaining'); 
+            DOMElements.currentAvgTicketTime = document.getElementById('currentAvgTicketTime');
+            DOMElements.targetsContent = document.getElementById('targets-content');
+            DOMElements.targetInfo = document.getElementById('target-info');
+            
             // Populate time dropdowns
             populateTimeOptions('shiftStart', 6, 12, '08:00'); // 6 AM to 12 PM, default 8:00
             populateTimeOptions('shiftEnd', 12, 18, '16:00'); // 12 PM to 6 PM, default 16:00
+
+            // FIX F-2: Build the target skeletons once on load
+            buildTargetSkeletons();
 
             // De-bounce timer to prevent race condition on input
             let calcTimer;
             const debouncedCalculate = () => {
                 clearTimeout(calcTimer);
-                calcTimer = setTimeout(calculateDailyRatings, 250); // 250ms debounce
+                // Run calculation on next animation frame for smoothness
+                requestAnimationFrame(()_ => {
+                    calcTimer = setTimeout(calculateAndRender, 50); // 50ms debounce
+                });
             };
 
             // Calculate on any input change
-            document.getElementById('shiftStart').addEventListener('input', debouncedCalculate);
-            document.getElementById('shiftEnd').addEventListener('input', debouncedCalculate);
-            document.getElementById('breakTime').addEventListener('input', debouncedCalculate);
-            document.getElementById('currentCallTime').addEventListener('input', debouncedCalculate);
-            document.getElementById('currentTickets').addEventListener('input', debouncedCalculate);
+            DOMElements.shiftStart.addEventListener('input', debouncedCalculate);
+            DOMElements.shiftEnd.addEventListener('input', debouncedCalculate);
+            DOMElements.breakTime.addEventListener('input', debouncedCalculate);
+            DOMElements.currentCallTime.addEventListener('input', debouncedCalculate);
+            DOMElements.currentTickets.addEventListener('input', debouncedCalculate);
             
-            // Main interval for real-time updates (clock, time passed, etc.)
+            // FIX F-3: Streamlined interval
             setInterval(() => {
-                const now = new Date();
-                
-                const startTimeStr = document.getElementById('shiftStart').value;
-                const endTimeStr = document.getElementById('shiftEnd').value;
-                const breakTimeMinutes = parseInt(document.getElementById('breakTime').value, 10);
+                // This interval ONLY updates what's necessary every second
+                const { 
+                    now,
+                    productiveMinutesPassed, 
+                    productiveMinutesRemaining
+                } = getScheduleInfo();
 
-                const startTime = new Date(now);
-                startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
-                
-                const endTime = new Date(now);
-                endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
-
-                const totalShiftMinutes = (endTime - startTime) / 60000;
-                const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
-                const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
-                const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
-
-                let workdayMinutesPassed = (now - startTime) / 60000;
-                if (workdayMinutesPassed < 0) workdayMinutesPassed = 0;
-                if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes;
-
-                let productiveMinutesPassed = 0;
-                if (totalShiftMinutes > 0) {
-                    productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
+                // Check for DOMElements before updating
+                if (DOMElements.currentTime) {
+                   DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
                 }
-                if (productiveMinutesPassed > totalProductiveMinutes) {
-                    productiveMinutesPassed = totalProductiveMinutes;
+                if (DOMElements.timePassed) {
+                    DOMElements.timePassed.innerText = formatMinutesToHHMM(productiveMinutesPassed);
                 }
-                const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
-
-                // Update live-time stats
-                document.getElementById('timePassed').innerText = formatMinutesToHHMM(productiveMinutesPassed);
-                document.getElementById('timeRemaining').innerText = formatMinutesToHHMM(productiveMinutesRemaining);
-                document.getElementById('currentTime').innerText = `Current Time: ${now.toLocaleTimeString()}`;
-
-                // Re-run the full calculation ONLY if the time-based stats change
-                // This keeps projections in sync with the clock
+                if (DOMElements.timeRemaining) {
+                    DOMElements.timeRemaining.innerText = formatMinutesToHHMM(productiveMinutesRemaining);
+                }
+                
+                // Re-run the full calculation to keep projections in sync with the clock
                 debouncedCalculate();
 
             }, 1000); // Clock updates every second
 
             // Run once on load
-            calculateDailyRatings(); 
+            calculateAndRender(); 
         });
     </script>
 </body>
