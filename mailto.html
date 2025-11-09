@@ -48,9 +48,9 @@
                     </div>
 
                     <div id="upload-wrapper" class="upload-wrapper form-group">
-                        <input type="file" id="msg-upload" accept=".msg,.oft">
+                        <input type="file" id="msg-upload" accept=".msg,.oft,.eml,.email">
                         <label for="msg-upload" class="button-base button-primary">
-                            Upload .msg or .oft file
+                            Upload .msg, .oft, .eml, or .email file
                         </label>
                         <p>or drag and drop a file here</p>
                     </div>
@@ -195,7 +195,7 @@
     
         const APP_CONFIG = {
             NAME: 'mailto_library',
-            VERSION: '1.2.2', // Updated version
+            VERSION: '1.2.3', // Updated version
             DATA_KEY: 'mailto_library_v1',
             CSV_HEADERS: ['name', 'path', ...MAILTO_FIELDS] // Issue 1
         };
@@ -631,8 +631,8 @@
                     return SafeUI.showModal('File Too Large', '<p>File must be under 10MB.</p>', [{label: 'OK'}]); 
                 }
 
-                if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft')) {
-                    return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg</strong> or <strong>.oft</strong> file.</p>', [{label: 'OK'}]);
+                if (!file.name.endsWith('.msg') && !file.name.endsWith('.oft') && !file.name.endsWith('.eml') && !file.name.endsWith('.email')) {
+                    return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg, .oft, .eml,</strong> or <strong>.email</strong> file.</p>', [{label: 'OK'}]);
                 }
                 
                 clearEditorFields();
@@ -645,8 +645,8 @@
                         }
                 
                         const arrayBuffer = e.target.result;
-                        if (!arrayBuffer || arrayBuffer.byteLength < 512) {
-                            throw new Error('File too small or empty. MSG files must be at least 512 bytes.');
+                        if (!arrayBuffer) { // Removed size check, as .eml can be tiny
+                            throw new Error('File is empty.');
                         }
                 
                         console.log('File info:', {
@@ -656,9 +656,9 @@
                             bufferSize: arrayBuffer.byteLength
                         });
                 
-                        console.log('Parsing MSG file with robust parser (Tier 2)...');
+                        console.log('Parsing file with MsgReader.read() (v1.4.16+)...');
                         const fileData = window.MsgReader.read(arrayBuffer);
-                        console.log('Parse successful with robust parser!');
+                        console.log('Parse successful!');
                         console.log('Extracted data:', fileData);
 
                         if (!fileData) {
@@ -691,6 +691,8 @@
                             }
                             
                             let cleanAddr = addr;
+                            // This regex logic is now handled inside the parser's parseAddress
+                            // but we will keep it here as a safety fallback.
                             const match = addr.match(/<([^>]+)>/);
                             if (match) {
                                 cleanAddr = match[1];
@@ -722,12 +724,12 @@
                         // Resize textarea
                         setTimeout(() => resizeResultBody(), 0);
                         
-                        SafeUI.showToast('MSG file loaded successfully!');
+                        SafeUI.showToast('File loaded successfully!');
                 
                     } catch (err) {
                         // --- FIX (Mode C) ---
                         // Simplify error message to just show the parser's error.
-                        console.error('MSG parsing error:', err);
+                        console.error('File parsing error:', err);
                         SafeUI.showModal('File Error', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
                         // --- END FIX ---
                     }
