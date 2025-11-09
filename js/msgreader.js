@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.16 (Refactored)
+ * msg-reader.js v1.4.17 (Refactored)
  * Production-grade Microsoft Outlook MSG/OFT/EML file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -12,14 +12,18 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.17 (Gemini Patch):
+ * 1. [FIX] Greatly improved `_stripHtml` function.
+ * - It now replaces block-level tags (<p>, <div>, <br>) with newlines
+ * instead of just deleting them.
+ * - This fixes the "New Outlook" .msg file issue where body text
+ * was concatenated and line breaks were lost.
+ * 2. [FIX] Improved HTML entity decoding in `_stripHtml`.
+ *
  * v1.4.16 (Gemini Feature):
- * 1. [FEATURE] Added file-type sniffing. The static `read()` function now
- * checks the file's 8-byte signature.
- * 2. [FEATURE] If OLE signature is found, it calls `reader.parse()` (original OLE parser).
- * 3. [FEATURE] If OLE signature is NOT found, it calls `reader.parseMime()` (new MIME parser).
- * 4. [FEATURE] Added `parseMime()` to parse plain-text .eml/.email files using
- * regex-based header and body extraction.
- * 5. [DEBUG] Re-enabled all console.log statements for testing new file types.
+ * 1. [FEATURE] Added file-type sniffing (OLE vs. MIME).
+ * 2. [FEATURE] Added `parseMime()` for .eml/.email files.
+ * 3. [DEBUG] Re-enabled all console.log statements.
  *
  * v1.4.15 (Gemini Patch):
  * 1. [FIX] Prevents property overwrite in `extractProperties` for .oft files.
@@ -77,17 +81,49 @@
      */
     function _stripHtml(html) {
         if (!html) return '';
-        return html
-            .replace(/<style[^>]*>.*?<\/style>/gi, '')  // Remove style blocks
-            .replace(/<script[^>]*>.*?<\/script>/gi, '') // Remove script blocks
-            .replace(/<[^>]+>/g, '')                     // Remove all other tags
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .trim();
+        
+        var doc;
+        if (typeof DOMParser !== 'undefined') {
+            // Use DOMParser for accurate entity decoding
+            doc = new DOMParser().parseFromString(html, 'text/html');
+        } else {
+            // Fallback for environments without DOMParser
+            var text = html
+                // Add newlines for block-level elements
+                .replace(/<(br|p|div|tr)[^>]*>/gi, '\n')
+                // Remove all other tags
+                .replace(/<[^>]+>/g, '')
+                // Decode common entities
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&')
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'");
+            return text.trim();
+        }
+
+        // Use treeWalker to properly extract text content and respect line breaks
+        var walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
+        var text = '';
+        var node;
+
+        while (node = walker.nextNode()) {
+            if (node.nodeType === 3) { // Node.TEXT_NODE
+                text += node.nodeValue;
+            } else if (node.nodeType === 1) { // Node.ELEMENT_NODE
+                var tagName = node.tagName.toLowerCase();
+                // Add newlines for block-level elements
+                if (tagName === 'br' || tagName === 'p' || tagName === 'div' || tagName === 'tr') {
+                    if (text.length > 0 && !text.endsWith('\n')) {
+                        text += '\n';
+                    }
+                }
+            }
+        }
+        
+        // Final trim to remove leading/trailing whitespace
+        return text.trim();
     }
     
     /**
