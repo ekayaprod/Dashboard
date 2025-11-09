@@ -801,6 +801,14 @@
         // Process any property that is (or could be) text
         if (isBody || isHtmlBody || isTextProp || (type === PROP_TYPE_BINARY && data.length > 0)) {
             
+            if (isBody || isHtmlBody) {
+                console.log('=== BODY DEBUG ===');
+                console.log('propId:', propId.toString(16), isBody ? '(BODY)' : '(HTML)');
+                console.log('type:', type.toString(16));
+                console.log('data length:', data.length);
+                console.log('First 50 bytes (hex):', Array.from(data.slice(0, 50)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                console.log('First 50 bytes (as chars):', Array.from(data.slice(0, 50)).map(b => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join(''));
+            }
             var textUtf16 = null;
             var textUtf8 = null;
             var chosenText = null;
