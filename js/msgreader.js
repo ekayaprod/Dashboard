@@ -666,6 +666,13 @@
     
         // Find all property streams
         this.directoryEntries.forEach(function(entry) {
+            // === DEBUG: Log ALL entries ===
+            console.log('DIR ENTRY:', {
+                name: entry.name,
+                type: entry.type === 1 ? 'FOLDER' : entry.type === 2 ? 'STREAM' : 'OTHER',
+                size: entry.size
+            });
+            // === END DEBUG ===
             // Property streams are named "__substg1.0_XXXXYYYY"
             var isRootProperty = entry.name.indexOf('__substg1.0_') === 0;
             // Recipient properties are in a separate storage and handled later
@@ -689,7 +696,15 @@
                 var propType = parseInt(propTag.substring(4, 8), 16);
     
                 var streamData = self.readStream(entry);
-                
+                // === DEBUG: Log property details ===
+                console.log('  PROPERTY:', {
+                tag: propTag,
+                id: '0x' + propId.toString(16),
+                type: '0x' + propType.toString(16),
+                size: streamData.length,
+                first20bytes: Array.from(streamData.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+                });
+                // === END DEBUG ===
                 // --- (Mode C/D) Store raw data first ---
                 rawProperties[propId] = {
                     id: propId,
