@@ -87,8 +87,8 @@
         if (!str) return '';
         
         var decoded = str
-            // Handle soft line breaks (=\r\n)
-            .replace(/=\r\n/g, '')
+            // Handle soft line breaks (=\r\n or =\n)
+            .replace(/=(\r\n|\n)/g, '')
             // Handle hex-encoded characters (=XX)
             .replace(/=([0-9A-F]{2})/g, function(match, hex) {
                 return String.fromCharCode(parseInt(hex, 16));
@@ -730,6 +730,7 @@
         };
 
         // --- FIX v1.4.18: Use stricter, multiline regex ---
+        // 'm' flag = multiline, '^' = start of line
         var subjectMatch = rawText.match(/^Subject:\s*([^\r\n]+)/im);
         if (subjectMatch) {
             result.subject = subjectMatch[1].trim();
