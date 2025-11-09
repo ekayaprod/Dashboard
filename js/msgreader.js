@@ -1,5 +1,5 @@
 /**
- * msg-reader.js v1.4.17 (Refactored)
+ * msg-reader.js v1.4.18 (Refactored)
  * Production-grade Microsoft Outlook MSG/OFT/EML file parser
  *
  * This script provides a pure JavaScript parser for Microsoft Outlook .msg and .oft
@@ -12,18 +12,21 @@
  * Licensed under MIT.
  *
  * CHANGELOG:
+ * v1.4.18 (Gemini Patch):
+ * 1. [FIX] Overhauled `_stripHtml` (v1.4.17) to use a robust multi-stage
+ * regex. Replaces all block-level tags with newlines before stripping
+ * all other tags. Fixes line break issues in "New Outlook" .msg files.
+ * 2. [FIX] Overhauled `_scanBufferForMimeText` regex to be multiline and
+ * match from the start of a line (`^...`) to fix .eml parsing.
+ * 3. [FEATURE] Added `_decodeQuotedPrintable` helper to correctly parse
+ * .eml file bodies (e.g., "=C3=B1" -> "ñ").
+ * 4. [FIX] Updated `parseMime` to use the new stricter regex for Bcc.
+ *
  * v1.4.17 (Gemini Patch):
- * 1. [FIX] Greatly improved `_stripHtml` function.
- * - It now replaces block-level tags (<p>, <div>, <br>) with newlines
- * instead of just deleting them.
- * - This fixes the "New Outlook" .msg file issue where body text
- * was concatenated and line breaks were lost.
- * 2. [FIX] Improved HTML entity decoding in `_stripHtml`.
+ * 1. [FIX] Attempted to improve `_stripHtml` with DOMParser (flawed).
  *
  * v1.4.16 (Gemini Feature):
- * 1. [FEATURE] Added file-type sniffing (OLE vs. MIME).
- * 2. [FEATURE] Added `parseMime()` for .eml/.email files.
- * 3. [DEBUG] Re-enabled all console.log statements.
+ * 1. [FEATURE] Added file-type sniffing (OLE vs. MIME) & `parseMime()`.
  *
  * v1.4.15 (Gemini Patch):
  * 1. [FIX] Prevents property overwrite in `extractProperties` for .oft files.
@@ -74,55 +77,72 @@
     var RECIPIENT_TYPE_BCC = 3;
     
     // --- (Mode C/D) Helper function for text processing ---
+    
     /**
-     * Strips HTML tags and decodes HTML entities.
+     * Decodes a Quoted-Printable string.
+     * @param {string} str - The Quoted-Printable encoded string.
+     * @returns {string} The decoded string.
+     */
+    function _decodeQuotedPrintable(str) {
+        if (!str) return '';
+        
+        var decoded = str
+            // Handle soft line breaks (=\r\n)
+            .replace(/=\r\n/g, '')
+            // Handle hex-encoded characters (=XX)
+            .replace(/=([0-9A-F]{2})/g, function(match, hex) {
+                return String.fromCharCode(parseInt(hex, 16));
+            });
+            
+        // After decoding, try to decode as UTF-8 in case of multi-byte chars
+        try {
+            // Re-encode to latin1 (bytes), then decode as UTF-8
+            var bytes = new Uint8Array(decoded.length);
+            for (var i = 0; i < decoded.length; i++) {
+                bytes[i] = decoded.charCodeAt(i);
+            }
+            return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+        } catch (e) {
+            return decoded; // Fallback to the raw decoded string
+        }
+    }
+
+    /**
+     * Strips HTML tags and decodes HTML entities. (v1.4.18)
      * @param {string} html - The HTML string.
      * @returns {string} The plain text.
      */
     function _stripHtml(html) {
         if (!html) return '';
         
+        var text = html;
+
+        // 1. Add newlines for common block-level elements
+        text = text.replace(/<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n');
+        
+        // 2. Remove all other tags
+        text = text.replace(/<[^>]+>/g, '');
+        
+        // 3. Decode common HTML entities
         var doc;
         if (typeof DOMParser !== 'undefined') {
             // Use DOMParser for accurate entity decoding
-            doc = new DOMParser().parseFromString(html, 'text/html');
+            doc = new DOMParser().parseFromString(text, 'text/html');
+            text = doc.documentElement.textContent || '';
         } else {
             // Fallback for environments without DOMParser
-            var text = html
-                // Add newlines for block-level elements
-                .replace(/<(br|p|div|tr)[^>]*>/gi, '\n')
-                // Remove all other tags
-                .replace(/<[^>]+>/g, '')
-                // Decode common entities
+            text = text
                 .replace(/&nbsp;/g, ' ')
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>')
                 .replace(/&amp;/g, '&')
                 .replace(/&quot;/g, '"')
                 .replace(/&#39;/g, "'");
-            return text.trim();
-        }
-
-        // Use treeWalker to properly extract text content and respect line breaks
-        var walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
-        var text = '';
-        var node;
-
-        while (node = walker.nextNode()) {
-            if (node.nodeType === 3) { // Node.TEXT_NODE
-                text += node.nodeValue;
-            } else if (node.nodeType === 1) { // Node.ELEMENT_NODE
-                var tagName = node.tagName.toLowerCase();
-                // Add newlines for block-level elements
-                if (tagName === 'br' || tagName === 'p' || tagName === 'div' || tagName === 'tr') {
-                    if (text.length > 0 && !text.endsWith('\n')) {
-                        text += '\n';
-                    }
-                }
-            }
         }
         
-        // Final trim to remove leading/trailing whitespace
+        // 4. Collapse multiple newlines to a maximum of two
+        text = text.replace(/(\r\n|\r|\n){3,}/g, '\n\n');
+        
         return text.trim();
     }
     
@@ -133,7 +153,8 @@
      */
     function _normalizeText(text) {
         if (!text) return '';
-        return text.replace(/(\r\n|\r|\n){3,}/g, '\n\n').trim(); // Collapse 3+ newlines to 2
+        // Only collapse newlines, don't trim here
+        return text.replace(/(\r\n|\r|\n){3,}/g, '\n\n');
     }
     // --- END HELPER ---
 
@@ -315,7 +336,17 @@
         try {
             // We can't use the cache, as it might be from a different file
             this._mimeScanCache = null; 
-            var mimeData = this._scanBufferForMimeText();
+            
+            // --- FIX v1.4.18: Decode raw text first ---
+            var rawText = '';
+             try {
+                rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView);
+            } catch (e) {
+                rawText = new TextDecoder('latin1').decode(this.dataView);
+            }
+            // --- END FIX ---
+            
+            var mimeData = this._scanBufferForMimeText(rawText); // Pass in raw text
             
             var recipients = [];
             
@@ -338,19 +369,12 @@
             parseMimeAddresses(mimeData.to, RECIPIENT_TYPE_TO);
             parseMimeAddresses(mimeData.cc, RECIPIENT_TYPE_CC);
             
-            // Now, manually scan for Bcc (since _scanBuffer doesn't get it)
-            // We have to decode again, or cache the raw text
-            var rawText = '';
-             try {
-                rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView);
-            } catch (e) {
-                rawText = new TextDecoder('latin1').decode(this.dataView);
-            }
-            
-            var bccMatch = rawText.match(/\bBcc:\s*([^\r\n]+)/i);
+            // --- FIX v1.4.18: Use stricter regex for Bcc ---
+            var bccMatch = rawText.match(/^Bcc:\s*([^\r\n]+)/im);
             if (bccMatch) {
                 parseMimeAddresses(bccMatch[1].trim(), RECIPIENT_TYPE_BCC);
             }
+            // --- END FIX ---
 
             // Populate properties map so getFieldValue works
             this.properties[PROP_ID_SUBJECT] = { id: PROP_ID_SUBJECT, value: mimeData.subject };
@@ -670,28 +694,33 @@
      * Scans the raw file buffer for plain-text MIME headers.
      * This is a fallback for modern Outlook 365 files that store key
      * data as plain text instead of in OLE streams.
+     * @param {string} rawText - The decoded raw text of the file.
      * @returns {object} An object with found headers {subject, to, cc, body}.
      */
-    MsgReader.prototype._scanBufferForMimeText = function() {
+    MsgReader.prototype._scanBufferForMimeText = function(rawText) {
         if (this._mimeScanCache) {
             return this._mimeScanCache; // Return from cache if already scanned
         }
 
         console.log('Scanning raw buffer for MIME text...');
-        var rawText = '';
-        try {
-            // Try UTF-8 first, as it's common
-            rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView);
-        } catch (e) {
-            // Fallback to latin1 (which handles arbitrary bytes)
+        
+        // If rawText isn't provided (e.g., old OLE fallback path), decode it.
+        if (!rawText) {
             try {
-                rawText = new TextDecoder('latin1').decode(this.dataView);
-            } catch (e2) {
-                console.warn('Could not decode raw buffer for MIME scan.');
-                // If decoding fails, we can't scan
-                return { subject: null, to: null, cc: null, body: null };
+                // Try UTF-8 first, as it's common
+                rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView);
+            } catch (e) {
+                // Fallback to latin1 (which handles arbitrary bytes)
+                try {
+                    rawText = new TextDecoder('latin1').decode(this.dataView);
+                } catch (e2) {
+                    console.warn('Could not decode raw buffer for MIME scan.');
+                    // If decoding fails, we can't scan
+                    return { subject: null, to: null, cc: null, body: null };
+                }
             }
         }
+
 
         var result = {
             subject: null,
@@ -700,41 +729,63 @@
             body: null
         };
 
-        // Use flexible regex to find headers.
-        // \b - word boundary, \s* - zero or more whitespace, ([^\r\n]+) - capture value
-        var subjectMatch = rawText.match(/\bSubject:\s*([^\r\n]+)/i);
+        // --- FIX v1.4.18: Use stricter, multiline regex ---
+        var subjectMatch = rawText.match(/^Subject:\s*([^\r\n]+)/im);
         if (subjectMatch) {
             result.subject = subjectMatch[1].trim();
             console.log('MIME Scan found Subject:', result.subject);
         }
 
-        var toMatch = rawText.match(/\bTo:\s*([^\r\n]+)/i);
+        var toMatch = rawText.match(/^To:\s*([^\r\n]+)/im);
         if (toMatch) {
             result.to = toMatch[1].trim();
             console.log('MIME Scan found To:', result.to);
         }
 
-        var ccMatch = rawText.match(/\bCc:\s*([^\r\n]+)/i);
+        var ccMatch = rawText.match(/^Cc:\s*([^\r\n]+)/im);
         if (ccMatch) {
             result.cc = ccMatch[1].trim();
             console.log('MIME Scan found Cc:', result.cc);
         }
+        // --- END FIX ---
         
         // Find body: Look for the first double-linebreak (header/body separator)
         var headerEndMatch = rawText.match(/(\r\n\r\n|\n\n)/);
         if (headerEndMatch) {
             var bodyText = rawText.substring(headerEndMatch.index + headerEndMatch[0].length);
             
-            // Try to find the *plain text* body part in a multipart message
-            var plainBodyMatch = bodyText.match(/Content-Type:\s*text\/plain;[\s\S]*?(\r\n\r\n|\n\n)([\s\S]*?)(--_?|\r\n\r\nContent-Type:)/im);
+            // Check for Quoted-Printable encoding
+            var transferEncodingMatch = rawText.match(/^Content-Transfer-Encoding:\s*quoted-printable/im);
             
-            if (plainBodyMatch && plainBodyMatch[2]) {
-                result.body = plainBodyMatch[2].trim();
+            // Try to find the *plain text* body part in a multipart message
+            // This regex looks for a plain text part *and* its encoding
+            var plainBodyMatch = bodyText.match(/Content-Type:\s*text\/plain;[\s\S]*?(?:Content-Transfer-Encoding:\s*([\w-]+)[\s\S]*?)?(\r\n\r\n|\n\n)([\s\S]*?)(--_?|\r\n\r\nContent-Type:)/im);
+            
+            var bodyToDecode = bodyText; // Default to full body
+            var encoding = transferEncodingMatch ? 'quoted-printable' : null;
+
+            if (plainBodyMatch && plainBodyMatch[3]) {
+                // Found a specific plain text part
+                bodyToDecode = plainBodyMatch[3];
+                // Check for encoding *specific to this part*
+                if (plainBodyMatch[1]) {
+                    encoding = plainBodyMatch[1].trim().toLowerCase();
+                }
             } else {
                 // If not multipart or no plain text part found,
                 // just take the first chunk of text as the body.
-                result.body = bodyText.split(/--_?|\r\n\r\nContent-Type:/)[0].trim();
+                bodyToDecode = bodyText.split(/--_?|\r\n\r\nContent-Type:/)[0].trim();
             }
+
+            // --- FIX v1.4.18: Decode Quoted-Printable ---
+            if (encoding === 'quoted-printable') {
+                console.log('MIME Scan: Decoding Quoted-Printable body...');
+                result.body = _decodeQuotedPrintable(bodyToDecode);
+            } else {
+                result.body = bodyToDecode;
+            }
+            // --- END FIX ---
+            
             console.log('MIME Scan found Body (first 50 chars):', result.body ? result.body.substring(0, 50) : 'null');
         }
 
@@ -874,7 +925,7 @@
         
         // --- Fallback for empty OLE streams ---
         // In some O365 files, OLE streams are empty, but data exists in MIME text.
-        var mimeData = this._scanBufferForMimeText();
+        var mimeData = this._scanBufferForMimeText(null); // Pass null to force decode
         
         if (!this.properties[PROP_ID_SUBJECT] || !this.properties[PROP_ID_SUBJECT].value) {
             if (mimeData.subject) {
@@ -1170,7 +1221,7 @@
         });
     
         // --- Fallback Method 2: MIME Header Scan ---
-        var mimeData = this._scanBufferForMimeText();
+        var mimeData = this._scanBufferForMimeText(null); // Pass null to force decode
         console.log('MIME Scan Fallback Data:', mimeData);
         
         // This logic is now complex, as we can't use a map.
