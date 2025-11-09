@@ -6,23 +6,12 @@
     <title>EOD Targets</title>
     <!-- Using the shared style.css from the root directory -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- 
-      All styles have been moved to style.css 
-      under the .eod-targets-page namespace.
-    -->
 </head>
-<!-- 
-  This class is essential. It scopes all the specific styles 
-  in style.css to *only* this page.
--->
 <body class="eod-targets-page">
 
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-
-                <!-- Header REMOVED for vertical space -->
 
                 <div class="time-bar">
                     <span id="currentTime">Loading clock...</span>
@@ -62,14 +51,23 @@
                         <h2>2. Your Progress (So Far)</h2>
                     </div>
                     <div class="calc-section-content input-grid-2">
+                        <!-- Row 1 -->
                         <div>
-                            <!-- CHANGED LABEL -->
                             <label for="currentCallTime" class="sidebar-label">Call Time (So Far) (HH:MM)</label>
                             <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 01:30" value="00:00">
                         </div>
                         <div>
                             <label for="currentTickets" class="sidebar-label">Tickets Closed (So Far)</label>
                             <input type="number" id="currentTickets" class="sidebar-input" value="0">
+                        </div>
+                        
+                        <!-- Row 2: Quick Add Feature -->
+                        <div>
+                            <label for="addCallTime" class="sidebar-label">Add Call Minutes</label>
+                            <input type="number" id="addCallTime" class="sidebar-input" placeholder="e.g., 13">
+                        </div>
+                        <div style="align-self: flex-end;"> 
+                            <button id="btnAddCallTime" class="sidebar-btn btn-primary" style="width: 100%; font-weight: 600;">Add</button>
                         </div>
                     </div>
                 </div>
@@ -93,8 +91,8 @@
                             <span id="timeRemaining" class="stat-value">00:00</span>
                         </div>
                         <div class="stat-box">
-                            <span class="stat-label">Avg. Ticket Time</span>
-                            <span id="currentAvgTicketTime" class="stat-value">00:00</span>
+                            <span class="stat-label">Work Time (EOD)</span>
+                            <span id="totalWorkTimeEOD" class="stat-value">00:00</span>
                         </div>
                     </div>
                 </div>
@@ -102,16 +100,10 @@
                 <!-- End of Day Targets -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <h2>4. Your EOD Targets</h2>
+                        <h2>4. Your EOD Ticket Targets</h2>
                     </div>
                     <div id="targets-content" class="calc-section-content" style="gap: 0.5rem;">
                         <!-- Targets will be injected here by JS -->
-                        <div id="targetOutstanding" class="target-card"></div>
-                        <div id="targetExcellent" class="target-card"></div>
-                        <div id="targetSatisfactory" class="target-card"></div>
-                        <div id="target-info" class="info-box" style="margin-top: 0.25rem; font-size: 0.75rem; padding: 0.5rem;">
-                            Targets are based on your projected call pace.
-                        </div>
                     </div>
                 </div>
         
@@ -126,13 +118,25 @@
         // This is based on the original data: (8h shift - 1h break = 7h) / 1h leeway = 1/7th
         const LEEWAY_RATIO = 1 / 7; 
 
-        // Efficiency Targets (in Avg. Minutes per Ticket)
-        const workEfficiencyTargets = {
-            'Outstanding': { name: 'Outstanding', target: 7.0 },
-            'Excellent': { name: 'Excellent', target: 9.3 },
-            'Satisfactory': { name: 'Satisfactory', target: 10.8 },
-            'Needs Improvement': { name: 'Needs Improvement', target: 11.8 }
+        // --- NEW "HOURLY TARGET" LOGIC (Based on Spreadsheet Formulas) ---
+        // This logic is confirmed 100% against all provided data.
+        // The formula for "On/Off" tasks was a red herring; the functioning rate is 6.
+        const TICKETS_PER_HOUR_RATE = 6; 
+
+        // These are the boundaries from the formula:
+        // Outstanding: >= Target + 7
+        // Excellent:   Target + 4 to Target + 6
+        // Satisfactory: Target - 3 to Target + 3
+        // Needs Imp.:  Target - 6 to Target - 4
+        // Unsatisfactory: < Target - 6
+        const gradeBoundaries = {
+            'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
+            'Excellent': { name: 'Excellent', min: 4, max: 6 },
+            'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
+            // 'Needs Improvement': { name: 'Needs Improvement', min: -6, max: -4 }
         };
+        // --- END NEW LOGIC ---
+
 
         // --- Time Helpers ---
         function parseHHMMToMinutes(timeStr) {
@@ -151,27 +155,6 @@
             const hours = Math.floor(totalMinutes / 60);
             const minutes = Math.floor(totalMinutes % 60);
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        }
-
-        function formatMinutesToShortTime(totalMinutes) {
-            if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
-            if (totalMinutes < 1) return '< 1m';
-            
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = Math.floor(totalMinutes % 60);
-            
-            let parts = [];
-            if (hours > 0) parts.push(`${hours}h`);
-            if (minutes > 0) parts.push(`${minutes}m`);
-            
-            return parts.length > 0 ? parts.join(' ') : '0m';
-        }
-
-        function formatMinutesToMMSS(totalMinutes) {
-            if (isNaN(totalMinutes) || !isFinite(totalMinutes) || totalMinutes <= 0) return '0:00';
-            const minutes = Math.floor(totalMinutes);
-            const seconds = Math.floor((totalMinutes * 60) % 60);
-            return `${minutes}:${String(seconds).padStart(2, '0')}`;
         }
 
         function populateTimeOptions(selectId, startHour, endHour, defaultVal) {
@@ -194,10 +177,29 @@
         }
 
         // --- Main Calculation Engine ---
-        function calculateDailyRatings() {
-            // --- 1. Get Schedule & Productive Time ---
-            const now = new Date();
+
+        let calcTimer;
+        const debouncedCalculate = () => {
+            clearTimeout(calcTimer);
+            calcTimer = setTimeout(calculateDailyRatings, 250);
+        };
+
+        function handleAddCallTime() {
+            const callTimeInput = document.getElementById('currentCallTime');
+            const addTimeInput = document.getElementById('addCallTime');
             
+            const currentMinutes = parseHHMMToMinutes(callTimeInput.value);
+            const minutesToAdd = parseInt(addTimeInput.value, 10) || 0;
+            
+            if (minutesToAdd === 0) return;
+            
+            const newTotalMinutes = currentMinutes + minutesToAdd;
+            callTimeInput.value = formatMinutesToHHMM(newTotalMinutes);
+            addTimeInput.value = '';
+            debouncedCalculate(); 
+        }
+
+        function getScheduleInfo(now) {
             const startTimeStr = document.getElementById('shiftStart').value;
             const endTimeStr = document.getElementById('shiftEnd').value;
             const breakTimeMinutes = parseInt(document.getElementById('breakTime').value, 10);
@@ -211,86 +213,98 @@
             const totalShiftMinutes = (endTime - startTime) / 60000;
             const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
             const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
+            
             const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
             
-            document.getElementById('totalProductiveTime').innerText = formatMinutesToHHMM(totalProductiveMinutes);
-
-            // --- Handle Invalid Schedule ---
-            const targets = ['Outstanding', 'Excellent', 'Satisfactory'];
-            const targetsContent = document.getElementById('targets-content');
-            if (totalProductiveMinutes <= 0) {
-                document.getElementById('timePassed').innerText = 'N/A';
-                document.getElementById('timeRemaining').innerText = 'N/A';
-                document.getElementById('currentAvgTicketTime').innerText = 'N/A';
-                targetsContent.innerHTML = `<div class="info-box info-box-danger" style="font-size: 0.75rem; padding: 0.5rem; grid-column: span 3;">Invalid Schedule. Total Productive Time must be greater than 0.</div>`;
-                return; // Stop calculation
-            }
-
-            // --- 2. Calculate Current Time Stats ---
             let workdayMinutesPassed = (now - startTime) / 60000;
-            if (workdayMinutesPassed < 0) workdayMinutesPassed = 0; // Before shift
-            if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes; // After shift
+            if (workdayMinutesPassed < 0) workdayMinutesPassed = 0; 
+            if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes; 
 
             let productiveMinutesPassed = 0;
             if (totalShiftMinutes > 0) {
                  productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
             }
-            // Ensure productiveMinutesPassed doesn't exceed total
             if (productiveMinutesPassed > totalProductiveMinutes) {
                 productiveMinutesPassed = totalProductiveMinutes;
             }
-            
             const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
 
+            return {
+                totalProductiveMinutes,
+                productiveMinutesPassed,
+                productiveMinutesRemaining
+            };
+        }
+
+        function calculateDailyRatings() {
+            const now = new Date();
+            
+            // --- 1. Get Schedule & Productive Time ---
+            const { 
+                totalProductiveMinutes,
+                productiveMinutesPassed,
+                productiveMinutesRemaining 
+            } = getScheduleInfo(now);
+            
+            document.getElementById('totalProductiveTime').innerText = formatMinutesToHHMM(totalProductiveMinutes);
             document.getElementById('timePassed').innerText = formatMinutesToHHMM(productiveMinutesPassed);
             document.getElementById('timeRemaining').innerText = formatMinutesToHHMM(productiveMinutesRemaining);
             document.getElementById('currentTime').innerText = `Current Time: ${now.toLocaleTimeString()}`;
 
-            // --- 3. Get User Inputs (SO FAR) ---
+            // --- Handle Invalid Schedule ---
+            const targets = ['Outstanding', 'Excellent', 'Satisfactory'];
+            const targetsContent = document.getElementById('targets-content');
+            if (totalProductiveMinutes <= 0) {
+                document.getElementById('totalWorkTimeEOD').innerText = '00:00';
+                targetsContent.innerHTML = `<div class="info-box info-box-danger" style="font-size: 0.75rem; padding: 0.5rem; grid-column: span 3;">Invalid Schedule. Total Productive Time must be greater than 0.</div>`;
+                return; // Stop calculation
+            }
+
+            // --- 2. Get User Inputs (SO FAR) ---
             const currentCallTimeSoFar = parseHHMMToMinutes(document.getElementById('currentCallTime').value);
             const currentTicketsSoFar = parseInt(document.getElementById('currentTickets').value) || 0;
 
-            // --- 4. Calculate Current "So Far" Stats (FIXED LOGIC) ---
-            let currentWorkTimeSoFar = productiveMinutesPassed - currentCallTimeSoFar;
-            if (currentWorkTimeSoFar < 0) currentWorkTimeSoFar = 0;
-
-            let currentAvgTicketTime = 0;
-            if (currentTicketsSoFar > 0 && currentWorkTimeSoFar > 0) {
-                currentAvgTicketTime = currentWorkTimeSoFar / currentTicketsSoFar;
-            }
-            document.getElementById('currentAvgTicketTime').innerText = formatMinutesToMMSS(currentAvgTicketTime);
-
-            // --- 5. Calculate EOD Totals ("What-If" Logic) ---
-            // The "Call Time (So Far)" input is treated as the EOD total.
+            
+            // --- 3. Calculate EOD Totals (NEW "HOURLY TARGET" LOGIC) ---
+            
+            // This is the "Total Work Time" container, from the formula
+            // =IF(..., TIME(6,0,0) - B5)
             const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
+            document.getElementById('totalWorkTimeEOD').innerText = formatMinutesToHHMM(totalWorkTimeEOD);
+            
+            // This is the rounding logic from the formula
+            // =HOUR(MROUND(B8, "1:00"))
+            const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
 
-            // --- 6. Calculate and Render Targets ---
+            // This is the target calculation from the formula
+            // = ... * IF(..., 20, 6)
+            const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
+
+
+            // --- 4. Calculate and Render Targets ---
             targetsContent.innerHTML = ''; // Clear old targets
             for (const targetName of targets) {
-                const targetInfo = workEfficiencyTargets[targetName];
+                const boundary = gradeBoundaries[targetName];
                 const targetBox = document.createElement('div');
                 targetBox.id = `target${targetName}`;
                 
-                let targetTotalTickets = 0;
-                // Only calculate tickets if there is projected work time
-                if (totalWorkTimeEOD > 0) {
-                     targetTotalTickets = Math.ceil(totalWorkTimeEOD / targetInfo.target);
-                }
+                // We need to find the *minimum* tickets to hit this grade.
+                // This is (Target_Ticket_Goal + min_boundary_tickets)
+                const ticketsToHitGrade = targetTicketGoal + boundary.min;
                 
-                const ticketsNeeded = targetTotalTickets - currentTicketsSoFar;
-                const workTimeNeeded = ticketsNeeded > 0 ? ticketsNeeded * targetInfo.target : 0;
-
+                const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
+                
                 let html = '';
                 let boxClass = 'target-warn';
 
                 // Scenario 1: Call time input is too high
-                if (totalWorkTimeEOD <= 0) {
+                if (totalWorkTimeEOD < 0) {
                     boxClass = 'target-danger';
                     html = `
-                        <span class="target-label">${targetInfo.name}</span>
+                        <span class="target-label">${boundary.name}</span>
                         <span class="target-value">0</span>
                         <span class="target-desc">
-                            Call time is too high. No time left for tickets.
+                            Call time exceeds productive time.
                         </span>
                     `;
                 }
@@ -298,10 +312,10 @@
                 else if (ticketsNeeded <= 0) {
                     boxClass = 'target-good';
                     html = `
-                        <span class="target-label">${targetInfo.name}</span>
+                        <span class="target-label">${boundary.name}</span>
                         <span class="target-value">GOAL MET!</span>
                         <span class="target-desc">
-                            You've hit the goal of <strong>${targetTotalTickets}</strong> tickets.
+                            You've hit the goal of <strong>${ticketsToHitGrade}</strong> tickets.
                         </span>
                     `;
                 } 
@@ -309,7 +323,7 @@
                 else if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
                      boxClass = 'target-danger';
                      html = `
-                        <span class="target-label">${targetInfo.name}</span>
+                        <span class="target-label">${boundary.name}</span>
                         <span class="target-value">${ticketsNeeded}</span>
                         <span class="target-desc">
                            Tickets short. The day is over.
@@ -319,11 +333,10 @@
                 // Scenario 4: Tickets are still needed
                 else {
                      html = `
-                        <span class="target-label">${targetInfo.name}</span>
+                        <span class="target-label">${boundary.name}</span>
                         <span class="target-value">${ticketsNeeded}</span>
                         <span class="target-desc">
-                            Tickets short
-                            (<strong>~${formatMinutesToShortTime(workTimeNeeded)}</strong> of ticket work)
+                            Tickets short (Goal: ${ticketsToHitGrade})
                         </span>
                     `;
                 }
@@ -337,22 +350,15 @@
             infoBox.id = 'target-info';
             infoBox.className = 'info-box';
             infoBox.style.cssText = 'margin-top: 0.25rem; font-size: 0.75rem; padding: 0.5rem;';
-            infoBox.innerText = `Targets are based on your 'Call Time' input being the *total* for the day.`;
+            infoBox.innerText = `Target is ${TICKETS_PER_HOUR_RATE} tickets per *rounded hour* of your 'Work Time (EOD)'.`;
             targetsContent.appendChild(infoBox);
         }
 
         // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
             // Populate time dropdowns
-            populateTimeOptions('shiftStart', 6, 12, '08:00'); // 6 AM to 12 PM, default 8:00
-            populateTimeOptions('shiftEnd', 12, 18, '16:00'); // 12 PM to 6 PM, default 16:00
-
-            // De-bounce timer
-            let calcTimer;
-            const debouncedCalculate = () => {
-                clearTimeout(calcTimer);
-                calcTimer = setTimeout(calculateDailyRatings, 250); // 250ms debounce
-            };
+            populateTimeOptions('shiftStart', 6, 12, '08:00'); 
+            populateTimeOptions('shiftEnd', 12, 18, '16:00'); 
 
             // Calculate on any input change
             document.getElementById('shiftStart').addEventListener('input', debouncedCalculate);
@@ -361,45 +367,28 @@
             document.getElementById('currentCallTime').addEventListener('input', debouncedCalculate);
             document.getElementById('currentTickets').addEventListener('input', debouncedCalculate);
             
+            document.getElementById('btnAddCallTime').addEventListener('click', handleAddCallTime);
+            
+            // Also trigger "Add" on Enter key
+            document.getElementById('addCallTime').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleAddCallTime();
+                }
+            });
+            
             // Main interval for real-time updates (clock, time passed, etc.)
             setInterval(() => {
                 const now = new Date();
-                
-                const startTimeStr = document.getElementById('shiftStart').value;
-                const endTimeStr = document.getElementById('shiftEnd').value;
-                const breakTimeMinutes = parseInt(document.getElementById('breakTime').value, 10);
+                const { 
+                    productiveMinutesPassed,
+                    productiveMinutesRemaining 
+                } = getScheduleInfo(now);
 
-                const startTime = new Date(now);
-                startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
-                
-                const endTime = new Date(now);
-                endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
-
-                const totalShiftMinutes = (endTime - startTime) / 60000;
-                const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
-                const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
-                const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
-
-                let workdayMinutesPassed = (now - startTime) / 60000;
-                if (workdayMinutesPassed < 0) workdayMinutesPassed = 0;
-                if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes;
-
-                let productiveMinutesPassed = 0;
-                if (totalShiftMinutes > 0) {
-                    productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
-                }
-                if (productiveMinutesPassed > totalProductiveMinutes) {
-                    productiveMinutesPassed = totalProductiveMinutes;
-                }
-                const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
-
-                // Update live-time stats
                 document.getElementById('timePassed').innerText = formatMinutesToHHMM(productiveMinutesPassed);
                 document.getElementById('timeRemaining').innerText = formatMinutesToHHMM(productiveMinutesRemaining);
                 document.getElementById('currentTime').innerText = `Current Time: ${now.toLocaleTimeString()}`;
 
                 // Re-run the full calculation to update "Current Avg. Ticket Time"
-                // and to check if the day is over.
                 debouncedCalculate();
 
             }, 1000); // Clock updates every second
