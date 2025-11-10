@@ -140,13 +140,29 @@
 
         // --- Time Helpers ---
         function parseHHMMToMinutes(timeStr) {
+            // FIX 4: Missing input validation
+            const hhmmRegex = /^\d{1,2}:\d{2}$/;
+            if (!hhmmRegex.test(timeStr)) {
+                // Invalid format (e.g., "abc", or "1:3"). Return 0.
+                return 0;
+            }
+
             const parts = timeStr.split(':').map(Number);
+            
             if (parts.length === 2) {
-                return (parts[0] || 0) * 60 + (parts[1] || 0);
+                const hours = parts[0] || 0;
+                const minutes = parts[1] || 0;
+                
+                // Handle "99:99" case where minutes are invalid
+                if (minutes > 59) {
+                    return 0; 
+                }
+                
+                return (hours * 60) + minutes;
             }
-            if (parts.length === 1 && timeStr.length > 0) {
-                return (parts[0] || 0) * 60;
-            }
+
+            // The regex test above makes original checks redundant,
+            // but we return 0 as the default failure case.
             return 0;
         }
 
@@ -156,6 +172,27 @@
             const minutes = Math.floor(totalMinutes % 60);
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         }
+
+        /**
+         * NEW: Formats minutes to a short hour/minute string, e.g., "1h 30m".
+         */
+        function formatMinutesToHHMMShort(totalMinutes) {
+            if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
+            if (totalMinutes === 0) return '0m';
+            
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = Math.floor(totalMinutes % 60);
+            
+            let parts = [];
+            if (hours > 0) {
+                parts.push(`${hours}h`);
+            }
+            if (minutes > 0 || hours === 0) { // Always show minutes if hours is 0
+                parts.push(`${minutes}m`);
+            }
+            return parts.join(' ');
+        }
+
 
         function populateTimeOptions(selectId, startHour, endHour, defaultVal) {
             const select = document.getElementById(selectId);
@@ -178,7 +215,8 @@
 
         // --- Main Calculation Engine ---
 
-        let calcTimer;
+        // FIX 1: Missing variable declaration
+        let calcTimer = null;
         const debouncedCalculate = () => {
             clearTimeout(calcTimer);
             calcTimer = setTimeout(calculateDailyRatings, 250);
@@ -211,6 +249,17 @@
             endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
 
             const totalShiftMinutes = (endTime - startTime) / 60000;
+            
+            // FIX 3 & 5: Unchecked division by zero / Negative time
+            if (totalShiftMinutes <= 0) {
+                return { 
+                    totalProductiveMinutes: 0, 
+                    productiveMinutesPassed: 0, 
+                    productiveMinutesRemaining: 0,
+                    error: "Shift end time must be after shift start time." // Pass error up
+                };
+            }
+
             const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
             const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
             
@@ -232,7 +281,8 @@
             return {
                 totalProductiveMinutes,
                 productiveMinutesPassed,
-                productiveMinutesRemaining
+                productiveMinutesRemaining,
+                error: null // No error
             };
         }
 
@@ -243,7 +293,8 @@
             const { 
                 totalProductiveMinutes,
                 productiveMinutesPassed,
-                productiveMinutesRemaining 
+                productiveMinutesRemaining,
+                error: scheduleError // Get the error from Fix 5
             } = getScheduleInfo(now);
             
             document.getElementById('totalProductiveTime').innerText = formatMinutesToHHMM(totalProductiveMinutes);
@@ -251,12 +302,21 @@
             document.getElementById('timeRemaining').innerText = formatMinutesToHHMM(productiveMinutesRemaining);
             document.getElementById('currentTime').innerText = `Current Time: ${now.toLocaleTimeString()}`;
 
-            // --- Handle Invalid Schedule ---
+            // --- Handle Invalid Schedule (FIX 5) ---
             const targets = ['Outstanding', 'Excellent', 'Satisfactory'];
             const targetsContent = document.getElementById('targets-content');
+            
+            // FIX 5: Display error from getScheduleInfo()
+            if (scheduleError) {
+                document.getElementById('totalWorkTimeEOD').innerText = '00:00';
+                targetsContent.innerHTML = `<div class="info-box info-box-danger" style="font-size: 0.75rem; padding: 0.5rem; grid-column: span 3;">${scheduleError}</div>`;
+                return; // Stop calculation
+            }
+
+            // --- Handle 0 Productive Time (Original Check, modified) ---
             if (totalProductiveMinutes <= 0) {
                 document.getElementById('totalWorkTimeEOD').innerText = '00:00';
-                targetsContent.innerHTML = `<div class="info-box info-box-danger" style="font-size: 0.75rem; padding: 0.5rem; grid-column: span 3;">Invalid Schedule. Total Productive Time must be greater than 0.</div>`;
+                targetsContent.innerHTML = `<div class="info-box info-box-danger" style="font-size: 0.75rem; padding: 0.5rem; grid-column: span 3;">Invalid Schedule. Total Productive Time must be greater than 0 (check break time).</div>`;
                 return; // Stop calculation
             }
 
@@ -288,14 +348,55 @@
                 const targetBox = document.createElement('div');
                 targetBox.id = `target${targetName}`;
                 
+                // --- Path 1: Tickets Needed ---
                 // We need to find the *minimum* tickets to hit this grade.
                 // This is (Target_Ticket_Goal + min_boundary_tickets)
                 const ticketsToHitGrade = targetTicketGoal + boundary.min;
-                
                 const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
                 
                 let html = '';
                 let boxClass = 'target-warn';
+                let callTimeHtml = ''; // Initialize call time HTML string
+
+                // --- Path 2: Call Minutes Needed (if tickets are short) ---
+                if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
+                    // Find max allowable target that our current tickets can hit
+                    const maxAllowableTarget = currentTicketsSoFar - boundary.min;
+                    
+                    // Reverse the rounding formula to find max hours
+                    const maxRoundedHours = Math.floor(maxAllowableTarget / TICKETS_PER_HOUR_RATE);
+                    
+                    // Find the upper boundary of this rounding bucket (e.g., 29 min for 0 hours)
+                    const maxWorkTimeMinutes = (maxRoundedHours * 60) + 29;
+                    
+                    // Calculate required Total Call Time to hit this max work time
+                    const requiredCallTime = totalProductiveMinutes - maxWorkTimeMinutes;
+                    
+                    // Calculate ADDITIONAL call minutes needed
+                    const additionalCallMinutes = requiredCallTime - currentCallTimeSoFar;
+
+                    // Round up, as user must meet or exceed
+                    const roundedAdditionalCallMinutes = Math.ceil(additionalCallMinutes);
+
+                    // NEW: Format for display
+                    const callTimeDisplay = formatMinutesToHHMMShort(roundedAdditionalCallMinutes);
+
+                    // Check edge cases and set HTML
+                    if (roundedAdditionalCallMinutes <= 0) {
+                        // This path is already met
+                        callTimeHtml = '<strong>OR</strong> 0m of calls'; 
+                    } else if (productiveMinutesRemaining > 0 && roundedAdditionalCallMinutes > productiveMinutesRemaining) {
+                        // Day is not over, but not enough time left
+                        callTimeHtml = `<strong>OR</strong> ${callTimeDisplay}+ (exceeds shift)`;
+                    } else {
+                        // Day is over OR time is sufficient
+                        callTimeHtml = `<strong>OR</strong> ${callTimeDisplay} of calls`;
+                    }
+                }
+                // --- END Call Time Path ---
+
+
+                // --- Render Scenarios ---
 
                 // Scenario 1: Call time input is too high
                 if (totalWorkTimeEOD < 0) {
@@ -326,7 +427,8 @@
                         <span class="target-label">${boundary.name}</span>
                         <span class="target-value">${ticketsNeeded}</span>
                         <span class="target-desc">
-                           Tickets short. The day is over.
+                           Tickets short (Goal: ${ticketsToHitGrade})<br>
+                           ${callTimeHtml}
                         </span>
                     `;
                 }
@@ -336,7 +438,8 @@
                         <span class="target-label">${boundary.name}</span>
                         <span class="target-value">${ticketsNeeded}</span>
                         <span class="target-desc">
-                            Tickets short (Goal: ${ticketsToHitGrade})
+                            Tickets short (Goal: ${ticketsToHitGrade})<br>
+                            ${callTimeHtml}
                         </span>
                     `;
                 }
@@ -388,8 +491,8 @@
                 document.getElementById('timeRemaining').innerText = formatMinutesToHHMM(productiveMinutesRemaining);
                 document.getElementById('currentTime').innerText = `Current Time: ${now.toLocaleTimeString()}`;
 
-                // Re-run the full calculation to update "Current Avg. Ticket Time"
-                debouncedCalculate();
+                // FIX 2: Removed debouncedCalculate() to prevent race condition
+                // debouncedCalculate();
 
             }, 1000); // Clock updates every second
 
@@ -399,3 +502,6 @@
     </script>
 </body>
 </html>
+
+
+
