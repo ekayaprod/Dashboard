@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 
-      FIX 7: Removed inline <style> block.
-      The '.shortcuts-container.drag-active' rule is now in style.css
-    -->
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -16,11 +12,9 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
-                <!-- FIX 1: Replaced 11-line inline style with a clean class -->
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <div id="shortcuts-container" class.bind="shortcutsContainer"></div>
-                <!-- FIX (Mode C): Removed obsolete divider -->
+                <div id="shortcuts-container" class="shortcuts-container"></div>
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
@@ -39,7 +33,6 @@
                 </div>
 
                 <div id="app-details-container" class="hidden">
-                    <!-- FIX (Mode C): Replaced app-section-box with generator-section -->
                     <div id="app-editor-fields" class="generator-section">
                         <div class="form-group hidden" id="edit-app-name-wrapper">
                             <label for="edit-app-name">App Name</label>
@@ -62,9 +55,6 @@
                     </div>
                 </div>
 
-                <!-- FIX (Mode C): Removed obsolete divider -->
-
-                <!-- FIX (Mode C): Added generator-section class -->
                 <div class="notepad-wrapper generator-section">
                     <div id="notepad-header" class="notepad-header">
                         <select id="note-select" class="sidebar-input"></select>
@@ -81,22 +71,18 @@
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
-    <!-- FIX (Mode A, Issue 1): Corrected classT to class -->
     <div id="toast" class="toast"></div>
+    
+    <!-- Scroll to Top Button -->
+    <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top">↑</button>
 
     <script src="js/app-core.js"></script>
     <script src="js/app-ui.js"></script>
     <script src="js/app-data.js"></script>
     
-    <!-- 
-      STARTUP SCRIPT 
-      This script runs the application for this specific page.
-      It includes a dependency check to ensure libraries are loaded.
-    -->
     <script>
     // Dependency Check for Dashboard
     (() => {
-        // Check for dependencies from app-core.js, app-ui.js, and app-data.js
         const dependencies = [
             'SafeUI', 
             'UIPatterns', 
@@ -109,39 +95,33 @@
             'NotepadManager',
             'QuickListManager',
             'SharedSettingsModal',
-            'DataHelpers' // (FIX - Mode C)
+            'DataHelpers'
         ];
         const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
         if (missing.length > 0) {
             const errorTitle = "Application Failed to Load";
-            const errorMessage = `One or more required JavaScript files (e.g., app-core.js, app-ui.js) failed to load, or core modules are missing. Missing: ${missing.join(', ')}`;
-            
+            const errorMessage = `One or more required JavaScript files failed to load. Missing: ${missing.join(', ')}`;
             console.error(errorMessage);
             
-            // Check if AppLifecycle itself loaded to use its banner function
             if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
                 window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
             } else {
-                // Fallback to directly manipulating the banner if AppLifecycle failed
                 const banner = document.getElementById('app-startup-error');
                 if(banner) {
                     banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
                     banner.classList.remove('hidden');
                 }
             }
-            // Stop execution
             throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
         }
     })();
 
     // ============================================================================
-    // PAGE-SPECIFIC LOGIC (Moved from DashboardUI in app-ui.js)
-    // This logic handles the "Applications" and "Shortcuts" widgets.
+    // PAGE-SPECIFIC LOGIC
     // ============================================================================
     const DEBOUNCE_DELAY = 300;
     
-    // Scoped variables for state and DOM access
     let DOMElements;
     let state;
     let saveState;
@@ -149,10 +129,6 @@
 
     let selectedAppId = null;
     let initialAppData = null;
-    
-    // --- Scoped Helpers ---
-    // (FIX - Mode C) All helpers (getCollection, hasItems, findById, confirmDelete)
-    // were removed and replaced with calls to DataHelpers and UIPatterns.
     
     const checkFormDirty = () => {
         if (!initialAppData) return false;
@@ -167,31 +143,30 @@
         }
 
         return DOMElements.editAppName.value.trim() !== initialAppData.name ||
-               currentUrls !== initialAppData.urls || // URLs are already normalized in initialAppData
-               currentEscalation !== initialAppData.escalation; // Escalation is already normalized in initialAppData
+               currentUrls !== initialAppData.urls ||
+               currentEscalation !== initialAppData.escalation;
     };
+
     const updateSaveButtonState = () => {
         if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
     };
     
-    // --- (NEW) initQuickList ---
-    // Initializes the new, shared QuickListManager for the Shortcuts
     const initQuickList = () => {
         window.QuickListManager.init({
             container: DOMElements.shortcutsContainer,
-            items: DataHelpers.getCollection(state, 'shortcuts'), // (FIX - Mode C)
+            items: DataHelpers.getCollection(state, 'shortcuts'),
             emptyMessage: "No shortcuts. Add from 'Actions'.",
             getItemName: (item) => item.name,
-            getItemHref: (item) => item.url, // This makes them links
+            getItemHref: (item) => item.url,
             
             onDeleteClick: (item, renderCallback) => {
-                UIPatterns.confirmDelete('Shortcut', item.name, () => { // (FIX - Mode C)
-                    const shortcuts = DataHelpers.getCollection(state, 'shortcuts'); // (FIX - Mode C)
+                UIPatterns.confirmDelete('Shortcut', item.name, () => {
+                    const shortcuts = DataHelpers.getCollection(state, 'shortcuts');
                     const itemIndex = shortcuts.findIndex(s => s.id === item.id);
                     if (itemIndex > -1) {
                         shortcuts.splice(itemIndex, 1);
                         saveState();
-                        renderCallback(); // Re-renders the list
+                        renderCallback();
                     }
                 });
             },
@@ -208,9 +183,9 @@
                             const name = nameInput.value;
                             const url = urlInput.value;
                             if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
-                                DataHelpers.getCollection(state, 'shortcuts').push({ id: SafeUI.generateId(), name, url }); // (FIX - Mode C)
+                                DataHelpers.getCollection(state, 'shortcuts').push({ id: SafeUI.generateId(), name, url });
                                 saveState();
-                                renderCallback(); // Re-renders the list
+                                renderCallback();
                             } else {
                                 SafeUI.showToast('Invalid name or URL');
                                 return false;
@@ -222,14 +197,12 @@
         });
     };
 
-
-    // --- Data Renderers (Page-Specific) ---
     const renderAppDropdown = () => {
         const appSelect = DOMElements.appSelect;
         const selectedValue = appSelect.value;
         appSelect.innerHTML = '<option value="">-- Select an App --</option>';
 
-        const sortedApps = [...DataHelpers.getCollection(state, 'apps')].sort((a,b) => a.name.localeCompare(b.name)); // (FIX - Mode C)
+        const sortedApps = [...DataHelpers.getCollection(state, 'apps')].sort((a,b) => a.name.localeCompare(b.name));
         
         sortedApps.forEach(app => {
             appSelect.add(new Option(app.name, app.id));
@@ -246,7 +219,7 @@
     };
 
     const renderAppData = () => {
-        if (!DataHelpers.hasItems(state, 'apps')) { // (FIX - Mode C)
+        if (!DataHelpers.hasItems(state, 'apps')) {
             DOMElements.appSelectGroup.classList.add('hidden');
             DOMElements.appEmptyState.classList.remove('hidden');
         } else {
@@ -256,25 +229,25 @@
         }
     };
 
-    // This function is called after a JSON restore to refresh all page-specific UI
     const renderAllPageSpecific = () => {
-        initQuickList(); // Re-initialize the quick list
-        renderAppData(); // Re-render the app dropdown
+        initQuickList();
+        renderAppData();
     };
     
-    /**
-     * Converts various line endings to simple newline (\n) for consistent state saving/comparison.
-     * @param {string} text 
-     * @returns {string}
-     */
     const normalizeLineEndings = (text) => {
         if (!text) return '';
         return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     };
 
-    // --- App Detail Handlers (Page-Specific) ---
     const displayAppDetails = (appId) => {
         selectedAppId = appId;
+        
+        // PERSISTENCE: Save selection
+        if (state.ui) {
+            state.ui.selectedAppId = appId;
+            saveState();
+        }
+
         const isVisible = !!appId;
 
         DOMElements.editAppName.value = '';
@@ -285,7 +258,7 @@
         DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
 
         if (isVisible) {
-            const app = DataHelpers.findById(state, 'apps', appId); // (FIX - Mode C)
+            const app = DataHelpers.findById(state, 'apps', appId);
             if (!app) {
                 console.error(`Failed to find app with ID: ${appId}`);
                 DOMElements.appDetailsContainer.classList.add('hidden');
@@ -294,7 +267,6 @@
                 return;
             }
             
-            // FIX (Mode B, Issue 1): Normalize line endings for comparison integrity
             const urlsNormalized = normalizeLineEndings(app.urls);
             const escalationNormalized = normalizeLineEndings(app.escalation);
             
@@ -334,21 +306,13 @@
         updateSaveButtonState();
     };
     
-    // --- Settings Modal (Page-Specific) ---
-    // REFACTOR: Replaced old initSettingsModal with new setupSettingsModal
     const setupSettingsModal = () => {
-        // --- FIX (Mode E Revert) ---
-        // 1. Define page-specific HTML (for CSV buttons ONLY)
-        //    The global backup buttons are now handled by SharedSettingsModal
         const pageDataHtml = `
             <button id="modal-export-csv-btn" class="button-base">Export Apps (CSV)</button>
             <button id="modal-import-csv-btn" class="button-base">Import Apps (CSV)</button>
         `;
-        // --- END FIX ---
 
-        // 2. Define page-specific "open" callback (to wire up buttons)
         const onModalOpen = () => {
-            // Wire up CSV Export
             CsvManager.setupExport({
                 exportBtn: document.getElementById('modal-export-csv-btn'),
                 dataGetter: () => state.apps,
@@ -356,7 +320,6 @@
                 filename: `${APP_CONFIG.NAME}-export.csv`
             });
             
-            // Wire up CSV Import
             CsvManager.setupImport({
                 importBtn: document.getElementById('modal-import-csv-btn'),
                 headers: APP_CONFIG.APP_CSV_HEADERS,
@@ -379,7 +342,6 @@
                     return { entry: entry };
                 },
                 onConfirm: (validatedData, importErrors) => {
-                    // (This is the CsvManager confirm logic you already had)
                     const newEntries = [];
                     const updatedEntries = [];
                     const existingIds = new Set(state.apps.map(app => app.id));
@@ -415,110 +377,77 @@
                                 saveState();
                                 renderAppData();
                                 SafeUI.showToast(`Imported ${importedCount} applications.`);
-                                SafeUI.hideModal(); // Close the settings modal
+                                SafeUI.hideModal();
                             }
                         }
                     ]);
-                    return false; // Prevent modal from closing
+                    return false;
                 }
             });
-            
-            // --- FIX (Mode E Revert) ---
-            // Removed the manual Backup/Restore setup.
-            // --- END FIX ---
         };
 
-        // 3. Define page-specific "restore" callback
-        // --- START FIX: ISSUE 5 (JSON Restore Overwrite & Legacy ID Regeneration) ---
         const onRestore = (dataToRestore) => {
             console.warn('FULL RESTORE: Overwriting all localStorage data');
             
-            // Clear the specific localStorage key first
             try {
                 localStorage.removeItem('dashboard_state_v5');
-                console.log('Cleared existing localStorage');
             } catch (e) {
                 console.error('Failed to clear localStorage:', e);
             }
             
-            // FIX LEGACY IDs: Regenerate short IDs before saving
             let regeneratedCount = 0;
             
-            // Fix app IDs
             (dataToRestore.apps || []).forEach(app => {
                 if (app.id && app.id.length < 20) {
-                    console.warn(`Regenerating legacy app ID: ${app.id}`);
                     app.id = SafeUI.generateId();
                     regeneratedCount++;
                 }
             });
             
-            // Fix note IDs
             (dataToRestore.notes || []).forEach(note => {
                 if (note.id && note.id.length < 20) {
-                    console.warn(`Regenerating legacy note ID: ${note.id} (${note.title})`);
                     note.id = SafeUI.generateId();
                     regeneratedCount++;
                 }
             });
             
-            // Fix shortcut IDs
             (dataToRestore.shortcuts || []).forEach(shortcut => {
                 if (shortcut.id && shortcut.id.length < 20) {
-                    console.warn(`Regenerating legacy shortcut ID: ${shortcut.id}`);
                     shortcut.id = SafeUI.generateId();
                     regeneratedCount++;
                 }
             });
             
-            if (regeneratedCount > 0) {
-                console.log(`Regenerated ${regeneratedCount} legacy IDs`);
-            }
-            
-            // Overwrite state object completely
             state.apps = dataToRestore.apps || [];
             state.notes = dataToRestore.notes || [];
             state.shortcuts = dataToRestore.shortcuts || [];
             
-            // --- FIX (Mode E) ---
-            // Removed version property assignment
-            // state.version = dataToRestore.version || '6.2.0'; 
-            // --- END FIX ---
+            if (dataToRestore.ui) {
+                state.ui = dataToRestore.ui;
+            } else {
+                state.ui = { selectedAppId: null, activeNoteId: null, notepadScrollTop: 0 };
+            }
             
-            // Force immediate save
             saveState();
             
-            // Verify save worked
             setTimeout(() => {
-                const verification = localStorage.getItem('dashboard_state_v5');
-                if (!verification) {
-                    SafeUI.showModal('Restore Warning', 
-                        '<p>Restore completed but verification failed. Please refresh the page.</p>',
-                        [{label: 'OK'}]
-                    );
-                } else {
-                    console.log('Restore verified successfully');
-                    if (regeneratedCount > 0) {
-                        SafeUI.showToast(`Restored and regenerated ${regeneratedCount} legacy IDs`);
-                    }
+                if (regeneratedCount > 0) {
+                    SafeUI.showToast(`Restored and regenerated ${regeneratedCount} legacy IDs`);
                 }
             }, 100);
             
-            // Reset UI
             selectedAppId = null;
             displayAppDetails(null);
             renderAllPageSpecific();
         };
-        // --- END FIX: ISSUE 5 ---
 
-        // 4. Initialize the shared modal
         if (window.SharedSettingsModal) {
             window.SharedSettingsModal.init({
                 buttonId: 'btn-settings',
                 appName: APP_CONFIG.NAME,
                 state: state,
-                pageSpecificDataHtml: pageDataHtml, // <-- UPDATED (Mode E Revert)
-                onModalOpen: onModalOpen,           // <-- UPDATED (Mode E Revert)
+                pageSpecificDataHtml: pageDataHtml,
+                onModalOpen: onModalOpen,
                 onRestoreCallback: onRestore,
                 itemValidators: {
                     apps: APP_CONFIG.APP_CSV_HEADERS,
@@ -527,55 +456,35 @@
                 }
             });
         } else {
-            console.error("SharedSettingsModal not found.");
             DOMElements.btnSettings.disabled = true;
         }
     };
     
-    // --- Main Page-Specific Initializer ---
     const initDashboardPageSpecific = (ctx, appConfig) => {
-        // Set up scoped variables
         DOMElements = ctx.elements;
         state = ctx.state;
-        // saveState = ctx.saveState; // <-- Original line
+        saveState = ctx.saveState;
         APP_CONFIG = appConfig;
 
-        // DEBUG: Step 1 - Log all saves
-        const originalSaveState = ctx.saveState;
-        saveState = () => {
-            // console.log('Dashboard saveState called'); // (Mode F) - noisy, remove for prod
-            originalSaveState();
-        };
-        // End DEBUG Step 1
-
-        // Setup textareas
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
 
-        // Setup icons (page-specific ones)
         DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
         DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
         DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
 
-        // Initialize shortcuts
         initQuickList();
 
-        // REFACTOR: Removed CsvManager setup. It's now in setupSettingsModal.
-
-        // Add main event listeners
         window.addEventListener('beforeunload', (e) => { 
-            // Only prompt for App form changes. Notepad is saved by AppLifecycle.
             if (checkFormDirty()) { e.preventDefault(); e.returnValue = ''; } 
         });
         
         DOMElements.appSelect.addEventListener('change', () => {
-            // Fix: Check for unsaved changes before switching
             if (checkFormDirty()) {
                 UIPatterns.confirmUnsavedChanges(() => {
                     const appId = DOMElements.appSelect.value || null;
                     displayAppDetails(appId);
                 });
-                // Reset dropdown to the *previous* valid selection
                 DOMElements.appSelect.value = selectedAppId;
                 return;
             }
@@ -598,7 +507,6 @@
             const isNewApp = initialAppData.id === null;
             const nameChanged = !isNewApp && newName !== initialAppData.name;
             
-            // FIX (Mode B, Issue 2): Pass selectedAppId to exclude current app from duplicate check
             if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName, isNewApp ? null : selectedAppId)) {
                 return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
             }
@@ -611,10 +519,10 @@
 
             if (isNewApp) {
                 appData.id = SafeUI.generateId();
-                DataHelpers.getCollection(state, 'apps').push(appData); // <-- FIX (Mode D)
+                DataHelpers.getCollection(state, 'apps').push(appData);
                 SafeUI.showToast('Application created');
             } else {
-                const app = DataHelpers.findById(state, 'apps', selectedAppId); // <-- FIX (Mode D)
+                const app = DataHelpers.findById(state, 'apps', selectedAppId);
                 if (app) {
                     app.name = appData.name;
                     app.urls = appData.urls;
@@ -631,10 +539,10 @@
 
         DOMElements.deleteAppBtn.addEventListener('click', () => {
             if (!selectedAppId) return;
-            const app = DataHelpers.findById(state, 'apps', selectedAppId); // <-- FIX (Mode D)
+            const app = DataHelpers.findById(state, 'apps', selectedAppId);
             if (!app) return;
             
-            UIPatterns.confirmDelete('Application', app.name, () => { // <-- FIX (Mode C)
+            UIPatterns.confirmDelete('Application', app.name, () => {
                 state.apps = state.apps.filter(a => a.id !== selectedAppId);
                 saveState();
                 selectedAppId = null;
@@ -643,25 +551,45 @@
             });
         });
 
-        // add-shortcut-btn-menu is now handled by QuickListManager
         DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
         
-        // Settings modal init
-        setupSettingsModal(); // REFACTOR: Renamed function call
-        
-        // Initial render of page-specific parts
+        setupSettingsModal();
         renderAppData();
+
+        // PERSISTENCE: Restore selected app
+        if (state.ui && state.ui.selectedAppId) {
+            // Check if app still exists before restoring
+            if (DataHelpers.findById(state, 'apps', state.ui.selectedAppId)) {
+                DOMElements.appSelect.value = state.ui.selectedAppId;
+                displayAppDetails(state.ui.selectedAppId);
+                SafeUI.showToast('Restored previous session');
+            } else {
+                // Clean up stale ID
+                state.ui.selectedAppId = null;
+                saveState();
+            }
+        }
+        
+        // Scroll to top button logic
+        const scrollToTopBtn = document.getElementById('scroll-to-top');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (scrollToTopBtn && mainContent) {
+            mainContent.addEventListener('scroll', SafeUI.debounce(() => {
+                scrollToTopBtn.classList.toggle('visible', mainContent.scrollTop > 300);
+            }, 200));
+            
+            scrollToTopBtn.addEventListener('click', () => {
+                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
     };
     
 
     // Dashboard App Initializer
-    // This code was moved from app-core.js to fix the race condition
     AppLifecycle.run(async () => {
-        
-        const APP_VERSION = '6.2.0';
-        // --- FIX (Mode F) ---
-        console.log(`AppLifecycle: Running index.html v${APP_VERSION}`);
-        // --- END FIX ---
+        const APP_VERSION = '6.3.0';
+        console.log(`[Dashboard] v${APP_VERSION} initialized`);
         
         const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
         const APP_CONFIG = {
@@ -673,16 +601,17 @@
             apps: [],
             notes: [],
             shortcuts: [],
-            // --- FIX (Mode E) ---
-            // Removed redundant version property
-            // version: APP_VERSION 
-            // --- END FIX ---
+            ui: {
+                selectedAppId: null,
+                activeNoteId: null,
+                notepadScrollTop: 0
+            }
         };
 
         const ctx = await AppLifecycle.initPage({
             storageKey: LOCAL_STORAGE_KEY,
             defaultState,
-            version: APP_VERSION, // (FIX - Mode E) Pass version here
+            version: APP_VERSION,
             requiredElements: [
                 'shortcuts-container', 'app-select-group', 'app-select',
                 'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
@@ -698,25 +627,18 @@
 
         if (!ctx) return;
 
-        // Call the centralized dashboard initialization function
-        // This is safe now because the dependency check above passed
-        
-        // 1. Initialize all page-specific logic (Apps, Shortcuts, Settings)
         initDashboardPageSpecific(ctx, APP_CONFIG);
 
-        // 2. Initialize the shared Notepad module
         if (typeof window.NotepadManager?.init === 'function') {
-            // Pass the context, which has the elements, state, and saveState function
             window.NotepadManager.init(ctx);
         } else {
-            // This else block is a fallback, but shouldn't be hit if the dependency check is correct
-            console.error("NotepadManager.init not found. app-ui.js may not have loaded correctly.");
             AppLifecycle._showErrorBanner(
                 "Application Failed to Load",
-                "The core Notepad module failed to load. 'app-ui.js' may be corrupt or blocked."
+                "The core Notepad module failed to load."
             );
         }
     });
     </script>
 </body>
 </html>
+
