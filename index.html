@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- CRITICAL: Bootstrap loader - Do not modify -->
+    <script src="js/bootstrap.js"></script>
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -76,47 +79,9 @@
     <!-- Scroll to Top Button -->
     <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top">↑</button>
 
-    <script src="js/app-core.js"></script>
-    <script src="js/app-ui.js"></script>
-    <script src="js/app-data.js"></script>
-    
     <script>
-    // Dependency Check for Dashboard
-    (() => {
-        const dependencies = [
-            'SafeUI', 
-            'UIPatterns', 
-            'ListRenderer', 
-            'SearchHelper', 
-            'BackupRestore', 
-            'DataValidator', 
-            'DataConverter', 
-            'CsvManager',
-            'NotepadManager',
-            'QuickListManager',
-            'SharedSettingsModal',
-            'DataHelpers'
-        ];
-        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
-        
-        if (missing.length > 0) {
-            const errorTitle = "Application Failed to Load";
-            const errorMessage = `One or more required JavaScript files failed to load. Missing: ${missing.join(', ')}`;
-            console.error(errorMessage);
-            
-            if (typeof window.AppLifecycle !== 'undefined' && typeof window.AppLifecycle._showErrorBanner === 'function') {
-                window.AppLifecycle._showErrorBanner(errorTitle, errorMessage);
-            } else {
-                const banner = document.getElementById('app-startup-error');
-                if(banner) {
-                    banner.innerHTML = `<strong>${errorTitle}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${errorMessage}</p>`;
-                    banner.classList.remove('hidden');
-                }
-            }
-            throw new Error(`Critical dependencies missing: ${missing.join(', ')}`);
-        }
-    })();
-
+    // Dependency Check for Dashboard - Handled by Bootstrap
+    
     // ============================================================================
     // PAGE-SPECIFIC LOGIC
     // ============================================================================
@@ -587,58 +552,61 @@
     
 
     // Dashboard App Initializer
-    AppLifecycle.run(async () => {
-        const APP_VERSION = '6.3.0';
-        console.log(`[Dashboard] v${APP_VERSION} initialized`);
-        
-        const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
-        const APP_CONFIG = {
-            NAME: 'dashboard',
-            APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
-        };
+    document.addEventListener('bootstrap:ready', () => {
+        AppLifecycle.run(async () => {
+            const APP_VERSION = '6.3.0';
+            console.log(`[Dashboard] v${APP_VERSION} initialized`);
+            
+            const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
+            const APP_CONFIG = {
+                NAME: 'dashboard',
+                APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
+            };
 
-        const defaultState = {
-            apps: [],
-            notes: [],
-            shortcuts: [],
-            ui: {
-                selectedAppId: null,
-                activeNoteId: null,
-                notepadScrollTop: 0
+            const defaultState = {
+                apps: [],
+                notes: [],
+                shortcuts: [],
+                ui: {
+                    selectedAppId: null,
+                    activeNoteId: null,
+                    notepadScrollTop: 0
+                }
+            };
+
+            const ctx = await AppLifecycle.initPage({
+                storageKey: LOCAL_STORAGE_KEY,
+                defaultState,
+                version: APP_VERSION,
+                requiredElements: [
+                    'shortcuts-container', 'app-select-group', 'app-select',
+                    'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
+                    'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
+                    'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
+                    'add-new-app-btn-menu',
+                    'btn-settings',
+                    'notepad-header',
+                    'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
+                    'navbar-container'
+                ]
+            });
+
+            if (!ctx) return;
+
+            initDashboardPageSpecific(ctx, APP_CONFIG);
+
+            if (typeof window.NotepadManager?.init === 'function') {
+                window.NotepadManager.init(ctx);
+            } else {
+                AppLifecycle._showErrorBanner(
+                    "Application Failed to Load",
+                    "The core Notepad module failed to load."
+                );
             }
-        };
-
-        const ctx = await AppLifecycle.initPage({
-            storageKey: LOCAL_STORAGE_KEY,
-            defaultState,
-            version: APP_VERSION,
-            requiredElements: [
-                'shortcuts-container', 'app-select-group', 'app-select',
-                'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
-                'app-editor-fields', 'edit-app-name-wrapper', 'edit-app-name', 'edit-app-urls',
-                'edit-app-escalation', 'save-changes-btn', 'delete-app-btn', 'add-shortcut-btn-menu',
-                'add-new-app-btn-menu',
-                'btn-settings',
-                'notepad-header',
-                'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
-                'navbar-container'
-            ]
         });
-
-        if (!ctx) return;
-
-        initDashboardPageSpecific(ctx, APP_CONFIG);
-
-        if (typeof window.NotepadManager?.init === 'function') {
-            window.NotepadManager.init(ctx);
-        } else {
-            AppLifecycle._showErrorBanner(
-                "Application Failed to Load",
-                "The core Notepad module failed to load."
-            );
-        }
     });
     </script>
 </body>
 </html>
+
 
