@@ -18,93 +18,104 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
                 
-                <!-- VIEW 1: CATALOGUE / LIBRARY -->
-                <div id="catalogue-view" class="view active">
-                    <div class="section-header-wrapper">
-                        <h3 class="section-header">Email Template Library</h3>
-                        <div class="button-group">
-                            <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
-                            <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
-                            <button id="btn-new-template" class="button-base button-primary">New Template</button>
-                        </div>
-                    </div>
-
-                    <div id="breadcrumb-container" class="breadcrumb-container"></div>
-                    <div id="tree-list-container"></div>
-                </div>
-
-                <!-- VIEW 2: TEMPLATE EDITOR -->
-                <div id="editor-view" class="view">
-                    <div class="section-header-wrapper">
-                        <h3 class="section-header">Phase 1: Create or Upload</h3>
-                        <div class="button-group">
-                            <button id="btn-editor-cancel" class="button-base">Cancel</button>
-                        </div>
-                    </div>
-
-                    <div id="upload-wrapper" class="upload-wrapper form-group">
-                        <input type="file" id="msg-upload" accept=".msg,.oft,.eml,.email">
-                        <label for="msg-upload" class="button-base button-primary">
-                            Upload .msg, .oft, .eml, or .email file
-                        </label>
-                        <p>or drag and drop a file here</p>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="section-header-wrapper">
-                        <h3 class="section-header">Phase 2: Review and Edit Fields</h3>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="result-to">To</label>
-                        <input type="text" id="result-to" class="sidebar-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="result-cc">CC</label>
-                        <input type="text" id="result-cc" class="sidebar-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="result-bcc">BCC</label>
-                        <input type="text" id="result-bcc" class="sidebar-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="result-subject">Subject</label>
-                        <input type="text" id="result-subject" class="sidebar-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="result-body">Body (Text)</label>
-                        <textarea id="result-body" class="sidebar-textarea"></textarea>
+                <!-- NEW: Accordion Section for creating templates -->
+                <div class="generator-section">
+                    <div class="accordion-header" id="mailto-accordion-header" role="button" aria-expanded="false" aria-controls="mailto-accordion-content">
+                        <h3 class="section-header">Create New Template</h3>
+                        <button id="mailto-accordion-toggle" class="icon-btn" title="Toggle settings" tabindex="-1">
+                            <span class="accordion-icon">▼</span>
+                        </button>
                     </div>
                     
-                    <div class="form-group">
-                         <button id="btn-generate" class="button-base button-primary" style="width: 100%;">Generate Command</button>
-                    </div>
+                    <div id="mailto-accordion-content" class="accordion-content collapsed">
+                        <!-- VIEW 2: TEMPLATE EDITOR (Now inside accordion) -->
+                        <div id="editor-view" class="view">
+                            <div class="section-header-wrapper" style="margin-top: 0.5rem;">
+                                <h3 class="section-header" style="font-size: 0.9rem; color: var(--subtle-text);">Phase 1: Create or Upload</h3>
+                            </div>
 
-                    <!-- Phase 3: Output & Save -->
-                    <div id="output-wrapper" class="hidden">
-                        <div class="divider"></div>
+                            <div id="upload-wrapper" class="upload-wrapper form-group">
+                                <input type="file" id="msg-upload" accept=".msg,.oft,.eml,.email">
+                                <label for="msg-upload" class="button-base button-primary">
+                                    Upload .msg, .oft, .eml, or .email file
+                                </label>
+                                <p>or drag and drop a file here</p>
+                            </div>
+
+                            <div class="divider"></div>
+
+                            <div class="section-header-wrapper">
+                                <h3 class="section-header" style="font-size: 0.9rem; color: var(--subtle-text);">Phase 2: Review and Edit Fields</h3>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="result-to">To</label>
+                                <input type="text" id="result-to" class="sidebar-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="result-cc">CC</label>
+                                <input type="text" id="result-cc" class="sidebar-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="result-bcc">BCC</label>
+                                <input type="text" id="result-bcc" class="sidebar-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="result-subject">Subject</label>
+                                <input type="text" id="result-subject" class="sidebar-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="result-body">Body (Text)</label>
+                                <textarea id="result-body" class="sidebar-textarea"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                 <button id="btn-generate" class="button-base button-primary" style="width: 100%;">Generate Command</button>
+                            </div>
+
+                            <!-- Phase 3: Output & Save -->
+                            <div id="output-wrapper" class="hidden">
+                                <div class="divider"></div>
+                                <div class="section-header-wrapper">
+                                    <h3 class="section-header" style="font-size: 0.9rem; color: var(--subtle-text);">Phase 3: Generated Output</h3>
+                                    <a href="#" id="result-link" target="_blank" class="button-base button-primary">Open in Email Client</a>
+                                </div>
+                                <div class="form-group">
+                                    <div class="label-group">
+                                        <label for="result-mailto">MailTo Command</label>
+                                        <button id="copy-mailto-btn" class="button-base">Copy</button>
+                                    </div>
+                                    <textarea id="result-mailto" class="sidebar-textarea" readonly placeholder="Generated command will appear here..."></textarea>
+                                </div>
+                                
+                                <div class="app-section-box" style="padding: 0.75rem; background-color: var(--info-bg); border-radius: var(--border-radius);">
+                                     <div class="form-group">
+                                        <label for="save-template-name">Template Name</label>
+                                        <input type="text" id="save-template-name" class="sidebar-input" placeholder="e.g., Weekly Report Stub">
+                                    </div>
+                                    <div class="button-group">
+                                        <button id="btn-save-to-library" class="button-base button-success">Save to Library</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Library is now in its own generator-section card -->
+                <div class="generator-section">
+                    <!-- VIEW 1: CATALOGUE / LIBRARY -->
+                    <div id="catalogue-view" class="view active">
                         <div class="section-header-wrapper">
-                            <h3 class="section-header">Phase 3: Generated Output</h3>
-                            <a href="#" id="result-link" target="_blank" class="button-base button-primary">Open in Email Client</a>
-                        </div>
-                        <div class="form-group">
-                            <div class="label-group">
-                                <label for="result-mailto">MailTo Command</label>
-                                <button id="copy-mailto-btn" class="button-base">Copy</button>
-                            </div>
-                            <textarea id="result-mailto" class="sidebar-textarea" readonly placeholder="Generated command will appear here..."></textarea>
-                        </div>
-                        
-                        <div class="app-section-box">
-                             <div class="form-group">
-                                <label for="save-template-name">Template Name</label>
-                                <input type="text" id="save-template-name" class="sidebar-input" placeholder="e.g., Weekly Report Stub">
-                            </div>
+                            <h3 class="section-header">Email Template Library</h3>
                             <div class="button-group">
-                                <button id="btn-save-to-library" class="button-base button-success">Save to Library</button>
+                                <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
+                                <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
                             </div>
                         </div>
+
+                        <div id="breadcrumb-container" class="breadcrumb-container"></div>
+                        <div id="tree-list-container" class="tree-list-container"></div>
                     </div>
                 </div>
             </div>
@@ -152,14 +163,13 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'mailto_library',
-            VERSION: '1.3.1', // Bumped for bootstrap update
+            VERSION: '1.4.0', // Bumped for UX Redesign
             DATA_KEY: 'mailto_library_v1',
             CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body'] 
         };
 
         // ============================================================================
         // INITIALIZATION ROUTINE
-        // Bypasses AppLifecycle.run() to avoid the DOMContentLoaded race condition.
         // ============================================================================
         (async () => {
             try {
@@ -174,7 +184,7 @@
                     return;
                 }
                 
-                // Check page-specific dependency (MsgReader) which is loaded by bootstrap PAGE_SCRIPTS
+                // Check page-specific dependency (MsgReader)
                 if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
                      const errorTitle = "Application Failed to Load";
                      const errorMessage = `The external library 'msgreader.js' failed to load correctly. Please ensure the file is present and accessible.`;
@@ -193,27 +203,28 @@
                     library: [],
                     ui: {
                         currentFolderId: 'root',
-                        activeView: 'catalogue', 
-                        catalogueScrollTop: 0
+                        catalogueScrollTop: 0,
+                        accordionCollapsed: true // NEW: Accordion state
                     }
                 };
             
-                // Note: AppLifecycle.initPage will set up state manager but NOT load navbar (bootstrap does that)
                 const ctx = await AppLifecycle.initPage({
                     storageKey: APP_CONFIG.DATA_KEY,
                     defaultState: defaultState,
                     version: APP_CONFIG.VERSION,
                     requiredElements: [
                         'navbar-container', 'toast', 'modal-overlay', 'modal-content',
-                        'catalogue-view', 'editor-view', 
-                        'btn-new-template', 'btn-new-folder', 
+                        'catalogue-view', // Still used as a wrapper
+                        'btn-new-folder', 
                         'btn-settings', 
                         'breadcrumb-container', 'tree-list-container', 
-                        'btn-editor-cancel', 'btn-generate', 
+                        'btn-generate', 
                         'upload-wrapper', 'msg-upload', 
                         'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', 
                         'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', 
-                        'save-template-name', 'btn-save-to-library' 
+                        'save-template-name', 'btn-save-to-library',
+                        // NEW Accordion Elements
+                        'mailto-accordion-header', 'mailto-accordion-toggle', 'mailto-accordion-content'
                     ]
                 });
             
@@ -231,6 +242,64 @@
                 let currentFolderId = 'root'; 
                 let currentMailtoCommand = null; 
 
+                // NEW: Accordion Toggle Logic
+                const toggleAccordion = (e, forceCollapse = false) => {
+                    if (e) {
+                        // Prevent clicks on buttons inside header from toggling
+                        if (e.target.closest('button') && e.currentTarget.id === 'mailto-accordion-header') {
+                            e.stopPropagation(); return;
+                        }
+                    }
+
+                    const content = DOMElements.mailtoAccordionContent;
+                    const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
+                    const header = DOMElements.mailtoAccordionHeader;
+                    
+                    let isCollapsed;
+                    
+                    if (forceCollapse) {
+                        isCollapsed = true;
+                    } else {
+                        isCollapsed = content.classList.toggle('collapsed');
+                    }
+                    
+                    if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    if (header) header.setAttribute('aria-expanded', !isCollapsed);
+                    
+                    if (state.ui) {
+                        state.ui.accordionCollapsed = isCollapsed;
+                        saveState();
+                    }
+                    
+                    // Trigger resize on textareas when opening
+                    if (!isCollapsed) {
+                        resizeResultBody();
+                        resizeResultMailto();
+                    }
+                };
+
+                // NEW: Accordion Init Logic
+                const initAccordion = () => {
+                    let collapsed = state.ui ? state.ui.accordionCollapsed : true;
+                    
+                    const content = DOMElements.mailtoAccordionContent;
+                    const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
+                    const header = DOMElements.mailtoAccordionHeader;
+
+                    if (collapsed) {
+                        content.classList.add('collapsed');
+                        if (icon) icon.style.transform = 'rotate(-90deg)';
+                        if (header) header.setAttribute('aria-expanded', 'false');
+                    } else {
+                        content.classList.remove('collapsed');
+                        if (icon) icon.style.transform = 'rotate(0deg)';
+                        if (header) header.setAttribute('aria-expanded', 'true');
+                    }
+                    
+                    DOMElements.mailtoAccordionToggle.addEventListener('click', toggleAccordion);
+                    DOMElements.mailtoAccordionHeader.addEventListener('click', toggleAccordion);
+                };
+
                 const clearEditorFields = () => {
                     currentMailtoCommand = null;
                     MAILTO_FIELDS.forEach(field => { 
@@ -239,13 +308,6 @@
                     });
                     DOMElements.saveTemplateName.value = '';
                     DOMElements.outputWrapper.classList.add('hidden');
-                };
-                
-                const hasUnsavedEditorChanges = () => {
-                    return currentMailtoCommand || MAILTO_FIELDS.some(field => {
-                        const element = DOMElements['result' + field.charAt(0).toUpperCase() + field.slice(1)];
-                        return element && element.value;
-                    });
                 };
                 
                 const resizeResultBody = () => DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
@@ -309,7 +371,7 @@
                         <li class="move-folder-item ${folder.disabled ? 'disabled' : ''}" data-folder-id="${SafeUI.escapeHTML(folder.id)}">
                             ${ICONS.folder} ${SafeUI.escapeHTML(folder.name)}
                         </li>
-                    `).join('');
+                    ).join('');
 
                     const modalHtml = `
                         <p>Move "<strong>${SafeUI.escapeHTML(item.name)}</strong>" to:</p>
@@ -505,7 +567,7 @@
                         if (index === path.length - 1) {
                             return `<span class="breadcrumb-current">${escapedName}</span>`;
                         } else {
-                            return `<a class="breadcrumb-link" data-id="${escapedId}">${escapedName}</a><span class="breadcrumb-separator">&gt;</span>`;
+                            return `<a class="breadcrumb-link" data-id="${escapedId}">${escapedName}</a><span class="breadcrumb-separator">/</span>`;
                         }
                     }).join('');
                     DOMElements.breadcrumbContainer.innerHTML = html;
@@ -525,7 +587,7 @@
                     ListRenderer.renderList({
                         container: DOMElements.treeListContainer,
                         items: sortedItems,
-                        emptyMessage: "This folder is empty. Click 'New Template' to add one.",
+                        emptyMessage: "This folder is empty. Click 'New Folder' to add one, or 'Create New Template' above.",
                         createItemElement: (item) => {
                             const div = document.createElement('div');
                             div.className = 'list-item';
@@ -562,15 +624,7 @@
                     });
                 };
 
-                const showView = (viewName) => {
-                    DOMElements.catalogueView.classList.toggle('active', viewName === 'catalogue');
-                    DOMElements.editorView.classList.toggle('active', viewName === 'editor');
-                    
-                    if (state.ui) {
-                        state.ui.activeView = viewName;
-                        saveState();
-                    }
-                };
+                // REMOVED: showView()
 
                 const handleFile = (file) => {
                     try { 
@@ -666,19 +720,7 @@
                     setTimeout(() => resizeResultMailto(), 0);
                 };
                 
-                const handleNewTemplate = () => {
-                    if (hasUnsavedEditorChanges()) {
-                        UIPatterns.confirmUnsavedChanges(() => {
-                            clearEditorFields(); 
-                            resizeResultBody(); 
-                            showView('editor');
-                        });
-                        return;
-                    }
-                    clearEditorFields(); 
-                    resizeResultBody(); 
-                    showView('editor');
-                };
+                // REMOVED: handleNewTemplate()
                 
                 const handleNewFolder = () => {
                     SafeUI.showModal('New Folder', createFolderModalHTML(), [ 
@@ -727,7 +769,11 @@
                     });
                     saveState();
                     SafeUI.showToast('Template saved!');
-                    showView('catalogue');
+                    
+                    // NEW: Clear fields and collapse accordion
+                    clearEditorFields();
+                    toggleAccordion(null, true); // force collapse
+                    
                     renderCatalogue();
                 };
 
@@ -828,6 +874,7 @@
                         
                         saveState();
                         renderCatalogue();
+                        initAccordion(); // Re-init accordion with restored state
                         SafeUI.showToast('Restored previous session');
                     };
 
@@ -846,21 +893,11 @@
 
                 const attachEventListeners = () => {
                     setupSettingsModal();
+                    initAccordion(); // NEW: Set up accordion listeners
 
-                    DOMElements.btnNewTemplate.addEventListener('click', handleNewTemplate);
                     DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
                     
-                    DOMElements.btnEditorCancel.addEventListener('click', () => {
-                        if (hasUnsavedEditorChanges()) {
-                            UIPatterns.confirmUnsavedChanges(() => {
-                                showView('catalogue');
-                                renderCatalogue();
-                            });
-                        } else {
-                            showView('catalogue');
-                            renderCatalogue();
-                        }
-                    });
+                    // REMOVED: btn-editor-cancel listener
 
                     DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
                     DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
@@ -915,9 +952,10 @@
                     });
                     
                     // Scroll Persistence
-                    DOMElements.treeListContainer.addEventListener('scroll', SafeUI.debounce(() => {
+                    const mainContent = document.querySelector('.main-content'); // Scroll main content
+                    mainContent.addEventListener('scroll', SafeUI.debounce(() => {
                         if (state.ui) {
-                            state.ui.catalogueScrollTop = DOMElements.treeListContainer.scrollTop;
+                            state.ui.catalogueScrollTop = mainContent.scrollTop;
                             saveState();
                         }
                     }, 500));
@@ -925,11 +963,11 @@
                     // Scroll to Top
                     const scrollToTopBtn = document.getElementById('scroll-to-top');
                     if (scrollToTopBtn) {
-                        DOMElements.treeListContainer.addEventListener('scroll', SafeUI.debounce(() => {
-                            scrollToTopBtn.classList.toggle('visible', DOMElements.treeListContainer.scrollTop > 300);
+                        mainContent.addEventListener('scroll', SafeUI.debounce(() => {
+                            scrollToTopBtn.classList.toggle('visible', mainContent.scrollTop > 300);
                         }, 200));
                         scrollToTopBtn.addEventListener('click', () => {
-                            DOMElements.treeListContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                            mainContent.scrollTo({ top: 0, behavior: 'smooth' });
                         });
                     }
                 };
@@ -954,16 +992,13 @@
                             currentFolderId = state.ui.currentFolderId;
                         }
                         
-                        // Restore view, defaults to catalogue if activeView is missing or invalid
-                        const restoredView = state.ui.activeView === 'editor' ? 'editor' : 'catalogue';
-                        showView(restoredView);
-                        
                         renderCatalogue();
                         
                         // Restore scroll
-                        if (state.ui.catalogueScrollTop) {
+                        const mainContent = document.querySelector('.main-content');
+                        if (state.ui.catalogueScrollTop && mainContent) {
                             setTimeout(() => {
-                                DOMElements.treeListContainer.scrollTop = state.ui.catalogueScrollTop;
+                                mainContent.scrollTop = state.ui.catalogueScrollTop;
                             }, 0);
                         }
                         
@@ -971,7 +1006,6 @@
                             SafeUI.showToast('Restored previous session');
                         }
                     } else {
-                        showView('catalogue');
                         renderCatalogue();
                     }
                 };
@@ -990,4 +1024,3 @@
     </script>
 </body>
 </html>
-
