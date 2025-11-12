@@ -1,7 +1,7 @@
 /**
  * bootstrap.js - Centralized dependency loader
  * This is the ONLY script tag needed in HTML files.
- * Version: 1.0.2 (Updated for race conditions and DOM placement)
+ * Version: 1.0.2
  */
 
 (function() {
