@@ -1,20 +1,23 @@
 /**
  * bootstrap.js - Centralized dependency loader
- * This is the ONLY script tag needed in HTML files.
- * Version: 1.0.2
+ * Loads both JavaScript modules AND shared HTML components (Navbar).
+ * Version: 1.1.0
  */
 
 (function() {
     'use strict';
 
-    // Debug mode: Set to true to see detailed logging
-    const DEBUG = true; // TODO: Set to false in production
+    // Configuration: HTML Components to load
+    // These are loaded in parallel with scripts but ensured to be in DOM before 'ready' fires.
+    const HTML_FRAGMENTS = [
+        { 
+            url: 'navbar.html', 
+            targetId: 'navbar-container', 
+            required: false // If container exists, we load it. If not, we skip.
+        }
+    ];
 
-    function debug(...args) {
-        if (DEBUG) console.log('[Bootstrap Debug]', ...args);
-    }
-    
-    // Configuration: Define load order and dependencies
+    // Configuration: JS Scripts to load
     const CORE_SCRIPTS = [
         { 
             url: 'js/app-core.js', 
@@ -25,7 +28,7 @@
             url: 'js/app-ui.js', 
             exports: ['UIPatterns', 'ListRenderer', 'SearchHelper', 'NotepadManager', 'QuickListManager', 'SharedSettingsModal'],
             required: true,
-            dependsOn: ['SafeUI'] // Wait for app-core.js
+            dependsOn: ['SafeUI']
         },
         { 
             url: 'js/app-data.js', 
@@ -35,7 +38,6 @@
         }
     ];
     
-    // Page-specific scripts (optional)
     const PAGE_SCRIPTS = {
         'mailto.html': [
             { url: 'js/msgreader.js', exports: ['MsgReader'], required: false }
@@ -46,69 +48,51 @@
     let loadedScripts = new Set();
     let failedScripts = new Set();
     
-    /**
-     * Escape HTML (inline, no dependencies)
-     */
     function escapeHTML(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
-    /**
-     * Show detailed error banner (guaranteed to work even if body doesn't exist)
-     */
     function showErrorBanner(title, details) {
         const banner = document.createElement('div');
         banner.id = 'bootstrap-error';
         banner.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 1rem;
-            background-color: #fef2f2;
-            color: #dc2626;
-            border-bottom: 2px solid #fecaca;
-            font-family: system-ui, -apple-system, sans-serif;
-            font-size: 0.95rem;
-            font-weight: 600;
-            z-index: 999999;
-            box-sizing: border-box;
-            line-height: 1.5;
+            position: fixed; top: 0; left: 0; width: 100%; padding: 1rem;
+            background-color: #fef2f2; color: #dc2626; border-bottom: 2px solid #fecaca;
+            font-family: system-ui, -apple-system, sans-serif; font-size: 0.95rem;
+            font-weight: 600; z-index: 999999; box-sizing: border-box; line-height: 1.5;
         `;
-        banner.innerHTML = `
-            <strong style="display: block; font-size: 1.1rem; margin-bottom: 0.5rem;">${escapeHTML(title)}</strong>
-            <div style="font-weight: normal; font-size: 0.9rem;">${details}</div>
-        `;
+        banner.innerHTML = `<strong style="display: block; font-size: 1.1rem; margin-bottom: 0.5rem;">${escapeHTML(title)}</strong><div style="font-weight: normal; font-size: 0.9rem;">${details}</div>`;
         
-        // Robust insertion
-        const insert = () => {
-            if (document.body) {
-                // Body exists, insert at top
-                if (document.body.firstChild) {
-                    document.body.insertBefore(banner, document.body.firstChild);
-                } else {
-                    document.body.appendChild(banner);
-                }
-            } else if (document.documentElement) {
-                // Body doesn't exist, append to <html>
-                document.documentElement.appendChild(banner);
-            }
-        };
-        
-        insert();
+        if (document.body) {
+            document.body.insertBefore(banner, document.body.firstChild);
+        } else if (document.documentElement) {
+            document.documentElement.appendChild(banner);
+        }
     }
 
     /**
-     * Load a script (no export verification here - done later)
+     * Fetches an HTML fragment and injects it into the target container.
      */
+    async function loadHtmlFragment(config) {
+        const container = document.getElementById(config.targetId);
+        // If the page doesn't have the container (e.g. login page might not have navbar), skip it.
+        if (!container) return;
+
+        try {
+            const response = await fetch(config.url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const html = await response.text();
+            container.innerHTML = html;
+            console.log(`[Bootstrap] ✓ HTML Loaded: ${config.url}`);
+        } catch (error) {
+            console.error(`[Bootstrap] ✗ Failed to load HTML ${config.url}:`, error);
+            // We don't fail the whole app for a missing navbar, but we log it visibly
+            container.innerHTML = `<div style="color:red; padding:10px; border:1px solid red; background:#fff;">Failed to load ${config.url}</div>`;
+        }
+    }
+
     function loadScript(config) {
         return new Promise((resolve, reject) => {
-            // Check dependencies first
             if (config.dependsOn) {
                 const unmetDeps = config.dependsOn.filter(dep => typeof window[dep] === 'undefined');
                 if (unmetDeps.length > 0) {
@@ -119,15 +103,15 @@
             
             const script = document.createElement('script');
             script.src = config.url;
-            script.async = false; // Maintain order
+            script.async = false;
             
             script.onload = () => {
-                console.log(`[Bootstrap] ✓ ${config.url} loaded`);
+                console.log(`[Bootstrap] ✓ Script Loaded: ${config.url}`);
                 loadedScripts.add(config.url);
-                resolve(); // Trust that script loaded successfully
+                resolve();
             };
             
-            script.onerror = (event) => {
+            script.onerror = () => {
                 const error = new Error(`Failed to load ${config.url} (404 or network error)`);
                 console.error(`[Bootstrap]`, error);
                 failedScripts.add(config.url);
@@ -138,85 +122,62 @@
         });
     }
     
-    /**
-     * Main bootstrap function
-     */
     async function bootstrap() {
         console.log('[Bootstrap] Starting dependency loader...');
         
         try {
-            // Load core scripts in order (no verification yet)
+            // 1. Start loading HTML fragments in parallel
+            const htmlLoaders = HTML_FRAGMENTS.map(loadHtmlFragment);
+
+            // 2. Load core scripts sequentially
             for (const config of CORE_SCRIPTS) {
                 await loadScript(config);
             }
             
-            // NOW verify all exports exist (after execution completes)
+            // 3. Verify exports
             console.log('[Bootstrap] Verifying exports...');
             const allMissingExports = [];
-            
             for (const config of CORE_SCRIPTS) {
                 const missing = config.exports.filter(exp => typeof window[exp] === 'undefined');
                 if (missing.length > 0) {
                     allMissingExports.push(`${config.url.split('/').pop()}: ${missing.join(', ')}`);
                 }
             }
-            
             if (allMissingExports.length > 0) {
                 throw new Error(`Scripts loaded but missing exports:\n${allMissingExports.join('\n')}`);
             }
             
-            // Load page-specific scripts (optional)
+            // 4. Load page specific scripts
             const currentPage = window.location.pathname.split('/').pop() || 'index.html';
             const pageScripts = PAGE_SCRIPTS[currentPage] || [];
-            
             for (const config of pageScripts) {
-                try {
-                    await loadScript(config);
-                    
-                    // Verify page-specific exports
-                    if (config.exports && config.exports.length > 0) {
-                        const missing = config.exports.filter(exp => typeof window[exp] === 'undefined');
-                        if (missing.length > 0 && config.required) {
-                            throw new Error(`${config.url} missing exports: ${missing.join(', ')}`);
-                        }
-                    }
-                } catch (err) {
-                    if (config.required) {
-                        throw err;
-                    } else {
-                        console.warn(`[Bootstrap] Optional script ${config.url} failed:`, err);
-                    }
-                }
+                try { await loadScript(config); } 
+                catch (err) { if (config.required) throw err; }
             }
             
-            console.log('[Bootstrap] ✓ All dependencies loaded successfully');
+            // 5. Wait for HTML to finish loading (if it hasn't already)
+            await Promise.all(htmlLoaders);
+
+            console.log('[Bootstrap] ✓ System Ready');
             
-            // Dispatch ready event
+            // 6. Dispatch Ready Event
             document.dispatchEvent(new CustomEvent('bootstrap:ready'));
             
         } catch (error) {
             console.error('[Bootstrap] ✗ Dependency loading failed:', error);
-            
-            const loadedList = Array.from(loadedScripts).map(url => url.split('/').pop()).join(', ') || 'None';
-            const failedList = Array.from(failedScripts).map(url => url.split('/').pop()).join(', ') || 'Unknown';
+            const loadedList = Array.from(loadedScripts).map(u => u.split('/').pop()).join(', ') || 'None';
+            const failedList = Array.from(failedScripts).map(u => u.split('/').pop()).join(', ') || 'Unknown';
             
             let errorDetails = `
                 <strong>Error:</strong> ${escapeHTML(error.message)}<br><br>
                 <strong>Loaded:</strong> ${escapeHTML(loadedList)}<br>
-                <strong>Failed:</strong> ${escapeHTML(failedList)}<br><br>
-                <strong>Troubleshooting:</strong><br>
-                • Press F12 to open browser console for detailed errors<br>
-                • Check that all .js files exist in /js/ folder<br>
-                • Look for red errors in console indicating syntax issues<br>
+                <strong>Failed:</strong> ${escapeHTML(failedList)}
             `;
-            
             showErrorBanner('Application Failed to Load', errorDetails);
             throw error;
         }
     }
     
-    // Start loading when DOM is ready
-    // Note: Ensure this script is placed at the end of the <body> tag
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', bootstrap);
     } else {
