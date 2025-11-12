@@ -9,31 +9,54 @@
     </div>
 </nav>
 
-<!-- 
-  This component is intentionally minimal. 
-  Global UI elements (toast, modal) are defined in the main HTML 
-  files (e.g., index.html) to prevent duplicate element IDs.
--->
-
 <script>
     (() => {
         try {
-            // This script is self-contained and safe.
-            const currentPath = window.location.pathname; // e.g., "/lookup.html" or "/"
+            const currentPath = window.location.pathname; 
             const links = document.querySelectorAll('.nav-link');
             
+            // Highlight active link
             links.forEach(link => {
-                // Use URL object to get the pathname from the link's href
-                const linkPath = new URL(link.href, window.location.origin).pathname;
-                
-                // Add 'active' class if the pathnames match
-                // OR if the current path is the root ('/') and the link is for 'index.html'
-                if (linkPath === currentPath || (currentPath === '/' && linkPath.endsWith('/index.html'))) {
-                    link.classList.add('active');
+                try {
+                    const linkPath = new URL(link.href, window.location.origin).pathname;
+                    if (linkPath === currentPath || (currentPath === '/' && linkPath.endsWith('/index.html'))) {
+                        link.classList.add('active');
+                    }
+                } catch (e) {
+                    // Ignore URL parsing errors
                 }
             });
+
+            // Keyboard Navigation (Ctrl + 1-4)
+            document.addEventListener('keydown', (e) => {
+                // Check for Ctrl key (or Command on Mac if desired, currently just Ctrl)
+                // Ensure no other modifier keys are pressed
+                if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+                    const key = e.key;
+                    
+                    // Map keys 1-4 to pages
+                    const pageMap = {
+                        '1': 'index.html',
+                        '2': 'lookup.html',
+                        '3': 'passwords.html',
+                        '4': 'mailto.html'
+                    };
+
+                    if (pageMap[key]) {
+                        e.preventDefault(); // Prevent default browser behavior (like switching tabs)
+                        
+                        // Only navigate if we aren't already there
+                        const targetPath = '/' + pageMap[key];
+                        if (!window.location.pathname.endsWith(targetPath) && 
+                            !(targetPath === '/index.html' && window.location.pathname === '/')) {
+                            window.location.href = pageMap[key];
+                        }
+                    }
+                }
+            });
+
         } catch (e) {
-            console.error('Failed to set active nav link:', e);
+            console.error('Navbar initialization error:', e);
         }
     })();
 </script>
