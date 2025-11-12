@@ -3,7 +3,7 @@
  * Core application initialization, SafeUI wrapper, and DOM utilities.
  */
 
-const CORE_VERSION = '2.6.0';
+const CORE_VERSION = '2.6.1';
 
 // ============================================================================
 // MODULE: SVGIcons
@@ -75,21 +75,38 @@ const UIUtils = (() => {
         let loaded = false;
         return async function(containerId) {
             if (loaded) return;
-            loaded = true;
-
+            
             const navContainer = document.getElementById(containerId);
             if (!navContainer) {
-                console.error(`Navbar container "${containerId}" not found.`);
+                console.error(`[loadNavbar] Container "${containerId}" not found.`);
                 return;
             }
 
             try {
+                console.log('[loadNavbar] Fetching navbar.html...');
                 const response = await fetch(`navbar.html`);
-                if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
-                navContainer.innerHTML = await response.text();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const html = await response.text();
+                
+                if (!html || html.length < 10) {
+                    throw new Error('Navbar HTML is empty or too short');
+                }
+                
+                navContainer.innerHTML = html;
+                loaded = true;
+                console.log('[loadNavbar] ✓ Navbar loaded successfully');
+                
             } catch (error) {
-                console.error('Failed to load navbar:', error);
-                navContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading navigation.</p>';
+                console.error('[loadNavbar] Failed to load navbar:', error);
+                navContainer.innerHTML = `
+                    <div style="background: #fef2f2; color: #dc2626; padding: 0.5rem; text-align: center; font-size: 0.85rem;">
+                        ⚠️ Navigation failed to load: ${error.message}
+                    </div>
+                `;
             }
         };
     })();
