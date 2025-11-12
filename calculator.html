@@ -8,9 +8,16 @@
 </head>
 <body class="eod-targets-page">
 
+    <!-- 
+      NAVBAR CONTAINER
+      Populated automatically by bootstrap.js
+    -->
+    <div id="navbar-container"></div>
+
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
+                <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
                 <div class="time-bar">
                     <span id="currentTime">Loading clock...</span>
@@ -103,6 +110,13 @@
         </div>
     </div>
 
+    <!-- Standard App Modal Containers (Required by AppLifecycle) -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <!-- Custom Reset Modal (Specific to Calculator) -->
     <div id="resetModalOverlay" class="modal-overlay-custom">
         <div class="modal-content-custom">
             <h3>Confirm Reset</h3>
@@ -114,411 +128,416 @@
         </div>
     </div>
 
-    <div id="toast" class="toast-custom" style="visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 1rem; position: fixed; z-index: 2000; left: 50%; transform: translateX(-50%); bottom: 30px; font-size: 0.9rem; opacity: 0; transition: visibility 0s 0.5s, opacity 0.5s linear;"></div>
-
-    <script src="js/app-core.js"></script>
-    <script src="js/app-ui.js"></script>
+    <!-- 
+      CRITICAL: Bootstrap script must be at the END of the body.
+      It loads the Navbar HTML and all JS dependencies in parallel.
+    -->
+    <script src="js/bootstrap.js"></script>
     
     <script>
-        const LEEWAY_RATIO = 1 / 7; 
-        const TICKETS_PER_HOUR_RATE = 6; 
-        const ROUNDING_BOUNDARY_MAX = 29; 
+    // Wait for bootstrap, but timeout if it fails
+    let bootstrapReady = false;
 
-        const gradeBoundaries = {
-            'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
-            'Excellent': { name: 'Excellent', min: 4, max: 6 },
-            'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
+    document.addEventListener('bootstrap:ready', () => {
+        bootstrapReady = true;
+        initializePage();
+    });
+
+    // Fallback: If bootstrap doesn't fire within 5 seconds, show error
+    setTimeout(() => {
+        if (!bootstrapReady) {
+            console.error('Bootstrap did not complete within 5 seconds');
+            const banner = document.getElementById('app-startup-error');
+            if (banner) {
+                banner.innerHTML = `<strong>Application Startup Timeout</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">The application failed to load within 5 seconds. Check the browser console for errors.</p>`;
+                banner.classList.remove('hidden');
+            }
+        }
+    }, 5000);
+
+    function initializePage() {
+        const APP_CONFIG = {
+            NAME: 'calculator',
+            VERSION: '1.1.0', // Bumped for bootstrap update
+            DATA_KEY: 'eod_targets_state_v1',
+            IMPORT_KEY: 'eod_targets_import_minutes'
         };
 
-        const LOCAL_STORAGE_KEY = 'eod_targets_state_v1';
-        const EOD_TARGETS_IMPORT_KEY = 'eod_targets_import_minutes';
-
-        const defaultState = {
-            ui: {
-                shiftStart: '08:00',
-                shiftEnd: '16:00',
-                breakTime: 60,
-                currentCallTime: '00:00',
-                currentTickets: 0
-            }
-        };
-
-        // --- Persistence Logic ---
-        function loadState() {
+        // ============================================================================
+        // INITIALIZATION ROUTINE
+        // Bypasses AppLifecycle.run() to avoid the DOMContentLoaded race condition.
+        // ============================================================================
+        (async () => {
             try {
-                const storedState = localStorage.getItem(LOCAL_STORAGE_KEY);
-                if (storedState) {
-                    // Use SafeUI.parseJSON logic (manually here since we aren't using AppLifecycle full init)
-                    return JSON.parse(storedState);
+                // Critical dependency check
+                if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
+                    const banner = document.getElementById('app-startup-error');
+                    if (banner) {
+                        banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies (SafeUI, DOMHelpers) missing.</p>`;
+                        banner.classList.remove('hidden');
+                    }
+                    console.error("Critical dependencies missing (SafeUI, DOMHelpers).");
+                    return;
                 }
-            } catch (err) {
-                console.error("Failed to parse stored state:", err);
-                localStorage.removeItem(LOCAL_STORAGE_KEY);
-            }
-            return JSON.parse(JSON.stringify(defaultState));
-        }
 
-        function saveState(state) {
-            try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-            } catch (err) {
-                console.error("Failed to save state:", err);
-            }
-        }
+                console.log(`[Calculator] Bypassing AppLifecycle.run, initializing v${APP_CONFIG.VERSION}`);
 
-        const TimeUtil = {
-            parseHHMMtoMinutes(timeStr) {
-                const hhmmRegex = /^\d{1,2}:\d{2}$/;
-                if (!hhmmRegex.test(timeStr)) return 0;
-                const parts = timeStr.split(':').map(Number);
-                if (parts.length === 2) {
-                    const hours = parts[0] || 0;
-                    const minutes = parts[1] || 0;
-                    if (minutes > 59) return 0; 
-                    return (hours * 60) + minutes;
-                }
-                return 0;
-            },
-
-            formatMinutesToHHMM(totalMinutes) {
-                if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
-                const hours = Math.floor(totalMinutes / 60);
-                const minutes = Math.floor(totalMinutes % 60);
-                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-            },
-
-            formatMinutesToHHMMShort(totalMinutes) {
-                if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
-                if (totalMinutes === 0) return '0m';
-                const hours = Math.floor(totalMinutes / 60);
-                const minutes = Math.floor(totalMinutes % 60);
-                let parts = [];
-                if (hours > 0) parts.push(`${hours}h`);
-                if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
-                return parts.join(' ');
-            }
-        };
-
-        let toastTimer = null;
-        function showToast(message) {
-            if (toastTimer) clearTimeout(toastTimer);
-            const toast = domElements.toast;
-            if (!toast) return;
-            toast.textContent = message;
-            toast.style.visibility = 'visible';
-            toast.style.opacity = '1';
-            toast.style.transition = 'opacity 0.5s linear';
-            
-            toastTimer = setTimeout(() => {
-                toast.style.visibility = 'hidden';
-                toast.style.opacity = '0';
-                toast.style.transition = 'visibility 0s 0.5s, opacity 0.5s linear';
-                toastTimer = null;
-            }, 3000);
-        }
-
-        function populateTimeOptions(select, startHour, endHour, defaultVal) {
-            for (let h = startHour; h <= endHour; h++) {
-                for (let m = 0; m < 60; m += 15) { 
-                    const hourStr = String(h).padStart(2, '0');
-                    const minStr = String(m).padStart(2, '0');
-                    const timeStr = `${hourStr}:${minStr}`;
-                    const option = document.createElement('option');
-                    option.value = timeStr;
-                    option.text = timeStr;
-                    if (timeStr === defaultVal) option.selected = true;
-                    select.appendChild(option);
-                }
-            }
-        }
-
-        let domElements = {};
-        let appState = {}; 
-
-        function updateInputsFromState() {
-            if (!appState.ui) appState.ui = { ...defaultState.ui };
-            
-            domElements.shiftStart.value = appState.ui.shiftStart;
-            domElements.shiftEnd.value = appState.ui.shiftEnd;
-            domElements.breakTime.value = appState.ui.breakTime;
-            domElements.currentCallTime.value = appState.ui.currentCallTime;
-            domElements.currentTickets.value = appState.ui.currentTickets;
-        }
-
-        // REFACTOR: Replaced manual timer with SafeUI.debounce
-        const debouncedCalculateAndSave = SafeUI.debounce(() => {
-            appState.ui.shiftStart = domElements.shiftStart.value;
-            appState.ui.shiftEnd = domElements.shiftEnd.value;
-            appState.ui.breakTime = parseInt(domElements.breakTime.value, 10);
-            appState.ui.currentCallTime = domElements.currentCallTime.value;
-            appState.ui.currentTickets = parseInt(domElements.currentTickets.value, 10) || 0;
-            
-            saveState(appState);
-            calculateDailyRatings();
-        }, 250);
-
-        function handleAddCallTime() {
-            const currentMinutes = TimeUtil.parseHHMMtoMinutes(domElements.currentCallTime.value);
-            const minutesToAdd = parseInt(domElements.addCallTime.value, 10) || 0;
-            
-            if (minutesToAdd === 0) return;
-            
-            const newTotalMinutes = currentMinutes + minutesToAdd;
-            domElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
-            domElements.addCallTime.value = '';
-            debouncedCalculateAndSave(); 
-        }
-
-        function showResetModal() {
-            domElements.resetModalOverlay.style.display = 'flex';
-        }
-        function hideResetModal() {
-            domElements.resetModalOverlay.style.display = 'none';
-        }
-        function handleResetData() {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            appState = JSON.parse(JSON.stringify(defaultState));
-            updateInputsFromState(); 
-            calculateDailyRatings(); 
-            hideResetModal();
-            showToast('Data reset to defaults');
-        }
-
-        function autoImportBookmarkletData() {
-            try {
-                const minsToImport = parseInt(localStorage.getItem(EOD_TARGETS_IMPORT_KEY) || "0", 10);
-                
-                if (minsToImport > 0) {
-                    const currentMinutes = TimeUtil.parseHHMMtoMinutes(domElements.currentCallTime.value);
-                    const newTotalMinutes = currentMinutes + minsToImport;
-                    domElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
-                    
-                    localStorage.removeItem(EOD_TARGETS_IMPORT_KEY);
-                    
-                    debouncedCalculateAndSave();
-                    showToast(`Imported ${minsToImport} minutes from call logger.`);
-                }
-            } catch (err) {
-                console.error("Failed to auto-import bookmarklet data:", err);
-            }
-        }
-
-        function getScheduleInfo(now) {
-            const startTimeStr = domElements.shiftStart.value;
-            const endTimeStr = domElements.shiftEnd.value;
-            const breakTimeMinutes = parseInt(domElements.breakTime.value, 10);
-
-            const startTime = new Date(now);
-            startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
-            
-            const endTime = new Date(now);
-            endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
-
-            const totalShiftMinutes = (endTime - startTime) / 60000;
-            
-            if (totalShiftMinutes <= 0) {
-                return { 
-                    totalProductiveMinutes: 0, productiveMinutesPassed: 0, productiveMinutesRemaining: 0,
-                    error: "Shift end time must be after shift start time."
+                const defaultState = {
+                    ui: {
+                        shiftStart: '08:00',
+                        shiftEnd: '16:00',
+                        breakTime: 60,
+                        currentCallTime: '00:00',
+                        currentTickets: 0
+                    }
                 };
-            }
 
-            const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
-            const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
-            const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
-            
-            let workdayMinutesPassed = (now - startTime) / 60000;
-            if (workdayMinutesPassed < 0) workdayMinutesPassed = 0; 
-            if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes; 
+                // Initialize via AppLifecycle (handles Navbar, State Loading, Element Caching)
+                const ctx = await AppLifecycle.initPage({
+                    storageKey: APP_CONFIG.DATA_KEY,
+                    defaultState: defaultState,
+                    version: APP_CONFIG.VERSION,
+                    requiredElements: [
+                        'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                        'shiftStart', 'shiftEnd', 'breakTime', 
+                        'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
+                        'currentTime', 'totalProductiveTime', 'timePassed', 'timeRemaining', 'totalWorkTimeEOD',
+                        'targets-content', 'btnResetData',
+                        'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset'
+                    ]
+                });
 
-            let productiveMinutesPassed = 0;
-            if (totalShiftMinutes > 0) {
-                 productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
-            }
-            if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
-            const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
+                if (!ctx) return;
 
-            return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
-        }
+                const { elements: DOMElements, state, saveState } = ctx;
 
-        function updateTimeDisplays(now) {
-            const scheduleInfo = getScheduleInfo(now);
-            
-            domElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesPassed);
-            domElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesRemaining);
-            domElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
-            
-            return scheduleInfo; 
-        }
-        
-        function buildTargetCardHTML(label, value, description) {
-            return `
-                <span class="target-label">${label}</span>
-                <span class="target-value">${value}</span>
-                <span class="target-desc">${description}</span>
-            `;
-        }
+                // --- Constants & Utils ---
+                const LEEWAY_RATIO = 1 / 7; 
+                const TICKETS_PER_HOUR_RATE = 6; 
+                const ROUNDING_BOUNDARY_MAX = 29; 
 
-        function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
-            if (totalWorkTimeEOD < 0) {
-                return {
-                    boxClass: 'target-danger',
-                    html: buildTargetCardHTML(boundary.name, "0", "Call time exceeds productive time.")
+                const gradeBoundaries = {
+                    'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
+                    'Excellent': { name: 'Excellent', min: 4, max: 6 },
+                    'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
                 };
-            }
-            if (ticketsNeeded <= 0) {
-                return {
-                    boxClass: 'target-good',
-                    html: buildTargetCardHTML(boundary.name, "GOAL MET!", `You've hit the goal of <strong>${ticketsToHitGrade}</strong> tickets.`)
+
+                const TimeUtil = {
+                    parseHHMMtoMinutes(timeStr) {
+                        const hhmmRegex = /^\d{1,2}:\d{2}$/;
+                        if (!hhmmRegex.test(timeStr)) return 0;
+                        const parts = timeStr.split(':').map(Number);
+                        if (parts.length === 2) {
+                            const hours = parts[0] || 0;
+                            const minutes = parts[1] || 0;
+                            if (minutes > 59) return 0; 
+                            return (hours * 60) + minutes;
+                        }
+                        return 0;
+                    },
+
+                    formatMinutesToHHMM(totalMinutes) {
+                        if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = Math.floor(totalMinutes % 60);
+                        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                    },
+
+                    formatMinutesToHHMMShort(totalMinutes) {
+                        if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
+                        if (totalMinutes === 0) return '0m';
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = Math.floor(totalMinutes % 60);
+                        let parts = [];
+                        if (hours > 0) parts.push(`${hours}h`);
+                        if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
+                        return parts.join(' ');
+                    }
                 };
-            }
-            if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
-                return {
-                    boxClass: 'target-danger',
-                    html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
-                };
-            }
-            return {
-                boxClass: 'target-warn',
-                html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
-            };
-        }
 
-        function calculateDailyRatings() {
-            const now = new Date();
-            
-            const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
-            
-            domElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
-
-            if (scheduleError) {
-                domElements.totalWorkTimeEOD.innerText = '00:00';
-                domElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${scheduleError}</div>`;
-                return;
-            }
-
-            if (totalProductiveMinutes <= 0) {
-                domElements.totalWorkTimeEOD.innerText = '00:00';
-                domElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">Invalid Schedule. Total Productive Time must be greater than 0 (check break time).</div>`;
-                return;
-            }
-
-            const currentCallTimeSoFar = TimeUtil.parseHHMMtoMinutes(domElements.currentCallTime.value);
-            const currentTicketsSoFar = parseInt(domElements.currentTickets.value) || 0;
-            
-            const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
-            domElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
-            
-            const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
-            const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
-
-            domElements.targetsContent.innerHTML = ''; 
-            
-            for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
-                const targetBox = document.createElement('div');
-                targetBox.id = `target${targetName}`;
-                
-                const ticketsToHitGrade = targetTicketGoal + boundary.min;
-                const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
-                
-                let callTimeHtml = ''; 
-
-                if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
-                    const maxAllowableTarget = currentTicketsSoFar - boundary.min;
-                    const maxRoundedHours = Math.floor(maxAllowableTarget / TICKETS_PER_HOUR_RATE);
-                    
-                    const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
-                    const requiredCallTime = totalProductiveMinutes - maxWorkTimeMinutes;
-                    const additionalCallMinutes = requiredCallTime - currentCallTimeSoFar;
-                    const roundedAdditionalCallMinutes = Math.ceil(additionalCallMinutes);
-
-                    const callTimeDisplay = TimeUtil.formatMinutesToHHMMShort(roundedAdditionalCallMinutes);
-
-                    if (roundedAdditionalCallMinutes <= 0) {
-                        callTimeHtml = '<strong>OR</strong> 0m of calls'; 
-                    } else if (productiveMinutesRemaining > 0 && roundedAdditionalCallMinutes > productiveMinutesRemaining) {
-                        callTimeHtml = `<strong>OR</strong> ${callTimeDisplay}+ (exceeds shift)`;
-                    } else {
-                        callTimeHtml = `<strong>OR</strong> ${callTimeDisplay} of calls`;
+                function populateTimeOptions(select, startHour, endHour, defaultVal) {
+                    for (let h = startHour; h <= endHour; h++) {
+                        for (let m = 0; m < 60; m += 15) { 
+                            const hourStr = String(h).padStart(2, '0');
+                            const minStr = String(m).padStart(2, '0');
+                            const timeStr = `${hourStr}:${minStr}`;
+                            const option = document.createElement('option');
+                            option.value = timeStr;
+                            option.text = timeStr;
+                            if (timeStr === defaultVal) option.selected = true;
+                            select.appendChild(option);
+                        }
                     }
                 }
 
-                const { boxClass, html } = getTargetCardState({
-                    boundary,
-                    totalWorkTimeEOD,
-                    ticketsNeeded,
-                    ticketsToHitGrade,
-                    productiveMinutesRemaining,
-                    callTimeHtml
+                function updateInputsFromState() {
+                    if (!state.ui) state.ui = { ...defaultState.ui };
+                    
+                    DOMElements.shiftStart.value = state.ui.shiftStart;
+                    DOMElements.shiftEnd.value = state.ui.shiftEnd;
+                    DOMElements.breakTime.value = state.ui.breakTime;
+                    DOMElements.currentCallTime.value = state.ui.currentCallTime;
+                    DOMElements.currentTickets.value = state.ui.currentTickets;
+                }
+
+                const debouncedCalculateAndSave = SafeUI.debounce(() => {
+                    state.ui.shiftStart = DOMElements.shiftStart.value;
+                    state.ui.shiftEnd = DOMElements.shiftEnd.value;
+                    state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10);
+                    state.ui.currentCallTime = DOMElements.currentCallTime.value;
+                    state.ui.currentTickets = parseInt(DOMElements.currentTickets.value, 10) || 0;
+                    
+                    saveState();
+                    calculateDailyRatings();
+                }, 250);
+
+                function handleAddCallTime() {
+                    const currentMinutes = TimeUtil.parseHHMMtoMinutes(DOMElements.currentCallTime.value);
+                    const minutesToAdd = parseInt(DOMElements.addCallTime.value, 10) || 0;
+                    
+                    if (minutesToAdd === 0) return;
+                    
+                    const newTotalMinutes = currentMinutes + minutesToAdd;
+                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
+                    DOMElements.addCallTime.value = '';
+                    debouncedCalculateAndSave(); 
+                }
+
+                function showResetModal() { DOMElements.resetModalOverlay.style.display = 'flex'; }
+                function hideResetModal() { DOMElements.resetModalOverlay.style.display = 'none'; }
+                
+                function handleResetData() {
+                    // Reset state object
+                    state.ui = JSON.parse(JSON.stringify(defaultState.ui));
+                    updateInputsFromState(); 
+                    calculateDailyRatings(); 
+                    saveState(); // Persist the reset
+                    hideResetModal();
+                    SafeUI.showToast('Data reset to defaults');
+                }
+
+                function autoImportBookmarkletData() {
+                    try {
+                        const minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
+                        
+                        if (minsToImport > 0) {
+                            const currentMinutes = TimeUtil.parseHHMMtoMinutes(DOMElements.currentCallTime.value);
+                            const newTotalMinutes = currentMinutes + minsToImport;
+                            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
+                            
+                            localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
+                            
+                            debouncedCalculateAndSave();
+                            SafeUI.showToast(`Imported ${minsToImport} minutes from call logger.`);
+                        }
+                    } catch (err) {
+                        console.error("Failed to auto-import bookmarklet data:", err);
+                    }
+                }
+
+                function getScheduleInfo(now) {
+                    const startTimeStr = DOMElements.shiftStart.value;
+                    const endTimeStr = DOMElements.shiftEnd.value;
+                    const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10);
+
+                    const startTime = new Date(now);
+                    startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
+                    
+                    const endTime = new Date(now);
+                    endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
+
+                    const totalShiftMinutes = (endTime - startTime) / 60000;
+                    
+                    if (totalShiftMinutes <= 0) {
+                        return { 
+                            totalProductiveMinutes: 0, productiveMinutesPassed: 0, productiveMinutesRemaining: 0,
+                            error: "Shift end time must be after shift start time."
+                        };
+                    }
+
+                    const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
+                    const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
+                    const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
+                    
+                    let workdayMinutesPassed = (now - startTime) / 60000;
+                    if (workdayMinutesPassed < 0) workdayMinutesPassed = 0; 
+                    if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes; 
+
+                    let productiveMinutesPassed = 0;
+                    if (totalShiftMinutes > 0) {
+                        productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
+                    }
+                    if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
+                    const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
+
+                    return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
+                }
+
+                function updateTimeDisplays(now) {
+                    const scheduleInfo = getScheduleInfo(now);
+                    
+                    DOMElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesPassed);
+                    DOMElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesRemaining);
+                    DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
+                    
+                    return scheduleInfo; 
+                }
+                
+                function buildTargetCardHTML(label, value, description) {
+                    return `
+                        <span class="target-label">${label}</span>
+                        <span class="target-value">${value}</span>
+                        <span class="target-desc">${description}</span>
+                    `;
+                }
+
+                function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
+                    if (totalWorkTimeEOD < 0) {
+                        return {
+                            boxClass: 'target-danger',
+                            html: buildTargetCardHTML(boundary.name, "0", "Call time exceeds productive time.")
+                        };
+                    }
+                    if (ticketsNeeded <= 0) {
+                        return {
+                            boxClass: 'target-good',
+                            html: buildTargetCardHTML(boundary.name, "GOAL MET!", `You've hit the goal of <strong>${ticketsToHitGrade}</strong> tickets.`)
+                        };
+                    }
+                    if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
+                        return {
+                            boxClass: 'target-danger',
+                            html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
+                        };
+                    }
+                    return {
+                        boxClass: 'target-warn',
+                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
+                    };
+                }
+
+                function calculateDailyRatings() {
+                    const now = new Date();
+                    
+                    const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
+                    
+                    DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
+
+                    if (scheduleError) {
+                        DOMElements.totalWorkTimeEOD.innerText = '00:00';
+                        DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${scheduleError}</div>`;
+                        return;
+                    }
+
+                    if (totalProductiveMinutes <= 0) {
+                        DOMElements.totalWorkTimeEOD.innerText = '00:00';
+                        DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">Invalid Schedule. Total Productive Time must be greater than 0 (check break time).</div>`;
+                        return;
+                    }
+
+                    const currentCallTimeSoFar = TimeUtil.parseHHMMtoMinutes(DOMElements.currentCallTime.value);
+                    const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
+                    
+                    const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
+                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
+                    
+                    const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
+                    const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
+
+                    DOMElements.targetsContent.innerHTML = ''; 
+                    
+                    for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
+                        const targetBox = document.createElement('div');
+                        targetBox.id = `target${targetName}`;
+                        
+                        const ticketsToHitGrade = targetTicketGoal + boundary.min;
+                        const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
+                        
+                        let callTimeHtml = ''; 
+
+                        if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
+                            const maxAllowableTarget = currentTicketsSoFar - boundary.min;
+                            const maxRoundedHours = Math.floor(maxAllowableTarget / TICKETS_PER_HOUR_RATE);
+                            
+                            const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
+                            const requiredCallTime = totalProductiveMinutes - maxWorkTimeMinutes;
+                            const additionalCallMinutes = requiredCallTime - currentCallTimeSoFar;
+                            const roundedAdditionalCallMinutes = Math.ceil(additionalCallMinutes);
+
+                            const callTimeDisplay = TimeUtil.formatMinutesToHHMMShort(roundedAdditionalCallMinutes);
+
+                            if (roundedAdditionalCallMinutes <= 0) {
+                                callTimeHtml = '<strong>OR</strong> 0m of calls'; 
+                            } else if (productiveMinutesRemaining > 0 && roundedAdditionalCallMinutes > productiveMinutesRemaining) {
+                                callTimeHtml = `<strong>OR</strong> ${callTimeDisplay}+ (exceeds shift)`;
+                            } else {
+                                callTimeHtml = `<strong>OR</strong> ${callTimeDisplay} of calls`;
+                            }
+                        }
+
+                        const { boxClass, html } = getTargetCardState({
+                            boundary,
+                            totalWorkTimeEOD,
+                            ticketsNeeded,
+                            ticketsToHitGrade,
+                            productiveMinutesRemaining,
+                            callTimeHtml
+                        });
+                        
+                        targetBox.className = `target-card ${boxClass}`;
+                        targetBox.innerHTML = html;
+                        DOMElements.targetsContent.appendChild(targetBox);
+                    }
+                    
+                    const infoBox = document.createElement('div');
+                    infoBox.id = 'target-info';
+                    infoBox.className = 'info-box target-info-box';
+                    infoBox.innerText = `Target is ${TICKETS_PER_HOUR_RATE} tickets per *rounded hour* of your 'Work Time (EOD)'.`;
+                    DOMElements.targetsContent.appendChild(infoBox);
+                }
+
+                // --- Execution ---
+                populateTimeOptions(DOMElements.shiftStart, 6, 12, state.ui?.shiftStart || defaultState.ui.shiftStart); 
+                populateTimeOptions(DOMElements.shiftEnd, 12, 18, state.ui?.shiftEnd || defaultState.ui.shiftEnd); 
+
+                updateInputsFromState();
+
+                DOMElements.shiftStart.addEventListener('input', debouncedCalculateAndSave);
+                DOMElements.shiftEnd.addEventListener('input', debouncedCalculateAndSave);
+                DOMElements.breakTime.addEventListener('input', debouncedCalculateAndSave);
+                DOMElements.currentCallTime.addEventListener('input', debouncedCalculateAndSave);
+                DOMElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
+                DOMElements.btnAddCallTime.addEventListener('click', handleAddCallTime);
+                
+                DOMElements.btnResetData.addEventListener('click', showResetModal);
+                DOMElements.modalCancelReset.addEventListener('click', hideResetModal);
+                DOMElements.modalConfirmReset.addEventListener('click', handleResetData);
+
+                DOMElements.addCallTime.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') handleAddCallTime();
                 });
                 
-                targetBox.className = `target-card ${boxClass}`;
-                targetBox.innerHTML = html;
-                domElements.targetsContent.appendChild(targetBox);
+                setInterval(() => {
+                    updateTimeDisplays(new Date());
+                }, 1000);
+
+                calculateDailyRatings(); 
+                autoImportBookmarkletData();
+                
+                if (Object.keys(state.ui || {}).length > 0) {
+                    SafeUI.showToast('Restored previous session');
+                }
+
+            } catch (err) {
+                console.error("Unhandled exception during initialization:", err);
+                const banner = document.getElementById('app-startup-error');
+                if (banner) {
+                    banner.innerHTML = `<strong>Application Error</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Unexpected error: ${err.message}</p>`;
+                    banner.classList.remove('hidden');
+                }
             }
-            
-            const infoBox = document.createElement('div');
-            infoBox.id = 'target-info';
-            infoBox.className = 'info-box target-info-box';
-            infoBox.innerText = `Target is ${TICKETS_PER_HOUR_RATE} tickets per *rounded hour* of your 'Work Time (EOD)'.`;
-            domElements.targetsContent.appendChild(infoBox);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            appState = loadState();
-
-            domElements = {
-                shiftStart: document.getElementById('shiftStart'),
-                shiftEnd: document.getElementById('shiftEnd'),
-                breakTime: document.getElementById('breakTime'),
-                currentCallTime: document.getElementById('currentCallTime'),
-                currentTickets: document.getElementById('currentTickets'),
-                addCallTime: document.getElementById('addCallTime'),
-                btnAddCallTime: document.getElementById('btnAddCallTime'),
-                currentTime: document.getElementById('currentTime'),
-                totalProductiveTime: document.getElementById('totalProductiveTime'),
-                timePassed: document.getElementById('timePassed'),
-                timeRemaining: document.getElementById('timeRemaining'),
-                totalWorkTimeEOD: document.getElementById('totalWorkTimeEOD'),
-                targetsContent: document.getElementById('targets-content'),
-                btnResetData: document.getElementById('btnResetData'),
-                resetModalOverlay: document.getElementById('resetModalOverlay'),
-                modalConfirmReset: document.getElementById('modalConfirmReset'),
-                modalCancelReset: document.getElementById('modalCancelReset'),
-                toast: document.getElementById('toast')
-            };
-
-            populateTimeOptions(domElements.shiftStart, 6, 12, appState.ui?.shiftStart || defaultState.ui.shiftStart); 
-            populateTimeOptions(domElements.shiftEnd, 12, 18, appState.ui?.shiftEnd || defaultState.ui.shiftEnd); 
-
-            updateInputsFromState();
-
-            domElements.shiftStart.addEventListener('input', debouncedCalculateAndSave);
-            domElements.shiftEnd.addEventListener('input', debouncedCalculateAndSave);
-            domElements.breakTime.addEventListener('input', debouncedCalculateAndSave);
-            domElements.currentCallTime.addEventListener('input', debouncedCalculateAndSave);
-            domElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
-            domElements.btnAddCallTime.addEventListener('click', handleAddCallTime);
-            
-            domElements.btnResetData.addEventListener('click', showResetModal);
-            domElements.modalCancelReset.addEventListener('click', hideResetModal);
-            domElements.modalConfirmReset.addEventListener('click', handleResetData);
-
-            domElements.addCallTime.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') handleAddCallTime();
-            });
-            
-            setInterval(() => {
-                updateTimeDisplays(new Date());
-            }, 1000);
-
-            calculateDailyRatings(); 
-            autoImportBookmarkletData();
-            
-            if (Object.keys(appState.ui || {}).length > 0) {
-                 showToast('Restored previous session');
-            }
-        });
+        })();
+    }
     </script>
 </body>
 </html>
