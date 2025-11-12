@@ -1,7 +1,10 @@
 /**
  * bootstrap.js - Centralized dependency loader
  * Loads both JavaScript modules AND shared HTML components (Navbar).
- * Version: 1.1.0
+ * Version: 1.1.1
+ *
+ * FIX: Restored 'js/' prefix to all paths based on user clarification.
+ * FIX: Updated 'msgreader (17).js' back to 'msgreader.js' to match original filename.
  */
 
 (function() {
