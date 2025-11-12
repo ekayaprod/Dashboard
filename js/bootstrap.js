@@ -1,10 +1,12 @@
 /**
  * bootstrap.js - Centralized dependency loader
  * Loads both JavaScript modules AND shared HTML components (Navbar).
- * Version: 1.1.1
+ * Version: 1.1.2 (Fixed export verification)
  *
- * FIX: Restored 'js/' prefix to all paths based on user clarification.
- * FIX: Updated 'msgreader (17).js' back to 'msgreader.js' to match original filename.
+ * FIX v1.1.2: Added missing exports to verification lists:
+ * - UIUtils (from app-core.js)
+ * - APP_UI_VERSION (from app-ui.js)
+ * - APP_DATA_VERSION (from app-data.js)
  */
 
 (function() {
@@ -24,18 +26,18 @@
     const CORE_SCRIPTS = [
         { 
             url: 'js/app-core.js', 
-            exports: ['SafeUI', 'DOMHelpers', 'AppLifecycle', 'DataHelpers'],
+            exports: ['UIUtils', 'SafeUI', 'DOMHelpers', 'AppLifecycle', 'DataHelpers'],
             required: true
         },
         { 
             url: 'js/app-ui.js', 
-            exports: ['UIPatterns', 'ListRenderer', 'SearchHelper', 'NotepadManager', 'QuickListManager', 'SharedSettingsModal'],
+            exports: ['UIPatterns', 'ListRenderer', 'SearchHelper', 'NotepadManager', 'QuickListManager', 'SharedSettingsModal', 'APP_UI_VERSION'],
             required: true,
             dependsOn: ['SafeUI']
         },
         { 
             url: 'js/app-data.js', 
-            exports: ['BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'],
+            exports: ['BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'APP_DATA_VERSION'],
             required: true,
             dependsOn: ['SafeUI']
         }
