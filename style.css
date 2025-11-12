@@ -23,9 +23,20 @@
     --color-success-bg-hover: #dcfce7;
     --color-success-border-hover: #86efac;
 
-    /* Added from calculator styles for the time bar */
+    /* Calculator Time Bar */
     --header-bar-bg: #374151;
     --header-bar-text: #d1d5db;
+
+    /* Component Specific Vars (New) */
+    --button-bg: #ffffff;
+    --button-border: var(--border-color);
+    --button-hover-bg: #f8fafc;
+    --input-bg: var(--info-bg);
+    --input-border: var(--border-color);
+    --input-focus-bg: #ffffff;
+    --menu-border: var(--border-color);
+    --menu-bg: var(--panel-bg);
+    --menu-item-hover: var(--bg-color);
 
     --border-radius: 0.375rem; /* 6px */
     --border-radius-sm: 0.25rem; /* 4px */
@@ -33,7 +44,6 @@
     --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-/* --- NEW: From style (3) --- */
 @media (prefers-color-scheme: dark) {
     :root, [data-theme="dark"] {
         --bg-color: #111827;
@@ -59,25 +69,25 @@
         --color-success-bg-hover: #166534;
         --color-success-border-hover: #15803d;
 
-        /* Dark mode for calculator time bar */
         --header-bar-bg: #4a5568;
         --header-bar-text: #e2e8f0;
+
+        /* Component Specific Overrides */
+        --button-bg: #374151;
+        --button-border: #4b5563;
+        --button-hover-bg: #4b5563;
+        --input-bg: #374151;
+        --input-border: #4b5563;
+        --input-focus-bg: #1f2937;
+        --menu-border: #4b5563;
+        --menu-bg: #1f2937;
+        --menu-item-hover: #374151;
     }
-    
-    /* --- ADDED: Dark mode styles from style(2) for original components --- */
-    .button-base { background-color: #374151; border-color: #4b5563; }
-    .button-base:hover { background-color: #4b5563; }
-    .input-base, .sidebar-input, .sidebar-textarea { background-color: #374151; border-color: #4b5563; color: var(--text-color); }
-    .input-base:focus, .sidebar-input:focus, .sidebar-textarea:focus { background-color: #1f2937; }
-    .actions-menu { border-color: #4b5563; }
-    .actions-menu-item:hover { background-color: #374151; }
     
     .nav-link:hover { background-color: #374151; }
     .nav-link.active { background-color: var(--primary-color); color: #fff; }
 }
 
-
-/* --- RESTORED: Global styles from style (2) --- */
 html, body { 
     height: 100%; 
     margin: 0; 
@@ -121,6 +131,31 @@ body {
     gap: 0.5rem;
 }
 
+/* Grid Utilities */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+.grid-2-tight {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+}
+.col-span-2 { grid-column: span 2; }
+.col-span-3 { grid-column: span 3; }
+.col-span-4 { grid-column: span 4; }
+
 .input-base, 
 .sidebar-input, 
 .sidebar-textarea {
@@ -129,10 +164,11 @@ body {
     font-size: 0.875rem; 
     padding: 0.4rem 0.6rem;
     border-radius: 0.375rem; 
-    border: 1px solid var(--border-color); 
+    border: 1px solid var(--input-border); 
     margin-bottom: 0.4rem;
     font-family: inherit; 
-    background-color: var(--info-bg);
+    background-color: var(--input-bg);
+    color: var(--text-color);
 }
 
 .input-base::placeholder,
@@ -147,7 +183,7 @@ body {
 .sidebar-textarea:focus {
     outline: 2px solid var(--primary-color); 
     outline-offset: -1px; 
-    background-color: white;
+    background-color: var(--input-focus-bg);
 }
 
 .sidebar-textarea { 
@@ -160,10 +196,10 @@ body {
 .button-base {
     padding: 0.35rem 0.6rem; 
     font-size: 0.8rem; 
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--button-border);
     border-radius: 0.375rem; 
     cursor: pointer; 
-    background-color: #fff; 
+    background-color: var(--button-bg); 
     transition: all 0.2s;
     font-weight: 500; 
     display: inline-flex; 
@@ -173,11 +209,11 @@ body {
 }
 
 .button-base:hover { 
-    background-color: #f8fafc; 
+    background-color: var(--button-hover-bg); 
 }
 
 .button-base:disabled { 
-    background-color: #f1f5f9; 
+    background-color: var(--info-bg); 
     color: var(--subtle-text); 
     cursor: not-allowed; 
     border-color: var(--border-color);
@@ -216,7 +252,6 @@ body {
     border-color: var(--danger-color) !important;
 }
 
-
 .icon-btn {
     background: none;
     border: none;
@@ -236,7 +271,6 @@ body {
     width: 16px;
     height: 16px;
 }
-
 
 .save-btn { 
     padding: 0.3rem 0.8rem; 
@@ -285,11 +319,6 @@ body {
     margin: 0.5rem 0; 
 }
 
-/* NOTE: This rule from style (2) is now correctly
-  scoped under .passwords-page .generator-section
-*/
-
-
 .empty-state-message {
     text-align: center; 
     padding: 1rem; 
@@ -307,7 +336,6 @@ body {
 .shortcuts-container.drag-active { 
     background-color: var(--primary-hover-bg-light); 
 }
-
 
 .label-group { 
     display: flex; 
@@ -371,13 +399,12 @@ body {
 .shortcut-item > .drag-handle { 
     flex-shrink: 0; 
 }
-.shortcut-item > a { 
+.shortcut-item > .a { 
     flex-grow: 1; 
 }
 .shortcut-item > .delete-btn { 
     flex-shrink: 0; 
 }
-
 
 .notepad-wrapper { 
     display: flex; 
@@ -425,8 +452,8 @@ body {
     position: absolute; 
     top: 100%; 
     right: 0;
-    background-color: var(--panel-bg); 
-    border: 1px solid var(--border-color);
+    background-color: var(--menu-bg); 
+    border: 1px solid var(--menu-border);
     border-radius: 0.375rem; 
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     z-index: 100; 
@@ -443,7 +470,7 @@ body {
     transition: background-color 0.2s;
 }
 .actions-menu-item:hover { 
-    background-color: var(--bg-color); 
+    background-color: var(--menu-item-hover); 
 }
 
 .modal-overlay { 
@@ -575,17 +602,37 @@ body.modal-open > *:not(.modal-overlay) {
     outline: none;
     box-shadow: 0 0 0 3px var(--primary-color);
 }
-/* --- END RESTORED: Global styles from style (2) --- */
 
-
-
-/* ======================================= */
-/* === PAGE: PASSWORDS (From style (2)) === */
-/* ======================================= */
-
-.passwords-page .app-container {
-    padding: 0; 
+/* Scroll to Top Button */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
+.scroll-to-top-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.scroll-to-top-btn:hover {
+    background-color: #2563eb;
+}
+
+/* Passwords Page Styles */
+.passwords-page .app-container { padding: 0; }
 .passwords-page .main-content {
     padding: 0.5rem; 
     display: flex;
@@ -621,7 +668,6 @@ body.modal-open > *:not(.modal-overlay) {
     background-color: var(--info-bg);
 }
 
-/* Section wrapper for generator, results, etc. */
 .passwords-page .generator-section {
     padding: 0.4rem;
     background-color: var(--panel-bg);
@@ -630,7 +676,6 @@ body.modal-open > *:not(.modal-overlay) {
     box-shadow: var(--box-shadow);
 }
 
-/* Results Section */
 .passwords-page .results-wrapper {
     display: flex;
     flex-direction: column;
@@ -639,7 +684,6 @@ body.modal-open > *:not(.modal-overlay) {
     min-height: 0; 
 }
 
-/* New Results List */
 .passwords-page .result-list {
     list-style: none;
     padding: 0;
@@ -769,45 +813,13 @@ body.modal-open > *:not(.modal-overlay) {
     white-space: nowrap;
 }
 
-#app-startup-error.sticky-banner {
-    position:sticky;
-    top:0;
-    left:0;
-    width:100%;
-    padding:1rem;
-    background-color:#fef2f2;
-    color:#dc2626;
-    border-bottom:2px solid #fecaca;
-    font-family:sans-serif;
-    font-size:1rem;
-    font-weight:600;
-    z-index:10000;
-    box-sizing:border-box;
-}
-.passwords-page .header-wrapper-padded {
-     padding: 0 0.25rem;
-}
-.passwords-page .btn-full-width-padded {
-    width: 100%; 
-    padding: 0.75rem; 
-    font-size: 0.9rem;
-}
-.passwords-page .divider-short-margin {
-    margin: 0.25rem 0;
-}
-.passwords-page .section-header-bottom-margin {
-    margin-bottom: 0.75rem;
-}
-.passwords-page .checkbox-label-padded {
-    margin-bottom: 0;
-}
-.passwords-page .btn-generate-padded {
-    width: 100%; 
-    padding: 0.75rem;
-}
+.passwords-page .header-wrapper-padded { padding: 0 0.25rem; }
+.passwords-page .btn-full-width-padded { width: 100%; padding: 0.75rem; font-size: 0.9rem; }
+.passwords-page .divider-short-margin { margin: 0.25rem 0; }
+.passwords-page .section-header-bottom-margin { margin-bottom: 0.75rem; }
+.passwords-page .checkbox-label-padded { margin-bottom: 0; }
+.passwords-page .btn-generate-padded { width: 100%; padding: 0.75rem; }
 
-
-/* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
     .passwords-page .generator-section, .passwords-page .results-wrapper {
         background-color: var(--panel-bg);
@@ -822,32 +834,11 @@ body.modal-open > *:not(.modal-overlay) {
     }
 }
 
-
-/* ======================================= */
-/* === PAGE: LOOKUP (From style (2)) === */
-/* ======================================= */
-
-.lookup-page .main-content {
-    padding: 0.5rem;
-}
-
-.lookup-page .search-controls {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.lookup-page #custom-search-section .button-group {
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-}
-
-.lookup-page #custom-search-section .button-base {
-    width: 100%; 
-    padding: 0.75rem; 
-    font-size: 0.9rem;
-    text-decoration: none; 
-}
+/* Lookup Page Styles */
+.lookup-page .main-content { padding: 0.5rem; }
+.lookup-page .search-controls { display: flex; gap: 0.5rem; }
+.lookup-page #custom-search-section .button-group { flex-direction: column; gap: 0.5rem; width: 100%; }
+.lookup-page #custom-search-section .button-base { width: 100%; padding: 0.75rem; font-size: 0.9rem; text-decoration: none; }
 
 .lookup-page .button-disabled-link {
     background-color: #f1f5f9;
@@ -864,7 +855,6 @@ body.modal-open > *:not(.modal-overlay) {
     }
 }
 
-
 .lookup-page .results-container {
     flex-grow: 1;
     min-height: 0;
@@ -872,10 +862,7 @@ body.modal-open > *:not(.modal-overlay) {
     flex-direction: column; 
 }
 
-.lookup-page .local-header {
-    margin-bottom: 0.5rem;
-}
-
+.lookup-page .local-header { margin-bottom: 0.5rem; }
 .lookup-page .result-list {
     list-style: none;
     padding: 0;
@@ -897,55 +884,16 @@ body.modal-open > *:not(.modal-overlay) {
     flex-direction: column;
     gap: 0.5rem; 
 }
-.lookup-page .result-item .item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.lookup-page .result-item .item-keyword {
-    font-weight: 600;
-    word-break: break-all;
-    font-size: 0.95rem;
-}
-.lookup-page .result-item .item-actions {
-    display: flex;
-    gap: 0.25rem;
-    flex-shrink: 0;
-}
-.lookup-page .result-item .item-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    font-size: 0.85rem;
-}
-.lookup-page .result-item .item-row {
-    display: flex;
-    flex-direction: column;
-}
-.lookup-page .result-item .item-row strong {
-    color: var(--subtle-text);
-    font-size: 0.75rem;
-    margin-bottom: 0.1rem;
-}
-.lookup-page .result-item .item-row .item-value {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-}
-.lookup-page .result-item .item-row .item-value span {
-    word-break: break-all;
-    flex-grow: 1;
-}
-.lookup-page .result-item .item-row-notes {
-    display: flex;
-    flex-direction: column;
-}
-.lookup-page .result-item .item-row-notes strong {
-    color: var(--subtle-text);
-    font-size: 0.75rem;
-    margin-bottom: 0.1rem;
-}
+.lookup-page .result-item .item-header { display: flex; justify-content: space-between; align-items: center; }
+.lookup-page .result-item .item-keyword { font-weight: 600; word-break: break-all; font-size: 0.95rem; }
+.lookup-page .result-item .item-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+.lookup-page .result-item .item-content { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; }
+.lookup-page .result-item .item-row { display: flex; flex-direction: column; }
+.lookup-page .result-item .item-row strong { color: var(--subtle-text); font-size: 0.75rem; margin-bottom: 0.1rem; }
+.lookup-page .result-item .item-row .item-value { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.lookup-page .result-item .item-row .item-value span { word-break: break-all; flex-grow: 1; }
+.lookup-page .result-item .item-row-notes { display: flex; flex-direction: column; }
+.lookup-page .result-item .item-row-notes strong { color: var(--subtle-text); font-size: 0.75rem; margin-bottom: 0.1rem; }
 .lookup-page .result-item .item-row-notes .item-notes-text {
     font-style: italic;
     white-space: pre-wrap;
@@ -956,15 +904,9 @@ body.modal-open > *:not(.modal-overlay) {
     border: 1px solid var(--border-color);
 }
 .lookup-page .result-item .item-grid .btn-copy,
-.lookup-page .result-item .item-row .btn-copy {
-    padding: 0.25rem;
-}
-.lookup-page .result-item .btn-copy svg {
-    width: 14px;
-    height: 14px;
-}
+.lookup-page .result-item .item-row .btn-copy { padding: 0.25rem; }
+.lookup-page .result-item .btn-copy svg { width: 14px; height: 14px; }
 
-/* In-line Edit Form */
 .lookup-page .edit-form-li {
     background-color: var(--panel-bg);
     border: 2px solid var(--primary-color);
@@ -978,58 +920,26 @@ body.modal-open > *:not(.modal-overlay) {
     gap: 0.5rem;
     align-items: center;
 }
-.lookup-page .edit-form .form-grid label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin: 0;
-}
+.lookup-page .edit-form .form-grid label { font-size: 0.8rem; font-weight: 600; margin: 0; }
 .lookup-page .edit-form .form-grid .sidebar-input,
-.lookup-page .edit-form .form-grid .sidebar-textarea {
-    margin: 0;
-}
-.lookup-page .edit-form .edit-form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-}
+.lookup-page .edit-form .form-grid .sidebar-textarea { margin: 0; }
+.lookup-page .edit-form .edit-form-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
 
-/* Modal styles for Lookup */
-.lookup-page .custom-search-item {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-.lookup-page .custom-search-item .search-name {
-    flex-basis: 30%;
-}
-.lookup-page .custom-search-item .search-url {
-    flex-basis: 70%;
-}
-.lookup-page .custom-search-item .sidebar-input {
-    margin-bottom: 0;
-}
+.lookup-page .custom-search-item { display: flex; gap: 0.5rem; align-items: center; }
+.lookup-page .custom-search-item .search-name { flex-basis: 30%; }
+.lookup-page .custom-search-item .search-url { flex-basis: 70%; }
+.lookup-page .custom-search-item .sidebar-input { margin-bottom: 0; }
 
-
-/* ================================================= */
-/* === NEW: EOD Target Calculator Page (style 3)) === */
-/* ================================================= */
-
-/* These styles are scoped to .eod-targets-page, 
-  so they override the global styles ONLY for calculator.html
-*/
-
+/* Calculator (EOD Targets) Styles */
 .eod-targets-page .app-container {
-    /* Override global flex layout for a simple padded page */
     height: auto;
     display: block; 
     padding: 0.75rem;
-    max-width: 600px; /* Add a max-width for calculator */
+    max-width: 600px; 
     margin: 0 auto;
 }
 
 .eod-targets-page .panel {
-    /* Override global flex layout */
     display: block;
     padding: 0;
     border: none;
@@ -1039,14 +949,12 @@ body.modal-open > *:not(.modal-overlay) {
 }
 
 .eod-targets-page .main-content {
-    /* Override global flex layout */
     display: block;
     overflow-y: visible; 
     flex-grow: 0;
     padding: 0;
 }
 
-/* --- Section Styling (COMPACT) --- */
 .eod-targets-page .calc-section {
     background-color: var(--panel-bg);
     border-radius: var(--border-radius);
@@ -1059,6 +967,9 @@ body.modal-open > *:not(.modal-overlay) {
     padding: 0.25rem 0.6rem; 
     background-color: var(--info-bg);
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .eod-targets-page .calc-section-header h2 {
@@ -1068,13 +979,26 @@ body.modal-open > *:not(.modal-overlay) {
     margin: 0;
 }
 
+.eod-targets-page .btn-subtle-reset {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--subtle-text);
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.eod-targets-page .btn-subtle-reset:hover {
+    color: var(--text-color);
+}
+
 .eod-targets-page .calc-section-content {
     padding: 0.6rem; 
     display: grid;
     gap: 0.5rem; 
 }
 
-/* Redefine component styles just for this page */
 .eod-targets-page .sidebar-label {
     display: block;
     font-size: 0.75rem;
@@ -1088,12 +1012,12 @@ body.modal-open > *:not(.modal-overlay) {
     width: 100%;
     font-size: 0.85rem;
     padding: 0.4rem 0.6rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--input-border);
     border-radius: var(--border-radius-sm);
     background-color: var(--panel-bg);
     color: var(--text-color);
     box-sizing: border-box; 
-    margin: 0; /* Override global margin */
+    margin: 0; 
 }
 .eod-targets-page .sidebar-input:focus,
 .eod-targets-page .sidebar-select:focus,
@@ -1101,28 +1025,7 @@ body.modal-open > *:not(.modal-overlay) {
     outline: 2px solid var(--primary-color);
     outline-offset: -1px;
     border-color: var(--primary-color);
-    background-color: var(--panel-bg); /* Dark mode fix */
-}
-
-/* Input grid */
-.eod-targets-page .input-grid-2 {
-    grid-template-columns: 1fr 1fr;
-}
-
-.eod-targets-page .input-grid-2 .col-span-2 {
-     grid-column: span 2 / span 2;
-}
-
-/* Stat boxes grid (COMPACT) */
-.eod-targets-page .stat-grid-4 {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-}
-@media (min-width: 400px) {
-    /* Only use 4 columns if sidebar is wide enough */
-    .eod-targets-page .stat-grid-4 {
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-    }
+    background-color: var(--panel-bg);
 }
 
 .eod-targets-page .stat-box {
@@ -1148,7 +1051,6 @@ body.modal-open > *:not(.modal-overlay) {
     line-height: 1.2;
 }
 
-/* Target cards (COMPACT) */
 .eod-targets-page .target-card {
     padding: 0.5rem; 
     border-radius: var(--border-radius-sm);
@@ -1171,11 +1073,8 @@ body.modal-open > *:not(.modal-overlay) {
     opacity: 0.9;
     margin-top: 0.2rem; 
 }
-.eod-targets-page .target-desc strong {
-    font-weight: 600;
-}
+.eod-targets-page .target-desc strong { font-weight: 600; }
 
-/* Color variants for targets */
 .eod-targets-page .target-good {
     background-color: var(--color-success-bg);
     border: 1px solid var(--color-success-border);
@@ -1191,11 +1090,8 @@ body.modal-open > *:not(.modal-overlay) {
     border: 1px solid var(--border-color);
     color: var(--subtle-text);
 }
-.eod-targets-page .target-danger .target-value {
-    color: var(--subtle-text);
-}
+.eod-targets-page .target-danger .target-value { color: var(--subtle-text); }
 
-/* Current time bar (COMPACT) */
 .eod-targets-page .time-bar {
     padding: 0.25rem 0.5rem; 
     background-color: var(--header-bar-bg); 
@@ -1207,16 +1103,6 @@ body.modal-open > *:not(.modal-overlay) {
     margin-bottom: 0.5rem; 
 }
 
-.eod-targets-page #targets-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-}
-
-.eod-targets-page #target-info {
-    grid-column: span 3 / span 3;
-}
-
-/* --- Banners (for calculator page) --- */
 .eod-targets-page .info-box {
     font-size: 0.8rem;
     padding: 0.5rem 0.75rem;
@@ -1231,4 +1117,31 @@ body.modal-open > *:not(.modal-overlay) {
     border-color: var(--color-danger-border);
     color: var(--color-danger);
     font-weight: 500;
+}
+
+/* Reset Confirmation Modal */
+.modal-overlay-custom {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content-custom {
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.modal-content-custom h3 { margin-top: 0; }
+.modal-actions-custom {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
 }
