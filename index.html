@@ -18,7 +18,8 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <div id="shortcuts-container" class.bind="shortcutsContainer"></div>
+                <!-- FIX: Corrected class typo from class.bind to class -->
+                <div id="shortcuts-container" class="shortcuts-container"></div>
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
@@ -223,6 +224,13 @@
 
         const displayAppDetails = (appId) => {
             selectedAppId = appId;
+            
+            // FIX: Save the selected app ID to persistent state
+            if (state.ui) {
+                state.ui.selectedAppId = appId;
+                saveState();
+            }
+
             const isVisible = !!appId;
 
             DOMElements.editAppName.value = '';
@@ -238,6 +246,10 @@
                     DOMElements.appDetailsContainer.classList.add('hidden');
                     selectedAppId = null;
                     initialAppData = null;
+                    if (state.ui) { // Clean up bad ID
+                        state.ui.selectedAppId = null;
+                        saveState();
+                    }
                     return;
                 }
                 const urlsNormalized = normalizeLineEndings(app.urls);
@@ -264,7 +276,7 @@
 
         const createNewAppForm = () => {
             DOMElements.appSelect.value = '';
-            displayAppDetails(null);
+            displayAppDetails(null); // This will set selectedAppId to null and save it
             DOMElements.appDetailsContainer.classList.remove('hidden');
             DOMElements.editAppNameWrapper.classList.remove('hidden');
             DOMElements.editAppName.focus();
@@ -361,6 +373,9 @@
                 state.notes = dataToRestore.notes || [];
                 state.shortcuts = dataToRestore.shortcuts || [];
                 
+                // FIX: Restore UI state or set to default
+                state.ui = dataToRestore.ui || { selectedAppId: null };
+
                 saveState();
                 
                 setTimeout(() => {
@@ -373,8 +388,14 @@
                 }, 100);
                 
                 selectedAppId = null;
-                displayAppDetails(null);
-                renderAllPageSpecific();
+                displayAppDetails(null); // Clear details
+                renderAllPageSpecific(); // Render lists
+                
+                // Re-apply restored state
+                if (state.ui.selectedAppId) {
+                    DOMElements.appSelect.value = state.ui.selectedAppId;
+                    displayAppDetails(state.ui.selectedAppId);
+                }
             };
 
             if (window.SharedSettingsModal) {
@@ -388,7 +409,8 @@
                     itemValidators: {
                         apps: APP_CONFIG.APP_CSV_HEADERS,
                         notes: ['id', 'title', 'content'],
-                        shortcuts: ['id', 'name', 'url']
+                        shortcuts: ['id', 'name', 'url'],
+                        ui: [] // Mark ui as a valid key to restore
                     }
                 });
             } else {
@@ -428,6 +450,7 @@
                 }
                 const appId = DOMElements.appSelect.value || null;
                 displayAppDetails(appId);
+                // FIX: State saving is now handled *inside* displayAppDetails
             });
 
             const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
@@ -458,6 +481,7 @@
                     appData.id = SafeUI.generateId();
                     DataHelpers.getCollection(state, 'apps').push(appData);
                     SafeUI.showToast('Application created');
+                    // FIX: state.ui.selectedAppId will be set in displayAppDetails
                 } else {
                     const app = DataHelpers.findById(state, 'apps', selectedAppId);
                     if (app) {
@@ -468,10 +492,10 @@
                     }
                 }
                 
-                saveState();
+                saveState(); // Save changes to app
                 renderAppData();
                 DOMElements.appSelect.value = appData.id || selectedAppId;
-                displayAppDetails(appData.id || selectedAppId);
+                displayAppDetails(appData.id || selectedAppId); // This updates UI and saves the new selectedId
             });
 
             DOMElements.deleteAppBtn.addEventListener('click', () => {
@@ -483,14 +507,39 @@
                     state.apps = state.apps.filter(a => a.id !== selectedAppId);
                     saveState();
                     selectedAppId = null;
-                    displayAppDetails(null);
+                    displayAppDetails(null); // This clears UI and saves null to state.ui.selectedAppId
                     renderAppData();
                 });
             });
 
             DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
+            
             setupSettingsModal(); 
             renderAppData();
+            
+            // FIX: Add restore logic
+            let restoredApp = false;
+            if (state.ui && state.ui.selectedAppId) {
+                const appExists = DataHelpers.getCollection(state, 'apps').some(app => app.id === state.ui.selectedAppId);
+                if (appExists) {
+                    DOMElements.appSelect.value = state.ui.selectedAppId;
+                    displayAppDetails(state.ui.selectedAppId); // This re-saves, which is fine
+                    restoredApp = true;
+                } else {
+                    state.ui.selectedAppId = null; // Clean up bad data
+                    saveState();
+                }
+            }
+            
+            // Show restore toast *if* we restored an app,
+            // but wait to see if NotepadManager restores too.
+            setTimeout(() => {
+                const notepadRestored = window.NotepadManager && window.NotepadManager.didRestore;
+                if (restoredApp && !notepadRestored) {
+                     SafeUI.showToast('Restored previous session');
+                }
+                // If notepadRestored is true, it will show its own toast.
+            }, 100); // Give NotepadManager time to run
         };
         
         // ============================================================================
@@ -509,7 +558,7 @@
                     return;
                 }
 
-                const APP_VERSION = '6.3.0'; // Version bump for Parallel Bootstrap
+                const APP_VERSION = '6.3.1'; // Version bump for persistence fix
                 console.log(`[index.html] Bypassing AppLifecycle.run wrapper, initializing v${APP_VERSION}`);
                 
                 const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
@@ -518,10 +567,15 @@
                     APP_CSV_HEADERS: ['id', 'name', 'urls', 'escalation']
                 };
 
+                // FIX: Added UI object to defaultState for persistence
                 const defaultState = {
                     apps: [],
                     notes: [],
                     shortcuts: [],
+                    ui: {
+                        selectedAppId: null
+                        // NotepadManager will add its own properties here
+                    }
                 };
 
                 // NOTE: We still call initPage to set up state, but it NO LONGER loads the navbar.
@@ -571,5 +625,3 @@
     </script>
 </body>
 </html>
-
-
