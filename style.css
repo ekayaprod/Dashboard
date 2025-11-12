@@ -682,7 +682,8 @@ body.modal-open > *:not(.modal-overlay) {
     background-color: var(--info-bg);
 }
 
-.passwords-page .generator-section {
+/* FIX: Changed selector from .passwords-page .generator-section to .main-content .generator-section */
+.main-content .generator-section {
     padding: 0.4rem;
     background-color: var(--panel-bg);
     border: 1px solid var(--border-color);
@@ -835,7 +836,8 @@ body.modal-open > *:not(.modal-overlay) {
 .passwords-page .btn-generate-padded { width: 100%; padding: 0.75rem; }
 
 @media (prefers-color-scheme: dark) {
-    .passwords-page .generator-section, .passwords-page .results-wrapper {
+    /* FIX: Changed selector to match the global one */
+    .main-content .generator-section, .passwords-page .results-wrapper {
         background-color: var(--panel-bg);
         border-color: var(--border-color);
     }
