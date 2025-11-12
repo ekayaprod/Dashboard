@@ -111,7 +111,8 @@
                 <!-- FIX: Added new section 5 for calculation info -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <h2>5. Calculation Info</h2>
+                        <!-- FIX: Changed title to Live Assistant -->
+                        <h2>5. Live Assistant</h2>
                     </div>
                     <div id="calc-info-content" class="calc-section-content">
                         <!-- Info box will be injected here by JS -->
@@ -458,10 +459,13 @@
                 function renderCalculationInfo(totalWorkTimeEOD) {
                     if (!DOMElements.calcInfoContent) return; // Guard
                     
+                    const roundUpThreshold = ROUNDING_BOUNDARY_MAX + 1; // This is 30
+                    const cuspThreshold = 20; // Minutes when we start advising
+                    
                     if (totalWorkTimeEOD < 0) {
                         DOMElements.calcInfoContent.innerHTML = `
                             <div class="info-box info-box-danger target-info-box">
-                                <strong>Calculation Info:</strong> Call time exceeds available productive time.
+                                <strong>Status:</strong> Call time exceeds available productive time.
                             </div>`;
                         return;
                     }
@@ -472,29 +476,45 @@
                     // Use Math.floor on totalWorkTimeEOD for clean minute comparison
                     const minutesPastHour = Math.floor(totalWorkTimeEOD) % 60;
                     
-                    let roundingInfo;
-                    const roundUpThreshold = ROUNDING_BOUNDARY_MAX + 1; // This is 30
-                    
+                    let adviceHtml;
+                    let adviceClass = 'target-info-box'; // Default class
+
                     if (minutesPastHour >= roundUpThreshold) {
-                        // Rounding up
+                        // --- Scenario 1: Safely Rounding UP ---
                         const bufferMins = minutesPastHour - roundUpThreshold;
-                        roundingInfo = `You are rounding <strong>UP</strong> to ${roundedWorkHours} hours. You have a buffer of <strong>${bufferMins} min</strong> before you would round down.`;
-                    } else {
-                        // Rounding down
+                        adviceClass = 'info-box-success'; // Use success class
+                        adviceHtml = `
+                            You are rounding <strong>UP</strong> to <strong>${roundedWorkHours} hours</strong>.
+                            <br>
+                            Your buffer is <strong>${bufferMins} min</strong>.
+                        `;
+                    } else if (minutesPastHour >= cuspThreshold) {
+                        // --- Scenario 2: On the Cusp (20-29 mins) ---
                         const minsToRoundUp = roundUpThreshold - minutesPastHour;
-                        roundingInfo = `You are rounding <strong>DOWN</strong> to ${roundedWorkHours} hours. You need <strong>${minsToRoundUp} more min</strong> of 'Work Time (EOD)' to round up.`;
+                        const nextHour = roundedWorkHours + 1;
+                        const nextTarget = nextHour * TICKETS_PER_HOUR_RATE;
+                        adviceClass = 'info-box-warn'; // Use warning/advice class
+                        adviceHtml = `
+                            You are rounding <strong>DOWN</strong> to ${roundedWorkHours} hours.
+                            <br>
+                            <strong>ADVICE:</strong> You only need <strong>${minsToRoundUp} more min</strong> of 'Work Time (EOD)' to round <strong>UP</strong> to ${nextHour} hours (and a target of ${nextTarget} tickets).
+                        `;
+                    } else {
+                        // --- Scenario 3: Safely Rounding DOWN (0-19 mins) ---
+                        const minsToRoundUp = roundUpThreshold - minutesPastHour;
+                        adviceHtml = `
+                            You are rounding <strong>DOWN</strong> to <strong>${roundedWorkHours} hours</strong>.
+                            <br>
+                            You would need <strong>${minsToRoundUp} more min</strong> to round up. This is likely not worth the extra call time.
+                        `;
                     }
 
                     DOMElements.calcInfoContent.innerHTML = `
                         <div class="info-box target-info-box">
-                            Target is <strong>${TICKETS_PER_HOUR_RATE} tickets per *rounded hour*</strong> of your 'Work Time (EOD)'.
-                            <br>
-                            Your current target is <strong>${targetTicketGoal} tickets</strong> (based on ${roundedWorkHours} rounded hours).
+                            Your 'Work Time (EOD)' of <strong>${TimeUtil.formatMinutesToHHMM_NoSeconds(totalWorkTimeEOD)}</strong> results in a target of <strong>${targetTicketGoal} tickets</strong>.
                         </div>
-                        <div class="info-box target-info-box" style="margin-top: 0.5rem;">
-                            <strong>Rounding Help:</strong> Time rounds up at <strong>${roundUpThreshold} minutes</strong> past the hour.
-                            <br>
-                            ${roundingInfo}
+                        <div class="info-box ${adviceClass}" style="margin-top: 0.5rem;">
+                            <strong>Assistant:</strong> ${adviceHtml}
                         </div>
                     `;
                 }
