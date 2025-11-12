@@ -4,123 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EOD Targets</title>
-    <!-- Using the shared style.css from the root directory -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- FIX 10: Moved all inline styles to a dedicated block -->
-    <style>
-        .input-grid-2 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-        .col-span-2 {
-            grid-column: span 2;
-        }
-        .stat-grid-4 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.75rem;
-        }
-        .align-self-end {
-            align-self: flex-end;
-        }
-        .btn-full-width {
-            width: 100%;
-            font-weight: 600;
-        }
-        .targets-grid {
-            gap: 0.5rem !important; /* Use !important to override potential style.css gap */
-        }
-        .target-info-box {
-            margin-top: 0.25rem;
-            font-size: 0.75rem;
-            padding: 0.5rem;
-        }
-
-        /* --- Custom Modal Styles --- */
-        .modal-overlay-custom {
-            display: none; /* Hidden by default */
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .modal-content-custom {
-            background-color: #2a2a3e; /* Assuming dark theme from screenshots */
-            color: #f0f0f0;
-            padding: 1.5rem;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        .modal-content-custom h3 {
-            margin-top: 0;
-        }
-        .modal-actions-custom {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
-            margin-top: 1.5rem;
-        }
-        /* Simple danger button style */
-        .btn-danger {
-            background-color: #e53e3e;
-            color: white;
-            border: none;
-        }
-        .btn-danger:hover {
-            background-color: #c53030;
-        }
-
-        /* --- NEW: Subtle Reset Button Style --- */
-        .calc-section-header-flex {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .btn-subtle-reset {
-            font-size: 0.8rem;
-            font-weight: 400;
-            color: #9a9a9a;
-            background: none;
-            border: none;
-            padding: 0.25rem;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        .btn-subtle-reset:hover {
-            color: #f0f0f0;
-        }
-
-        /* --- NEW: Toast Notification Style --- */
-        .toast-custom {
-            visibility: hidden;
-            min-width: 250px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 4px;
-            padding: 1rem;
-            position: fixed;
-            z-index: 2000;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: 30px;
-            font-size: 0.9rem;
-            opacity: 0;
-            transition: visibility 0s 0.5s, opacity 0.5s linear;
-        }
-        .toast-custom.show {
-            visibility: visible;
-            opacity: 1;
-            transition: opacity 0.5s linear;
-        }
-    </style>
 </head>
 <body class="eod-targets-page">
 
@@ -132,14 +16,11 @@
                     <span id="currentTime">Loading clock...</span>
                 </div>
 
-                <!-- Schedule Setup -->
                 <div class="calc-section">
-                    <!-- NEW: Added flex class, moved reset button here -->
-                    <div class="calc-section-header calc-section-header-flex">
+                    <div class="calc-section-header">
                         <h2>1. Schedule</h2>
                         <button id="btnResetData" class="btn-subtle-reset">Reset Data</button>
                     </div>
-                    <!-- FIX 10: Added classes for grid -->
                     <div class="calc-section-content input-grid-2">
                         <div>
                             <label for="shiftStart" class="sidebar-label">Shift Start</label>
@@ -160,53 +41,39 @@
                                 <option value="120">120 minutes</option>
                             </select>
                         </div>
-                        <!-- REMOVED: Reset Button from here -->
                     </div>
                 </div>
                 
-                <!-- Inputs -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <!-- NEW: Tightened language -->
                         <h2>2. Progress</h2>
                     </div>
-                    <!-- FIX 10: Added classes for grid -->
                     <div class="calc-section-content input-grid-2">
-                        <!-- Row 1 -->
                         <div>
-                            <!-- NEW: Tightened language -->
                             <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM)</label>
                             <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 01:30" value="00:00">
                         </div>
                         <div>
-                            <!-- NEW: Tightened language -->
                             <label for="currentTickets" class="sidebar-label">Tickets Closed</label>
                             <input type="number" id="currentTickets" class="sidebar-input" value="0">
                         </div>
                         
-                        <!-- Row 2: Quick Add Feature -->
                         <div>
                             <label for="addCallTime" class="sidebar-label">Add Call Minutes</label>
                             <input type="number" id="addCallTime" class="sidebar-input" placeholder="e.g., 13">
                         </div>
-                        <!-- FIX 10: Removed inline style, added class -->
-                        <div class="align-self-end"> 
-                            <!-- FIX 10: Removed inline style, added class -->
-                            <button id="btnAddCallTime" class="sidebar-btn btn-primary btn-full-width">Add</button>
+                        <div style="align-self: flex-end;"> 
+                            <button id="btnAddCallTime" class="sidebar-btn button-base button-primary" style="width: 100%;">Add</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Current Status -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <!-- NEW: Tightened language -->
                         <h2>3. Status</h2>
                     </div>
-                    <!-- FIX 10: Added classes for grid -->
-                    <div class="calc-section-content stat-grid-4">
+                    <div class="calc-section-content stat-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
                         <div class="stat-box">
-                            <!-- NEW: Tightened language -->
                             <span class="stat-label">Productive Time</span>
                             <span id="totalProductiveTime" class="stat-value">00:00</span>
                         </div>
@@ -225,46 +92,36 @@
                     </div>
                 </div>
 
-                <!-- End of Day Targets -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <!-- NEW: Tightened language -->
                         <h2>4. EOD Targets</h2>
                     </div>
-                    <!-- FIX 10: Removed inline style, added class -->
-                    <div id="targets-content" class="calc-section-content targets-grid">
-                        <!-- Targets will be injected here by JS -->
-                    </div>
+                    <div id="targets-content" class="calc-section-content targets-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;"></div>
                 </div>
         
             </div>
         </div>
     </div>
 
-    <!-- NEW: Reset Confirmation Modal -->
     <div id="resetModalOverlay" class="modal-overlay-custom">
         <div class="modal-content-custom">
             <h3>Confirm Reset</h3>
-            <!-- NEW: Tightened language -->
             <p>Reset all saved data? This cannot be undone.</p>
             <div class="modal-actions-custom">
-                <button id="modalCancelReset" class="sidebar-btn">Cancel</button>
-                <button id="modalConfirmReset" class="sidebar-btn btn-danger">Reset Data</button>
+                <button id="modalCancelReset" class="button-base">Cancel</button>
+                <button id="modalConfirmReset" class="button-base button-danger">Reset Data</button>
             </div>
         </div>
     </div>
 
-    <!-- NEW: Toast Notification -->
-    <div id="toast" class="toast-custom"></div>
+    <div id="toast" class="toast-custom" style="visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 1rem; position: fixed; z-index: 2000; left: 50%; transform: translateX(-50%); bottom: 30px; font-size: 0.9rem; opacity: 0; transition: visibility 0s 0.5s, opacity 0.5s linear;"></div>
 
+    <script src="js/app-core.js"></script>
+    <script src="js/app-ui.js"></script>
+    
     <script>
-        // --- Configurable Settings ---
-        
         const LEEWAY_RATIO = 1 / 7; 
         const TICKETS_PER_HOUR_RATE = 6; 
-        
-        // FIX 5: Magic number 29 replaced with constant
-        // This is the max number of minutes (0-29) that round down
         const ROUNDING_BOUNDARY_MAX = 29; 
 
         const gradeBoundaries = {
@@ -273,32 +130,32 @@
             'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
         };
 
-        // --- Local Storage ---
         const LOCAL_STORAGE_KEY = 'eod_targets_state_v1';
-        
-        // NEW: Key for bookmarklet to write to.
-        // Update your bookmarklet to use this key!
         const EOD_TARGETS_IMPORT_KEY = 'eod_targets_import_minutes';
 
         const defaultState = {
-            shiftStart: '08:00',
-            shiftEnd: '16:00',
-            breakTime: 60,
-            currentCallTime: '00:00',
-            currentTickets: 0
+            ui: {
+                shiftStart: '08:00',
+                shiftEnd: '16:00',
+                breakTime: 60,
+                currentCallTime: '00:00',
+                currentTickets: 0
+            }
         };
 
+        // --- Persistence Logic ---
         function loadState() {
             try {
                 const storedState = localStorage.getItem(LOCAL_STORAGE_KEY);
                 if (storedState) {
+                    // Use SafeUI.parseJSON logic (manually here since we aren't using AppLifecycle full init)
                     return JSON.parse(storedState);
                 }
             } catch (err) {
                 console.error("Failed to parse stored state:", err);
-                localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted state
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
             }
-            return { ...defaultState }; // Return a copy
+            return JSON.parse(JSON.stringify(defaultState));
         }
 
         function saveState(state) {
@@ -308,23 +165,16 @@
                 console.error("Failed to save state:", err);
             }
         }
-        // --- End Local Storage ---
 
-
-        // FIX 1: Redundant time formatting logic consolidated
         const TimeUtil = {
             parseHHMMtoMinutes(timeStr) {
                 const hhmmRegex = /^\d{1,2}:\d{2}$/;
-                if (!hhmmRegex.test(timeStr)) {
-                    return 0;
-                }
+                if (!hhmmRegex.test(timeStr)) return 0;
                 const parts = timeStr.split(':').map(Number);
                 if (parts.length === 2) {
                     const hours = parts[0] || 0;
                     const minutes = parts[1] || 0;
-                    if (minutes > 59) {
-                        return 0; 
-                    }
+                    if (minutes > 59) return 0; 
                     return (hours * 60) + minutes;
                 }
                 return 0;
@@ -340,89 +190,72 @@
             formatMinutesToHHMMShort(totalMinutes) {
                 if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
                 if (totalMinutes === 0) return '0m';
-                
                 const hours = Math.floor(totalMinutes / 60);
                 const minutes = Math.floor(totalMinutes % 60);
-                
                 let parts = [];
-                if (hours > 0) {
-                    parts.push(`${hours}h`);
-                }
-                if (minutes > 0 || hours === 0) {
-                    parts.push(`${minutes}m`);
-                }
+                if (hours > 0) parts.push(`${hours}h`);
+                if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
                 return parts.join(' ');
             }
         };
 
-        // --- NEW: Toast Notification Function ---
         let toastTimer = null;
         function showToast(message) {
-            if (toastTimer) {
-                clearTimeout(toastTimer);
-            }
+            if (toastTimer) clearTimeout(toastTimer);
             const toast = domElements.toast;
             if (!toast) return;
             toast.textContent = message;
-            toast.classList.add('show');
+            toast.style.visibility = 'visible';
+            toast.style.opacity = '1';
+            toast.style.transition = 'opacity 0.5s linear';
+            
             toastTimer = setTimeout(() => {
-                toast.classList.remove('show');
+                toast.style.visibility = 'hidden';
+                toast.style.opacity = '0';
+                toast.style.transition = 'visibility 0s 0.5s, opacity 0.5s linear';
                 toastTimer = null;
             }, 3000);
         }
 
-        // --- Time Helpers ---
         function populateTimeOptions(select, startHour, endHour, defaultVal) {
             for (let h = startHour; h <= endHour; h++) {
-                for (let m = 0; m < 60; m += 15) { // 15-min increments
+                for (let m = 0; m < 60; m += 15) { 
                     const hourStr = String(h).padStart(2, '0');
                     const minStr = String(m).padStart(2, '0');
                     const timeStr = `${hourStr}:${minStr}`;
-                    
                     const option = document.createElement('option');
                     option.value = timeStr;
                     option.text = timeStr;
-                    if (timeStr === defaultVal) {
-                        option.selected = true;
-                    }
+                    if (timeStr === defaultVal) option.selected = true;
                     select.appendChild(option);
                 }
             }
         }
 
-        // --- Main Calculation Engine ---
-
-        let calcTimer = null;
-        
-        // This variable will be populated on DOMContentLoaded
-        // FIX 12: Cache DOM references
         let domElements = {};
-        // NEW: Hold the loaded state
         let appState = {}; 
 
-        // NEW: Function to update DOM inputs from the current appState
         function updateInputsFromState() {
-            domElements.shiftStart.value = appState.shiftStart;
-            domElements.shiftEnd.value = appState.shiftEnd;
-            domElements.breakTime.value = appState.breakTime;
-            domElements.currentCallTime.value = appState.currentCallTime;
-            domElements.currentTickets.value = appState.currentTickets;
+            if (!appState.ui) appState.ui = { ...defaultState.ui };
+            
+            domElements.shiftStart.value = appState.ui.shiftStart;
+            domElements.shiftEnd.value = appState.ui.shiftEnd;
+            domElements.breakTime.value = appState.ui.breakTime;
+            domElements.currentCallTime.value = appState.ui.currentCallTime;
+            domElements.currentTickets.value = appState.ui.currentTickets;
         }
 
-        const debouncedCalculateAndSave = () => {
-            clearTimeout(calcTimer);
-            calcTimer = setTimeout(() => {
-                // NEW: Update state from DOM before calculating and saving
-                appState.shiftStart = domElements.shiftStart.value;
-                appState.shiftEnd = domElements.shiftEnd.value;
-                appState.breakTime = parseInt(domElements.breakTime.value, 10);
-                appState.currentCallTime = domElements.currentCallTime.value;
-                appState.currentTickets = parseInt(domElements.currentTickets.value, 10) || 0;
-                
-                saveState(appState);
-                calculateDailyRatings();
-            }, 250);
-        };
+        // REFACTOR: Replaced manual timer with SafeUI.debounce
+        const debouncedCalculateAndSave = SafeUI.debounce(() => {
+            appState.ui.shiftStart = domElements.shiftStart.value;
+            appState.ui.shiftEnd = domElements.shiftEnd.value;
+            appState.ui.breakTime = parseInt(domElements.breakTime.value, 10);
+            appState.ui.currentCallTime = domElements.currentCallTime.value;
+            appState.ui.currentTickets = parseInt(domElements.currentTickets.value, 10) || 0;
+            
+            saveState(appState);
+            calculateDailyRatings();
+        }, 250);
 
         function handleAddCallTime() {
             const currentMinutes = TimeUtil.parseHHMMtoMinutes(domElements.currentCallTime.value);
@@ -433,10 +266,9 @@
             const newTotalMinutes = currentMinutes + minutesToAdd;
             domElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
             domElements.addCallTime.value = '';
-            debouncedCalculateAndSave(); // Use new save-enabled function
+            debouncedCalculateAndSave(); 
         }
 
-        // --- NEW: Modal and Reset Functions ---
         function showResetModal() {
             domElements.resetModalOverlay.style.display = 'flex';
         }
@@ -445,14 +277,13 @@
         }
         function handleResetData() {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
-            appState = loadState(); // This will now load defaults
-            updateInputsFromState(); // Push defaults to DOM
-            calculateDailyRatings(); // Recalculate UI
+            appState = JSON.parse(JSON.stringify(defaultState));
+            updateInputsFromState(); 
+            calculateDailyRatings(); 
             hideResetModal();
+            showToast('Data reset to defaults');
         }
-        // --- End Modal and Reset Functions ---
 
-        // --- NEW: Bookmarklet Auto-Import ---
         function autoImportBookmarkletData() {
             try {
                 const minsToImport = parseInt(localStorage.getItem(EOD_TARGETS_IMPORT_KEY) || "0", 10);
@@ -462,23 +293,17 @@
                     const newTotalMinutes = currentMinutes + minsToImport;
                     domElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
                     
-                    // Clear the import key
                     localStorage.removeItem(EOD_TARGETS_IMPORT_KEY);
                     
-                    // Save the new total and recalculate
                     debouncedCalculateAndSave();
-                    
-                    // Notify user
                     showToast(`Imported ${minsToImport} minutes from call logger.`);
                 }
             } catch (err) {
                 console.error("Failed to auto-import bookmarklet data:", err);
             }
         }
-        // --- End Bookmarklet Auto-Import ---
 
         function getScheduleInfo(now) {
-            // FIX 12: Use cached DOM elements (which are now populated from state)
             const startTimeStr = domElements.shiftStart.value;
             const endTimeStr = domElements.shiftEnd.value;
             const breakTimeMinutes = parseInt(domElements.breakTime.value, 10);
@@ -493,9 +318,7 @@
             
             if (totalShiftMinutes <= 0) {
                 return { 
-                    totalProductiveMinutes: 0, 
-                    productiveMinutesPassed: 0, 
-                    productiveMinutesRemaining: 0,
+                    totalProductiveMinutes: 0, productiveMinutesPassed: 0, productiveMinutesRemaining: 0,
                     error: "Shift end time must be after shift start time."
                 };
             }
@@ -512,32 +335,22 @@
             if (totalShiftMinutes > 0) {
                  productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
             }
-            if (productiveMinutesPassed > totalProductiveMinutes) {
-                productiveMinutesPassed = totalProductiveMinutes;
-            }
+            if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
             const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
 
-            return {
-                totalProductiveMinutes,
-                productiveMinutesPassed,
-                productiveMinutesRemaining,
-                error: null
-            };
+            return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
         }
 
-        // FIX 3 & 4: Extracted duplicate DOM updates
         function updateTimeDisplays(now) {
             const scheduleInfo = getScheduleInfo(now);
             
-            // FIX 12: Use cached DOM elements
             domElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesPassed);
             domElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesRemaining);
             domElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
             
-            return scheduleInfo; // Return for use in calculateDailyRatings
+            return scheduleInfo; 
         }
         
-        // FIX 6: Helper function for building target card HTML
         function buildTargetCardHTML(label, value, description) {
             return `
                 <span class="target-label">${label}</span>
@@ -546,37 +359,25 @@
             `;
         }
 
-        // FIX 2: Extracted scenario determination logic
-        function getTargetCardState({ 
-            boundary, 
-            totalWorkTimeEOD, 
-            ticketsNeeded, 
-            ticketsToHitGrade, 
-            productiveMinutesRemaining, 
-            callTimeHtml 
-        }) {
-            // Scenario 1: Call time input is too high
+        function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
             if (totalWorkTimeEOD < 0) {
                 return {
                     boxClass: 'target-danger',
                     html: buildTargetCardHTML(boundary.name, "0", "Call time exceeds productive time.")
                 };
             }
-            // Scenario 2: Goal is already met
             if (ticketsNeeded <= 0) {
                 return {
                     boxClass: 'target-good',
                     html: buildTargetCardHTML(boundary.name, "GOAL MET!", `You've hit the goal of <strong>${ticketsToHitGrade}</strong> tickets.`)
                 };
             }
-            // Scenario 3: Day is over and goal not met
             if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
                 return {
                     boxClass: 'target-danger',
                     html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
                 };
             }
-            // Scenario 4: Tickets are still needed
             return {
                 boxClass: 'target-warn',
                 html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
@@ -586,22 +387,12 @@
         function calculateDailyRatings() {
             const now = new Date();
             
-            // --- 1. Get Schedule & Productive Time ---
-            // FIX 3 & 4: Call unified update function
-            const { 
-                totalProductiveMinutes,
-                productiveMinutesPassed,
-                productiveMinutesRemaining,
-                error: scheduleError
-            } = updateTimeDisplays(now);
+            const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
             
-            // FIX 12: Use cached DOM elements
             domElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
 
-            // --- Handle Invalid Schedule ---
             if (scheduleError) {
                 domElements.totalWorkTimeEOD.innerText = '00:00';
-                // FIX 7: Removed unnecessary template literal (was correct, but simplifying per instruction)
                 domElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${scheduleError}</div>`;
                 return;
             }
@@ -612,38 +403,30 @@
                 return;
             }
 
-            // --- 2. Get User Inputs (SO FAR) ---
             const currentCallTimeSoFar = TimeUtil.parseHHMMtoMinutes(domElements.currentCallTime.value);
             const currentTicketsSoFar = parseInt(domElements.currentTickets.value) || 0;
             
-            // --- 3. Calculate EOD Totals ---
             const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
             domElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
             
             const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
             const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
 
-            // --- 4. Calculate and Render Targets ---
-            domElements.targetsContent.innerHTML = ''; // Clear old targets
+            domElements.targetsContent.innerHTML = ''; 
             
-            // FIX 8: Iterate Object.entries directly
             for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
                 const targetBox = document.createElement('div');
                 targetBox.id = `target${targetName}`;
                 
-                // --- Path 1: Tickets Needed ---
                 const ticketsToHitGrade = targetTicketGoal + boundary.min;
                 const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
                 
-                // FIX 11: callTimeHtml declared in narrowest scope
                 let callTimeHtml = ''; 
 
-                // --- Path 2: Call Minutes Needed (if tickets are short) ---
                 if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
                     const maxAllowableTarget = currentTicketsSoFar - boundary.min;
                     const maxRoundedHours = Math.floor(maxAllowableTarget / TICKETS_PER_HOUR_RATE);
                     
-                    // FIX 5: Use constant
                     const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
                     const requiredCallTime = totalProductiveMinutes - maxWorkTimeMinutes;
                     const additionalCallMinutes = requiredCallTime - currentCallTimeSoFar;
@@ -660,8 +443,6 @@
                     }
                 }
 
-                // --- Render Scenarios ---
-                // FIX 2, 6, 11: Use helper functions to get state and build HTML
                 const { boxClass, html } = getTargetCardState({
                     boundary,
                     totalWorkTimeEOD,
@@ -676,21 +457,16 @@
                 domElements.targetsContent.appendChild(targetBox);
             }
             
-            // Add back the info box
             const infoBox = document.createElement('div');
             infoBox.id = 'target-info';
-            // FIX 10: Use class instead of style.cssText
             infoBox.className = 'info-box target-info-box';
             infoBox.innerText = `Target is ${TICKETS_PER_HOUR_RATE} tickets per *rounded hour* of your 'Work Time (EOD)'.`;
             domElements.targetsContent.appendChild(infoBox);
         }
 
-        // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
-            // NEW: Load state from localStorage
             appState = loadState();
 
-            // FIX 12: Populate DOM element cache
             domElements = {
                 shiftStart: document.getElementById('shiftStart'),
                 shiftEnd: document.getElementById('shiftEnd'),
@@ -705,23 +481,18 @@
                 timeRemaining: document.getElementById('timeRemaining'),
                 totalWorkTimeEOD: document.getElementById('totalWorkTimeEOD'),
                 targetsContent: document.getElementById('targets-content'),
-                // NEW: Reset Button and Modal elements
                 btnResetData: document.getElementById('btnResetData'),
                 resetModalOverlay: document.getElementById('resetModalOverlay'),
                 modalConfirmReset: document.getElementById('modalConfirmReset'),
                 modalCancelReset: document.getElementById('modalCancelReset'),
-                // NEW: Toast element
                 toast: document.getElementById('toast')
             };
 
-            // Populate time dropdowns
-            populateTimeOptions(domElements.shiftStart, 6, 12, appState.shiftStart); 
-            populateTimeOptions(domElements.shiftEnd, 12, 18, appState.shiftEnd); 
+            populateTimeOptions(domElements.shiftStart, 6, 12, appState.ui?.shiftStart || defaultState.ui.shiftStart); 
+            populateTimeOptions(domElements.shiftEnd, 12, 18, appState.ui?.shiftEnd || defaultState.ui.shiftEnd); 
 
-            // NEW: Populate inputs from loaded state using helper
             updateInputsFromState();
 
-            // Calculate on any input change (and save)
             domElements.shiftStart.addEventListener('input', debouncedCalculateAndSave);
             domElements.shiftEnd.addEventListener('input', debouncedCalculateAndSave);
             domElements.breakTime.addEventListener('input', debouncedCalculateAndSave);
@@ -729,31 +500,26 @@
             domElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
             domElements.btnAddCallTime.addEventListener('click', handleAddCallTime);
             
-            // NEW: Reset button listener
             domElements.btnResetData.addEventListener('click', showResetModal);
             domElements.modalCancelReset.addEventListener('click', hideResetModal);
             domElements.modalConfirmReset.addEventListener('click', handleResetData);
 
             domElements.addCallTime.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    handleAddCallTime();
-                }
+                if (e.key === 'Enter') handleAddCallTime();
             });
             
-            // Main interval for real-time updates (clock, time passed, etc.)
             setInterval(() => {
-                // FIX 3: Call single update function
                 updateTimeDisplays(new Date());
             }, 1000);
 
-            // Run once on load
             calculateDailyRatings(); 
-
-            // NEW: Run bookmarklet auto-importer on load
             autoImportBookmarkletData();
+            
+            if (Object.keys(appState.ui || {}).length > 0) {
+                 showToast('Restored previous session');
+            }
         });
     </script>
 </body>
 </html>
-
 
