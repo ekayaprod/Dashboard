@@ -18,7 +18,24 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
                 
-                <!-- NEW: Accordion Section for creating templates -->
+                <!-- NEW: Library is now in its own generator-section card (MOVED FIRST) -->
+                <div class="generator-section">
+                    <!-- VIEW 1: CATALOGUE / LIBRARY -->
+                    <div id="catalogue-view" class="view active">
+                        <div class="section-header-wrapper">
+                            <h3 class="section-header">Email Template Library</h3>
+                            <div class="button-group">
+                                <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
+                                <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
+                            </div>
+                        </div>
+
+                        <div id="breadcrumb-container" class="breadcrumb-container"></div>
+                        <div id="tree-list-container" class="tree-list-container"></div>
+                    </div>
+                </div>
+
+                <!-- NEW: Accordion Section for creating templates (MOVED SECOND) -->
                 <div class="generator-section">
                     <div class="accordion-header" id="mailto-accordion-header" role="button" aria-expanded="false" aria-controls="mailto-accordion-content">
                         <h3 class="section-header">Create New Template</h3>
@@ -102,22 +119,6 @@
                     </div>
                 </div>
 
-                <!-- NEW: Library is now in its own generator-section card -->
-                <div class="generator-section">
-                    <!-- VIEW 1: CATALOGUE / LIBRARY -->
-                    <div id="catalogue-view" class="view active">
-                        <div class="section-header-wrapper">
-                            <h3 class="section-header">Email Template Library</h3>
-                            <div class="button-group">
-                                <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
-                                <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
-                            </div>
-                        </div>
-
-                        <div id="breadcrumb-container" class="breadcrumb-container"></div>
-                        <div id="tree-list-container" class="tree-list-container"></div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -163,7 +164,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'mailto_library',
-            VERSION: '1.4.0', // Bumped for UX Redesign
+            VERSION: '1.4.1', // Bumped for layout change
             DATA_KEY: 'mailto_library_v1',
             CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body'] 
         };
@@ -204,7 +205,7 @@
                     ui: {
                         currentFolderId: 'root',
                         catalogueScrollTop: 0,
-                        accordionCollapsed: true // NEW: Accordion state
+                        accordionCollapsed: true // Accordion is now collapsed by default
                     }
                 };
             
@@ -259,6 +260,7 @@
                     
                     if (forceCollapse) {
                         isCollapsed = true;
+                        content.classList.add('collapsed'); // Force class
                     } else {
                         isCollapsed = content.classList.toggle('collapsed');
                     }
@@ -280,7 +282,7 @@
 
                 // NEW: Accordion Init Logic
                 const initAccordion = () => {
-                    let collapsed = state.ui ? state.ui.accordionCollapsed : true;
+                    let collapsed = state.ui ? state.ui.accordionCollapsed : true; // Default to true
                     
                     const content = DOMElements.mailtoAccordionContent;
                     const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
