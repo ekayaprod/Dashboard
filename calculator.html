@@ -55,10 +55,12 @@
                     <div class="calc-section-header">
                         <h2>2. Progress</h2>
                     </div>
-                    <div class="calc-section-content input-grid-2">
+                    <!-- FIX: Changed to a responsive 4-column grid -->
+                    <div class="calc-section-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; align-items: flex-end;">
                         <div>
-                            <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM)</label>
-                            <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 01:30" value="00:00">
+                            <!-- FIX: Updated label and placeholder for seconds -->
+                            <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM:SS)</label>
+                            <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 01:30:45" value="00:00:00">
                         </div>
                         <div>
                             <label for="currentTickets" class="sidebar-label">Tickets Closed</label>
@@ -69,7 +71,7 @@
                             <label for="addCallTime" class="sidebar-label">Add Call Minutes</label>
                             <input type="number" id="addCallTime" class="sidebar-input" placeholder="e.g., 13">
                         </div>
-                        <div style="align-self: flex-end;"> 
+                        <div> 
                             <button id="btnAddCallTime" class="sidebar-btn button-base button-primary" style="width: 100%;">Add</button>
                         </div>
                     </div>
@@ -104,6 +106,16 @@
                         <h2>4. EOD Targets</h2>
                     </div>
                     <div id="targets-content" class="calc-section-content targets-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;"></div>
+                </div>
+                
+                <!-- FIX: Added new section 5 for calculation info -->
+                <div class="calc-section">
+                    <div class="calc-section-header">
+                        <h2>5. Calculation Info</h2>
+                    </div>
+                    <div id="calc-info-content" class="calc-section-content">
+                        <!-- Info box will be injected here by JS -->
+                    </div>
                 </div>
         
             </div>
@@ -158,7 +170,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.1.0', // Bumped for bootstrap update
+            VERSION: '1.2.0', // Bumped for new features
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -187,7 +199,7 @@
                         shiftStart: '08:00',
                         shiftEnd: '16:00',
                         breakTime: 60,
-                        currentCallTime: '00:00',
+                        currentCallTime: '00:00:00', // FIX: Default to HH:MM:SS
                         currentTickets: 0
                     }
                 };
@@ -203,7 +215,8 @@
                         'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
                         'currentTime', 'totalProductiveTime', 'timePassed', 'timeRemaining', 'totalWorkTimeEOD',
                         'targets-content', 'btnResetData',
-                        'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset'
+                        'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset',
+                        'calc-info-content' // FIX: Added new element
                     ]
                 });
 
@@ -214,7 +227,7 @@
                 // --- Constants & Utils ---
                 const LEEWAY_RATIO = 1 / 7; 
                 const TICKETS_PER_HOUR_RATE = 6; 
-                const ROUNDING_BOUNDARY_MAX = 29; 
+                const ROUNDING_BOUNDARY_MAX = 29; // Rounds up at 30+ minutes
 
                 const gradeBoundaries = {
                     'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
@@ -223,24 +236,46 @@
                 };
 
                 const TimeUtil = {
-                    parseHHMMtoMinutes(timeStr) {
-                        const hhmmRegex = /^\d{1,2}:\d{2}$/;
-                        if (!hhmmRegex.test(timeStr)) return 0;
+                    // FIX: Updated to parse HH:MM:SS or HH:MM
+                    parseTimeToMinutes(timeStr) {
+                        const timeRegex = /^\d{1,2}:\d{2}(:\d{2})?$/;
+                        if (!timeRegex.test(timeStr)) return 0;
+
                         const parts = timeStr.split(':').map(Number);
-                        if (parts.length === 2) {
-                            const hours = parts[0] || 0;
-                            const minutes = parts[1] || 0;
-                            if (minutes > 59) return 0; 
-                            return (hours * 60) + minutes;
+                        let hours = 0;
+                        let minutes = 0;
+                        let seconds = 0;
+                        
+                        if (parts.length === 3) { // HH:MM:SS
+                            hours = parts[0] || 0;
+                            minutes = parts[1] || 0;
+                            seconds = parts[2] || 0;
+                        } else if (parts.length === 2) { // HH:MM
+                            hours = parts[0] || 0;
+                            minutes = parts[1] || 0;
                         }
-                        return 0;
+                        
+                        if (minutes > 59 || seconds > 59) return 0; // Invalid time
+                        
+                        return (hours * 60) + minutes + (seconds / 60); // Return total minutes
                     },
 
-                    formatMinutesToHHMM(totalMinutes) {
+                    // FIX: Renamed to clarify it truncates seconds for display
+                    formatMinutesToHHMM_NoSeconds(totalMinutes) {
                         if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
                         const hours = Math.floor(totalMinutes / 60);
                         const minutes = Math.floor(totalMinutes % 60);
                         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                    },
+                    
+                    // FIX: New function to format with seconds for the input
+                    formatMinutesToHHMMSS(totalMinutes) {
+                        if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00:00';
+                        const totalSeconds = Math.floor(totalMinutes * 60);
+                        const hours = Math.floor(totalSeconds / 3600);
+                        const minutes = Math.floor((totalSeconds % 3600) / 60);
+                        const seconds = totalSeconds % 60;
+                        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                     },
 
                     formatMinutesToHHMMShort(totalMinutes) {
@@ -284,7 +319,7 @@
                     state.ui.shiftStart = DOMElements.shiftStart.value;
                     state.ui.shiftEnd = DOMElements.shiftEnd.value;
                     state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10);
-                    state.ui.currentCallTime = DOMElements.currentCallTime.value;
+                    state.ui.currentCallTime = DOMElements.currentCallTime.value; // Now saves HH:MM:SS
                     state.ui.currentTickets = parseInt(DOMElements.currentTickets.value, 10) || 0;
                     
                     saveState();
@@ -292,13 +327,14 @@
                 }, 250);
 
                 function handleAddCallTime() {
-                    const currentMinutes = TimeUtil.parseHHMMtoMinutes(DOMElements.currentCallTime.value);
+                    // FIX: Use new parse/format functions
+                    const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                     const minutesToAdd = parseInt(DOMElements.addCallTime.value, 10) || 0;
                     
                     if (minutesToAdd === 0) return;
                     
                     const newTotalMinutes = currentMinutes + minutesToAdd;
-                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
+                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMMSS(newTotalMinutes);
                     DOMElements.addCallTime.value = '';
                     debouncedCalculateAndSave(); 
                 }
@@ -321,9 +357,10 @@
                         const minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
                         
                         if (minsToImport > 0) {
-                            const currentMinutes = TimeUtil.parseHHMMtoMinutes(DOMElements.currentCallTime.value);
+                            // FIX: Use new parse/format functions
+                            const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                             const newTotalMinutes = currentMinutes + minsToImport;
-                            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
+                            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMMSS(newTotalMinutes);
                             
                             localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
                             
@@ -376,8 +413,9 @@
                 function updateTimeDisplays(now) {
                     const scheduleInfo = getScheduleInfo(now);
                     
-                    DOMElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesPassed);
-                    DOMElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesRemaining);
+                    // FIX: Use formatter that truncates seconds
+                    DOMElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(scheduleInfo.productiveMinutesPassed);
+                    DOMElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(scheduleInfo.productiveMinutesRemaining);
                     DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
                     
                     return scheduleInfo; 
@@ -415,31 +453,81 @@
                         html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
                     };
                 }
+                
+                // FIX: New function to render calculation info
+                function renderCalculationInfo(totalWorkTimeEOD) {
+                    if (!DOMElements.calcInfoContent) return; // Guard
+                    
+                    if (totalWorkTimeEOD < 0) {
+                        DOMElements.calcInfoContent.innerHTML = `
+                            <div class="info-box info-box-danger target-info-box">
+                                <strong>Calculation Info:</strong> Call time exceeds available productive time.
+                            </div>`;
+                        return;
+                    }
+
+                    const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
+                    const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
+                    
+                    // Use Math.floor on totalWorkTimeEOD for clean minute comparison
+                    const minutesPastHour = Math.floor(totalWorkTimeEOD) % 60;
+                    
+                    let roundingInfo;
+                    const roundUpThreshold = ROUNDING_BOUNDARY_MAX + 1; // This is 30
+                    
+                    if (minutesPastHour >= roundUpThreshold) {
+                        // Rounding up
+                        const bufferMins = minutesPastHour - roundUpThreshold;
+                        roundingInfo = `You are rounding <strong>UP</strong> to ${roundedWorkHours} hours. You have a buffer of <strong>${bufferMins} min</strong> before you would round down.`;
+                    } else {
+                        // Rounding down
+                        const minsToRoundUp = roundUpThreshold - minutesPastHour;
+                        roundingInfo = `You are rounding <strong>DOWN</strong> to ${roundedWorkHours} hours. You need <strong>${minsToRoundUp} more min</strong> of 'Work Time (EOD)' to round up.`;
+                    }
+
+                    DOMElements.calcInfoContent.innerHTML = `
+                        <div class="info-box target-info-box">
+                            Target is <strong>${TICKETS_PER_HOUR_RATE} tickets per *rounded hour*</strong> of your 'Work Time (EOD)'.
+                            <br>
+                            Your current target is <strong>${targetTicketGoal} tickets</strong> (based on ${roundedWorkHours} rounded hours).
+                        </div>
+                        <div class="info-box target-info-box" style="margin-top: 0.5rem;">
+                            <strong>Rounding Help:</strong> Time rounds up at <strong>${roundUpThreshold} minutes</strong> past the hour.
+                            <br>
+                            ${roundingInfo}
+                        </div>
+                    `;
+                }
+
 
                 function calculateDailyRatings() {
                     const now = new Date();
                     
                     const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
                     
-                    DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
+                    // FIX: Use formatter that truncates seconds
+                    DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(totalProductiveMinutes);
 
                     if (scheduleError) {
                         DOMElements.totalWorkTimeEOD.innerText = '00:00';
                         DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${scheduleError}</div>`;
+                        renderCalculationInfo(-1); // Show error in info box
                         return;
                     }
 
                     if (totalProductiveMinutes <= 0) {
                         DOMElements.totalWorkTimeEOD.innerText = '00:00';
                         DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">Invalid Schedule. Total Productive Time must be greater than 0 (check break time).</div>`;
+                        renderCalculationInfo(-1); // Show error in info box
                         return;
                     }
 
-                    const currentCallTimeSoFar = TimeUtil.parseHHMMtoMinutes(DOMElements.currentCallTime.value);
+                    const currentCallTimeSoFar = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                     const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
                     
                     const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
-                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
+                    // FIX: Use formatter that truncates seconds
+                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(totalWorkTimeEOD);
                     
                     const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
                     const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
@@ -489,11 +577,8 @@
                         DOMElements.targetsContent.appendChild(targetBox);
                     }
                     
-                    const infoBox = document.createElement('div');
-                    infoBox.id = 'target-info';
-                    infoBox.className = 'info-box target-info-box';
-                    infoBox.innerText = `Target is ${TICKETS_PER_HOUR_RATE} tickets per *rounded hour* of your 'Work Time (EOD)'.`;
-                    DOMElements.targetsContent.appendChild(infoBox);
+                    // FIX: Moved info box logic to its own function
+                    renderCalculationInfo(totalWorkTimeEOD);
                 }
 
                 // --- Execution ---
@@ -541,4 +626,3 @@
     </script>
 </body>
 </html>
-
