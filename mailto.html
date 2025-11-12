@@ -190,7 +190,7 @@
                 // Check page-specific dependency (MsgReader)
                 if (typeof window.MsgReader !== 'object' || typeof window.MsgReader.read !== 'function') {
                      const errorTitle = "Application Failed to Load";
-                     const errorMessage = `The external library 'msgreader.js' failed to load correctly. Please check console for path errors (e.g., 'msgreader (17).js' vs 'msgreader.js').`;
+                     const errorMessage = `The external library 'msgreader.js' failed to load correctly. Please check console for path errors.`;
                      console.error(errorMessage);
                      const banner = document.getElementById('app-startup-error');
                      if(banner) {
