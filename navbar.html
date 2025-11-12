@@ -1,41 +1,38 @@
+<!-- 
+  Version: 1.2.0
+  CLEANUP: Removed inline <style> block. 
+  All styles are now loaded from the main style.css file.
+-->
+
 <nav class="navbar">
-    <!-- I've kept the brand from the previous version -->
     <div class="navbar-brand">AppSuite</div>
     
-    <!-- Using your new nav-links structure -->
     <ul class="navbar-links">
         <li><a href="index.html" class="nav-link">Dashboard</a></li>
         <li><a href="lookup.html" class="nav-link">Lookup</a></li>
         <li><a href="passwords.html" class="nav-link">Passwords</a></li>
         <li><a href="mailto.html" class="nav-link">MailTo</a></li>
-        <!-- Added the missing calculator link -->
         <li><a href="calculator.html" class="nav-link">EOD Targets</a></li>
     </ul>
     
-    <!-- Using your new nav-actions div -->
     <div class="nav-actions">
     </div>
 </nav>
 
-<!-- 
-  This script is from your snippet, with one modification:
-  - Added '5': 'calculator.html' to the pageMap.
--->
 <script>
     (() => {
         try {
-            const currentPath = window.location.pathname.endsWith('/') 
-                ? window.location.pathname + 'index.html' 
-                : window.location.pathname;
-
-            // Use a more specific selector to avoid grabbing other links
+            // Find the current page filename
+            const pathParts = window.location.pathname.split('/');
+            const currentPage = pathParts.pop() || 'index.html'; // Default to index.html if path is just "/"
+            
             const links = document.querySelectorAll('.navbar-links .nav-link');
             
             // Highlight active link
             links.forEach(link => {
                 try {
-                    const linkPath = new URL(link.href, window.location.origin).pathname;
-                    if (linkPath === currentPath || (currentPath.endsWith('/index.html') && linkPath === '/')) {
+                    // Check if the link's href ends with the current page filename
+                    if (link.href.endsWith(currentPage)) {
                         link.classList.add('active');
                     }
                 } catch (e) {
@@ -45,26 +42,23 @@
 
             // Keyboard Navigation (Ctrl + 1-5)
             document.addEventListener('keydown', (e) => {
-                // Ensure no other modifier keys are pressed
                 if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
                     const key = e.key;
                     
-                    // Map keys 1-5 to pages
                     const pageMap = {
                         '1': 'index.html',
                         '2': 'lookup.html',
                         '3': 'passwords.html',
                         '4': 'mailto.html',
-                        '5': 'calculator.html' // <-- Added this
+                        '5': 'calculator.html'
                     };
 
                     if (pageMap[key]) {
-                        e.preventDefault(); // Prevent default browser behavior
-                        
+                        e.preventDefault(); 
                         const targetPage = pageMap[key];
                         
                         // Only navigate if we aren't already on that page
-                        if (!currentPath.endsWith('/' + targetPage)) {
+                        if (currentPage !== targetPage) {
                              window.location.href = targetPage;
                         }
                     }
