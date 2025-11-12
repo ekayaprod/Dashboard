@@ -3,9 +3,7 @@
  * Core application initialization, SafeUI wrapper, and DOM utilities.
  */
 
-// --- FIX (Mode F) ---
-const CORE_VERSION = '2.5.1';
-// --- END FIX ---
+const CORE_VERSION = '2.6.0';
 
 // ============================================================================
 // MODULE: SVGIcons
@@ -29,14 +27,10 @@ const CoreValidators = Object.freeze({
         switch (type) {
             case 'url':
                 const urlRegex = /^(https?:\/\/)?(localhost|[\w-]+)(\.[\w-]+)*(:[0-9]{1,5})?(\/.*)?$/i;
-                if (!urlRegex.test(str)) {
-                    return false;
-                }
+                if (!urlRegex.test(str)) return false;
                 try {
                     let testUrl = str;
-                    if (!/^https?:\/\//.test(testUrl)) {
-                        testUrl = 'http://' + testUrl;
-                    }
+                    if (!/^https?:\/\//.test(testUrl)) testUrl = 'http://' + testUrl;
                     new URL(testUrl);
                     return true;
                 } catch {
@@ -56,36 +50,15 @@ const CoreValidators = Object.freeze({
 });
 
 // ============================================================================
-// MODULE: DataHelpers (NEW MODULE from Mode C Refactor)
+// MODULE: DataHelpers
 // ============================================================================
 const DataHelpers = Object.freeze({
-    /**
-     * Safely gets a collection array from the state object.
-     * @param {object} state - The global state object.
-     * @param {string} type - The key of the collection (e.g., 'apps', 'notes').
-     * @returns {Array} The collection array or an empty array.
-     */
     getCollection: (state, type) => {
         return (state && Array.isArray(state[type])) ? state[type] : [];
     },
-
-    /**
-     * Checks if a collection has items.
-     * @param {object} state - The global state object.
-     * @param {string} type - The key of the collection.
-     * @returns {boolean} True if the collection exists and has items.
-     */
     hasItems: (state, type) => {
         return (state && Array.isArray(state[type])) ? state[type].length > 0 : false;
     },
-
-    /**
-     * Finds an item by its ID in a collection.
-     * @param {object} state - The global state object.
-     * @param {string} collectionType - The key of the collection.
-     * @param {string} id - The ID of the item to find.
-     * @returns {object|null} The found item or null.
-     */
     findById: (state, collectionType, id) => {
         if (!id || !state || !Array.isArray(state[collectionType])) {
             return null;
@@ -94,15 +67,10 @@ const DataHelpers = Object.freeze({
     }
 });
 
-
 // ============================================================================
-// MODULE: UIUtils (Low-level DOM, UI, and helper functions)
+// MODULE: UIUtils
 // ============================================================================
 const UIUtils = (() => {
-
-    /**
-     * Dynamically loads the navigation bar.
-     */
     const loadNavbar = (function() {
         let loaded = false;
         return async function(containerId) {
@@ -116,8 +84,6 @@ const UIUtils = (() => {
             }
 
             try {
-                // --- FIX (Mode F) ---
-                // Removed ?v=1.1 query string per user request
                 const response = await fetch(`navbar.html`);
                 if (!response.ok) throw new Error(`Failed to fetch navbar.html: ${response.statusText}`);
                 navContainer.innerHTML = await response.text();
@@ -128,18 +94,12 @@ const UIUtils = (() => {
         };
     })();
 
-    /**
-     * Escapes a string for safe insertion into HTML.
-     */
     const escapeHTML = (str) => {
         const p = document.createElement('p');
         p.textContent = str ?? '';
         return p.innerHTML;
     };
 
-    /**
-     * Generates a unique ID.
-     */
     const generateId = () => {
         if (crypto && crypto.randomUUID) {
             return crypto.randomUUID();
@@ -147,9 +107,6 @@ const UIUtils = (() => {
         return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     };
 
-    /**
-     * Debounces a function.
-     */
     const debounce = (func, delay) => {
         let timeout;
         return (...args) => {
@@ -158,10 +115,6 @@ const UIUtils = (() => {
         };
     };
 
-    /**
-     * Copies text to the clipboard.
-     * Edge Optimization: Removed legacy execCommand fallback.
-     */
     const copyToClipboard = async (text) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -172,9 +125,6 @@ const UIUtils = (() => {
         }
     };
 
-    /**
-     * Triggers a file download.
-     */
     const downloadJSON = function(dataStr, filename, mimeType = 'application/json') {
         try {
             if (typeof dataStr !== 'string' || !filename) {
@@ -197,9 +147,6 @@ const UIUtils = (() => {
         }
     };
 
-    /**
-     * Programmatically opens a file picker.
-     */
     const openFilePicker = (callback, accept = "application/json,.json") => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -213,9 +160,6 @@ const UIUtils = (() => {
         input.click();
     };
     
-    /**
-     * Reads a file as plain text. (Internal helper)
-     */
     const readTextFile = (file, onSuccess, onError) => {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -234,27 +178,28 @@ const UIUtils = (() => {
         reader.readAsText(file);
     };
 
-    /**
-     * Reads a file as JSON.
-     * --- FIX (Mode D) ---
-     * Refactored to call readTextFile, removing duplicate logic.
-     */
-    const readJSONFile = (file, onSuccess, onError) => {
-        readTextFile(file, (text) => {
-            try {
-                const data = JSON.parse(text);
-                onSuccess(data);
-            } catch (err) {
-                console.error("Failed to parse JSON:", err);
-                onError("File is not valid JSON.");
+    // New unified JSON parser with error handling
+    const parseJSON = (jsonString, onSuccess, onError) => {
+        try {
+            const parsed = JSON.parse(jsonString);
+            onSuccess(parsed);
+        } catch (err) {
+            const errorMsg = `Invalid JSON: ${err.message}`;
+            console.error(errorMsg, err);
+            if (onError) {
+                onError(errorMsg);
+            } else {
+                _showModal('Parse Error', `<p>${escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
             }
-        }, onError); // Pass the original onError handler
+        }
     };
 
+    const readJSONFile = (file, onSuccess, onError) => {
+        readTextFile(file, (text) => {
+            parseJSON(text, onSuccess, onError);
+        }, onError);
+    };
 
-    /**
-     * Creates a state manager for localStorage.
-     */
     const createStateManager = (key, defaults, version, onCorruption) => {
         if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
             console.error("State Manager initialization error: Invalid parameters provided.");
@@ -266,94 +211,66 @@ const UIUtils = (() => {
             const rawData = localStorage.getItem(key);
 
             if (rawData) {
-                try {
-                    data = JSON.parse(rawData);
-                    
-                    // --- FIX (Mode E) ---
-                    // Removed the state-wiping version check.
-                    // The version is now only used for the key.
-                    // We will log if a mismatch is found but take no action.
-                    if (data.version !== version) {
-                        console.warn(`State version mismatch (found ${data.version}, expected ${version}). Loading state anyway.`);
-                        // data = { ...defaults }; // <-- This line was removed
-                    }
-                    // --- END FIX ---
-                    
-                } catch (err) {
-                    console.error("Failed to parse state:", err);
-                    if (onCorruption) {
-                        try {
-                            onCorruption();
-                        } catch (callbackErr) {
-                            console.error("Corruption handler failed:", callbackErr);
+                parseJSON(rawData, 
+                    (parsed) => {
+                        data = parsed;
+                        if (data.version !== version) {
+                            console.warn(`State version mismatch (found ${data.version}, expected ${version}). Loading state anyway.`);
                         }
+                    },
+                    (err) => {
+                        if (onCorruption) {
+                            try { onCorruption(); } 
+                            catch (e) { console.error("Corruption handler failed:", e); }
+                        }
+                        localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
+                        _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved with timestamp.</p>', [{label: 'OK'}]);
+                        data = { ...defaults };
                     }
-                    localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
-                    _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved with timestamp.</p>', [{label: 'OK'}]);
-                    data = { ...defaults };
-                }
+                );
             } else {
                 data = { ...defaults };
             }
             
-            // --- FIX (Mode E) ---
-            // Ensure version property is set on new/default state
-            if (!data.version) {
+            if (data && !data.version) {
                 data.version = version;
             }
-            // --- END FIX ---
             
-            return data;
+            return data || { ...defaults, version };
         };
 
-        // --- START FIX: ISSUE 4 (Storage Error Logging) ---
         const save = (state) => {
-            let serialized; // Hoist serialized to be accessible in catch block
+            let serialized;
             try {
-                // --- FIX (Mode E) ---
-                // Ensure version is always set on save
                 state.version = version;
-                // --- END FIX ---
-                
                 serialized = JSON.stringify(state);
                 
-                // console.log('Saving state to localStorage:', key, serialized.length, 'chars');
-                
-                // Check if we're near quota (5MB typical limit)
                 if (serialized.length > 4.5 * 1024 * 1024) {
                     console.warn('WARNING: State approaching localStorage 5MB limit');
                 }
                 
                 localStorage.setItem(key, serialized);
-                // console.log('Save successful');
                 
-                // Verify save worked by reading back
+                // Verify save
                 const verification = localStorage.getItem(key);
                 if (!verification || verification.length !== serialized.length) {
                     throw new Error('Save verification failed - data mismatch');
                 }
             } catch (err) {
                 console.error("Failed to save state:", err);
-                // Use hoisted variable, check if it was defined before error
                 const stateSize = (typeof serialized !== 'undefined') ? serialized.length : 'unknown';
-                console.error("State size:", stateSize, 'bytes');
-                console.error("localStorage available:", typeof Storage !== 'undefined');
                 
                 _showModal("Save Error", 
-                    `<p>Failed to save data: ${SafeUI.escapeHTML(err.message)}</p>
+                    `<p>Failed to save data: ${escapeHTML(err.message)}</p>
                      <p>State size: ${Math.round(((typeof serialized !== 'undefined') ? serialized.length : 0) / 1024)}KB</p>`, 
                     [{ label: 'OK' }]
                 );
             }
         };
-        // --- END FIX: ISSUE 4 ---
 
         return { load, save };
     };
 
-    /**
-     * Hides the global modal. (Internal helper)
-     */
     const _hideModal = () => {
         const modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) {
@@ -362,9 +279,6 @@ const UIUtils = (() => {
         document.body.classList.remove('modal-open');
     };
 
-    /**
-     * Shows the global modal with custom content and buttons. (Internal helper)
-     */
     const _showModal = function(title, contentHtml, actions) {
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
@@ -396,9 +310,6 @@ const UIUtils = (() => {
         modalOverlay.style.display = 'flex';
     };
 
-    /**
-     * Shows a standardized validation error modal and focuses the element.
-     */
     const showValidationError = function(title, message, focusElementId) {
         _showModal(title, `<p>${escapeHTML(message)}</p>`, [{ label: 'OK' }]);
         if (focusElementId) {
@@ -406,10 +317,6 @@ const UIUtils = (() => {
         }
     };
 
-
-    /**
-     * Shows a simple feedback toast message.
-     */
     const showToast = (function() {
         let activeTimer = null;
 
@@ -429,29 +336,29 @@ const UIUtils = (() => {
         };
     })();
 
-    // Expose public API for UIUtils
     return {
-        SVGIcons: SVGIcons,
+        SVGIcons,
         validators: CoreValidators,
-        loadNavbar: loadNavbar,
-        escapeHTML: escapeHTML,
-        generateId: generateId,
-        debounce: debounce,
-        copyToClipboard: copyToClipboard,
-        downloadJSON: downloadJSON,
-        openFilePicker: openFilePicker,
-        readJSONFile: readJSONFile,
-        readTextFile: readTextFile, // Expose readTextFile
-        createStateManager: createStateManager,
+        loadNavbar,
+        escapeHTML,
+        generateId,
+        debounce,
+        copyToClipboard,
+        downloadJSON,
+        openFilePicker,
+        readJSONFile,
+        readTextFile,
+        parseJSON, // Exporting the new helper
+        createStateManager,
         hideModal: _hideModal,
         showModal: _showModal,
-        showValidationError: showValidationError,
-        showToast: showToast,
+        showValidationError,
+        showToast,
     };
 })();
 
 // ============================================================================
-// MODULE: SafeUI (Proxy layer providing fallback implementations)
+// MODULE: SafeUI (Proxy layer)
 // ============================================================================
 const SafeUI = (() => {
     const isReady = typeof UIUtils !== 'undefined' && UIUtils;
@@ -465,73 +372,30 @@ const SafeUI = (() => {
         isReady,
         SVGIcons: getSVGIcons(),
 
-        // --- Core UI Methods ---
-        loadNavbar: (containerId) => {
-            if (isReady) UIUtils.loadNavbar(containerId);
-        },
-        showModal: (title, content, actions) => {
-            if (isReady) return UIUtils.showModal(title, content, actions);
-            console.error("UIUtils not loaded. Modal requested:", title);
-        },
-        showValidationError: (title, msg, elId) => {
-            if (isReady) return UIUtils.showValidationError(title, msg, elId);
-            console.error("UIUtils not loaded. Validation Error:", title, msg);
-        },
-        hideModal: () => {
-            if (isReady) UIUtils.hideModal();
-        },
-        showToast: (msg) => {
-            if (isReady) return UIUtils.showToast(msg);
-            console.log("Toast (UIUtils not loaded):", msg);
-        },
-
-        // --- Utility Methods ---
-        escapeHTML: (str) => {
-            if (isReady) return UIUtils.escapeHTML(str);
-            return (str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-        },
-        generateId: () => {
-            return isReady ? UIUtils.generateId() : Date.now().toString();
-        },
-        debounce: (func, delay) => {
-            return isReady ? UIUtils.debounce(func, delay) : func;
-        },
-        copyToClipboard: (text) => {
-            return isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false);
-        },
-        downloadJSON: (data, filename, mimeType) => {
-            if (isReady) return UIUtils.downloadJSON(data, filename, mimeType);
-        },
-        openFilePicker: (cb, accept) => {
-            if (isReady) return UIUtils.openFilePicker(cb, accept);
-        },
-        readJSONFile: (file, onSuccess, onError) => {
-            if (isReady) return UIUtils.readJSONFile(file, onSuccess, onError);
-            onError("UI Framework not loaded.");
-        },
-        readTextFile: (file, onSuccess, onError) => {
-            if (isReady) return UIUtils.readTextFile(file, onSuccess, onError);
-            onError("UI Framework not loaded.");
-        },
-        createStateManager: (key, defaults, version, onCorruption) => {
-            return isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null;
-        },
-        validators: isReady ? UIUtils.validators : {
-            url: (v) => v,
-            notEmpty: (v) => v,
-            maxLength: (v, m) => v
-        }
+        loadNavbar: (containerId) => { if (isReady) UIUtils.loadNavbar(containerId); },
+        showModal: (title, content, actions) => { if (isReady) return UIUtils.showModal(title, content, actions); },
+        showValidationError: (title, msg, elId) => { if (isReady) return UIUtils.showValidationError(title, msg, elId); },
+        hideModal: () => { if (isReady) UIUtils.hideModal(); },
+        showToast: (msg) => { if (isReady) return UIUtils.showToast(msg); },
+        escapeHTML: (str) => isReady ? UIUtils.escapeHTML(str) : str,
+        generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
+        debounce: (func, delay) => isReady ? UIUtils.debounce(func, delay) : func,
+        copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
+        downloadJSON: (data, filename, mimeType) => { if (isReady) return UIUtils.downloadJSON(data, filename, mimeType); },
+        openFilePicker: (cb, accept) => { if (isReady) return UIUtils.openFilePicker(cb, accept); },
+        readJSONFile: (file, onSuccess, onError) => { if (isReady) return UIUtils.readJSONFile(file, onSuccess, onError); },
+        readTextFile: (file, onSuccess, onError) => { if (isReady) return UIUtils.readTextFile(file, onSuccess, onError); },
+        parseJSON: (str, success, error) => { if (isReady) return UIUtils.parseJSON(str, success, error); },
+        createStateManager: (key, defaults, version, onCorruption) => { return isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null; },
+        validators: isReady ? UIUtils.validators : { url: (v) => v, notEmpty: (v) => v, maxLength: (v, m) => v }
     };
 })();
 
 // ============================================================================
-// MODULE: DOMHelpers (Utilities for DOM manipulation)
+// MODULE: DOMHelpers
 // ============================================================================
 const DOMHelpers = (() => {
     return {
-        /**
-         * Cache DOM elements and validate they exist.
-         */
         cacheElements: (requiredIds) => {
             const elements = {};
             let allFound = true;
@@ -544,29 +408,20 @@ const DOMHelpers = (() => {
                 }
                 elements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
             }
-
             return { elements, allFound };
         },
 
-        /**
-         * Setup auto-resize for textarea elements.
-         */
         setupTextareaAutoResize: (textarea, maxHeight = 300) => {
             if (!textarea) return;
-
             const resize = () => {
                 textarea.style.height = 'auto';
                 textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
             };
-
             textarea.addEventListener('input', resize);
             textarea._autoResize = resize;
             resize();
         },
 
-        /**
-         * Manually trigger a resize on a textarea.
-         */
         triggerTextareaResize: (textarea) => {
             if (textarea && typeof textarea._autoResize === 'function') {
                 textarea._autoResize();
@@ -576,13 +431,9 @@ const DOMHelpers = (() => {
 })();
 
 // ============================================================================
-// MODULE: AppLifecycle (Core initialization and error handling)
+// MODULE: AppLifecycle
 // ============================================================================
 const AppLifecycle = (() => {
-
-    /**
-     * Displays a non-destructive error banner at the top of the page.
-     */
     const _showErrorBanner = (title, message) => {
         try {
             const bannerId = 'app-startup-error';
@@ -591,16 +442,13 @@ const AppLifecycle = (() => {
             if (!banner) {
                 banner = document.createElement('div');
                 banner.id = bannerId;
-                // Use the .app-startup-banner class from style.css
                 banner.className = 'app-startup-banner';
-
                 if (document.body) {
                     document.body.prepend(banner);
                 } else {
                     document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
                 }
             }
-
             banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
             banner.classList.remove('hidden');
         } catch (e) {
@@ -609,165 +457,90 @@ const AppLifecycle = (() => {
         }
     };
 
-    // --- Page Exit Handling System ---
     let onExitSaveFunctions = [];
     let beforeUnloadPrompt = null;
 
-    // This listener handles silent saving for navigation, tab closing, etc.
     window.addEventListener('pagehide', () => {
-        // DEBUG: Log pagehide saves
-        // console.log('Page hiding, running save functions:', onExitSaveFunctions.length);
         onExitSaveFunctions.forEach(fn => {
-            try {
-                fn();
-                // console.log('Save function executed successfully');
-            } catch (e) {
-                console.error("Error during pagehide save function:", e);
-            }
+            try { fn(); } catch (e) { console.error("Error during pagehide save function:", e); }
         });
-        // End DEBUG
     });
 
-    // This listener handles the user prompt (e.g., "Discard changes?")
     window.addEventListener('beforeunload', (e) => {
         let promptMessage = null;
         if (typeof beforeUnloadPrompt === 'function') {
             promptMessage = beforeUnloadPrompt();
         }
-        
         if (promptMessage) {
             e.preventDefault();
             e.returnValue = promptMessage;
             return promptMessage;
         }
     });
-    // --- End Page Exit Handling System ---
-
 
     return {
-        /**
-         * Standard init wrapper with error handling.
-         */
         run: (initFn) => {
-            // --- FIX (Mode F) ---
-            // Log core version as soon as this module runs.
-            console.log(`AppLifecycle: Running app-core.js v${CORE_VERSION}`);
-            // --- END FIX ---
-            
             document.addEventListener('DOMContentLoaded', async () => {
                 try {
-                    // Dependency check for UIUtils itself
                     if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
-                        const errorTitle = "Application Failed to Load";
-                        const errorMessage = "A critical file (app-core.js) may be missing, failed to load, or is corrupted. Check console for errors.";
-                        _showErrorBanner(errorTitle, errorMessage);
-                        console.error("FATAL: UIUtils, SafeUI, or DOMHelpers failed to initialize. Application halted.");
+                        _showErrorBanner("Application Failed to Load", "Critical dependencies missing.");
                         return;
                     }
-
                     await initFn();
-
                 } catch (err) {
                     console.error("Unhandled exception during initialization:", err);
-                    const errorTitle = "Application Error";
-                    const errorMessage = `An unexpected error occurred during startup: ${err.message}. Check console for more details.`;
-                    _showErrorBanner(errorTitle, errorMessage);
+                    _showErrorBanner("Application Error", `Unexpected error: ${err.message}`);
                 }
             });
         },
 
-        /**
-         * Standard page initialization boilerplate.
-         */
         initPage: async (config) => {
-            // --- FIX (Mode E) ---
-            // Removed version from the destructured config as it's no longer
-            // passed to createStateManager in this way.
-            const { storageKey, defaultState, requiredElements, onCorruption } = config;
+            const { storageKey, defaultState, requiredElements, onCorruption, version } = config;
             
-            // (FIX - Mode E) Get version from config (which has it from the inline script)
-            const appVersion = config.version;
-            if (!appVersion) {
-                 console.error("AppLifecycle.initPage: No version found in config.");
-            }
-            // --- END FIX ---
-
-            // Cache DOM elements
             const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
             if (!allFound) {
-                const errorTitle = "Application Failed to Start";
-                const errorMessage = "One or more critical HTML elements are missing from the page. Application cannot continue.";
-                _showErrorBanner(errorTitle, errorMessage);
-                console.error("FATAL: Missing critical DOM elements. Application halted.");
+                _showErrorBanner("Application Failed to Start", "Missing critical DOM elements.");
                 return null;
             }
 
-            // Initialize state
-            // --- FIX (Mode E) ---
-            // Pass the appVersion to createStateManager
-            const stateManager = SafeUI.createStateManager(storageKey, defaultState, appVersion, onCorruption);
+            const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
             if (!stateManager) {
-                const errorTitle = "Application Failed to Start";
-                const errorMessage = "The StateManager (for localStorage) failed to initialize. Application cannot continue.";
-                _showErrorBanner(errorTitle, errorMessage);
-                console.error("FATAL: StateManager failed to initialize.");
+                _showErrorBanner("Application Failed to Start", "StateManager failed to initialize.");
                 return null;
             }
 
-            // --- START REFACTOR ---
-            // FIX 3: Automatically load settings icon if the button exists
-            if (elements.btnSettings) {
-                elements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
-            }
-            // FIX 2: Automatically load navbar if the container exists
-            if (elements.navbarContainer) {
-                await SafeUI.loadNavbar("navbar-container");
-            }
-            // --- END REFACTOR ---
+            if (elements.btnSettings) elements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+            if (elements.navbarContainer) await SafeUI.loadNavbar("navbar-container");
 
-            const state = stateManager.load();
+            let state = stateManager.load();
+            
+            // --- State Migration Helper ---
+            // Automatically initialize UI state if missing for existing users
+            if (!state.ui && defaultState.ui) {
+                state.ui = { ...defaultState.ui };
+                stateManager.save(state);
+                console.log(`[AppLifecycle] Migrated state for ${storageKey}: Added UI state`);
+            }
+
             const saveState = () => stateManager.save(state);
 
             return { elements, state, saveState };
         },
         
-        /**
-         * Registers a function to be called silently on page exit (pagehide).
-         * Used for saving data without prompting the user.
-         */
         registerSaveOnExit: (saveFunction) => {
-            if (typeof saveFunction === 'function') {
-                onExitSaveFunctions.push(saveFunction);
-            } else {
-                console.error("registerSaveOnExit: provided argument is not a function.");
-            }
+            if (typeof saveFunction === 'function') onExitSaveFunctions.push(saveFunction);
         },
 
-        /**
-         * Registers a function to be called on beforeunload.
-         * If the function returns a string, the user will be prompted to leave.
-         */
         registerPromptOnExit: (promptFunction) => {
-            if (typeof promptFunction === 'function') {
-                beforeUnloadPrompt = promptFunction;
-            } else {
-                console.error("registerPromptOnExit: provided argument is not a function.");
-            }
+            if (typeof promptFunction === 'function') beforeUnloadPrompt = promptFunction;
         },
         
-        _showErrorBanner // Expose for dependency checker fallback
+        _showErrorBanner
     };
 })();
 
-// ============================================================================
-// Global Exports
-// ============================================================================
 window.UIUtils = UIUtils;
 window.SafeUI = SafeUI;
 window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
-window.DataHelpers = DataHelpers; // (FIX - Mode C)
-
-// --- FIX (Mode F) ---
-window.APP_CORE_VERSION = CORE_VERSION;
-// --- END FIX ---
+window.DataHelpers = DataHelpers;
