@@ -328,10 +328,11 @@ body {
     border-radius: 0.375rem;
 }
 
+/* FIX: Changed shortcuts to a 2-column grid */
 .shortcuts-container { 
-    display: flex; 
-    flex-wrap: wrap; 
-    gap: 0.3rem; 
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem; 
 }
 .shortcuts-container.drag-active { 
     background-color: var(--primary-hover-bg-light); 
@@ -368,8 +369,14 @@ body {
     background-color: var(--info-bg); 
     border-radius: 0.375rem; 
     border: 1px solid var(--border-color);
-    flex: 1 1 120px;
+    /* REMOVED: flex: 1 1 120px; */
 }
+
+/* FIX: Added rule to make odd-numbered last child span 2 columns */
+.shortcuts-container .shortcut-item:last-child:nth-child(odd) {
+    grid-column: span 2;
+}
+
 .shortcut-item a {
     color: var(--primary-color);
     text-decoration: none;
@@ -1123,6 +1130,20 @@ body.modal-open > *:not(.modal-overlay) {
     background-color: var(--color-danger-bg);
     border-color: var(--color-danger-border);
     color: var(--color-danger);
+    font-weight: 500;
+}
+
+/* FIX: Added new styles for assistant advice */
+.eod-targets-page .info-box.info-box-warn {
+    background-color: var(--color-danger-bg); /* Using danger/warn colors */
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
+    font-weight: 500;
+}
+.eod-targets-page .info-box.info-box-success {
+    background-color: var(--color-success-bg);
+    border-color: var(--color-success-border);
+    color: var(--color-success);
     font-weight: 500;
 }
 
