@@ -145,6 +145,7 @@
 
     document.addEventListener('bootstrap:ready', () => {
         bootstrapReady = true;
+        console.log('[MailTo] Bootstrap ready event received');
         initializePage();
     });
 
@@ -166,10 +167,12 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'mailto_library',
-            VERSION: '1.4.1', // Bumped for layout change
+            VERSION: '1.4.2', // Version bump for fixes
             DATA_KEY: 'mailto_library_v1',
             CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body'] 
         };
+        
+        console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
 
         // ============================================================================
         // INITIALIZATION ROUTINE
@@ -200,7 +203,7 @@
                      return;
                 }
 
-                console.log(`[MailTo] Bypassing AppLifecycle.run, initializing v${APP_CONFIG.VERSION}`);
+                console.log(`[MailTo] Dependencies loaded.`);
 
                 const defaultState = {
                     library: [],
@@ -231,7 +234,10 @@
                     ]
                 });
             
-                if (!ctx || !ctx.elements) return;
+                if (!ctx || !ctx.elements) {
+                    console.error('[MailTo] Context initialization failed');
+                    return;
+                }
             
                 const { elements: DOMElements, state, saveState } = ctx;
                 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; 
@@ -302,6 +308,7 @@
                     
                     DOMElements.mailtoAccordionToggle.addEventListener('click', toggleAccordion);
                     DOMElements.mailtoAccordionHeader.addEventListener('click', toggleAccordion);
+                    console.log('[MailTo] Accordion initialized, collapsed:', collapsed);
                 };
 
                 const clearEditorFields = () => {
@@ -529,15 +536,17 @@
                     if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
 
                     const path = [];
-                    let targetItem = null;
                     const visitedIds = new Set(); 
                     let iterations = 0; 
-                    const maxIterations = state.library.length * 10; 
+                    const maxIterations = (state.library.length || 1) * 10; 
 
                     const stack = state.library.map(item => [item, []]);
 
                     while (stack.length > 0) {
-                        if (++iterations > maxIterations) break; 
+                        if (++iterations > maxIterations) {
+                            console.warn('[MailTo] getBreadcrumbPath: Max iterations reached, breaking loop.');
+                            break; 
+                        }
 
                         const [currentItem, parentPath] = stack.pop();
                         
@@ -547,7 +556,6 @@
                         const currentPath = [...parentPath, { id: currentItem.id, name: currentItem.name }];
 
                         if (currentItem.id === folderId) {
-                            targetItem = currentItem;
                             path.push(...currentPath);
                             break; 
                         }
@@ -612,7 +620,7 @@
                             }
 
                             const moveButton = item.type === 'item' ? 
-                                `<button class="icon-btn move-btn" title="Move to...">${SVGIcons.pencil}</button>` : '';
+                                `<button class="icon-btn move-btn" title="Move to...">${SafeUI.SVGIcons.pencil}</button>` : '';
 
                             div.innerHTML = `
                                 <div class="list-item-icon ${iconType}">${iconSvg}</div>
@@ -626,12 +634,14 @@
                             return div;
                         }
                     });
+                    console.log('[MailTo] Catalogue rendered, items:', items.length);
                 };
 
                 // REMOVED: showView()
 
                 const handleFile = (file) => {
                     try { 
+                        console.log('[MailTo] File selected:', file.name);
                         if (!file) return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
                         if (file.size > MAX_FILE_SIZE_BYTES) return SafeUI.showModal('File Too Large', '<p>File must be under 10MB.</p>', [{label: 'OK'}]); 
 
@@ -650,9 +660,12 @@
                         
                                 const arrayBuffer = e.target.result;
                                 if (!arrayBuffer) throw new Error('File is empty.');
-                        
+                                
+                                console.log('[MailTo] Reading file buffer, length:', arrayBuffer.byteLength);
                                 const fileData = window.MsgReader.read(arrayBuffer);
                                 if (!fileData) throw new Error('Parser failed to return data.');
+                                
+                                console.log('[MailTo] File parsed, populating fields...');
                         
                                 DOMElements.resultSubject.value = fileData.subject || '';
                                 DOMElements.resultBody.value = fileData.body || '';
@@ -685,6 +698,7 @@
                                 DOMElements.outputWrapper.classList.add('hidden');
                                 setTimeout(() => resizeResultBody(), 0);
                                 SafeUI.showToast('File loaded successfully!');
+                                console.log('[MailTo] File processed successfully.');
                         
                             } catch (err) {
                                 console.error('File parsing error:', err);
@@ -701,6 +715,7 @@
                 };
 
                 const generateAndShowMailto = () => {
+                    console.log('[MailTo] Generate button clicked');
                     const mailtoData = {
                         to: DOMElements.resultTo.value.trim(),
                         cc: DOMElements.resultCc.value.trim(),
@@ -890,19 +905,18 @@
                         onModalOpen: onModalOpen,           
                         onRestoreCallback: onRestore,
                         itemValidators: {
-                            library: [] 
+                            library: [] // 'library' is the key in the state object
                         }
                     });
                 };
 
                 const attachEventListeners = () => {
+                    console.log('[MailTo] Attaching event listeners...');
                     setupSettingsModal();
-                    initAccordion(); // NEW: Set up accordion listeners
+                    initAccordion(); // Set up accordion listeners
 
                     DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
                     
-                    // REMOVED: btn-editor-cancel listener
-
                     DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
                     DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
                     
@@ -974,22 +988,30 @@
                             mainContent.scrollTo({ top: 0, behavior: 'smooth' });
                         });
                     }
+                    console.log('[MailTo] Event listeners attached.');
                 };
 
                 const init = () => {
+                    console.log('[MailTo] Running init()...');
+                    
                     // --- FIX for LocalStorage Migration ---
                     if (Array.isArray(state)) {
                         // Old state was just an array. Migrate to new object structure.
                         console.warn('[MailTo] Migrating old array-based state to new object structure.');
                         const oldLibrary = state;
-                        state = { ...defaultState }; // Get new structure
+                        state = JSON.parse(JSON.stringify(defaultState)); // Deep copy default state
                         state.library = oldLibrary; // Assign old data
                         saveState(); // Save the new structure
                     } else if (!state.library || !Array.isArray(state.library)) { 
                         // State is an object but library is missing/corrupt
-                        console.error('State corrupted, resetting library'); 
+                        console.error('[MailTo] State corrupted (missing library array), resetting library.'); 
                         state.library = []; 
                         saveState(); 
+                    } else if (!state.ui) {
+                        // State is object, library is fine, but UI object is missing
+                        console.warn('[MailTo] State missing UI object, adding default UI state.');
+                        state.ui = { ...defaultState.ui };
+                        saveState();
                     }
                     // --- END FIX ---
                     
@@ -1022,6 +1044,7 @@
                     } else {
                         renderCatalogue();
                     }
+                    console.log('[MailTo] Init() complete.');
                 };
 
                 init();
