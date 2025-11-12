@@ -4,27 +4,17 @@
  * Depends on: app-core.js
  */
 
-// --- FIX (Mode F) ---
-const DATA_VERSION = '2.5.1';
-console.log(`AppLifecycle: Loading app-data.js v${DATA_VERSION}`);
-// --- END FIX ---
+const DATA_VERSION = '2.6.0';
 
 const BackupRestore = (() => {
     return {
-        /**
-         * Creates and triggers download of a JSON backup file.
-         */
         createBackup: (state, appName = 'app') => {
             try {
                 const backupData = {
                     appName: appName,
-                    // --- FIX (Mode E) ---
-                    // Removed redundant version property.
-                    // version: state.version || 'unknown', 
                     timestamp: new Date().toISOString(),
                     data: state
                 };
-                // --- END FIX ---
                 
                 const dataStr = JSON.stringify(backupData, null, 2);
                 const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
@@ -38,9 +28,6 @@ const BackupRestore = (() => {
             }
         },
 
-        /**
-         * Opens file picker and attempts to restore from JSON file.
-         */
         restoreBackup: (onRestore) => {
             SafeUI.openFilePicker((file) => {
                 SafeUI.readJSONFile(
@@ -55,20 +42,13 @@ const BackupRestore = (() => {
             });
         },
 
-        /**
-         * Validates the high-level structure of a backup file.
-         */
         validateBackup: (data, requiredKeys = []) => {
             if (!data || typeof data !== 'object' || !data.data || typeof data.data !== 'object') {
                 return false;
             }
-
             return requiredKeys.every(key => key in data.data);
         },
 
-        /**
-         * Validates an array of items, ensuring each item is an object with required fields.
-         */
         validateItems: (items, requiredFields) => {
             if (!Array.isArray(items)) return false;
             if (requiredFields.length === 0) return true;
@@ -79,31 +59,24 @@ const BackupRestore = (() => {
             });
         },
 
-        /**
-         * Handles the complete backup restore flow.
-         */
         handleRestoreUpload: (config) => {
             BackupRestore.restoreBackup((restoredData) => {
                 try {
-                    // Handle both new backup format {data: {...}} and legacy format {...}
                     const dataToValidate = restoredData.data ? restoredData.data : restoredData;
                     const isNewBackup = !!restoredData.data;
                     const appName = restoredData.appName;
 
                     const isCorrectApp = appName === config.appName;
 
-                    // Only enforce app name check on new-style backups
                     if (isNewBackup && !isCorrectApp) {
                         throw new Error(`This file is not a valid '${config.appName}' backup.`);
                     }
 
-                    // Validate that all required top-level keys exist in the data
                     const requiredDataKeys = Object.keys(config.itemValidators);
                     if (isNewBackup && !BackupRestore.validateBackup(restoredData, requiredDataKeys)) {
                         throw new Error('Backup file is invalid or missing required data keys.');
                     }
 
-                    // Validate the contents of each item array
                     for (const [key, fields] of Object.entries(config.itemValidators)) {
                         if (dataToValidate[key] && !BackupRestore.validateItems(dataToValidate[key], fields)) {
                             throw new Error(`Backup data for '${key}' contains corrupt items.`);
@@ -119,9 +92,6 @@ const BackupRestore = (() => {
             });
         },
 
-        /**
-         * Consolidates logic for setting up JSON backup/restore buttons.
-         */
         setupBackupRestoreHandlers: (config) => {
             const {
                 state,
@@ -168,9 +138,6 @@ const BackupRestore = (() => {
 
 const DataValidator = (() => {
     return {
-        /**
-         * Check for duplicate values in array.
-         */
         hasDuplicate: (items, field, value, excludeId = null) => {
             if (!Array.isArray(items)) return false;
             const normalizedValue = String(value).toLowerCase().trim();
@@ -182,9 +149,6 @@ const DataValidator = (() => {
             });
         },
 
-        /**
-         * Validate form fields with common rules.
-         */
         validateFields: (fields, rules) => {
             const errors = [];
 
@@ -224,14 +188,7 @@ const DataValidator = (() => {
     };
 })();
 
-/**
- * DataConverter - Handles CSV parsing and generation.
- */
 const DataConverter = (() => {
-
-    /**
-     * Internal helper to parse a single CSV line according to RFC 4180.
-     */
     const _parseCsvLine = (line) => {
         const values = [];
         let currentVal = '';
@@ -241,25 +198,21 @@ const DataConverter = (() => {
             const char = line[i];
 
             if (inQuotes) {
-                // We are inside quotes
                 if (char === '"') {
                     if (i + 1 < line.length && line[i + 1] === '"') {
-                        // This is an escaped quote ("")
                         currentVal += '"';
                         i++;
                     } else {
-                        // This is the closing quote
                         inQuotes = false;
                     }
                 } else {
                     currentVal += char;
                 }
             } else {
-                // We are outside quotes
                 if (char === '"') {
                     inQuotes = true;
                 } else if (char === ',') {
-                    currentVal = currentVal.replace(/""/g, '"'); // Unescape quotes
+                    currentVal = currentVal.replace(/""/g, '"');
                     values.push(currentVal);
                     currentVal = '';
                 } else {
@@ -268,15 +221,12 @@ const DataConverter = (() => {
             }
         }
 
-        currentVal = currentVal.replace(/""/g, '"'); // Unescape quotes for the last value
+        currentVal = currentVal.replace(/""/g, '"');
         values.push(currentVal);
         return values;
     };
 
     return {
-        /**
-         * Converts an array of objects to a CSV string.
-         */
         toCSV: (data, headers) => {
             if (!Array.isArray(data) || !Array.isArray(headers) || headers.length === 0) {
                 throw new Error("Invalid data or headers for CSV conversion.");
@@ -298,9 +248,6 @@ const DataConverter = (() => {
             return [headerRow, ...rows].join('\n');
         },
 
-        /**
-         * Converts a CSV file object to an array of objects.
-         */
         fromCSV: (file, requiredHeaders) => {
             return new Promise((resolve, reject) => {
                 SafeUI.readTextFile(file,
@@ -309,10 +256,8 @@ const DataConverter = (() => {
                         let currentLine = '';
                         let inQuotes = false;
 
-                        // Normalize line endings
                         const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-                        // Properly split lines respecting quoted newlines
                         for (let i = 0; i < normalizedText.length; i++) {
                             const char = normalizedText[i];
 
@@ -338,13 +283,11 @@ const DataConverter = (() => {
                             return resolve({ data: [], errors: [] });
                         }
 
-                        // Parse header line
                         const headerLine = lines.shift();
                         const headers = _parseCsvLine(headerLine).map(h => h.trim());
 
                         const errors = [];
 
-                        // Validate required headers
                         for (const reqHeader of requiredHeaders) {
                             if (!headers.includes(reqHeader)) {
                                 errors.push(`Missing required CSV header: "${reqHeader}"`);
@@ -354,7 +297,6 @@ const DataConverter = (() => {
                             return reject(new Error(`CSV Import Failed: ${errors.join(', ')}`));
                         }
 
-                        // Parse data rows
                         const data = lines.filter(line => line.trim().length > 0).map((line, lineIndex) => {
                             const obj = {};
                             const values = _parseCsvLine(line);
@@ -387,13 +329,7 @@ const DataConverter = (() => {
     };
 })();
 
-/**
- * CsvManager - Consolidates CSV import/export logic.
- */
 const CsvManager = (() => {
-    /**
-     * Helper function to create a timestamp string.
-     */
     const _getTimestamp = () => {
         const d = new Date();
         const Y = d.getFullYear();
@@ -406,13 +342,8 @@ const CsvManager = (() => {
     };
 
     return {
-        /**
-         * Wires up a CSV export button.
-         */
         setupExport: (config) => {
-            if (!config.exportBtn) {
-                return;
-            }
+            if (!config.exportBtn) return;
 
             config.exportBtn.addEventListener('click', () => {
                 try {
@@ -437,13 +368,8 @@ const CsvManager = (() => {
             });
         },
 
-        /**
-         * Wires up a CSV import button.
-         */
         setupImport: (config) => {
-            if (!config.importBtn) {
-                return;
-            }
+            if (!config.importBtn) return;
 
             config.importBtn.addEventListener('click', () => {
                 SafeUI.openFilePicker(async (file) => {
@@ -454,7 +380,6 @@ const CsvManager = (() => {
                         const validationErrors = [...parseErrors];
 
                         if (typeof config.onValidate !== 'function') {
-                            console.error("CsvManager.setupImport: 'onValidate' function is missing.");
                             throw new Error("Import validation is not configured.");
                         }
 
@@ -473,7 +398,6 @@ const CsvManager = (() => {
                         }
 
                         if (typeof config.onConfirm !== 'function') {
-                            console.error("CsvManager.setupImport: 'onConfirm' function is missing.");
                             throw new Error("Import confirmation is not configured.");
                         }
 
@@ -489,13 +413,8 @@ const CsvManager = (() => {
     };
 })();
 
-
-// Expose components to the global window scope
 window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
 window.CsvManager = CsvManager;
-
-// --- FIX (Mode F) ---
 window.APP_DATA_VERSION = DATA_VERSION;
-// --- END FIX ---
