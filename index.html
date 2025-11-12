@@ -5,8 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <!-- 
+      FIX 7: Removed inline <style> block.
+      The '.shortcuts-container.drag-active' rule is now in style.css
+    -->
     
-    <!-- CRITICAL: Bootstrap loader - Do not modify -->
+    <!-- 
+        CRITICAL DEPENDENCY LOADER
+        
+        The bootstrap.js script below loads ALL required JavaScript files in the correct order.
+        DO NOT modify, remove, or add additional <script> tags.
+        
+        To add a new dependency:
+        1. Add it to js/bootstrap.js CORE_SCRIPTS or PAGE_SCRIPTS config
+        2. Do NOT add a <script> tag here
+    -->
     <script src="js/bootstrap.js"></script>
 </head>
 <body>
@@ -15,9 +28,11 @@
     <div class="app-container">
         <div class="panel">
             <div class="main-content">
+                <!-- FIX 1: Replaced 11-line inline style with a clean class -->
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <div id="shortcuts-container" class="shortcuts-container"></div>
+                <div id="shortcuts-container" class.bind="shortcutsContainer"></div>
+                <!-- FIX (Mode C): Removed obsolete divider -->
 
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
@@ -36,6 +51,7 @@
                 </div>
 
                 <div id="app-details-container" class="hidden">
+                    <!-- FIX (Mode C): Replaced app-section-box with generator-section -->
                     <div id="app-editor-fields" class="generator-section">
                         <div class="form-group hidden" id="edit-app-name-wrapper">
                             <label for="edit-app-name">App Name</label>
@@ -58,6 +74,9 @@
                     </div>
                 </div>
 
+                <!-- FIX (Mode C): Removed obsolete divider -->
+
+                <!-- FIX (Mode C): Added generator-section class -->
                 <div class="notepad-wrapper generator-section">
                     <div id="notepad-header" class="notepad-header">
                         <select id="note-select" class="sidebar-input"></select>
@@ -74,488 +93,528 @@
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
+    <!-- FIX (Mode A, Issue 1): Corrected classT to class -->
     <div id="toast" class="toast"></div>
-    
-    <!-- Scroll to Top Button -->
-    <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top">↑</button>
 
+    <!-- 
+      STARTUP SCRIPT 
+      Waits for bootstrap.js to load all dependencies before initializing.
+    -->
     <script>
-    // Dependency Check for Dashboard - Handled by Bootstrap
-    
-    // ============================================================================
-    // PAGE-SPECIFIC LOGIC
-    // ============================================================================
-    const DEBOUNCE_DELAY = 300;
-    
-    let DOMElements;
-    let state;
-    let saveState;
-    let APP_CONFIG;
-
-    let selectedAppId = null;
-    let initialAppData = null;
-    
-    const checkFormDirty = () => {
-        if (!initialAppData) return false;
+    document.addEventListener('bootstrap:ready', () => {
         
-        const currentUrls = DOMElements.editAppUrls.value.trim();
-        const currentEscalation = DOMElements.editAppEscalation.value.trim();
+        // ============================================================================
+        // PAGE-SPECIFIC LOGIC (Moved from DashboardUI in app-ui.js)
+        // This logic handles the "Applications" and "Shortcuts" widgets.
+        // ============================================================================
+        const DEBOUNCE_DELAY = 300;
+        
+        // Scoped variables for state and DOM access
+        let DOMElements;
+        let state;
+        let saveState;
+        let APP_CONFIG;
 
-        if (initialAppData.id === null) {
-            return DOMElements.editAppName.value.trim() !== '' ||
-                   currentUrls !== '' ||
-                   currentEscalation !== '';
-        }
-
-        return DOMElements.editAppName.value.trim() !== initialAppData.name ||
-               currentUrls !== initialAppData.urls ||
-               currentEscalation !== initialAppData.escalation;
-    };
-
-    const updateSaveButtonState = () => {
-        if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
-    };
-    
-    const initQuickList = () => {
-        window.QuickListManager.init({
-            container: DOMElements.shortcutsContainer,
-            items: DataHelpers.getCollection(state, 'shortcuts'),
-            emptyMessage: "No shortcuts. Add from 'Actions'.",
-            getItemName: (item) => item.name,
-            getItemHref: (item) => item.url,
+        let selectedAppId = null;
+        let initialAppData = null;
+        
+        // --- Scoped Helpers ---
+        
+        const checkFormDirty = () => {
+            if (!initialAppData) return false;
             
-            onDeleteClick: (item, renderCallback) => {
-                UIPatterns.confirmDelete('Shortcut', item.name, () => {
-                    const shortcuts = DataHelpers.getCollection(state, 'shortcuts');
-                    const itemIndex = shortcuts.findIndex(s => s.id === item.id);
-                    if (itemIndex > -1) {
-                        shortcuts.splice(itemIndex, 1);
-                        saveState();
-                        renderCallback();
-                    }
-                });
-            },
-            
-            addNewButtonId: 'add-shortcut-btn-menu',
-            onAddNewClick: (renderCallback) => {
-                SafeUI.showModal('Add Shortcut',
-                    `<input type="text" id="shortcut-name" placeholder="Name" class="sidebar-input">
-                     <input type="text" id="shortcut-url" placeholder="URL" class="sidebar-input">`,
-                    [{ label: 'Cancel' }, {
-                        label: 'Add', class: 'button-primary', callback: () => {
-                            const nameInput = document.getElementById('shortcut-name');
-                            const urlInput = document.getElementById('shortcut-url');
-                            const name = nameInput.value;
-                            const url = urlInput.value;
-                            if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
-                                DataHelpers.getCollection(state, 'shortcuts').push({ id: SafeUI.generateId(), name, url });
-                                saveState();
-                                renderCallback();
-                            } else {
-                                SafeUI.showToast('Invalid name or URL');
-                                return false;
-                            }
+            const currentUrls = DOMElements.editAppUrls.value.trim();
+            const currentEscalation = DOMElements.editAppEscalation.value.trim();
+
+            if (initialAppData.id === null) {
+                return DOMElements.editAppName.value.trim() !== '' ||
+                       currentUrls !== '' ||
+                       currentEscalation !== '';
+            }
+
+            return DOMElements.editAppName.value.trim() !== initialAppData.name ||
+                   currentUrls !== initialAppData.urls || 
+                   currentEscalation !== initialAppData.escalation; 
+        };
+        const updateSaveButtonState = () => {
+            if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
+        };
+        
+        // --- (NEW) initQuickList ---
+        // Initializes the new, shared QuickListManager for the Shortcuts
+        const initQuickList = () => {
+            window.QuickListManager.init({
+                container: DOMElements.shortcutsContainer,
+                items: DataHelpers.getCollection(state, 'shortcuts'), 
+                emptyMessage: "No shortcuts. Add from 'Actions'.",
+                getItemName: (item) => item.name,
+                getItemHref: (item) => item.url, 
+                
+                onDeleteClick: (item, renderCallback) => {
+                    UIPatterns.confirmDelete('Shortcut', item.name, () => { 
+                        const shortcuts = DataHelpers.getCollection(state, 'shortcuts'); 
+                        const itemIndex = shortcuts.findIndex(s => s.id === item.id);
+                        if (itemIndex > -1) {
+                            shortcuts.splice(itemIndex, 1);
+                            saveState();
+                            renderCallback(); // Re-renders the list
                         }
-                    }]
-                );
-            }
-        });
-    };
-
-    const renderAppDropdown = () => {
-        const appSelect = DOMElements.appSelect;
-        const selectedValue = appSelect.value;
-        appSelect.innerHTML = '<option value="">-- Select an App --</option>';
-
-        const sortedApps = [...DataHelpers.getCollection(state, 'apps')].sort((a,b) => a.name.localeCompare(b.name));
-        
-        sortedApps.forEach(app => {
-            appSelect.add(new Option(app.name, app.id));
-        });
-        
-        if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
-            appSelect.value = selectedValue;
-        } else {
-            appSelect.value = '';
-            if (selectedAppId && !sortedApps.some(app => app.id === selectedAppId)) {
-                selectedAppId = null;
-            }
-        }
-    };
-
-    const renderAppData = () => {
-        if (!DataHelpers.hasItems(state, 'apps')) {
-            DOMElements.appSelectGroup.classList.add('hidden');
-            DOMElements.appEmptyState.classList.remove('hidden');
-        } else {
-            DOMElements.appSelectGroup.classList.remove('hidden');
-            DOMElements.appEmptyState.classList.add('hidden');
-            renderAppDropdown();
-        }
-    };
-
-    const renderAllPageSpecific = () => {
-        initQuickList();
-        renderAppData();
-    };
-    
-    const normalizeLineEndings = (text) => {
-        if (!text) return '';
-        return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    };
-
-    const displayAppDetails = (appId) => {
-        selectedAppId = appId;
-        
-        // PERSISTENCE: Save selection
-        if (state.ui) {
-            state.ui.selectedAppId = appId;
-            saveState();
-        }
-
-        const isVisible = !!appId;
-
-        DOMElements.editAppName.value = '';
-        DOMElements.editAppUrls.value = '';
-        DOMElements.editAppEscalation.value = '';
-        DOMElements.editAppNameWrapper.classList.add('hidden');
-
-        DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
-
-        if (isVisible) {
-            const app = DataHelpers.findById(state, 'apps', appId);
-            if (!app) {
-                console.error(`Failed to find app with ID: ${appId}`);
-                DOMElements.appDetailsContainer.classList.add('hidden');
-                selectedAppId = null;
-                initialAppData = null;
-                return;
-            }
-            
-            const urlsNormalized = normalizeLineEndings(app.urls);
-            const escalationNormalized = normalizeLineEndings(app.escalation);
-            
-            initialAppData = {
-                ...app, 
-                urls: urlsNormalized, 
-                escalation: escalationNormalized
-            };
-            
-            DOMElements.editAppName.value = app.name;
-            DOMElements.editAppUrls.value = urlsNormalized;
-            DOMElements.editAppEscalation.value = escalationNormalized;
-
-        } else {
-            initialAppData = null;
-        }
-
-        const escalationTextarea = DOMElements.editAppEscalation;
-        const isCollapsed = escalationTextarea.value.trim() === '';
-        escalationTextarea.style.height = isCollapsed ? '40px' : 'auto'; 
-        
-        setTimeout(() => {
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
-            DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
-        }, 0);
-        
-        updateSaveButtonState();
-    };
-
-    const createNewAppForm = () => {
-        DOMElements.appSelect.value = '';
-        displayAppDetails(null);
-        DOMElements.appDetailsContainer.classList.remove('hidden');
-        DOMElements.editAppNameWrapper.classList.remove('hidden');
-        DOMElements.editAppName.focus();
-        initialAppData = {id: null, name: '', urls: '', escalation: ''};
-        updateSaveButtonState();
-    };
-    
-    const setupSettingsModal = () => {
-        const pageDataHtml = `
-            <button id="modal-export-csv-btn" class="button-base">Export Apps (CSV)</button>
-            <button id="modal-import-csv-btn" class="button-base">Import Apps (CSV)</button>
-        `;
-
-        const onModalOpen = () => {
-            CsvManager.setupExport({
-                exportBtn: document.getElementById('modal-export-csv-btn'),
-                dataGetter: () => state.apps,
-                headers: APP_CONFIG.APP_CSV_HEADERS,
-                filename: `${APP_CONFIG.NAME}-export.csv`
-            });
-            
-            CsvManager.setupImport({
-                importBtn: document.getElementById('modal-import-csv-btn'),
-                headers: APP_CONFIG.APP_CSV_HEADERS,
-                onValidate: (row, index) => {
-                    const entry = {
-                        id: row.id || SafeUI.generateId(),
-                        name: (row.name || '').trim(),
-                        urls: (row.urls || '').trim(),
-                        escalation: (row.escalation || '').trim()
-                    };
-                    if (!SafeUI.validators.notEmpty(entry.name)) {
-                        return { error: `Row ${index + 2}: 'name' is required.` };
-                    }
-                    if (!SafeUI.validators.maxLength(entry.name, 100)) {
-                        return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
-                    }
-                    if (DataValidator.hasDuplicate(state.apps, 'name', entry.name, row.id)) {
-                        return { error: `Row ${index + 2}: App name "${entry.name}" already exists.` };
-                    }
-                    return { entry: entry };
-                },
-                onConfirm: (validatedData, importErrors) => {
-                    const newEntries = [];
-                    const updatedEntries = [];
-                    const existingIds = new Set(state.apps.map(app => app.id));
-                    validatedData.forEach(entry => {
-                        if (existingIds.has(entry.id)) { updatedEntries.push(entry); } else { newEntries.push(entry); }
                     });
-                    const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-                    const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
-                    let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
-                    if (importErrors.length > 0) {
-                        summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
-                                        <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
-                                            ${errorList}${moreErrors}
-                                        </ul>`;
-                    }
-                    summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
-                    SafeUI.showModal("Confirm CSV Import", summaryHtml, [
-                        { label: 'Cancel' },
-                        { 
-                            label: 'Import and Overwrite', 
-                            class: 'button-primary', 
-                            callback: () => {
-                                let importedCount = 0;
-                                newEntries.forEach(entry => {
-                                    if (state.apps.some(app => app.id === entry.id)) { entry.id = SafeUI.generateId(); }
-                                    state.apps.push(entry);
-                                    importedCount++;
-                                });
-                                updatedEntries.forEach(entry => {
-                                    const existingIndex = state.apps.findIndex(app => app.id === entry.id);
-                                    if (existingIndex > -1) { state.apps[existingIndex] = entry; importedCount++; }
-                                });
-                                saveState();
-                                renderAppData();
-                                SafeUI.showToast(`Imported ${importedCount} applications.`);
-                                SafeUI.hideModal();
+                },
+                
+                addNewButtonId: 'add-shortcut-btn-menu',
+                onAddNewClick: (renderCallback) => {
+                    SafeUI.showModal('Add Shortcut',
+                        `<input type="text" id="shortcut-name" placeholder="Name" class="sidebar-input">
+                         <input type="text" id="shortcut-url" placeholder="URL" class="sidebar-input">`,
+                        [{ label: 'Cancel' }, {
+                            label: 'Add', class: 'button-primary', callback: () => {
+                                const nameInput = document.getElementById('shortcut-name');
+                                const urlInput = document.getElementById('shortcut-url');
+                                const name = nameInput.value;
+                                const url = urlInput.value;
+                                if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
+                                    DataHelpers.getCollection(state, 'shortcuts').push({ id: SafeUI.generateId(), name, url });
+                                    saveState();
+                                    renderCallback(); // Re-renders the list
+                                } else {
+                                    SafeUI.showToast('Invalid name or URL');
+                                    return false;
+                                }
                             }
-                        }
-                    ]);
-                    return false;
+                        }]
+                    );
                 }
             });
         };
 
-        const onRestore = (dataToRestore) => {
-            console.warn('FULL RESTORE: Overwriting all localStorage data');
+
+        // --- Data Renderers (Page-Specific) ---
+        const renderAppDropdown = () => {
+            const appSelect = DOMElements.appSelect;
+            const selectedValue = appSelect.value;
+            appSelect.innerHTML = '<option value="">-- Select an App --</option>';
+
+            const sortedApps = [...DataHelpers.getCollection(state, 'apps')].sort((a,b) => a.name.localeCompare(b.name)); 
             
-            try {
-                localStorage.removeItem('dashboard_state_v5');
-            } catch (e) {
-                console.error('Failed to clear localStorage:', e);
-            }
-            
-            let regeneratedCount = 0;
-            
-            (dataToRestore.apps || []).forEach(app => {
-                if (app.id && app.id.length < 20) {
-                    app.id = SafeUI.generateId();
-                    regeneratedCount++;
-                }
+            sortedApps.forEach(app => {
+                appSelect.add(new Option(app.name, app.id));
             });
             
-            (dataToRestore.notes || []).forEach(note => {
-                if (note.id && note.id.length < 20) {
-                    note.id = SafeUI.generateId();
-                    regeneratedCount++;
-                }
-            });
-            
-            (dataToRestore.shortcuts || []).forEach(shortcut => {
-                if (shortcut.id && shortcut.id.length < 20) {
-                    shortcut.id = SafeUI.generateId();
-                    regeneratedCount++;
-                }
-            });
-            
-            state.apps = dataToRestore.apps || [];
-            state.notes = dataToRestore.notes || [];
-            state.shortcuts = dataToRestore.shortcuts || [];
-            
-            if (dataToRestore.ui) {
-                state.ui = dataToRestore.ui;
+            if (selectedValue && sortedApps.some(app => app.id === selectedValue)) {
+                appSelect.value = selectedValue;
             } else {
-                state.ui = { selectedAppId: null, activeNoteId: null, notepadScrollTop: 0 };
+                appSelect.value = '';
+                if (selectedAppId && !sortedApps.some(app => app.id === selectedAppId)) {
+                    selectedAppId = null;
+                }
             }
-            
-            saveState();
+        };
+
+        const renderAppData = () => {
+            if (!DataHelpers.hasItems(state, 'apps')) { 
+                DOMElements.appSelectGroup.classList.add('hidden');
+                DOMElements.appEmptyState.classList.remove('hidden');
+            } else {
+                DOMElements.appSelectGroup.classList.remove('hidden');
+                DOMElements.appEmptyState.classList.add('hidden');
+                renderAppDropdown();
+            }
+        };
+
+        // This function is called after a JSON restore to refresh all page-specific UI
+        const renderAllPageSpecific = () => {
+            initQuickList(); // Re-initialize the quick list
+            renderAppData(); // Re-render the app dropdown
+        };
+        
+        /**
+         * Converts various line endings to simple newline (\n) for consistent state saving/comparison.
+         * @param {string} text 
+         * @returns {string}
+         */
+        const normalizeLineEndings = (text) => {
+            if (!text) return '';
+            return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        };
+
+        // --- App Detail Handlers (Page-Specific) ---
+        const displayAppDetails = (appId) => {
+            selectedAppId = appId;
+            const isVisible = !!appId;
+
+            DOMElements.editAppName.value = '';
+            DOMElements.editAppUrls.value = '';
+            DOMElements.editAppEscalation.value = '';
+            DOMElements.editAppNameWrapper.classList.add('hidden');
+
+            DOMElements.appDetailsContainer.classList.toggle('hidden', !isVisible);
+
+            if (isVisible) {
+                const app = DataHelpers.findById(state, 'apps', appId); 
+                if (!app) {
+                    console.error(`Failed to find app with ID: ${appId}`);
+                    DOMElements.appDetailsContainer.classList.add('hidden');
+                    selectedAppId = null;
+                    initialAppData = null;
+                    return;
+                }
+                
+                // FIX (Mode B, Issue 1): Normalize line endings for comparison integrity
+                const urlsNormalized = normalizeLineEndings(app.urls);
+                const escalationNormalized = normalizeLineEndings(app.escalation);
+                
+                initialAppData = {
+                    ...app, 
+                    urls: urlsNormalized, 
+                    escalation: escalationNormalized
+                };
+                
+                DOMElements.editAppName.value = app.name;
+                DOMElements.editAppUrls.value = urlsNormalized;
+                DOMElements.editAppEscalation.value = escalationNormalized;
+
+            } else {
+                initialAppData = null;
+            }
+
+            const escalationTextarea = DOMElements.editAppEscalation;
+            const isCollapsed = escalationTextarea.value.trim() === '';
+            escalationTextarea.style.height = isCollapsed ? '40px' : 'auto'; 
             
             setTimeout(() => {
-                if (regeneratedCount > 0) {
-                    SafeUI.showToast(`Restored and regenerated ${regeneratedCount} legacy IDs`);
-                }
-            }, 100);
+                DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
+                DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
+            }, 0);
             
-            selectedAppId = null;
-            displayAppDetails(null);
-            renderAllPageSpecific();
+            updateSaveButtonState();
         };
 
-        if (window.SharedSettingsModal) {
-            window.SharedSettingsModal.init({
-                buttonId: 'btn-settings',
-                appName: APP_CONFIG.NAME,
-                state: state,
-                pageSpecificDataHtml: pageDataHtml,
-                onModalOpen: onModalOpen,
-                onRestoreCallback: onRestore,
-                itemValidators: {
-                    apps: APP_CONFIG.APP_CSV_HEADERS,
-                    notes: ['id', 'title', 'content'],
-                    shortcuts: ['id', 'name', 'url']
-                }
-            });
-        } else {
-            DOMElements.btnSettings.disabled = true;
-        }
-    };
-    
-    const initDashboardPageSpecific = (ctx, appConfig) => {
-        DOMElements = ctx.elements;
-        state = ctx.state;
-        saveState = ctx.saveState;
-        APP_CONFIG = appConfig;
-
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
-        DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
-
-        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
-        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
-
-        initQuickList();
-
-        window.addEventListener('beforeunload', (e) => { 
-            if (checkFormDirty()) { e.preventDefault(); e.returnValue = ''; } 
-        });
+        const createNewAppForm = () => {
+            DOMElements.appSelect.value = '';
+            displayAppDetails(null);
+            DOMElements.appDetailsContainer.classList.remove('hidden');
+            DOMElements.editAppNameWrapper.classList.remove('hidden');
+            DOMElements.editAppName.focus();
+            initialAppData = {id: null, name: '', urls: '', escalation: ''};
+            updateSaveButtonState();
+        };
         
-        DOMElements.appSelect.addEventListener('change', () => {
-            if (checkFormDirty()) {
-                UIPatterns.confirmUnsavedChanges(() => {
-                    const appId = DOMElements.appSelect.value || null;
-                    displayAppDetails(appId);
+        // --- Settings Modal (Page-Specific) ---
+        // REFACTOR: Replaced old initSettingsModal with new setupSettingsModal
+        const setupSettingsModal = () => {
+            // --- FIX (Mode E Revert) ---
+            // 1. Define page-specific HTML (for CSV buttons ONLY)
+            //    The global backup buttons are now handled by SharedSettingsModal
+            const pageDataHtml = `
+                <button id="modal-export-csv-btn" class="button-base">Export Apps (CSV)</button>
+                <button id="modal-import-csv-btn" class="button-base">Import Apps (CSV)</button>
+            `;
+            // --- END FIX ---
+
+            // 2. Define page-specific "open" callback (to wire up buttons)
+            const onModalOpen = () => {
+                // Wire up CSV Export
+                CsvManager.setupExport({
+                    exportBtn: document.getElementById('modal-export-csv-btn'),
+                    dataGetter: () => state.apps,
+                    headers: APP_CONFIG.APP_CSV_HEADERS,
+                    filename: `${APP_CONFIG.NAME}-export.csv`
                 });
-                DOMElements.appSelect.value = selectedAppId;
-                return;
-            }
-            
-            const appId = DOMElements.appSelect.value || null;
-            displayAppDetails(appId);
-        });
-
-        const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
-        DOMElements.editAppName.addEventListener('input', debouncedSave);
-        DOMElements.editAppUrls.addEventListener('input', debouncedSave);
-        DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
-
-        DOMElements.saveChangesBtn.addEventListener('click', () => {
-            const newName = DOMElements.editAppName.value.trim();
-            if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
-                return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
-            }
-
-            const isNewApp = initialAppData.id === null;
-            const nameChanged = !isNewApp && newName !== initialAppData.name;
-            
-            if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName, isNewApp ? null : selectedAppId)) {
-                return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
-            }
-
-            const appData = {
-                name: newName,
-                urls: DOMElements.editAppUrls.value.trim(),
-                escalation: DOMElements.editAppEscalation.value.trim()
+                
+                // Wire up CSV Import
+                CsvManager.setupImport({
+                    importBtn: document.getElementById('modal-import-csv-btn'),
+                    headers: APP_CONFIG.APP_CSV_HEADERS,
+                    onValidate: (row, index) => {
+                        const entry = {
+                            id: row.id || SafeUI.generateId(),
+                            name: (row.name || '').trim(),
+                            urls: (row.urls || '').trim(),
+                            escalation: (row.escalation || '').trim()
+                        };
+                        if (!SafeUI.validators.notEmpty(entry.name)) {
+                            return { error: `Row ${index + 2}: 'name' is required.` };
+                        }
+                        if (!SafeUI.validators.maxLength(entry.name, 100)) {
+                            return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
+                        }
+                        if (DataValidator.hasDuplicate(state.apps, 'name', entry.name, row.id)) {
+                            return { error: `Row ${index + 2}: App name "${entry.name}" already exists.` };
+                        }
+                        return { entry: entry };
+                    },
+                    onConfirm: (validatedData, importErrors) => {
+                        // (This is the CsvManager confirm logic you already had)
+                        const newEntries = [];
+                        const updatedEntries = [];
+                        const existingIds = new Set(state.apps.map(app => app.id));
+                        validatedData.forEach(entry => {
+                            if (existingIds.has(entry.id)) { updatedEntries.push(entry); } else { newEntries.push(entry); }
+                        });
+                        const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                        const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+                        let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
+                        if (importErrors.length > 0) {
+                            summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p>
+                                            <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
+                                                ${errorList}${moreErrors}
+                                            </ul>`;
+                        }
+                        summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
+                        SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                            { label: 'Cancel' },
+                            { 
+                                label: 'Import and Overwrite', 
+                                class: 'button-primary', 
+                                callback: () => {
+                                    let importedCount = 0;
+                                    newEntries.forEach(entry => {
+                                        if (state.apps.some(app => app.id === entry.id)) { entry.id = SafeUI.generateId(); }
+                                        state.apps.push(entry);
+                                        importedCount++;
+                                    });
+                                    updatedEntries.forEach(entry => {
+                                        const existingIndex = state.apps.findIndex(app => app.id === entry.id);
+                                        if (existingIndex > -1) { state.apps[existingIndex] = entry; importedCount++; }
+                                    });
+                                    saveState();
+                                    renderAppData();
+                                    SafeUI.showToast(`Imported ${importedCount} applications.`);
+                                    SafeUI.hideModal(); // Close the settings modal
+                                }
+                            }
+                        ]);
+                        return false; // Prevent modal from closing
+                    }
+                });
+                
             };
 
-            if (isNewApp) {
-                appData.id = SafeUI.generateId();
-                DataHelpers.getCollection(state, 'apps').push(appData);
-                SafeUI.showToast('Application created');
-            } else {
-                const app = DataHelpers.findById(state, 'apps', selectedAppId);
-                if (app) {
-                    app.name = appData.name;
-                    app.urls = appData.urls;
-                    app.escalation = appData.escalation;
-                    SafeUI.showToast('Application updated');
+            // 3. Define page-specific "restore" callback
+            // --- START FIX: ISSUE 5 (JSON Restore Overwrite & Legacy ID Regeneration) ---
+            const onRestore = (dataToRestore) => {
+                console.warn('FULL RESTORE: Overwriting all localStorage data');
+                
+                // Clear the specific localStorage key first
+                try {
+                    localStorage.removeItem('dashboard_state_v5');
+                    console.log('Cleared existing localStorage');
+                } catch (e) {
+                    console.error('Failed to clear localStorage:', e);
                 }
-            }
-            
-            saveState();
-            renderAppData();
-            DOMElements.appSelect.value = appData.id || selectedAppId;
-            displayAppDetails(appData.id || selectedAppId);
-        });
-
-        DOMElements.deleteAppBtn.addEventListener('click', () => {
-            if (!selectedAppId) return;
-            const app = DataHelpers.findById(state, 'apps', selectedAppId);
-            if (!app) return;
-            
-            UIPatterns.confirmDelete('Application', app.name, () => {
-                state.apps = state.apps.filter(a => a.id !== selectedAppId);
+                
+                // FIX LEGACY IDs: Regenerate short IDs before saving
+                let regeneratedCount = 0;
+                
+                // Fix app IDs
+                (dataToRestore.apps || []).forEach(app => {
+                    if (app.id && app.id.length < 20) {
+                        console.warn(`Regenerating legacy app ID: ${app.id}`);
+                        app.id = SafeUI.generateId();
+                        regeneratedCount++;
+                    }
+                });
+                
+                // Fix note IDs
+                (dataToRestore.notes || []).forEach(note => {
+                    if (note.id && note.id.length < 20) {
+                        console.warn(`Regenerating legacy note ID: ${note.id} (${note.title})`);
+                        note.id = SafeUI.generateId();
+                        regeneratedCount++;
+                    }
+                });
+                
+                // Fix shortcut IDs
+                (dataToRestore.shortcuts || []).forEach(shortcut => {
+                    if (shortcut.id && shortcut.id.length < 20) {
+                        console.warn(`Regenerating legacy shortcut ID: ${shortcut.id}`);
+                        shortcut.id = SafeUI.generateId();
+                        regeneratedCount++;
+                    }
+                });
+                
+                if (regeneratedCount > 0) {
+                    console.log(`Regenerated ${regeneratedCount} legacy IDs`);
+                }
+                
+                // Overwrite state object completely
+                state.apps = dataToRestore.apps || [];
+                state.notes = dataToRestore.notes || [];
+                state.shortcuts = dataToRestore.shortcuts || [];
+                
+                // Force immediate save
                 saveState();
+                
+                // Verify save worked
+                setTimeout(() => {
+                    const verification = localStorage.getItem('dashboard_state_v5');
+                    if (!verification) {
+                        SafeUI.showModal('Restore Warning', 
+                            '<p>Restore completed but verification failed. Please refresh the page.</p>',
+                            [{label: 'OK'}]
+                        );
+                    } else {
+                        console.log('Restore verified successfully');
+                        if (regeneratedCount > 0) {
+                            SafeUI.showToast(`Restored and regenerated ${regeneratedCount} legacy IDs`);
+                        }
+                    }
+                }, 100);
+                
+                // Reset UI
                 selectedAppId = null;
                 displayAppDetails(null);
-                renderAppData();
-            });
-        });
+                renderAllPageSpecific();
+            };
+            // --- END FIX: ISSUE 5 ---
 
-        DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
-        
-        setupSettingsModal();
-        renderAppData();
-
-        // PERSISTENCE: Restore selected app
-        if (state.ui && state.ui.selectedAppId) {
-            // Check if app still exists before restoring
-            if (DataHelpers.findById(state, 'apps', state.ui.selectedAppId)) {
-                DOMElements.appSelect.value = state.ui.selectedAppId;
-                displayAppDetails(state.ui.selectedAppId);
-                SafeUI.showToast('Restored previous session');
+            // 4. Initialize the shared modal
+            if (window.SharedSettingsModal) {
+                window.SharedSettingsModal.init({
+                    buttonId: 'btn-settings',
+                    appName: APP_CONFIG.NAME,
+                    state: state,
+                    pageSpecificDataHtml: pageDataHtml, // <-- UPDATED (Mode E Revert)
+                    onModalOpen: onModalOpen,           // <-- UPDATED (Mode E Revert)
+                    onRestoreCallback: onRestore,
+                    itemValidators: {
+                        apps: APP_CONFIG.APP_CSV_HEADERS,
+                        notes: ['id', 'title', 'content'],
+                        shortcuts: ['id', 'name', 'url']
+                    }
+                });
             } else {
-                // Clean up stale ID
-                state.ui.selectedAppId = null;
-                saveState();
+                console.error("SharedSettingsModal not found.");
+                DOMElements.btnSettings.disabled = true;
             }
-        }
+        };
         
-        // Scroll to top button logic
-        const scrollToTopBtn = document.getElementById('scroll-to-top');
-        const mainContent = document.querySelector('.main-content');
-        
-        if (scrollToTopBtn && mainContent) {
-            mainContent.addEventListener('scroll', SafeUI.debounce(() => {
-                scrollToTopBtn.classList.toggle('visible', mainContent.scrollTop > 300);
-            }, 200));
-            
-            scrollToTopBtn.addEventListener('click', () => {
-                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-        }
-    };
-    
+        // --- Main Page-Specific Initializer ---
+        const initDashboardPageSpecific = (ctx, appConfig) => {
+            // Set up scoped variables
+            DOMElements = ctx.elements;
+            state = ctx.state;
+            // saveState = ctx.saveState; // <-- Original line
+            APP_CONFIG = appConfig;
 
-    // Dashboard App Initializer
-    document.addEventListener('bootstrap:ready', () => {
+            // DEBUG: Step 1 - Log all saves
+            const originalSaveState = ctx.saveState;
+            saveState = () => {
+                // console.log('Dashboard saveState called'); // (Mode F) - noisy, remove for prod
+                originalSaveState();
+            };
+            // End DEBUG Step 1
+
+            // Setup textareas
+            DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
+            DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
+
+            // Setup icons (page-specific ones)
+            DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
+            DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
+            DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
+
+            // Initialize shortcuts
+            initQuickList();
+
+            // Add main event listeners
+            window.addEventListener('beforeunload', (e) => { 
+                // Only prompt for App form changes. Notepad is saved by AppLifecycle.
+                if (checkFormDirty()) { e.preventDefault(); e.returnValue = ''; } 
+            });
+            
+            DOMElements.appSelect.addEventListener('change', () => {
+                // Fix: Check for unsaved changes before switching
+                if (checkFormDirty()) {
+                    UIPatterns.confirmUnsavedChanges(() => {
+                        const appId = DOMElements.appSelect.value || null;
+                        displayAppDetails(appId);
+                    });
+                    // Reset dropdown to the *previous* valid selection
+                    DOMElements.appSelect.value = selectedAppId;
+                    return;
+                }
+                
+                const appId = DOMElements.appSelect.value || null;
+                displayAppDetails(appId);
+            });
+
+            const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
+            DOMElements.editAppName.addEventListener('input', debouncedSave);
+            DOMElements.editAppUrls.addEventListener('input', debouncedSave);
+            DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
+
+            DOMElements.saveChangesBtn.addEventListener('click', () => {
+                const newName = DOMElements.editAppName.value.trim();
+                if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
+                    return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
+                }
+
+                const isNewApp = initialAppData.id === null;
+                const nameChanged = !isNewApp && newName !== initialAppData.name;
+                
+                // FIX (Mode B, Issue 2): Pass selectedAppId to exclude current app from duplicate check
+                if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName, isNewApp ? null : selectedAppId)) {
+                    return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
+                }
+
+                const appData = {
+                    name: newName,
+                    urls: DOMElements.editAppUrls.value.trim(),
+                    escalation: DOMElements.editAppEscalation.value.trim()
+                };
+
+                if (isNewApp) {
+                    appData.id = SafeUI.generateId();
+                    DataHelpers.getCollection(state, 'apps').push(appData); // <-- FIX (Mode D)
+                    SafeUI.showToast('Application created');
+                } else {
+                    const app = DataHelpers.findById(state, 'apps', selectedAppId); // <-- FIX (Mode D)
+                    if (app) {
+                        app.name = appData.name;
+                        app.urls = appData.urls;
+                        app.escalation = appData.escalation;
+                        SafeUI.showToast('Application updated');
+                    }
+                }
+                
+                saveState();
+                renderAppData();
+                DOMElements.appSelect.value = appData.id || selectedAppId;
+                displayAppDetails(appData.id || selectedAppId);
+            });
+
+            DOMElements.deleteAppBtn.addEventListener('click', () => {
+                if (!selectedAppId) return;
+                const app = DataHelpers.findById(state, 'apps', selectedAppId); // <-- FIX (Mode D)
+                if (!app) return;
+                
+                UIPatterns.confirmDelete('Application', app.name, () => { // <-- FIX (Mode C)
+                    state.apps = state.apps.filter(a => a.id !== selectedAppId);
+                    saveState();
+                    selectedAppId = null;
+                    displayAppDetails(null);
+                    renderAppData();
+                });
+            });
+
+            // add-shortcut-btn-menu is now handled by QuickListManager
+            DOMElements.addNewAppBtnMenu.addEventListener('click', createNewAppForm);
+            
+            // Settings modal init
+            setupSettingsModal(); 
+            
+            // Initial render of page-specific parts
+            renderAppData();
+        };
+        
+
+        // Dashboard App Initializer
         AppLifecycle.run(async () => {
-            const APP_VERSION = '6.3.0';
-            console.log(`[Dashboard] v${APP_VERSION} initialized`);
+            
+            const APP_VERSION = '6.2.0';
+            console.log(`AppLifecycle: Running index.html v${APP_VERSION}`);
             
             const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
             const APP_CONFIG = {
@@ -567,17 +626,12 @@
                 apps: [],
                 notes: [],
                 shortcuts: [],
-                ui: {
-                    selectedAppId: null,
-                    activeNoteId: null,
-                    notepadScrollTop: 0
-                }
             };
 
             const ctx = await AppLifecycle.initPage({
                 storageKey: LOCAL_STORAGE_KEY,
                 defaultState,
-                version: APP_VERSION,
+                version: APP_VERSION, 
                 requiredElements: [
                     'shortcuts-container', 'app-select-group', 'app-select',
                     'app-empty-state', 'modal-overlay', 'modal-content', 'app-details-container',
@@ -593,14 +647,21 @@
 
             if (!ctx) return;
 
+            // Call the centralized dashboard initialization function
+            
+            // 1. Initialize all page-specific logic (Apps, Shortcuts, Settings)
             initDashboardPageSpecific(ctx, APP_CONFIG);
 
+            // 2. Initialize the shared Notepad module
             if (typeof window.NotepadManager?.init === 'function') {
+                // Pass the context, which has the elements, state, and saveState function
                 window.NotepadManager.init(ctx);
             } else {
+                // This else block is a fallback, but shouldn't be hit if the dependency check is correct
+                console.error("NotepadManager.init not found. app-ui.js may not have loaded correctly.");
                 AppLifecycle._showErrorBanner(
                     "Application Failed to Load",
-                    "The core Notepad module failed to load."
+                    "The core Notepad module failed to load. 'app-ui.js' may be corrupt or blocked."
                 );
             }
         });
@@ -608,5 +669,4 @@
     </script>
 </body>
 </html>
-
 
