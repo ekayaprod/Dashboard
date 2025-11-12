@@ -101,7 +101,30 @@
       Waits for bootstrap.js to load all dependencies before initializing.
     -->
     <script>
+    // Wait for bootstrap, but timeout if it fails
+    let bootstrapReady = false;
+
     document.addEventListener('bootstrap:ready', () => {
+        bootstrapReady = true;
+        initializePage();
+    });
+
+    // Fallback: If bootstrap doesn't fire within 5 seconds, show error
+    setTimeout(() => {
+        if (!bootstrapReady) {
+            console.error('Bootstrap did not complete within 5 seconds');
+            const banner = document.createElement('div');
+            banner.className = 'app-startup-banner';
+            banner.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; padding: 1rem; background-color: #fef2f2; color: #dc2626; border-bottom: 2px solid #fecaca; font-family: sans-serif; z-index: 10000;";
+            banner.innerHTML = `
+                <strong>Application Startup Timeout</strong>
+                <p>The application failed to load within 5 seconds. Check the browser console for errors.</p>
+            `;
+            document.body.insertBefore(banner, document.body.firstChild);
+        }
+    }, 5000);
+    
+    function initializePage() {
         
         // ============================================================================
         // PAGE-SPECIFIC LOGIC (Moved from DashboardUI in app-ui.js)
@@ -665,8 +688,9 @@
                 );
             }
         });
-    });
+    }
     </script>
 </body>
 </html>
+
 
