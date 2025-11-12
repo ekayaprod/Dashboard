@@ -1,9 +1,10 @@
 /**
  * app-core.js
  * Core application initialization, SafeUI wrapper, and DOM utilities.
+ * Version: 2.7.0 (Navbar logic moved to bootstrap.js)
  */
 
-const CORE_VERSION = '2.6.1';
+const CORE_VERSION = '2.7.0';
 
 // ============================================================================
 // MODULE: SVGIcons
@@ -71,42 +72,26 @@ const DataHelpers = Object.freeze({
 // MODULE: UIUtils
 // ============================================================================
 const UIUtils = (() => {
+    // loadNavbar is now handled by bootstrap.js but kept as fallback utility
     const loadNavbar = (function() {
         let loaded = false;
         return async function(containerId) {
             if (loaded) return;
-            
             const navContainer = document.getElementById(containerId);
-            if (!navContainer) {
-                console.error(`[loadNavbar] Container "${containerId}" not found.`);
-                return;
+            if (!navContainer || navContainer.children.length > 0) {
+                // Already populated by bootstrap or invalid
+                return; 
             }
 
             try {
                 console.log('[loadNavbar] Fetching navbar.html...');
                 const response = await fetch(`navbar.html`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const html = await response.text();
-                
-                if (!html || html.length < 10) {
-                    throw new Error('Navbar HTML is empty or too short');
-                }
-                
-                navContainer.innerHTML = html;
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                navContainer.innerHTML = await response.text();
                 loaded = true;
-                console.log('[loadNavbar] ✓ Navbar loaded successfully');
-                
             } catch (error) {
-                console.error('[loadNavbar] Failed to load navbar:', error);
-                navContainer.innerHTML = `
-                    <div style="background: #fef2f2; color: #dc2626; padding: 0.5rem; text-align: center; font-size: 0.85rem;">
-                        ⚠️ Navigation failed to load: ${error.message}
-                    </div>
-                `;
+                console.error('Failed to load navbar:', error);
+                navContainer.innerHTML = `<div style="background: #fef2f2; color: #dc2626; padding: 0.5rem;">⚠️ Navigation failed to load: ${error.message}</div>`;
             }
         };
     })();
@@ -137,16 +122,14 @@ const UIUtils = (() => {
             await navigator.clipboard.writeText(text);
             return true;
         } catch (err) {
-            console.error('Failed to copy to clipboard (API failure):', err);
+            console.error('Failed to copy to clipboard:', err);
             return false;
         }
     };
 
     const downloadJSON = function(dataStr, filename, mimeType = 'application/json') {
         try {
-            if (typeof dataStr !== 'string' || !filename) {
-                throw new Error('Invalid download parameters.');
-            }
+            if (typeof dataStr !== 'string' || !filename) throw new Error('Invalid download parameters.');
             const dataBlob = new Blob([dataStr], { type: mimeType });
             const url = URL.createObjectURL(dataBlob);
             const a = document.createElement('a');
@@ -170,9 +153,7 @@ const UIUtils = (() => {
         input.accept = accept;
         input.onchange = (event) => {
             const file = event.target.files[0];
-            if (file) {
-                callback(file);
-            }
+            if (file) callback(file);
         };
         input.click();
     };
@@ -180,34 +161,21 @@ const UIUtils = (() => {
     const readTextFile = (file, onSuccess, onError) => {
         const reader = new FileReader();
         reader.onload = (event) => {
-            try {
-                const text = event.target.result;
-                onSuccess(text);
-            } catch (err) {
-                console.error("Failed to read text:", err);
-                onError("Failed to read file as text.");
-            }
+            try { onSuccess(event.target.result); } 
+            catch (err) { onError("Failed to read file as text."); }
         };
-        reader.onerror = () => {
-            console.error("Failed to read file.");
-            onError("Failed to read the file.");
-        };
+        reader.onerror = () => onError("Failed to read the file.");
         reader.readAsText(file);
     };
 
-    // New unified JSON parser with error handling
     const parseJSON = (jsonString, onSuccess, onError) => {
         try {
             const parsed = JSON.parse(jsonString);
             onSuccess(parsed);
         } catch (err) {
             const errorMsg = `Invalid JSON: ${err.message}`;
-            console.error(errorMsg, err);
-            if (onError) {
-                onError(errorMsg);
-            } else {
-                _showModal('Parse Error', `<p>${escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
-            }
+            if (onError) onError(errorMsg);
+            else _showModal('Parse Error', `<p>${escapeHTML(errorMsg)}</p>`, [{label: 'OK'}]);
         }
     };
 
@@ -232,16 +200,15 @@ const UIUtils = (() => {
                     (parsed) => {
                         data = parsed;
                         if (data.version !== version) {
-                            console.warn(`State version mismatch (found ${data.version}, expected ${version}). Loading state anyway.`);
+                            console.warn(`State version mismatch. Loading state anyway.`);
                         }
                     },
                     (err) => {
                         if (onCorruption) {
-                            try { onCorruption(); } 
-                            catch (e) { console.error("Corruption handler failed:", e); }
+                            try { onCorruption(); } catch (e) {}
                         }
                         localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
-                        _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved with timestamp.</p>', [{label: 'OK'}]);
+                        _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
                         data = { ...defaults };
                     }
                 );
@@ -249,10 +216,7 @@ const UIUtils = (() => {
                 data = { ...defaults };
             }
             
-            if (data && !data.version) {
-                data.version = version;
-            }
-            
+            if (data && !data.version) data.version = version;
             return data || { ...defaults, version };
         };
 
@@ -261,11 +225,6 @@ const UIUtils = (() => {
             try {
                 state.version = version;
                 serialized = JSON.stringify(state);
-                
-                if (serialized.length > 4.5 * 1024 * 1024) {
-                    console.warn('WARNING: State approaching localStorage 5MB limit');
-                }
-                
                 localStorage.setItem(key, serialized);
                 
                 // Verify save
@@ -275,13 +234,7 @@ const UIUtils = (() => {
                 }
             } catch (err) {
                 console.error("Failed to save state:", err);
-                const stateSize = (typeof serialized !== 'undefined') ? serialized.length : 'unknown';
-                
-                _showModal("Save Error", 
-                    `<p>Failed to save data: ${escapeHTML(err.message)}</p>
-                     <p>State size: ${Math.round(((typeof serialized !== 'undefined') ? serialized.length : 0) / 1024)}KB</p>`, 
-                    [{ label: 'OK' }]
-                );
+                _showModal("Save Error", `<p>Failed to save data: ${escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
             }
         };
 
@@ -290,22 +243,16 @@ const UIUtils = (() => {
 
     const _hideModal = () => {
         const modalOverlay = document.getElementById('modal-overlay');
-        if (modalOverlay) {
-            modalOverlay.style.display = 'none';
-        }
+        if (modalOverlay) modalOverlay.style.display = 'none';
         document.body.classList.remove('modal-open');
     };
 
     const _showModal = function(title, contentHtml, actions) {
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
-        if (!modalOverlay || !modalContent) {
-            console.error('Modal DOM elements not found.');
-            return;
-        }
+        if (!modalOverlay || !modalContent) return;
         
         document.body.classList.add('modal-open');
-
         modalContent.innerHTML = `<h3>${escapeHTML(title)}</h3><div>${contentHtml}</div><div class="modal-actions"></div>`;
         const actionsContainer = modalContent.querySelector('.modal-actions');
 
@@ -315,15 +262,12 @@ const UIUtils = (() => {
             btn.textContent = action.label;
             btn.onclick = () => {
                 if (action.callback) {
-                    if (action.callback() === false) {
-                        return;
-                    }
+                    if (action.callback() === false) return;
                 }
                 _hideModal();
             };
             actionsContainer.appendChild(btn);
         });
-
         modalOverlay.style.display = 'flex';
     };
 
@@ -336,16 +280,13 @@ const UIUtils = (() => {
 
     const showToast = (function() {
         let activeTimer = null;
-
         return function(message) {
             const toast = document.getElementById('toast');
             if (!toast) return;
-
             if (activeTimer) clearTimeout(activeTimer);
 
             toast.innerHTML = `<span>${escapeHTML(message)}</span>`;
             toast.classList.add('show');
-
             activeTimer = setTimeout(() => {
                 toast.classList.remove('show');
                 activeTimer = null;
@@ -365,7 +306,7 @@ const UIUtils = (() => {
         openFilePicker,
         readJSONFile,
         readTextFile,
-        parseJSON, // Exporting the new helper
+        parseJSON,
         createStateManager,
         hideModal: _hideModal,
         showModal: _showModal,
@@ -388,7 +329,6 @@ const SafeUI = (() => {
     return {
         isReady,
         SVGIcons: getSVGIcons(),
-
         loadNavbar: (containerId) => { if (isReady) UIUtils.loadNavbar(containerId); },
         showModal: (title, content, actions) => { if (isReady) return UIUtils.showModal(title, content, actions); },
         showValidationError: (title, msg, elId) => { if (isReady) return UIUtils.showValidationError(title, msg, elId); },
@@ -416,7 +356,6 @@ const DOMHelpers = (() => {
         cacheElements: (requiredIds) => {
             const elements = {};
             let allFound = true;
-
             for (const id of requiredIds) {
                 const el = document.getElementById(id);
                 if (!el) {
@@ -427,7 +366,6 @@ const DOMHelpers = (() => {
             }
             return { elements, allFound };
         },
-
         setupTextareaAutoResize: (textarea, maxHeight = 300) => {
             if (!textarea) return;
             const resize = () => {
@@ -438,11 +376,8 @@ const DOMHelpers = (() => {
             textarea._autoResize = resize;
             resize();
         },
-
         triggerTextareaResize: (textarea) => {
-            if (textarea && typeof textarea._autoResize === 'function') {
-                textarea._autoResize();
-            }
+            if (textarea && typeof textarea._autoResize === 'function') textarea._autoResize();
         }
     };
 })();
@@ -455,22 +390,17 @@ const AppLifecycle = (() => {
         try {
             const bannerId = 'app-startup-error';
             let banner = document.getElementById(bannerId);
-
             if (!banner) {
                 banner = document.createElement('div');
                 banner.id = bannerId;
                 banner.className = 'app-startup-banner';
-                if (document.body) {
-                    document.body.prepend(banner);
-                } else {
-                    document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
-                }
+                if (document.body) document.body.prepend(banner);
+                else document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
             }
             banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
             banner.classList.remove('hidden');
         } catch (e) {
             console.error("Failed to show error banner:", e);
-            document.body.innerHTML = `<p>${SafeUI.escapeHTML(title)}: ${SafeUI.escapeHTML(message)}</p>`;
         }
     };
 
@@ -527,12 +457,13 @@ const AppLifecycle = (() => {
             }
 
             if (elements.btnSettings) elements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
-            if (elements.navbarContainer) await SafeUI.loadNavbar("navbar-container");
+            
+            // REMOVED: await SafeUI.loadNavbar("navbar-container");
+            // Navbar is now loaded by bootstrap.js before this function runs.
 
             let state = stateManager.load();
             
             // --- State Migration Helper ---
-            // Automatically initialize UI state if missing for existing users
             if (!state.ui && defaultState.ui) {
                 state.ui = { ...defaultState.ui };
                 stateManager.save(state);
