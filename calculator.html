@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EOD Targets</title>
+    <!-- Assuming style.css is in the same directory or loaded via bootstrap -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="eod-targets-page">
@@ -55,12 +56,11 @@
                     <div class="calc-section-header">
                         <h2>2. Progress</h2>
                     </div>
-                    <!-- FIX: Changed to a responsive 4-column grid -->
                     <div class="calc-section-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; align-items: flex-end;">
                         <div>
-                            <!-- FIX: Updated label and placeholder for seconds -->
-                            <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM:SS)</label>
-                            <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 01:30:45" value="00:00:00">
+                            <!-- FIX: Updated label and placeholder -->
+                            <label for="currentCallTime" class="sidebar-label">Call Time</label>
+                            <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 2:37 or 157 or 2.5" value="0">
                         </div>
                         <div>
                             <label for="currentTickets" class="sidebar-label">Tickets Closed</label>
@@ -108,10 +108,8 @@
                     <div id="targets-content" class="calc-section-content targets-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;"></div>
                 </div>
                 
-                <!-- FIX: Added new section 5 for calculation info -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <!-- FIX: Changed title to Live Assistant -->
                         <h2>5. Live Assistant</h2>
                     </div>
                     <div id="calc-info-content" class="calc-section-content">
@@ -171,7 +169,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.2.0', // Bumped for new features
+            VERSION: '1.3.0', // Bumped for new logic
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -200,7 +198,7 @@
                         shiftStart: '08:00',
                         shiftEnd: '16:00',
                         breakTime: 60,
-                        currentCallTime: '00:00:00', // FIX: Default to HH:MM:SS
+                        currentCallTime: '0', // FIX: Default to '0'
                         currentTickets: 0
                     }
                 };
@@ -217,7 +215,7 @@
                         'currentTime', 'totalProductiveTime', 'timePassed', 'timeRemaining', 'totalWorkTimeEOD',
                         'targets-content', 'btnResetData',
                         'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset',
-                        'calc-info-content' // FIX: Added new element
+                        'calc-info-content'
                     ]
                 });
 
@@ -237,48 +235,54 @@
                 };
 
                 const TimeUtil = {
-                    // FIX: Updated to parse HH:MM:SS or HH:MM
-                    parseTimeToMinutes(timeStr) {
-                        const timeRegex = /^\d{1,2}:\d{2}(:\d{2})?$/;
-                        if (!timeRegex.test(timeStr)) return 0;
-
-                        const parts = timeStr.split(':').map(Number);
-                        let hours = 0;
-                        let minutes = 0;
-                        let seconds = 0;
+                    // FIX: Replaced with flexible time parser
+                    parseTimeToMinutes(input) {
+                        if (!input) return 0;
                         
-                        if (parts.length === 3) { // HH:MM:SS
-                            hours = parts[0] || 0;
-                            minutes = parts[1] || 0;
-                            seconds = parts[2] || 0;
-                        } else if (parts.length === 2) { // HH:MM
-                            hours = parts[0] || 0;
-                            minutes = parts[1] || 0;
+                        const trimmed = String(input).trim();
+                        
+                        // Case 1: Plain number (interpret as minutes)
+                        // Examples: "157", "90", "45"
+                        if (/^\d+$/.test(trimmed)) {
+                            return parseInt(trimmed, 10);
                         }
                         
-                        if (minutes > 59 || seconds > 59) return 0; // Invalid time
+                        // Case 2: Decimal number (interpret as hours)
+                        // Examples: "2.5", "1.75", "3.25"
+                        if (/^\d+\.\d+$/.test(trimmed)) {
+                            return parseFloat(trimmed) * 60;
+                        }
                         
-                        return (hours * 60) + minutes + (seconds / 60); // Return total minutes
+                        // Case 3: Time format HH:MM or H:MM
+                        // Examples: "2:37", "02:37", "0:45"
+                        if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+                            const parts = trimmed.split(':').map(Number);
+                            return (parts[0] * 60) + parts[1];
+                        }
+                        
+                        // Case 4: Time format HH:MM:SS or H:MM:SS  
+                        // Examples: "2:37:00", "02:37:30", "0:45:15"
+                        if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
+                            const parts = trimmed.split(':').map(Number);
+                            return (parts[0] * 60) + parts[1] + (parts[2] / 60);
+                        }
+                        
+                        return 0; // Invalid input
                     },
 
                     // FIX: Renamed to clarify it truncates seconds for display
-                    formatMinutesToHHMM_NoSeconds(totalMinutes) {
+                    // This is the primary display function now
+                    formatMinutesToHHMM(totalMinutes) {
                         if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
                         const hours = Math.floor(totalMinutes / 60);
                         const minutes = Math.floor(totalMinutes % 60);
                         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
                     },
                     
-                    // FIX: New function to format with seconds for the input
-                    formatMinutesToHHMMSS(totalMinutes) {
-                        if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00:00';
-                        const totalSeconds = Math.floor(totalMinutes * 60);
-                        const hours = Math.floor(totalSeconds / 3600);
-                        const minutes = Math.floor((totalSeconds % 3600) / 60);
-                        const seconds = totalSeconds % 60;
-                        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                    },
-
+                    // This function is no longer needed for display, but parse handles HH:MM:SS
+                    // Keeping formatMinutesToHHMMSS just in case, but renaming old HHMM
+                    // formatMinutesToHHMM_NoSeconds -> formatMinutesToHHMM
+                    
                     formatMinutesToHHMMShort(totalMinutes) {
                         if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
                         if (totalMinutes === 0) return '0m';
@@ -320,7 +324,7 @@
                     state.ui.shiftStart = DOMElements.shiftStart.value;
                     state.ui.shiftEnd = DOMElements.shiftEnd.value;
                     state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10);
-                    state.ui.currentCallTime = DOMElements.currentCallTime.value; // Now saves HH:MM:SS
+                    state.ui.currentCallTime = DOMElements.currentCallTime.value; // FIX: Saves raw input value
                     state.ui.currentTickets = parseInt(DOMElements.currentTickets.value, 10) || 0;
                     
                     saveState();
@@ -328,14 +332,15 @@
                 }, 250);
 
                 function handleAddCallTime() {
-                    // FIX: Use new parse/format functions
+                    // FIX: Use new parse function and set value as minutes
                     const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                     const minutesToAdd = parseInt(DOMElements.addCallTime.value, 10) || 0;
                     
                     if (minutesToAdd === 0) return;
                     
                     const newTotalMinutes = currentMinutes + minutesToAdd;
-                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMMSS(newTotalMinutes);
+                    // FIX: Set value to plain minutes, which the parser understands
+                    DOMElements.currentCallTime.value = newTotalMinutes.toFixed(0); 
                     DOMElements.addCallTime.value = '';
                     debouncedCalculateAndSave(); 
                 }
@@ -358,10 +363,10 @@
                         const minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
                         
                         if (minsToImport > 0) {
-                            // FIX: Use new parse/format functions
+                            // FIX: Use new parse function and set value as minutes
                             const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                             const newTotalMinutes = currentMinutes + minsToImport;
-                            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMMSS(newTotalMinutes);
+                            DOMElements.currentCallTime.value = newTotalMinutes.toFixed(0);
                             
                             localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
                             
@@ -414,9 +419,9 @@
                 function updateTimeDisplays(now) {
                     const scheduleInfo = getScheduleInfo(now);
                     
-                    // FIX: Use formatter that truncates seconds
-                    DOMElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(scheduleInfo.productiveMinutesPassed);
-                    DOMElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(scheduleInfo.productiveMinutesRemaining);
+                    // FIX: Use main HHMM formatter
+                    DOMElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesPassed);
+                    DOMElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesRemaining);
                     DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
                     
                     return scheduleInfo; 
@@ -430,7 +435,8 @@
                     `;
                 }
 
-                function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
+                // FIX: Replaced function with new logic
+                function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining }) {
                     if (totalWorkTimeEOD < 0) {
                         return {
                             boxClass: 'target-danger',
@@ -440,83 +446,122 @@
                     if (ticketsNeeded <= 0) {
                         return {
                             boxClass: 'target-good',
-                            html: buildTargetCardHTML(boundary.name, "GOAL MET!", `You've hit the goal of <strong>${ticketsToHitGrade}</strong> tickets.`)
+                            html: buildTargetCardHTML(boundary.name, "GOAL MET!", `Target: ${ticketsToHitGrade} tickets`)
                         };
                     }
                     if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
                         return {
                             boxClass: 'target-danger',
-                            html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
+                            html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})`)
                         };
                     }
                     return {
                         boxClass: 'target-warn',
-                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})<br>${callTimeHtml}`)
+                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})`)
                     };
                 }
                 
-                // FIX: New function to render calculation info
-                function renderCalculationInfo(totalWorkTimeEOD) {
-                    if (!DOMElements.calcInfoContent) return; // Guard
-                    
-                    const roundUpThreshold = ROUNDING_BOUNDARY_MAX + 1; // This is 30
-                    const cuspThreshold = 20; // Minutes when we start advising
+                // FIX: Replaced function with new Live Assistant logic
+                function renderCalculationInfo(scheduleData) {
+                    const { 
+                        totalWorkTimeEOD, 
+                        currentTicketsSoFar, 
+                        productiveMinutesRemaining,
+                        roundedWorkHours,
+                        targetTicketGoal 
+                    } = scheduleData;
                     
                     if (totalWorkTimeEOD < 0) {
                         DOMElements.calcInfoContent.innerHTML = `
-                            <div class="info-box info-box-danger target-info-box">
+                            <div class="info-box info-box-danger">
                                 <strong>Status:</strong> Call time exceeds available productive time.
                             </div>`;
                         return;
                     }
 
-                    const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
-                    const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
+                    // Calculate what's needed for each grade
+                    const grades = {
+                        'Satisfactory': { min: targetTicketGoal - 3, max: targetTicketGoal + 3 },
+                        'Excellent': { min: targetTicketGoal + 4, max: targetTicketGoal + 6 },
+                        'Outstanding': { min: targetTicketGoal + 7, max: Infinity }
+                    };
                     
-                    // Use Math.floor on totalWorkTimeEOD for clean minute comparison
-                    const minutesPastHour = Math.floor(totalWorkTimeEOD) % 60;
+                    let currentGrade = 'Below Satisfactory';
+                    let nextGrade = null;
+                    let ticketsToNext = 0;
                     
-                    let adviceHtml;
-                    let adviceClass = 'target-info-box'; // Default class
-
-                    if (minutesPastHour >= roundUpThreshold) {
-                        // --- Scenario 1: Safely Rounding UP ---
-                        const bufferMins = minutesPastHour - roundUpThreshold;
-                        adviceClass = 'info-box-success'; // Use success class
-                        adviceHtml = `
-                            You are rounding <strong>UP</strong> to <strong>${roundedWorkHours} hours</strong>.
-                            <br>
-                            Your buffer is <strong>${bufferMins} min</strong>.
-                        `;
-                    } else if (minutesPastHour >= cuspThreshold) {
-                        // --- Scenario 2: On the Cusp (20-29 mins) ---
-                        const minsToRoundUp = roundUpThreshold - minutesPastHour;
-                        const nextHour = roundedWorkHours + 1;
-                        const nextTarget = nextHour * TICKETS_PER_HOUR_RATE;
-                        adviceClass = 'info-box-warn'; // Use warning/advice class
-                        adviceHtml = `
-                            You are rounding <strong>DOWN</strong> to ${roundedWorkHours} hours.
-                            <br>
-                            <strong>ADVICE:</strong> You only need <strong>${minsToRoundUp} more min</strong> of 'Work Time (EOD)' to round <strong>UP</strong> to ${nextHour} hours (and a target of ${nextTarget} tickets).
-                        `;
+                    // Determine current grade
+                    if (currentTicketsSoFar >= grades.Outstanding.min) {
+                        currentGrade = 'Outstanding';
+                    } else if (currentTicketsSoFar >= grades.Excellent.min) {
+                        currentGrade = 'Excellent';
+                        nextGrade = 'Outstanding';
+                        ticketsToNext = grades.Outstanding.min - currentTicketsSoFar;
+                    } else if (currentTicketsSoFar >= grades.Satisfactory.min) {
+                        currentGrade = 'Satisfactory';
+                        nextGrade = 'Excellent';
+                        ticketsToNext = grades.Excellent.min - currentTicketsSoFar;
                     } else {
-                        // --- Scenario 3: Safely Rounding DOWN (0-19 mins) ---
-                        const minsToRoundUp = roundUpThreshold - minutesPastHour;
-                        adviceHtml = `
-                            You are rounding <strong>DOWN</strong> to <strong>${roundedWorkHours} hours</strong>.
-                            <br>
-                            You would need <strong>${minsToRoundUp} more min</strong> to round up. This is likely not worth the extra call time.
-                        `;
+                        nextGrade = 'Satisfactory';
+                        ticketsToNext = grades.Satisfactory.min - currentTicketsSoFar;
                     }
-
-                    DOMElements.calcInfoContent.innerHTML = `
-                        <div class="info-box target-info-box">
-                            Your 'Work Time (EOD)' of <strong>${TimeUtil.formatMinutesToHHMM_NoSeconds(totalWorkTimeEOD)}</strong> results in a target of <strong>${targetTicketGoal} tickets</strong>.
-                        </div>
-                        <div class="info-box ${adviceClass}" style="margin-top: 0.5rem;">
-                            <strong>Assistant:</strong> ${adviceHtml}
+                    
+                    // Build status HTML
+                    let statusHtml = `
+                        <div class="info-box info-box-success">
+                            <strong>Current Status:</strong> ${currentTicketsSoFar} tickets with ${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)} work time
+                            <br>
+                            Your target is <strong>${targetTicketGoal} tickets</strong> (based on ${roundedWorkHours} rounded hours).
+                            <br>
+                            Current grade: <strong>${currentGrade}</strong>
                         </div>
                     `;
+                    
+                    // Build advice HTML
+                    let adviceHtml = '';
+                    
+                    if (nextGrade) {
+                        adviceHtml = `
+                            <div class="info-box info-box-warn">
+                                <strong>To reach ${nextGrade}:</strong> Close <strong>${ticketsToNext} more ticket${ticketsToNext === 1 ? '' : 's'}</strong>
+                            </div>
+                        `;
+                    } else {
+                        adviceHtml = `
+                            <div class="info-box info-box-success">
+                                <strong>Goal Achieved!</strong> You've reached Outstanding performance.
+                            </div>
+                        `;
+                    }
+                    
+                    // Add rounding insight (only if relevant)
+                    const minutesPastHour = Math.floor(totalWorkTimeEOD) % 60;
+                    const roundUpThreshold = 30;
+                    
+                    // Note: User instructions had a logic error here (targetReduction was inverted). 
+                    // Fixed to correctly show target INCREASE.
+                    if (minutesPastHour >= 20 && minutesPastHour < roundUpThreshold) {
+                        const minsToRoundUp = roundUpThreshold - minutesPastHour;
+                        const nextHourTarget = (roundedWorkHours + 1) * TICKETS_PER_HOUR_RATE;
+                        const targetIncrease = nextHourTarget - targetTicketGoal; // How much target goes UP
+                        
+                        adviceHtml += `
+                            <div class="info-box target-info-box" style="margin-top: 0.5rem;">
+                                <strong>Rounding Insight:</strong> You're ${minsToRoundUp} min away from rounding UP to ${roundedWorkHours + 1} hours.
+                                <br>
+                                However, this would <strong>INCREASE</strong> your target by <strong>${targetIncrease} tickets</strong>, making goals harder.
+                            </div>
+                        `;
+                    } else if (minutesPastHour >= roundUpThreshold) {
+                        const buffer = minutesPastHour - roundUpThreshold;
+                        adviceHtml += `
+                            <div class="info-box info-box-success" style="margin-top: 0.5rem;">
+                                <strong>Rounding Status:</strong> You're safely rounding UP to ${roundedWorkHours} hours (${buffer} min buffer).
+                            </div>
+                        `;
+                    }
+                    
+                    DOMElements.calcInfoContent.innerHTML = statusHtml + adviceHtml;
                 }
 
 
@@ -525,20 +570,28 @@
                     
                     const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
                     
-                    // FIX: Use formatter that truncates seconds
-                    DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(totalProductiveMinutes);
+                    // FIX: Use main HHMM formatter
+                    DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
+
+                    const errorData = { 
+                        totalWorkTimeEOD: -1, 
+                        currentTicketsSoFar: 0, 
+                        productiveMinutesRemaining: 0, 
+                        roundedWorkHours: 0, 
+                        targetTicketGoal: 0 
+                    };
 
                     if (scheduleError) {
                         DOMElements.totalWorkTimeEOD.innerText = '00:00';
                         DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${scheduleError}</div>`;
-                        renderCalculationInfo(-1); // Show error in info box
+                        renderCalculationInfo(errorData); // Show error in info box
                         return;
                     }
 
                     if (totalProductiveMinutes <= 0) {
                         DOMElements.totalWorkTimeEOD.innerText = '00:00';
                         DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">Invalid Schedule. Total Productive Time must be greater than 0 (check break time).</div>`;
-                        renderCalculationInfo(-1); // Show error in info box
+                        renderCalculationInfo(errorData); // Show error in info box
                         return;
                     }
 
@@ -546,8 +599,8 @@
                     const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
                     
                     const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
-                    // FIX: Use formatter that truncates seconds
-                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM_NoSeconds(totalWorkTimeEOD);
+                    // FIX: Use main HHMM formatter
+                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
                     
                     const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
                     const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
@@ -561,35 +614,15 @@
                         const ticketsToHitGrade = targetTicketGoal + boundary.min;
                         const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
                         
-                        let callTimeHtml = ''; 
-
-                        if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
-                            const maxAllowableTarget = currentTicketsSoFar - boundary.min;
-                            const maxRoundedHours = Math.floor(maxAllowableTarget / TICKETS_PER_HOUR_RATE);
-                            
-                            const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
-                            const requiredCallTime = totalProductiveMinutes - maxWorkTimeMinutes;
-                            const additionalCallMinutes = requiredCallTime - currentCallTimeSoFar;
-                            const roundedAdditionalCallMinutes = Math.ceil(additionalCallMinutes);
-
-                            const callTimeDisplay = TimeUtil.formatMinutesToHHMMShort(roundedAdditionalCallMinutes);
-
-                            if (roundedAdditionalCallMinutes <= 0) {
-                                callTimeHtml = '<strong>OR</strong> 0m of calls'; 
-                            } else if (productiveMinutesRemaining > 0 && roundedAdditionalCallMinutes > productiveMinutesRemaining) {
-                                callTimeHtml = `<strong>OR</strong> ${callTimeDisplay}+ (exceeds shift)`;
-                            } else {
-                                callTimeHtml = `<strong>OR</strong> ${callTimeDisplay} of calls`;
-                            }
-                        }
-
+                        // FIX: Removed all callTimeHtml logic block
+                        
+                        // FIX: Updated getTargetCardState call to use object and remove callTimeHtml
                         const { boxClass, html } = getTargetCardState({
                             boundary,
                             totalWorkTimeEOD,
                             ticketsNeeded,
                             ticketsToHitGrade,
-                            productiveMinutesRemaining,
-                            callTimeHtml
+                            productiveMinutesRemaining
                         });
                         
                         targetBox.className = `target-card ${boxClass}`;
@@ -597,8 +630,14 @@
                         DOMElements.targetsContent.appendChild(targetBox);
                     }
                     
-                    // FIX: Moved info box logic to its own function
-                    renderCalculationInfo(totalWorkTimeEOD);
+                    // FIX: Call renderCalculationInfo with the full scheduleData object
+                    renderCalculationInfo({ 
+                        totalWorkTimeEOD, 
+                        currentTicketsSoFar, 
+                        productiveMinutesRemaining,
+                        roundedWorkHours,
+                        targetTicketGoal 
+                    });
                 }
 
                 // --- Execution ---
