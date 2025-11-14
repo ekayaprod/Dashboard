@@ -547,22 +547,12 @@
                         ticketsToNext = grades.Satisfactory.min - currentTicketsSoFar;
                     }
                     
-                    // Build status HTML
-                    let statusHtml = `
-                        <div class="info-box info-box-success">
-                            <strong>Current Status:</strong> ${currentTicketsSoFar} tickets with ${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)} work time
-                            <br>
-                            Your target is <strong>${targetTicketGoal} tickets</strong> (based on ${roundedWorkHours} rounded hours).
-                            <br>
-                            Current grade: <strong>${currentGrade}</strong>
-                        </div>
-                    `;
-                    
-                    // Build advice HTML
-                    let adviceHtml = '';
-                    
+                    // --- Refactored Advice HTML ---
+                    let primaryAdviceHtml = '';
+                    let secondaryAdviceHtml = '';
+                    let boxClass = 'info-box-warn'; // Default to warning/advice
+
                     if (nextGrade) {
-                        // --- NEW OPTIMIZATION LOGIC ---
                         const TICKET_EFFORT_MINUTES = 5; // Perceived effort per ticket (in minutes)
                         const ticketEffort = ticketsToNext * TICKET_EFFORT_MINUTES;
 
@@ -590,24 +580,19 @@
                                 secondaryAdvice = `(Alternatively, adding ${TimeUtil.formatMinutesToHHMMShort(callEffort)} of call time would also work.)`;
                             }
                         }
-
-                        adviceHtml = `
-                            <div class="info-box info-box-warn">
-                                ${primaryAdvice}
-                                ${secondaryAdvice ? `<br><span style="font-size: 0.9em; opacity: 0.8;">${secondaryAdvice}</span>` : ''}
-                            </div>
-                        `;
-                        // --- END NEW LOGIC ---
+                        
+                        primaryAdviceHtml = `<p style="margin: 0;">${primaryAdvice}</p>`;
+                        if (secondaryAdvice) {
+                            secondaryAdviceHtml = `<p style="font-size: 0.9em; opacity: 0.8; margin: 4px 0 0 0;">${secondaryAdvice}</p>`;
+                        }
 
                     } else {
-                        adviceHtml = `
-                            <div class="info-box info-box-success">
-                                <strong>Goal Achieved!</strong> You've reached Outstanding performance.
-                            </div>
-                        `;
+                        primaryAdviceHtml = `<p style="margin: 0;"><strong>Goal Achieved!</strong> You've reached Outstanding performance.</p>`;
+                        boxClass = 'info-box-success'; // Green box if Outstanding
                     }
                     
-                    // Add rounding insight (only if relevant)
+                    // --- Refactored Rounding Warning HTML ---
+                    let roundingWarningHtml = '';
                     const minutesPastHour = Math.floor(totalWorkTimeEOD) % 60;
                     const roundUpThreshold = 30;
                     
@@ -618,23 +603,41 @@
                         const nextHourTarget = (roundedWorkHours + 1) * TICKETS_PER_HOUR_RATE;
                         const targetIncrease = nextHourTarget - targetTicketGoal; // How much target goes UP
                         
-                        adviceHtml += `
-                            <div class="info-box target-info-box" style="margin-top: 0.5rem;">
-                                <strong>Rounding Insight:</strong> You're ${minsToRoundUp} min away from rounding UP to ${roundedWorkHours + 1} hours.
-                                <br>
-                                However, this would <strong>INCREASE</strong> your target by <strong>${targetIncrease} tickets</strong>, making goals harder.
+                        // This is a critical warning, so add it
+                        roundingWarningHtml = `
+                            <div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 12px; padding-top: 12px;">
+                                <strong style="color: #c0392b;">Rounding Insight:</strong>
+                                <span style="font-size: 0.9em; display: block; margin-top: 4px;">
+                                    You're ${minsToRoundUp} min away from rounding UP to ${roundedWorkHours + 1} hours.
+                                    This would <strong>INCREASE</strong> your target by <strong>${targetIncrease} tickets</strong>.
+                                </span>
                             </div>
                         `;
-                    } else if (minutesPastHour >= roundUpThreshold) {
-                        const buffer = minutesPastHour - roundUpThreshold;
-                        adviceHtml += `
-                            <div class="info-box info-box-success" style="margin-top: 0.5rem;">
-                                <strong>Rounding Status:</strong> You're safely rounding UP to ${roundedWorkHours} hours (${buffer} min buffer).
-                            </div>
-                        `;
+                        boxClass = 'info-box-warn'; // Ensure box is yellow if this warning appears
                     }
+                    // Removed the "safely rounding up" message as it was clutter
                     
-                    DOMElements.calcInfoContent.innerHTML = statusHtml + adviceHtml;
+                    // --- Build Final HTML ---
+                    DOMElements.calcInfoContent.innerHTML = `
+                        <div class="info-box ${boxClass}">
+                            <!-- Main Advice -->
+                            <div>
+                                ${primaryAdviceHtml}
+                                ${secondaryAdviceHtml}
+                            </div>
+                            
+                            <!-- Context -->
+                            <div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 12px; padding-top: 12px;">
+                                <strong style="display: block; margin-bottom: 4px;">At a Glance:</strong>
+                                <span style="font-size: 0.9em;">
+                                    Your target is <strong>${targetTicketGoal}</strong> (from ${roundedWorkHours} rounded hours).<br>
+                                    Current stats: <strong>${currentTicketsSoFar}</strong> tickets, <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong> work time.
+                                </span>
+                            </div>
+                            
+                            ${roundingWarningHtml} <!-- This is the warning, if it exists -->
+                        </div>
+                    `;
                 }
 
 
