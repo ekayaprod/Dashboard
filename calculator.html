@@ -587,7 +587,13 @@
                         }
 
                     } else {
-                        primaryAdviceHtml = `<p style="margin: 0;"><strong>Goal Achieved!</strong> You've reached Outstanding performance.</p>`;
+                        // FIX: User is Outstanding, provide more context.
+                        const ticketsOverMin = currentTicketsSoFar - grades.Outstanding.min;
+                        if (ticketsOverMin === 0) {
+                            primaryAdviceHtml = `<p style="margin: 0;"><strong>Goal Achieved!</strong> You've just hit Outstanding performance!</p>`;
+                        } else {
+                            primaryAdviceHtml = `<p style="margin: 0;"><strong>Goal Achieved!</strong> You are <strong>${ticketsOverMin} ticket${ticketsOverMin === 1 ? '' : 's'}</strong> over the Outstanding minimum.</p>`;
+                        }
                         boxClass = 'info-box-success'; // Green box if Outstanding
                     }
                     
