@@ -169,7 +169,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.3.0', // Bumped for new logic
+            VERSION: '1.3.1', // Bumped for new display logic
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -240,8 +240,8 @@
                         if (!input) return 0;
                         
                         const trimmed = String(input).trim();
-                        
-                        // Case 1: Plain number (interpret as minutes)
+                    
+                    // Case 1: Plain number (interpret as minutes)
                         // Examples: "157", "90", "45"
                         if (/^\d+$/.test(trimmed)) {
                             return parseInt(trimmed, 10);
@@ -295,6 +295,40 @@
                     }
                 };
 
+                /**
+                 * Calculates the call time alternative for a given grade.
+                 * @param {object} boundary - The grade boundary object { min, max }
+                 * @param {number} currentTicketsSoFar
+                 * @param {number} totalProductiveMinutes
+                 * @param {number} currentCallTimeSoFar
+                 * @param {number} productiveMinutesRemaining
+                 * @returns {object|null} - e.g., { additionalCallMinutes: 30, callTimeHtml: "<strong>OR</strong> 30m more calls" } or null
+                 */
+                function getCallTimeAlternative(boundary, currentTicketsSoFar, totalProductiveMinutes, currentCallTimeSoFar, productiveMinutesRemaining) {
+                    const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min;
+                    const maxRoundedHours = Math.floor(maxAllowableTargetCalc / TICKETS_PER_HOUR_RATE);
+                    const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
+                    const maxCallTimeAllowed = totalProductiveMinutes - maxWorkTimeMinutes;
+                    const additionalCallMinutes = maxCallTimeAllowed - currentCallTimeSoFar;
+
+                    if (additionalCallMinutes > 0) {
+                        const flooredMinutes = Math.floor(additionalCallMinutes);
+                        const displayTime = TimeUtil.formatMinutesToHHMMShort(flooredMinutes);
+                        if (additionalCallMinutes <= productiveMinutesRemaining) {
+                            return {
+                                additionalCallMinutes: flooredMinutes,
+                                callTimeHtml: `<strong>OR</strong> ${displayTime} more calls`
+                            };
+                        } else {
+                            return {
+                                additionalCallMinutes: flooredMinutes,
+                                callTimeHtml: `<strong>OR</strong> ${displayTime} (exceeds shift)`
+                            };
+                        }
+                    }
+                    return null; // No positive call time alternative
+                }
+
                 function populateTimeOptions(select, startHour, endHour, defaultVal) {
                     for (let h = startHour; h <= endHour; h++) {
                         for (let m = 0; m < 60; m += 15) { 
@@ -332,15 +366,15 @@
                 }, 250);
 
                 function handleAddCallTime() {
-                    // FIX: Use new parse function and set value as minutes
+                    // FIX: Use new parse function
                     const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                     const minutesToAdd = parseInt(DOMElements.addCallTime.value, 10) || 0;
                     
                     if (minutesToAdd === 0) return;
                     
                     const newTotalMinutes = currentMinutes + minutesToAdd;
-                    // FIX: Set value to plain minutes, which the parser understands
-                    DOMElements.currentCallTime.value = newTotalMinutes.toFixed(0); 
+                    // FIX: Set value to HH:MM format per user request
+                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes); 
                     DOMElements.addCallTime.value = '';
                     debouncedCalculateAndSave(); 
                 }
@@ -363,10 +397,11 @@
                         const minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
                         
                         if (minsToImport > 0) {
-                            // FIX: Use new parse function and set value as minutes
+                            // FIX: Use new parse function
                             const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                             const newTotalMinutes = currentMinutes + minsToImport;
-                            DOMElements.currentCallTime.value = newTotalMinutes.toFixed(0);
+                            // FIX: Set value to HH:MM format per user request
+                            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
                             
                             localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
                             
@@ -468,7 +503,9 @@
                         currentTicketsSoFar, 
                         productiveMinutesRemaining,
                         roundedWorkHours,
-                        targetTicketGoal 
+                        targetTicketGoal,
+                        totalProductiveMinutes, // Added
+                        currentCallTimeSoFar   // Added
                     } = scheduleData;
                     
                     if (totalWorkTimeEOD < 0) {
@@ -481,13 +518,14 @@
 
                     // Calculate what's needed for each grade
                     const grades = {
-                        'Satisfactory': { min: targetTicketGoal - 3, max: targetTicketGoal + 3 },
-                        'Excellent': { min: targetTicketGoal + 4, max: targetTicketGoal + 6 },
-                        'Outstanding': { min: targetTicketGoal + 7, max: Infinity }
+                        'Satisfactory': { boundary: gradeBoundaries.Satisfactory, min: targetTicketGoal + gradeBoundaries.Satisfactory.min },
+                        'Excellent': { boundary: gradeBoundaries.Excellent, min: targetTicketGoal + gradeBoundaries.Excellent.min },
+                        'Outstanding': { boundary: gradeBoundaries.Outstanding, min: targetTicketGoal + gradeBoundaries.Outstanding.min }
                     };
                     
                     let currentGrade = 'Below Satisfactory';
                     let nextGrade = null;
+                    let nextGradeBoundary = null;
                     let ticketsToNext = 0;
                     
                     // Determine current grade
@@ -496,13 +534,16 @@
                     } else if (currentTicketsSoFar >= grades.Excellent.min) {
                         currentGrade = 'Excellent';
                         nextGrade = 'Outstanding';
+                        nextGradeBoundary = grades.Outstanding.boundary;
                         ticketsToNext = grades.Outstanding.min - currentTicketsSoFar;
                     } else if (currentTicketsSoFar >= grades.Satisfactory.min) {
                         currentGrade = 'Satisfactory';
                         nextGrade = 'Excellent';
+                        nextGradeBoundary = grades.Excellent.boundary;
                         ticketsToNext = grades.Excellent.min - currentTicketsSoFar;
                     } else {
                         nextGrade = 'Satisfactory';
+                        nextGradeBoundary = grades.Satisfactory.boundary;
                         ticketsToNext = grades.Satisfactory.min - currentTicketsSoFar;
                     }
                     
@@ -521,11 +562,43 @@
                     let adviceHtml = '';
                     
                     if (nextGrade) {
+                        // --- NEW OPTIMIZATION LOGIC ---
+                        const TICKET_EFFORT_MINUTES = 5; // Perceived effort per ticket (in minutes)
+                        const ticketEffort = ticketsToNext * TICKET_EFFORT_MINUTES;
+
+                        const callAlternative = getCallTimeAlternative(
+                            nextGradeBoundary,
+                            currentTicketsSoFar,
+                            totalProductiveMinutes,
+                            currentCallTimeSoFar,
+                            productiveMinutesRemaining
+                        );
+
+                        let primaryAdvice = `<strong>To reach ${nextGrade}:</strong> Close <strong>${ticketsToNext} more ticket${ticketsToNext === 1 ? '' : 's'}</strong>.`;
+                        let secondaryAdvice = '';
+
+                        if (callAlternative && callAlternative.additionalCallMinutes > 0) {
+                            const callEffort = callAlternative.additionalCallMinutes;
+                            
+                            // Compare perceived effort
+                            if (callEffort < ticketEffort) {
+                                // Call time is the "easier" path
+                                primaryAdvice = `<strong>To reach ${nextGrade}:</strong> Add <strong>${TimeUtil.formatMinutesToHHMMShort(callEffort)} more call time</strong> to lower your target.`;
+                                secondaryAdvice = `(Or you could close ${ticketsToNext} ticket${ticketsToNext === 1 ? '' : 's'}.)`;
+                            } else {
+                                // Tickets are "easier" or equal
+                                secondaryAdvice = `(Alternatively, adding ${TimeUtil.formatMinutesToHHMMShort(callEffort)} of call time would also work.)`;
+                            }
+                        }
+
                         adviceHtml = `
                             <div class="info-box info-box-warn">
-                                <strong>To reach ${nextGrade}:</strong> Close <strong>${ticketsToNext} more ticket${ticketsToNext === 1 ? '' : 's'}</strong>
+                                ${primaryAdvice}
+                                ${secondaryAdvice ? `<br><span style="font-size: 0.9em; opacity: 0.8;">${secondaryAdvice}</span>` : ''}
                             </div>
                         `;
+                        // --- END NEW LOGIC ---
+
                     } else {
                         adviceHtml = `
                             <div class="info-box info-box-success">
@@ -578,7 +651,9 @@
                         currentTicketsSoFar: 0, 
                         productiveMinutesRemaining: 0, 
                         roundedWorkHours: 0, 
-                        targetTicketGoal: 0 
+                        targetTicketGoal: 0,
+                        totalProductiveMinutes: 0,
+                        currentCallTimeSoFar: 0
                     };
 
                     if (scheduleError) {
@@ -620,34 +695,16 @@
                         if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
                             // Strategy: Can I reduce my work time enough to lower the target?
                             // Find the highest rounded hour count where my current tickets would meet the grade.
-                            
-                            // Per user's new logic:
-                            // This finds the max ticket count where current tickets would meet the grade.
-                            const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min; 
-                            
-                            // What rounded hours would give us that target?
-                            const maxRoundedHours = Math.floor(maxAllowableTargetCalc / TICKETS_PER_HOUR_RATE);
-                            
-                            // What's the MAXIMUM work time that rounds to that hour count?
-                            // Rounds up at 30 mins, so max is HH:29
-                            const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
-                            
-                            // How much call time would achieve that work time?
-                            const maxCallTimeAllowed = totalProductiveMinutes - maxWorkTimeMinutes;
-                            
-                            // How much MORE call time can we add from current?
-                            const additionalCallMinutes = maxCallTimeAllowed - currentCallTimeSoFar;
-                            
-                            // User's final instruction: "Only show the call time alternative when additionalCallMinutes > 0"
-                            if (additionalCallMinutes > 0) {
-                                // Only show if it's feasible within remaining shift time
-                                if (additionalCallMinutes <= productiveMinutesRemaining) {
-                                    callTimeHtml = `<strong>OR</strong> ${TimeUtil.formatMinutesToHHMMShort(Math.floor(additionalCallMinutes))} more calls`;
-                                } else {
-                                    callTimeHtml = `<strong>OR</strong> ${TimeUtil.formatMinutesToHHMMShort(Math.floor(additionalCallMinutes))} (exceeds shift)`;
-                                }
+                            const callAlternative = getCallTimeAlternative(
+                                boundary,
+                                currentTicketsSoFar,
+                                totalProductiveMinutes,
+                                currentCallTimeSoFar,
+                                productiveMinutesRemaining
+                            );
+                            if (callAlternative) {
+                                callTimeHtml = callAlternative.callTimeHtml;
                             }
-                            // We do NOT show the "reduce calls" message, as per user's final clarification.
                         }
                         
                         // FIX: Updated getTargetCardState call to use object and PASS callTimeHtml
@@ -671,7 +728,10 @@
                         currentTicketsSoFar, 
                         productiveMinutesRemaining,
                         roundedWorkHours,
-                        targetTicketGoal 
+                        targetTicketGoal,
+                        // Pass these down too for the new logic
+                        totalProductiveMinutes,
+                        currentCallTimeSoFar
                     });
                 }
 
@@ -688,6 +748,13 @@
                 DOMElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
                 DOMElements.btnAddCallTime.addEventListener('click', handleAddCallTime);
                 
+                // FIX: Add blur event listener to format the call time input
+                DOMElements.currentCallTime.addEventListener('blur', () => {
+                    const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(currentMinutes);
+                    // This change will be picked up by the next debounced save or calc
+                });
+                
                 DOMElements.btnResetData.addEventListener('click', showResetModal);
                 DOMElements.modalCancelReset.addEventListener('click', hideResetModal);
                 DOMElements.modalConfirmReset.addEventListener('click', handleResetData);
@@ -701,6 +768,11 @@
                 }, 1000);
 
                 calculateDailyRatings(); 
+                
+                // Auto-format on initial load
+                const initialCallMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(initialCallMinutes);
+                
                 autoImportBookmarkletData();
                 
                 if (Object.keys(state.ui || {}).length > 0) {
