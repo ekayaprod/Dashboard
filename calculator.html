@@ -436,7 +436,7 @@
                 }
 
                 // FIX: Replaced function with new logic
-                function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining }) {
+                function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
                     if (totalWorkTimeEOD < 0) {
                         return {
                             boxClass: 'target-danger',
@@ -452,12 +452,12 @@
                     if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
                         return {
                             boxClass: 'target-danger',
-                            html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})`)
+                            html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
                         };
                     }
                     return {
                         boxClass: 'target-warn',
-                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})`)
+                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
                     };
                 }
                 
@@ -614,15 +614,50 @@
                         const ticketsToHitGrade = targetTicketGoal + boundary.min;
                         const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
                         
-                        // FIX: Removed all callTimeHtml logic block
+                        // FIX: Calculate call time alternative correctly
+                        let callTimeHtml = '';
                         
-                        // FIX: Updated getTargetCardState call to use object and remove callTimeHtml
+                        if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
+                            // Strategy: Can I reduce my work time enough to lower the target?
+                            // Find the highest rounded hour count where my current tickets would meet the grade.
+                            
+                            // Per user's new logic:
+                            // This finds the max ticket count where current tickets would meet the grade.
+                            const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min; 
+                            
+                            // What rounded hours would give us that target?
+                            const maxRoundedHours = Math.floor(maxAllowableTargetCalc / TICKETS_PER_HOUR_RATE);
+                            
+                            // What's the MAXIMUM work time that rounds to that hour count?
+                            // Rounds up at 30 mins, so max is HH:29
+                            const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
+                            
+                            // How much call time would achieve that work time?
+                            const maxCallTimeAllowed = totalProductiveMinutes - maxWorkTimeMinutes;
+                            
+                            // How much MORE call time can we add from current?
+                            const additionalCallMinutes = maxCallTimeAllowed - currentCallTimeSoFar;
+                            
+                            // User's final instruction: "Only show the call time alternative when additionalCallMinutes > 0"
+                            if (additionalCallMinutes > 0) {
+                                // Only show if it's feasible within remaining shift time
+                                if (additionalCallMinutes <= productiveMinutesRemaining) {
+                                    callTimeHtml = `<strong>OR</strong> ${TimeUtil.formatMinutesToHHMMShort(Math.floor(additionalCallMinutes))} more calls`;
+                                } else {
+                                    callTimeHtml = `<strong>OR</strong> ${TimeUtil.formatMinutesToHHMMShort(Math.floor(additionalCallMinutes))} (exceeds shift)`;
+                                }
+                            }
+                            // We do NOT show the "reduce calls" message, as per user's final clarification.
+                        }
+                        
+                        // FIX: Updated getTargetCardState call to use object and PASS callTimeHtml
                         const { boxClass, html } = getTargetCardState({
                             boundary,
                             totalWorkTimeEOD,
                             ticketsNeeded,
                             ticketsToHitGrade,
-                            productiveMinutesRemaining
+                            productiveMinutesRemaining,
+                            callTimeHtml
                         });
                         
                         targetBox.className = `target-card ${boxClass}`;
