@@ -7,76 +7,78 @@
     <!-- Assuming style.css is in the same directory or loaded via bootstrap -->
     <link rel="stylesheet" href="style.css">
     <!-- 
-      NEW INLINE STYLES
-      - These replicate the compact look of .eod-targets-page
-      - They apply *within* the standard .main-content
+      STYLES FOR CALCULATOR PAGE
     -->
     <style>
-        /* Use .main-content > .calc-section to be specific */
-        .main-content > .calc-section {
-            background-color: var(--panel-bg);
-            border-radius: var(--border-radius);
-            border: 1px solid var(--border-color);
-            margin-bottom: 0.5rem; 
-            overflow: hidden;
-            /* Padding is handled by content */
-            padding: 0; 
+        /* --- ACCORDION & COMPACTION STYLES --- */
+        .calc-section-header.collapsible {
+            cursor: pointer;
         }
-        
-        .calc-section-header {
-            padding: 0.5rem 0.75rem; /* Compact header padding */
-            background-color: var(--info-bg);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .calc-section-header .collapse-icon {
+            transition: transform 0.2s;
+            display: inline-block;
+            margin-right: 0.5rem;
+            font-size: 0.7em;
+            vertical-align: middle;
         }
-        
-        .calc-section-header h2 {
-            font-size: 1.0em; /* smaller heading */
-            font-weight: 600;
-            margin: 0;
+        .calc-section-content.collapsed {
+            display: none;
         }
-        
-        .calc-section-content {
-             padding: 0.75rem; 
-             display: grid;
-             gap: 0.5rem; 
-        }
-        
-        .btn-subtle-reset {
-             font-size: 0.8rem;
-             font-weight: 400;
-             color: var(--subtle-text);
-             background: none;
-             border: none;
-             padding: 0.25rem;
-             text-decoration: underline;
-             cursor: pointer;
-        }
-        .btn-subtle-reset:hover {
-            color: var(--text-color);
+        .header-time {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--subtle-text);
         }
 
-        /* Custom label for this page */
+        /* --- COMPACTION STYLES (from previous version) --- */
+        .info-box {
+            border-radius: 8px;
+            padding: 10px 12px; /* Reduced padding */
+            font-size: 0.95em;
+            border: 1px solid transparent;
+        }
+        .info-box-danger {
+            background-color: #fbebeE;
+            border-color: #e74c3c;
+            color: #c0392b;
+        }
+        .info-box-warn {
+            background-color: #fef9e7;
+            border-color: #f39c12;
+            color: #f39c12;
+        }
+        .info-box-success {
+            background-color: #eafaf1;
+            border-color: #27ae60;
+            color: #27ae60;
+        }
+        .info-box strong {
+            color: inherit;
+        }
+        .info-box p {
+            line-height: 1.5;
+        }
+        
+        .calc-section {
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+        .calc-section-header {
+            margin-bottom: 0.5rem;
+        }
+        .calc-section-header h2 {
+            margin: 0;
+            font-size: 1.1em; /* smaller heading */
+            display: inline-block; /* To flow with icon */
+            vertical-align: middle;
+        }
         .sidebar-label {
              font-size: 0.8em;
              margin-bottom: 0.2rem;
              text-transform: uppercase;
              opacity: 0.9;
-             font-weight: 500;
-             color: var(--subtle-text);
         }
         
-        /* Specific input overrides */
-        .calc-section-content .sidebar-input,
-        .calc-section-content .sidebar-select {
-             margin: 0;
-             font-size: 0.85rem;
-             padding: 0.4rem 0.6rem;
-             border-radius: var(--border-radius-sm);
-        }
-
         .stat-item-compact {
             display: flex;
             justify-content: space-between;
@@ -93,91 +95,27 @@
         .stat-value-compact {
             font-weight: 600;
         }
-
+        
+        /* EOD Target Card Compaction */
         .target-card {
-            padding: 0.5rem; 
-            border-radius: var(--border-radius-sm);
-            text-align: center;
+            padding: 0.5rem; /* Reduced padding */
         }
         .target-label {
-            display: block;
-            font-size: 0.9rem; 
+            font-size: 0.8em; /* Smaller label */
             font-weight: 600;
-            margin-bottom: 0.25rem;
         }
         .target-value {
-            display: block;
-            font-size: 1.25rem; /* Slightly smaller */
-            font-weight: 700;
-            line-height: 1.1;
+            font-size: 1.1em; /* Smaller value */
+            margin: 0.1rem 0;
         }
         .target-desc {
-            font-size: 0.8em; /* smaller */
-            opacity: 0.9;
-            margin-top: 0.2rem; 
+            font-size: 0.8em; /* Smaller description */
+            opacity: 0.8;
         }
-        
-        .target-good {
-            background-color: var(--color-success-bg);
-            border: 1px solid var(--color-success-border);
-            color: var(--color-success);
-        }
-        .target-warn {
-            background-color: var(--color-danger-bg);
-            border: 1px solid var(--color-danger-border);
-            color: var(--color-danger);
-        }
-        .target-danger {
-            background-color: var(--info-bg); 
-            border: 1px solid var(--border-color);
-            color: var(--subtle-text);
-        }
-        .target-danger .target-value { color: var(--subtle-text); }
-        
-        .time-bar {
-            padding: 0.25rem 0.5rem; 
-            background-color: var(--header-bar-bg); 
-            color: var(--header-bar-text); 
-            border-radius: var(--border-radius-sm);
-            text-align: center;
-            font-size: 0.75rem; 
-            font-weight: 500;
-            margin-bottom: 0.5rem; 
-        }
-        
-        .info-box {
-            font-size: 0.85rem; /* smaller */
-            padding: 0.5rem 0.75rem;
-            border-radius: var(--border-radius-sm);
-            background-color: var(--info-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color); /* Not subtle */
-        }
-        .info-box.info-box-danger {
-            background-color: var(--color-danger-bg);
-            border-color: var(--color-danger-border);
-            color: var(--color-danger);
-            font-weight: 500;
-        }
-        .info-box.info-box-warn {
-            background-color: var(--color-danger-bg);
-            border-color: var(--color-danger-border);
-            color: var(--color-danger);
-            font-weight: 500;
-        }
-        .info-box.info-box-success {
-            background-color: var(--color-success-bg);
-            border-color: var(--color-success-border);
-            color: var(--color-success);
-            font-weight: 500;
-        }
+        /* --- END NEW STYLES --- */
     </style>
 </head>
-<!-- 
-  REMOVED: class="eod-targets-page"
-  This class was causing layout conflicts with style.css
--->
-<body>
+<body class="eod-targets-page">
 
     <!-- 
       NAVBAR CONTAINER
@@ -190,17 +128,20 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <div class="time-bar">
-                    <span id="currentTime">Loading clock...</span>
-                </div>
+                <!-- TIME-BAR REMOVED FROM HERE -->
 
-                <!-- REFACTORED SECTION 1 (Now includes Productive Time) -->
+                <!-- REFACTORED SECTION 1 (Now an accordion) -->
                 <div class="calc-section">
-                    <div class="calc-section-header">
-                        <h2>1. Schedule</h2>
+                    <div class="calc-section-header collapsible" id="schedule-header">
+                        <div style="display: flex; align-items: center;">
+                            <span id="schedule-collapse-icon" class="collapse-icon">▼</span>
+                            <h2>1. Schedule</h2>
+                        </div>
+                        <!-- TIME MOVED HERE -->
+                        <span id="currentTime" class="header-time">Loading...</span>
                     </div>
-                    <div class="calc-section-content">
-                        <!-- This grid is now 3 inputs + 1 button -->
+                    <!-- Add ID and 'collapsed' class for toggling -->
+                    <div class="calc-section-content" id="schedule-content">
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem 0.75rem; align-items: flex-end;">
                             <div>
                                 <label for="shiftStart" class="sidebar-label">Shift Start</label>
@@ -223,7 +164,6 @@
                             </div>
                             <button id="btnResetData" class="btn-subtle-reset" style="padding: 0.5rem 0.25rem; margin-bottom: 0; white-space: nowrap;">Reset</button>
                         </div>
-                        <!-- Productive Time merged into this section -->
                         <div class="stat-item-compact" style="margin-top: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 0.5rem;">
                             <span class="stat-label-compact">Total Productive Time:</span>
                             <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
@@ -236,7 +176,6 @@
                     <div class="calc-section-header">
                         <h2>2. Progress</h2>
                     </div>
-                    <!-- This is now an explicit 2x2 grid -->
                     <div class="calc-section-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.75rem; align-items: flex-end;">
                         <div>
                             <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM)</label>
@@ -256,8 +195,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- REMOVED SECTION 3 (Status) -->
                 
                 <!-- NEW: Key Metric display for Work Time (EOD) -->
                 <div class="calc-section" style="margin-bottom: 0.5rem; padding: 0.5rem; background-color: rgba(41, 128, 185, 0.1); border-radius: 4px;">
@@ -279,7 +216,8 @@
                 <!-- REFACTORED SECTION 4 (was 5) -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <h2>4. Live Assistant</h2>
+                        <!-- RENAMED -->
+                        <h2>4. Pacing Report</h2>
                     </div>
                     <div id="calc-info-content" class="calc-section-content">
                         <!-- Info box will be injected here by JS -->
@@ -338,7 +276,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.8.3', // Bumped for layout CSS fix
+            VERSION: '1.9.0', // Bumped for accordion UI
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -367,8 +305,9 @@
                         shiftStart: '08:00',
                         shiftEnd: '16:00',
                         breakTime: 60,
-                        currentCallTime: '0', // FIX: Default to '0'
-                        currentTickets: 0
+                        currentCallTime: '0',
+                        currentTickets: 0,
+                        isScheduleCollapsed: true // NEW: Collapsed by default
                     }
                 };
 
@@ -385,7 +324,9 @@
                         'targets-content', 'btnResetData',
                         'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset',
                         'calc-info-content',
-                        'app-startup-error' // Ensure error banner is cached
+                        'app-startup-error',
+                        // NEW: Accordion elements
+                        'schedule-header', 'schedule-content', 'schedule-collapse-icon'
                     ]
                 });
 
@@ -403,7 +344,6 @@
                 const { elements: DOMElements, state, saveState } = ctx;
 
                 // --- Constants & Utils ---
-                // REFACTOR C-1, C-6: Consolidated constants
                 const CONSTANTS = {
                     LEEWAY_RATIO: 1 / 7, 
                     TICKETS_PER_HOUR_RATE: 6, 
@@ -453,13 +393,11 @@
                         return parts.join(' ');
                     },
 
-                    // REFACTOR C-2, D-3: Helper for parsing shift times
                     parseShiftTimeToMinutes(timeStr) {
                         const parts = timeStr.split(':').map(Number);
                         return (parts[0] * 60) + parts[1];
                     },
 
-                    // REFACTOR C-3, D-4: Helper for formatting current time
                     formatTimeAMPM(hour, minute) {
                         return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
                     }
@@ -522,7 +460,7 @@
                     state.ui.shiftStart = DOMElements.shiftStart.value;
                     state.ui.shiftEnd = DOMElements.shiftEnd.value;
                     state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10);
-                    state.ui.currentCallTime = DOMElements.currentCallTime.value; // FIX: Saves raw input value
+                    state.ui.currentCallTime = DOMElements.currentCallTime.value;
                     state.ui.currentTickets = parseInt(DOMElements.currentTickets.value, 10) || 0;
                     
                     saveState();
@@ -547,6 +485,7 @@
                 function handleResetData() {
                     state.ui = JSON.parse(JSON.stringify(defaultState.ui));
                     updateInputsFromState(); 
+                    renderScheduleCollapse(); // Reset collapse state
                     calculateDailyRatings(); 
                     saveState(); // Persist the reset
                     hideResetModal();
@@ -577,7 +516,6 @@
                 }
 
                 function getScheduleInfo(now) {
-                    // REFACTOR C-2: Use helper
                     const startTime = new Date(now);
                     const startMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
                     startTime.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
@@ -614,10 +552,9 @@
                     return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
                 }
 
+                // REFACTORED: This only updates the clock now.
                 function updateTimeDisplays(now) {
-                    const scheduleInfo = getScheduleInfo(now);
-                    DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
-                    return scheduleInfo; 
+                    DOMElements.currentTime.innerText = now.toLocaleTimeString();
                 }
                 
                 function buildTargetCardHTML(label, value, description) {
@@ -653,7 +590,6 @@
                     };
                 }
 
-                // REFACTOR C-5, D-1: Helper to calculate grade requirements
                 function calculateGradeRequirements(baseTarget) {
                     return {
                         'Satisfactory': baseTarget + gradeBoundaries.Satisfactory.min,
@@ -662,7 +598,6 @@
                     };
                 }
 
-                // REFACTOR C-7, D-2: Helper to build the status row HTML
                 function buildGradeStatusRow(gradeName, targetAmount, currentTickets, isPacing = false) {
                     const ticketsNeeded = Math.max(0, targetAmount - currentTickets);
                     const achieved = ticketsNeeded === 0;
@@ -697,7 +632,6 @@
                         }
                     }
 
-                    // COMPACTION: Reduced padding from 8px to 6px
                     return `
                         <div style="padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
                             <div>
@@ -712,9 +646,9 @@
                 }
                 
                 // ============================================================================
-                // REPLACED FUNCTION: renderCalculationInfo
+                // REFACTORED FUNCTION: renderCalculationInfo
                 // ============================================================================
-                function renderCalculationInfo(scheduleData, now) { // REFACTOR C-4: Pass in 'now'
+                function renderCalculationInfo(scheduleData, now) {
                     const {
                         totalWorkTimeEOD,
                         currentTicketsSoFar,
@@ -733,25 +667,24 @@
                         return;
                     }
 
-                    // const now = new Date(); // REFACTOR C-4: Use passed-in 'now'
                     const currentHour = now.getHours();
                     const currentMinute = now.getMinutes();
                     const currentTimeMinutes = currentHour * 60 + currentMinute;
                     const phonesStillOpen = currentTimeMinutes < CONSTANTS.PHONE_CLOSE_MINUTES;
                     
-                    // REFACTOR C-5, D-1: Use helper
                     const currentGrades = calculateGradeRequirements(targetTicketGoal);
                     
-                    // REFACTOR C-4: Flatten guard clause
                     const shiftStartMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
                     const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
+                    
+                    // REFACTORED: Simplified this logic block
                     if (phonesStillOpen && minutesIntoShift <= 0) {
                         DOMElements.calcInfoContent.innerHTML = `
                             <div class="info-box">
                                 <strong>⏰ Shift Has Not Started</strong>
                                 <p style="margin: 8px 0 0 0;">Pacing analysis will begin at ${DOMElements.shiftStart.value}.</p>
                             </div>
-                        ` + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
+                        `; // Removed redundant grades table
                         return;
                     }
 
@@ -759,7 +692,6 @@
                     // BEFORE 3:30 PM - Show Pacing for All Grades
                     // ============================================================
                     if (phonesStillOpen) {
-                        // Project call rate
                         const callRatePerHour = (currentCallTimeSoFar / minutesIntoShift) * 60;
                         const minutesUntilPhoneClose = CONSTANTS.PHONE_CLOSE_MINUTES - currentTimeMinutes;
 
@@ -768,20 +700,20 @@
                         const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
                         const projectedTarget = projectedRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
                         
-                        // REFACTOR C-5, D-1: Use helper
                         const projectedGrades = calculateGradeRequirements(projectedTarget);
                         
+                        // REFACTORED: Removed outer "Current Status" box
                         let statusHtml = `
+                            <!-- Removed margin-top -->
                             <div class="info-box">
-                                <strong>📊 Current Status</strong>
-                                <p style="margin: 8px 0 0 0; font-size: 0.9em;">
-                                    <!-- REFACTOR C-3: Use helper -->
+                                <!-- Merged "Current Status" info into projection box -->
+                                <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.1);">
                                     <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> | 
                                     ${currentTicketsSoFar} tickets | 
                                     ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
-                                </p>
-                                
-                                <div style="background: rgba(52,152,219,0.1); padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 0.9em;">
+                                </div>
+
+                                <div style="font-size: 0.9em;">
                                     <strong>Projection by 3:30 PM:</strong>
                                     <br>
                                     Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)} 
@@ -791,15 +723,10 @@
                                     <br>
                                     Target: <strong>${projectedTarget}</strong> tickets
                                 </div>
-                            </div>
                             
-                            <!-- COMPACTION: Reduced margin-top from 12px to 8px -->
-                            <div class="info-box" style="margin-top: 8px;">
-                                <strong>🎯 Pacing Status</strong>
                                 <div style="margin-top: 8px;">
                         `;
                         
-                        // REFACTOR C-7, D-2: Use helper
                         for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
                             statusHtml += buildGradeStatusRow(gradeName, projectedNeeded, currentTicketsSoFar, true);
                         }
@@ -809,28 +736,25 @@
                             </div>
                         `;
                         
-                        DOMElements.calcInfoContent.innerHTML = statusHtml + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
+                        // REFACTORED: Removed grades table
+                        DOMElements.calcInfoContent.innerHTML = statusHtml;
                         
                     // ============================================================
                     // AFTER 3:30 PM - Show Final Status
                     // ============================================================
                     } else {
                         let statusHtml = `
+                            <!-- Removed margin-top -->
                             <div class="info-box">
                                 <strong>📞 Phones Closed</strong>
                                 <p style="margin: 8px 0 0 0;">
                                     Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong> 
                                     → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
                                 </p>
-                            </div>
                             
-                            <!-- COMPACTION: Reduced margin-top from 12px to 8px -->
-                            <div class="info-box" style="margin-top: 8px;">
-                                <strong>🎯 Final Status</strong>
                                 <div style="margin-top: 8px;">
                         `;
                         
-                        // REFACTOR C-7, D-2: Use helper
                         for (const [gradeName, needed] of Object.entries(currentGrades)) {
                             statusHtml += buildGradeStatusRow(gradeName, needed, currentTicketsSoFar, false);
                         }
@@ -840,57 +764,12 @@
                             </div>
                         `;
                         
-                        DOMElements.calcInfoContent.innerHTML = statusHtml + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
+                        // REFACTORED: Removed grades table
+                        DOMElements.calcInfoContent.innerHTML = statusHtml;
                     }
                 }
                 
-                // Helper function to generate the grades table
-                function getGradesTableHtml(targetTicketGoal, currentTicketsSoFar) {
-                    // REFACTOR C-5, D-1: Use helper
-                    const grades = calculateGradeRequirements(targetTicketGoal);
-
-                    const neededS = Math.max(0, grades.Satisfactory - currentTicketsSoFar);
-                    const neededE = Math.max(0, grades.Excellent - currentTicketsSoFar);
-                    const neededO = Math.max(0, grades.Outstanding - currentTicketsSoFar);
-
-                    // COMPACTION: Reduced margin-top from 12px to 8px
-                    return `
-                        <div class="info-box" style="margin-top: 8px; border-color: #bdc3c7; background: #fdfefe;">
-                            <strong>📊 EOD Target Grades</strong>
-                            <p style="font-size: 0.85em; opacity: 0.7; margin: 4px 0 0 0;">Based on *current* EOD target of <strong>${targetTicketGoal}</strong> tickets.</p>
-                            <table style="width: 100%; font-size: 0.9em; border-collapse: collapse; margin-top: 8px;">
-                                <!-- COMPACTION: Reduced padding from 6px to 4px -->
-                                <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
-                                    <td style="padding: 4px 0;"><strong>Satisfactory</strong> (${grades.Satisfactory})</td>
-                                    <td style="text-align: right; padding: 4px 0;">
-                                        ${neededS === 0
-                                            ? '<span style="color: #27ae60;">✓ Achieved</span>'
-                                            : `<strong>${neededS} more</strong>`
-                                        }
-                                    </td>
-                                </tr>
-                                <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
-                                    <td style="padding: 4px 0;"><strong>Excellent</strong> (${grades.Excellent})</td>
-                                    <td style="text-align: right; padding: 4px 0;">
-                                        ${neededE === 0
-                                            ? '<span style="color: #27ae60;">✓ Achieved</span>'
-                                            : `<strong>${neededE} more</strong>`
-                                        }
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 4px 0;"><strong>Outstanding</strong> (${grades.Outstanding})</td>
-                                    <td style="text-align: right; padding: 4px 0;">
-                                        ${neededO === 0
-                                            ? '<span style="color: #27ae60;">✓ Achieved</span>'
-                                            : `<strong>${neededO} more</strong>`
-                                        }
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    `;
-                }
+                // REMOVED: getGradesTableHtml() function
 
                 // REFACTOR D-5: Helper to render error states
                 function renderErrorState(errorMessage, errorData) {
@@ -900,9 +779,10 @@
                 }
 
                 function calculateDailyRatings() {
-                    const now = new Date(); // REFACTOR C-4: Define 'now' once
+                    const now = new Date();
                     
-                    const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
+                    // REFACTORED: Must call getScheduleInfo here now
+                    const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = getScheduleInfo(now);
                     
                     DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
 
@@ -916,7 +796,6 @@
                         currentCallTimeSoFar: 0
                     };
 
-                    // REFACTOR D-5: Use helper
                     if (scheduleError) {
                         renderErrorState(scheduleError, errorData);
                         return;
@@ -973,7 +852,6 @@
                         DOMElements.targetsContent.appendChild(targetBox);
                     }
                     
-                    // REFACTOR C-4: Pass 'now'
                     renderCalculationInfo({ 
                         totalWorkTimeEOD, 
                         currentTicketsSoFar, 
@@ -985,11 +863,25 @@
                     }, now);
                 }
 
+                // --- NEW: Accordion Function ---
+                function renderScheduleCollapse() {
+                    const isCollapsed = state.ui.isScheduleCollapsed;
+                    DOMElements.scheduleContent.classList.toggle('collapsed', isCollapsed);
+                    DOMElements.scheduleCollapseIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                }
+
                 // --- Execution ---
                 populateTimeOptions(DOMElements.shiftStart, 6, 12, state.ui?.shiftStart || defaultState.ui.shiftStart); 
                 populateTimeOptions(DOMElements.shiftEnd, 12, 18, state.ui?.shiftEnd || defaultState.ui.shiftEnd); 
 
                 updateInputsFromState();
+
+                // NEW: Accordion listener
+                DOMElements.scheduleHeader.addEventListener('click', () => {
+                    state.ui.isScheduleCollapsed = !state.ui.isScheduleCollapsed;
+                    renderScheduleCollapse();
+                    saveState();
+                });
 
                 DOMElements.shiftStart.addEventListener('input', debouncedCalculateAndSave);
                 DOMElements.shiftEnd.addEventListener('input', debouncedCalculateAndSave);
@@ -1011,6 +903,7 @@
                     if (e.key === 'Enter') handleAddCallTime();
                 });
                 
+                // REFACTORED: Timer tick
                 function handleTimerTick() {
                     const now = new Date();
                     updateTimeDisplays(now); // Update clock every second
@@ -1025,6 +918,8 @@
 
                 setInterval(handleTimerTick, 1000);
 
+                // Initial setup
+                renderScheduleCollapse(); // Apply default collapse state
                 calculateDailyRatings(); 
                 
                 const initialCallMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
