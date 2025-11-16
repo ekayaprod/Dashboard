@@ -4,115 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EOD Targets</title>
-    <!-- Assuming style.css is in the same directory or loaded via bootstrap -->
-    <link rel="stylesheet" href="style.css">
     <!-- 
-      STYLES FOR CALCULATOR PAGE
+      File path assumption:
+      - style.css is in the root (/)
+      - bootstrap.js is in /js/
     -->
+    <link rel="stylesheet" href="style.css">
+    
     <style>
-        /* --- ACCORDION & COMPACTION STYLES --- */
-        .calc-section-header.collapsible {
-            cursor: pointer;
-        }
-        .calc-section-header .collapse-icon {
-            transition: transform 0.2s;
-            display: inline-block;
-            margin-right: 0.5rem;
-            font-size: 0.7em;
-            vertical-align: middle;
-        }
-        .calc-section-content.collapsed {
-            display: none;
-        }
-        .header-time {
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: var(--subtle-text);
-        }
-
-        /* --- COMPACTION STYLES (from previous version) --- */
-        .info-box {
-            border-radius: 8px;
-            padding: 10px 12px; /* Reduced padding */
-            font-size: 0.95em;
-            border: 1px solid transparent;
-        }
-        .info-box-danger {
-            background-color: #fbebeE;
-            border-color: #e74c3c;
-            color: #c0392b;
-        }
-        .info-box-warn {
-            background-color: #fef9e7;
-            border-color: #f39c12;
-            color: #f39c12;
-        }
-        .info-box-success {
-            background-color: #eafaf1;
-            border-color: #27ae60;
-            color: #27ae60;
-        }
-        .info-box strong {
-            color: inherit;
-        }
-        .info-box p {
-            line-height: 1.5;
-        }
-        
-        .calc-section {
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.75rem;
-        }
-        .calc-section-header {
-            margin-bottom: 0.5rem;
-        }
-        .calc-section-header h2 {
-            margin: 0;
-            font-size: 1.1em; /* smaller heading */
-            display: inline-block; /* To flow with icon */
-            vertical-align: middle;
-        }
-        .sidebar-label {
-             font-size: 0.8em;
-             margin-bottom: 0.2rem;
-             text-transform: uppercase;
-             opacity: 0.9;
-        }
-        
-        .stat-item-compact {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            font-size: 0.9em;
-            padding: 0.2rem 0.1rem;
-        }
-        .stat-label-compact {
-            opacity: 0.7;
-            margin-right: 0.5rem;
-            font-size: 0.9em;
-            white-space: nowrap;
-        }
-        .stat-value-compact {
-            font-weight: 600;
-        }
-        
-        /* EOD Target Card Compaction */
-        .target-card {
-            padding: 0.5rem; /* Reduced padding */
-        }
-        .target-label {
-            font-size: 0.8em; /* Smaller label */
-            font-weight: 600;
-        }
-        .target-value {
-            font-size: 1.1em; /* Smaller value */
-            margin: 0.1rem 0;
-        }
-        .target-desc {
-            font-size: 0.8em; /* Smaller description */
-            opacity: 0.8;
-        }
-        /* --- END NEW STYLES --- */
+        /* All inline styles removed for tidiness */
     </style>
 </head>
 <body class="eod-targets-page">
@@ -120,6 +20,7 @@
     <!-- 
       NAVBAR CONTAINER
       Populated automatically by bootstrap.js
+      Will now include the #btnSettings button from navbar.html
     -->
     <div id="navbar-container"></div>
 
@@ -128,20 +29,17 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <!-- TIME-BAR REMOVED FROM HERE -->
-
-                <!-- REFACTORED SECTION 1 (Now an accordion) -->
+                <!-- REFACTORED SECTION 1 (Accordion) -->
                 <div class="calc-section">
                     <div class="calc-section-header collapsible" id="schedule-header">
                         <div style="display: flex; align-items: center;">
                             <span id="schedule-collapse-icon" class="collapse-icon">▼</span>
                             <h2>1. Schedule</h2>
                         </div>
-                        <!-- TIME MOVED HERE -->
                         <span id="currentTime" class="header-time">Loading...</span>
                     </div>
-                    <!-- Add ID and 'collapsed' class for toggling -->
                     <div class="calc-section-content" id="schedule-content">
+                        <!-- This grid layout is specific, inline style is OK here -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem 0.75rem; align-items: flex-end;">
                             <div>
                                 <label for="shiftStart" class="sidebar-label">Shift Start</label>
@@ -162,20 +60,21 @@
                                     <option value="120">120 minutes</option>
                                 </select>
                             </div>
-                            <button id="btnResetData" class="btn-subtle-reset" style="padding: 0.5rem 0.25rem; margin-bottom: 0; white-space: nowrap;">Reset</button>
+                            <button id="btnResetData" class="btn-subtle-reset">Reset</button>
                         </div>
-                        <div class="stat-item-compact" style="margin-top: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 0.5rem;">
+                        <div class="stat-item-compact" style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
                             <span class="stat-label-compact">Total Productive Time:</span>
                             <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
                         </div>
                     </div>
                 </div>
                 
-                <!-- REFACTORED SECTION 2 -->
+                <!-- REFACTORED SECTION 2 (Progress) -->
                 <div class="calc-section">
                     <div class="calc-section-header">
                         <h2>2. Progress</h2>
                     </div>
+                    <!-- This grid layout is specific, inline style is OK here -->
                     <div class="calc-section-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.75rem; align-items: flex-end;">
                         <div>
                             <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM)</label>
@@ -196,31 +95,35 @@
                     </div>
                 </div>
                 
-                <!-- NEW: Key Metric display for Work Time (EOD) -->
-                <div class="calc-section" style="margin-bottom: 0.5rem; padding: 0.5rem; background-color: rgba(41, 128, 185, 0.1); border-radius: 4px;">
+                <!-- 
+                  REFACTORED: Key Metric display for Work Time (EOD)
+                  Now uses a CSS class 'stat-box-highlight' from style.css
+                -->
+                <div class="calc-section stat-box-highlight" style="margin-bottom: 0.5rem;">
                     <div class="stat-item-compact" style="padding: 0;">
-                        <span class="stat-label-compact" style="font-size: 0.9em; opacity: 1; font-weight: 600;">Work Time (EOD):</span>
-                        <span id="totalWorkTimeEOD" class="stat-value-compact" style="font-size: 1.1em; color: #2980b9;">00:00</span>
+                        <span class="stat-label-compact">Work Time (EOD):</span>
+                        <span id="totalWorkTimeEOD" class="stat-value-compact">00:00</span>
                     </div>
                 </div>
 
 
-                <!-- REFACTORED SECTION 3 (was 4) -->
+                <!-- REFACTORED SECTION 3 (Targets) -->
                 <div class="calc-section">
                     <div class="calc-section-header">
                         <h2>3. EOD Targets</h2>
                     </div>
-                    <div id="targets-content" class="calc-section-content targets-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;"></div>
+                    <div id="targets-content" class="calc-section-content targets-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                        <!-- Target cards injected here -->
+                    </div>
                 </div>
                 
-                <!-- REFACTORED SECTION 4 (was 5) -->
+                <!-- REFACTORED SECTION 4 (Pacing Report) -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <!-- RENAMED -->
                         <h2>4. Pacing Report</h2>
                     </div>
                     <div id="calc-info-content" class="calc-section-content">
-                        <!-- Info box will be injected here by JS -->
+                        <!-- Info box and pacing rows injected here -->
                     </div>
                 </div>
         
@@ -234,715 +137,687 @@
     </div>
     <div id="toast" class="toast"></div>
 
-    <!-- Custom Reset Modal (Specific to Calculator) -->
-    <div id="resetModalOverlay" class="modal-overlay-custom">
-        <div class="modal-content-custom">
-            <h3>Confirm Reset</h3>
-            <p>Reset all saved data? This cannot be undone.</p>
-            <div class="modal-actions-custom">
-                <button id="modalCancelReset" class="button-base">Cancel</button>
-                <button id="modalConfirmReset" class="button-base button-danger">Reset Data</button>
-            </div>
-        </div>
-    </div>
-
     <!-- 
       CRITICAL: Bootstrap script must be at the END of the body.
-      It loads the Navbar HTML and all JS dependencies in parallel.
+      It loads the Navbar HTML and all JS dependencies.
+      File path assumption: bootstrap.js is in /js/
     -->
     <script src="js/bootstrap.js"></script>
     
     <script>
-    // Wait for bootstrap, but timeout if it fails
-    let bootstrapReady = false;
+    // Standardized initialization using AppLifecycle.run()
+    AppLifecycle.run(() => {
+    
+        function initializePage() {
+            const APP_CONFIG = {
+                NAME: 'calculator',
+                VERSION: '2.0.0', // Bumped for Settings Modal + CSS refactor
+                DATA_KEY: 'eod_targets_state_v1',
+                IMPORT_KEY: 'eod_targets_import_minutes'
+            };
 
-    document.addEventListener('bootstrap:ready', () => {
-        bootstrapReady = true;
-        initializePage();
-    });
-
-    // Fallback: If bootstrap doesn't fire within 5 seconds, show error
-    setTimeout(() => {
-        if (!bootstrapReady) {
-            console.error('Bootstrap did not complete within 5 seconds');
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Startup Timeout</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">The application failed to load within 5 seconds. Check the browser console for errors.</p>`;
-                banner.classList.remove('hidden');
-            }
-        }
-    }, 5000);
-
-    function initializePage() {
-        const APP_CONFIG = {
-            NAME: 'calculator',
-            VERSION: '1.9.0', // Bumped for accordion UI
-            DATA_KEY: 'eod_targets_state_v1',
-            IMPORT_KEY: 'eod_targets_import_minutes'
-        };
-
-        // ============================================================================
-        // INITIALIZATION ROUTINE
-        // Bypasses AppLifecycle.run() to avoid the DOMContentLoaded race condition.
-        // ============================================================================
-        (async () => {
-            try {
-                // Critical dependency check
-                if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
-                    const banner = document.getElementById('app-startup-error');
-                    if (banner) {
-                        banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies (SafeUI, DOMHelpers) missing.</p>`;
-                        banner.classList.remove('hidden');
-                    }
-                    console.error("Critical dependencies missing (SafeUI, DOMHelpers).");
-                    return;
-                }
-
-                console.log(`[Calculator] Bypassing AppLifecycle.run, initializing v${APP_CONFIG.VERSION}`);
-
-                const defaultState = {
-                    ui: {
-                        shiftStart: '08:00',
-                        shiftEnd: '16:00',
-                        breakTime: 60,
-                        currentCallTime: '0',
-                        currentTickets: 0,
-                        isScheduleCollapsed: true // NEW: Collapsed by default
-                    }
-                };
-
-                // Initialize via AppLifecycle (handles Navbar, State Loading, Element Caching)
-                const ctx = await AppLifecycle.initPage({
-                    storageKey: APP_CONFIG.DATA_KEY,
-                    defaultState: defaultState,
-                    version: APP_CONFIG.VERSION,
-                    requiredElements: [
-                        'navbar-container', 'toast', 'modal-overlay', 'modal-content',
-                        'shiftStart', 'shiftEnd', 'breakTime', 
-                        'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
-                        'currentTime', 'totalProductiveTime', 'totalWorkTimeEOD',
-                        'targets-content', 'btnResetData',
-                        'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset',
-                        'calc-info-content',
-                        'app-startup-error',
-                        // NEW: Accordion elements
-                        'schedule-header', 'schedule-content', 'schedule-collapse-icon'
-                    ]
-                });
-
-                // FIX A-1: Add explicit error handling for init failure
-                if (!ctx) {
-                    const banner = document.getElementById('app-startup-error'); // Use raw get just in case elements cache failed
-                    if (banner) {
-                        banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Failed to initialize application context (ctx is null).</p>`;
-                        banner.classList.remove('hidden');
-                    }
-                    console.error("Failed to initialize application context (ctx is null).");
-                    return;
-                }
-
-                const { elements: DOMElements, state, saveState } = ctx;
-
-                // --- Constants & Utils ---
-                const CONSTANTS = {
-                    LEEWAY_RATIO: 1 / 7, 
-                    TICKETS_PER_HOUR_RATE: 6, 
-                    ROUNDING_BOUNDARY_MAX: 29, // Rounds up at 30+ minutes
-                    PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 3:30 PM
-                    REACHABLE_TICKET_THRESHOLD: 10
-                };
-
-                const gradeBoundaries = {
-                    'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
-                    'Excellent': { name: 'Excellent', min: 4, max: 6 },
-                    'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
-                };
-
-                const TimeUtil = {
-                    parseTimeToMinutes(input) {
-                        if (!input) return 0;
-                        const trimmed = String(input).trim();
-                        if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
-                        if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * 60;
-                        if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
-                            const parts = trimmed.split(':').map(Number);
-                            return (parts[0] * 60) + parts[1];
-                        }
-                        if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
-                            const parts = trimmed.split(':').map(Number);
-                            return (parts[0] * 60) + parts[1] + (parts[2] / 60);
-                        }
-                        return 0;
-                    },
-
-                    formatMinutesToHHMM(totalMinutes) {
-                        if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
-                        const hours = Math.floor(totalMinutes / 60);
-                        const minutes = Math.floor(totalMinutes % 60);
-                        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                    },
-                    
-                    formatMinutesToHHMMShort(totalMinutes) {
-                        if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
-                        if (totalMinutes === 0) return '0m';
-                        const hours = Math.floor(totalMinutes / 60);
-                        const minutes = Math.floor(totalMinutes % 60);
-                        let parts = [];
-                        if (hours > 0) parts.push(`${hours}h`);
-                        if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
-                        return parts.join(' ');
-                    },
-
-                    parseShiftTimeToMinutes(timeStr) {
-                        const parts = timeStr.split(':').map(Number);
-                        return (parts[0] * 60) + parts[1];
-                    },
-
-                    formatTimeAMPM(hour, minute) {
-                        return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
-                    }
-                };
-
-                /**
-                 * Calculates the call time alternative for a given grade.
-                 */
-                function getCallTimeAlternative(boundary, currentTicketsSoFar, totalProductiveMinutes, currentCallTimeSoFar, productiveMinutesRemaining) {
-                    const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min;
-                    const maxRoundedHours = Math.floor(maxAllowableTargetCalc / CONSTANTS.TICKETS_PER_HOUR_RATE);
-                    const maxWorkTimeMinutes = (maxRoundedHours * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
-                    const maxCallTimeAllowed = totalProductiveMinutes - maxWorkTimeMinutes;
-                    const additionalCallMinutes = maxCallTimeAllowed - currentCallTimeSoFar;
-
-                    if (additionalCallMinutes > 0) {
-                        const flooredMinutes = Math.floor(additionalCallMinutes);
-                        const displayTime = TimeUtil.formatMinutesToHHMMShort(flooredMinutes);
-                        if (additionalCallMinutes <= productiveMinutesRemaining) {
-                            return {
-                                additionalCallMinutes: flooredMinutes,
-                                callTimeHtml: `<strong>OR</strong> ${displayTime} more calls`
-                            };
-                        } else {
-                            return {
-                                additionalCallMinutes: flooredMinutes,
-                                callTimeHtml: `<strong>OR</strong> ${displayTime} (exceeds shift)`
-                            };
-                        }
-                    }
-                    return null; // No positive call time alternative
-                }
-
-                function populateTimeOptions(select, startHour, endHour, defaultVal) {
-                    for (let h = startHour; h <= endHour; h++) {
-                        for (let m = 0; m < 60; m += 15) { 
-                            const hourStr = String(h).padStart(2, '0');
-                            const minStr = String(m).padStart(2, '0');
-                            const timeStr = `${hourStr}:${minStr}`;
-                            const option = document.createElement('option');
-                            option.value = timeStr;
-                            option.text = timeStr;
-                            if (timeStr === defaultVal) option.selected = true;
-                            select.appendChild(option);
-                        }
-                    }
-                }
-
-                function updateInputsFromState() {
-                    if (!state.ui) state.ui = { ...defaultState.ui };
-                    
-                    DOMElements.shiftStart.value = state.ui.shiftStart;
-                    DOMElements.shiftEnd.value = state.ui.shiftEnd;
-                    DOMElements.breakTime.value = state.ui.breakTime;
-                    DOMElements.currentCallTime.value = state.ui.currentCallTime;
-                    DOMElements.currentTickets.value = state.ui.currentTickets;
-                }
-
-                const debouncedCalculateAndSave = SafeUI.debounce(() => {
-                    state.ui.shiftStart = DOMElements.shiftStart.value;
-                    state.ui.shiftEnd = DOMElements.shiftEnd.value;
-                    state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10);
-                    state.ui.currentCallTime = DOMElements.currentCallTime.value;
-                    state.ui.currentTickets = parseInt(DOMElements.currentTickets.value, 10) || 0;
-                    
-                    saveState();
-                    calculateDailyRatings();
-                }, 250);
-
-                function handleAddCallTime() {
-                    const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-                    const minutesToAdd = parseInt(DOMElements.addCallTime.value, 10) || 0;
-                    
-                    if (minutesToAdd === 0) return;
-                    
-                    const newTotalMinutes = currentMinutes + minutesToAdd;
-                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes); 
-                    DOMElements.addCallTime.value = '';
-                    debouncedCalculateAndSave(); 
-                }
-
-                function showResetModal() { DOMElements.resetModalOverlay.style.display = 'flex'; }
-                function hideResetModal() { DOMElements.resetModalOverlay.style.display = 'none'; }
-                
-                function handleResetData() {
-                    state.ui = JSON.parse(JSON.stringify(defaultState.ui));
-                    updateInputsFromState(); 
-                    renderScheduleCollapse(); // Reset collapse state
-                    calculateDailyRatings(); 
-                    saveState(); // Persist the reset
-                    hideResetModal();
-                    SafeUI.showToast('Data reset to defaults');
-                }
-
-                function autoImportBookmarkletData() {
-                    let minsToImport = 0;
-                    try {
-                        minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
-                    } catch (err) {
-                        console.warn("Failed to read from localStorage (sandboxed?):", err.message);
+            // ============================================================================
+            // INITIALIZATION ROUTINE
+            // ============================================================================
+            (async () => {
+                try {
+                    // Critical dependency check
+                    if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined' || typeof UIPatterns === 'undefined' || typeof SharedSettingsModal === 'undefined' || typeof BackupRestore === 'undefined') {
+                        AppLifecycle._showErrorBanner("Application Failed to Load", "Critical dependencies (UI, Data, or Settings) missing.");
+                        console.error("Critical dependencies missing (SafeUI, DOMHelpers, UIPatterns, SharedSettingsModal, BackupRestore).");
                         return;
                     }
 
-                    try {
-                        if (minsToImport > 0) {
-                            const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-                            const newTotalMinutes = currentMinutes + minsToImport;
-                            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
-                            localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
-                            debouncedCalculateAndSave();
-                            SafeUI.showToast(`Imported ${minsToImport} minutes from call logger.`);
+                    console.log(`[Calculator] Initializing v${APP_CONFIG.VERSION} via AppLifecycle.run`);
+
+                    const defaultState = {
+                        ui: {
+                            shiftStart: '08:00',
+                            shiftEnd: '16:00',
+                            breakTime: 60,
+                            currentCallTime: '0',
+                            currentTickets: 0,
+                            isScheduleCollapsed: true
                         }
-                    } catch (err) {
-                        console.error("Failed to process auto-import data:", err);
-                    }
-                }
-
-                function getScheduleInfo(now) {
-                    const startTime = new Date(now);
-                    const startMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
-                    startTime.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
-                    
-                    const endTime = new Date(now);
-                    const endMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
-                    endTime.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
-
-                    const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10);
-                    const totalShiftMinutes = (endTime - startTime) / 60000;
-                    
-                    if (totalShiftMinutes <= 0) {
-                        return { 
-                            totalProductiveMinutes: 0, productiveMinutesPassed: 0, productiveMinutesRemaining: 0,
-                            error: "Shift end time must be after shift start time."
-                        };
-                    }
-
-                    const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
-                    const leewayTimeMinutes = postBreakMinutes * CONSTANTS.LEEWAY_RATIO;
-                    const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
-                    
-                    let workdayMinutesPassed = (now - startTime) / 60000;
-                    if (workdayMinutesPassed < 0) workdayMinutesPassed = 0; 
-                    if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes; 
-
-                    let productiveMinutesPassed = 0;
-                    if (totalShiftMinutes > 0) {
-                        productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
-                    }
-                    if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
-                    const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
-
-                    return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
-                }
-
-                // REFACTORED: This only updates the clock now.
-                function updateTimeDisplays(now) {
-                    DOMElements.currentTime.innerText = now.toLocaleTimeString();
-                }
-                
-                function buildTargetCardHTML(label, value, description) {
-                    return `
-                        <span class="target-label">${label}</span>
-                        <span class="target-value">${value}</span>
-                        <span class="target-desc">${description}</span>
-                    `;
-                }
-
-                function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
-                    if (totalWorkTimeEOD < 0) {
-                        return {
-                            boxClass: 'target-danger',
-                            html: buildTargetCardHTML(boundary.name, "0", "Call time exceeds productive time.")
-                        };
-                    }
-                    if (ticketsNeeded <= 0) {
-                        return {
-                            boxClass: 'target-good',
-                            html: buildTargetCardHTML(boundary.name, "GOAL MET!", `Target: ${ticketsToHitGrade} tickets`)
-                        };
-                    }
-                    if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
-                        return {
-                            boxClass: 'target-danger',
-                            html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
-                        };
-                    }
-                    return {
-                        boxClass: 'target-warn',
-                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
-                    };
-                }
-
-                function calculateGradeRequirements(baseTarget) {
-                    return {
-                        'Satisfactory': baseTarget + gradeBoundaries.Satisfactory.min,
-                        'Excellent': baseTarget + gradeBoundaries.Excellent.min,
-                        'Outstanding': baseTarget + gradeBoundaries.Outstanding.min
-                    };
-                }
-
-                function buildGradeStatusRow(gradeName, targetAmount, currentTickets, isPacing = false) {
-                    const ticketsNeeded = Math.max(0, targetAmount - currentTickets);
-                    const achieved = ticketsNeeded === 0;
-                    
-                    let icon, color, message;
-
-                    if (isPacing) {
-                        const reachable = ticketsNeeded <= CONSTANTS.REACHABLE_TICKET_THRESHOLD;
-                        if (achieved) {
-                            icon = '✓';
-                            color = '#27ae60';
-                            message = 'On track';
-                        } else if (reachable) {
-                            icon = '⚠️';
-                            color = '#f39c12';
-                            message = `Need ${ticketsNeeded} more by 3:30 PM`;
-                        } else {
-                            icon = '❌';
-                            color = '#e74c3c';
-                            message = `Need ${ticketsNeeded} more (challenging)`;
-                        }
-                    } else { // Final status (not pacing)
-                        if (achieved) {
-                            icon = '✓';
-                            color = '#27ae60';
-                            const ticketsOver = currentTickets - targetAmount;
-                            message = ticketsOver > 0 ? `Achieved (+${ticketsOver} extra)` : 'Achieved';
-                        } else {
-                            icon = '⚠️';
-                            color = '#e74c3c';
-                            message = `${ticketsNeeded} short`;
-                        }
-                    }
-
-                    return `
-                        <div style="padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong style="color: ${color};">${icon} ${gradeName}</strong>
-                                <span style="font-size: 0.85em; opacity: 0.7; margin-left: 8px;">(${targetAmount} tickets)</span>
-                            </div>
-                            <div style="text-align: right; font-size: 0.9em; color: ${color};">
-                                ${message}
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                // ============================================================================
-                // REFACTORED FUNCTION: renderCalculationInfo
-                // ============================================================================
-                function renderCalculationInfo(scheduleData, now) {
-                    const {
-                        totalWorkTimeEOD,
-                        currentTicketsSoFar,
-                        productiveMinutesRemaining,
-                        roundedWorkHours,
-                        targetTicketGoal,
-                        totalProductiveMinutes,
-                        currentCallTimeSoFar
-                    } = scheduleData;
-                    
-                    if (totalWorkTimeEOD < 0) {
-                        DOMElements.calcInfoContent.innerHTML = `
-                            <div class="info-box info-box-danger">
-                                <strong>Status:</strong> Call time exceeds available productive time.
-                            </div>`;
-                        return;
-                    }
-
-                    const currentHour = now.getHours();
-                    const currentMinute = now.getMinutes();
-                    const currentTimeMinutes = currentHour * 60 + currentMinute;
-                    const phonesStillOpen = currentTimeMinutes < CONSTANTS.PHONE_CLOSE_MINUTES;
-                    
-                    const currentGrades = calculateGradeRequirements(targetTicketGoal);
-                    
-                    const shiftStartMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
-                    const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
-                    
-                    // REFACTORED: Simplified this logic block
-                    if (phonesStillOpen && minutesIntoShift <= 0) {
-                        DOMElements.calcInfoContent.innerHTML = `
-                            <div class="info-box">
-                                <strong>⏰ Shift Has Not Started</strong>
-                                <p style="margin: 8px 0 0 0;">Pacing analysis will begin at ${DOMElements.shiftStart.value}.</p>
-                            </div>
-                        `; // Removed redundant grades table
-                        return;
-                    }
-
-                    // ============================================================
-                    // BEFORE 3:30 PM - Show Pacing for All Grades
-                    // ============================================================
-                    if (phonesStillOpen) {
-                        const callRatePerHour = (currentCallTimeSoFar / minutesIntoShift) * 60;
-                        const minutesUntilPhoneClose = CONSTANTS.PHONE_CLOSE_MINUTES - currentTimeMinutes;
-
-                        const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
-                        const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
-                        const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
-                        const projectedTarget = projectedRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
-                        
-                        const projectedGrades = calculateGradeRequirements(projectedTarget);
-                        
-                        // REFACTORED: Removed outer "Current Status" box
-                        let statusHtml = `
-                            <!-- Removed margin-top -->
-                            <div class="info-box">
-                                <!-- Merged "Current Status" info into projection box -->
-                                <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.1);">
-                                    <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> | 
-                                    ${currentTicketsSoFar} tickets | 
-                                    ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
-                                </div>
-
-                                <div style="font-size: 0.9em;">
-                                    <strong>Projection by 3:30 PM:</strong>
-                                    <br>
-                                    Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)} 
-                                    <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
-                                    <br>
-                                    Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
-                                    <br>
-                                    Target: <strong>${projectedTarget}</strong> tickets
-                                </div>
-                            
-                                <div style="margin-top: 8px;">
-                        `;
-                        
-                        for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
-                            statusHtml += buildGradeStatusRow(gradeName, projectedNeeded, currentTicketsSoFar, true);
-                        }
-                        
-                        statusHtml += `
-                                </div>
-                            </div>
-                        `;
-                        
-                        // REFACTORED: Removed grades table
-                        DOMElements.calcInfoContent.innerHTML = statusHtml;
-                        
-                    // ============================================================
-                    // AFTER 3:30 PM - Show Final Status
-                    // ============================================================
-                    } else {
-                        let statusHtml = `
-                            <!-- Removed margin-top -->
-                            <div class="info-box">
-                                <strong>📞 Phones Closed</strong>
-                                <p style="margin: 8px 0 0 0;">
-                                    Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong> 
-                                    → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
-                                </p>
-                            
-                                <div style="margin-top: 8px;">
-                        `;
-                        
-                        for (const [gradeName, needed] of Object.entries(currentGrades)) {
-                            statusHtml += buildGradeStatusRow(gradeName, needed, currentTicketsSoFar, false);
-                        }
-                        
-                        statusHtml += `
-                                </div>
-                            </div>
-                        `;
-                        
-                        // REFACTORED: Removed grades table
-                        DOMElements.calcInfoContent.innerHTML = statusHtml;
-                    }
-                }
-                
-                // REMOVED: getGradesTableHtml() function
-
-                // REFACTOR D-5: Helper to render error states
-                function renderErrorState(errorMessage, errorData) {
-                    DOMElements.totalWorkTimeEOD.innerText = '00:00';
-                    DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${errorMessage}</div>`;
-                    renderCalculationInfo(errorData, new Date()); // Pass 'now'
-                }
-
-                function calculateDailyRatings() {
-                    const now = new Date();
-                    
-                    // REFACTORED: Must call getScheduleInfo here now
-                    const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = getScheduleInfo(now);
-                    
-                    DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
-
-                    const errorData = { 
-                        totalWorkTimeEOD: -1, 
-                        currentTicketsSoFar: 0, 
-                        productiveMinutesRemaining: 0, 
-                        roundedWorkHours: 0, 
-                        targetTicketGoal: 0,
-                        totalProductiveMinutes: 0,
-                        currentCallTimeSoFar: 0
                     };
 
-                    if (scheduleError) {
-                        renderErrorState(scheduleError, errorData);
-                        return;
-                    }
-                    if (totalProductiveMinutes <= 0) {
-                        renderErrorState("Invalid Schedule. Total Productive Time must be greater than 0 (check break time).", errorData);
+                    // Initialize via AppLifecycle
+                    const ctx = await AppLifecycle.initPage({
+                        storageKey: APP_CONFIG.DATA_KEY,
+                        defaultState: defaultState,
+                        version: APP_CONFIG.VERSION,
+                        requiredElements: [
+                            'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                            'shiftStart', 'shiftEnd', 'breakTime', 
+                            'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
+                            'currentTime', 'totalProductiveTime', 'totalWorkTimeEOD',
+                            'targets-content', 'btnResetData',
+                            'calc-info-content',
+                            'app-startup-error',
+                            'schedule-header', 'schedule-content', 'schedule-collapse-icon',
+                            'btnSettings' // <-- ADDED: For the new settings modal button
+                        ]
+                    });
+
+                    if (!ctx) {
+                        AppLifecycle._showErrorBanner("Application Failed to Load", "Failed to initialize application context (ctx is null).");
+                        console.error("Failed to initialize application context (ctx is null).");
                         return;
                     }
 
-                    const currentCallTimeSoFar = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-                    const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
-                    
-                    const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
-                    
-                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
-                    
-                    const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
-                    const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
+                    const { elements: DOMElements, state, saveState } = ctx;
 
-                    DOMElements.targetsContent.innerHTML = ''; 
-                    
-                    for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
-                        const targetBox = document.createElement('div');
-                        targetBox.id = `target${targetName}`;
-                        
-                        const ticketsToHitGrade = targetTicketGoal + boundary.min;
-                        const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
-                        
-                        let callTimeHtml = '';
-                        if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
-                            const callAlternative = getCallTimeAlternative(
-                                boundary,
-                                currentTicketsSoFar,
-                                totalProductiveMinutes,
-                                currentCallTimeSoFar,
-                                productiveMinutesRemaining
-                            );
-                            if (callAlternative) {
-                                callTimeHtml = callAlternative.callTimeHtml;
+                    // --- NEW: Initialize Standard Settings Modal ---
+                    SharedSettingsModal.init({
+                        buttonId: 'btnSettings',
+                        appName: APP_CONFIG.NAME,
+                        state: state, // Pass the entire state object for backup
+                        itemValidators: {
+                            // No complex collections, but we can ensure 'ui' exists
+                            'ui': ['shiftStart', 'shiftEnd', 'breakTime'] 
+                        },
+                        onRestoreCallback: (restoredData) => {
+                            // The backup restores the *entire* state object,
+                            // which might just be { ui: {...} } or { data: { ui: {...} } }
+                            const dataToRestore = restoredData.ui ? restoredData.ui : restoredData;
+
+                            if (dataToRestore.shiftStart && dataToRestore.shiftEnd) {
+                                state.ui = dataToRestore; // Overwrite the UI state
+                                saveState();
+                                
+                                // Now, refresh the entire UI from the restored state
+                                updateInputsFromState();
+                                calculateDailyRatings();
+                                renderScheduleCollapse();
+                                SafeUI.showToast('Calculator settings restored.');
+                                return true; // Close modal
+                            } else {
+                                SafeUI.showModal('Restore Error', '<p>The backup file did not contain valid calculator UI data.</p>', [{ label: 'OK' }]);
+                                return false; // Keep modal open
                             }
                         }
+                    });
+
+
+                    // --- Constants & Utils ---
+                    const CONSTANTS = {
+                        LEEWAY_RATIO: 1 / 7, 
+                        TICKETS_PER_HOUR_RATE: 6, 
+                        ROUNDING_BOUNDARY_MAX: 29, // Rounds up at 30+ minutes
+                        PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 3:30 PM
+                        REACHABLE_TICKET_THRESHOLD: 10
+                    };
+
+                    const gradeBoundaries = {
+                        'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
+                        'Excellent': { name: 'Excellent', min: 4, max: 6 },
+                        'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
+                    };
+
+                    const TimeUtil = {
+                        parseTimeToMinutes(input) {
+                            if (!input) return 0;
+                            const trimmed = String(input).trim();
+                            if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+                            if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * 60;
+                            if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+                                const parts = trimmed.split(':').map(Number);
+                                return (parts[0] * 60) + parts[1];
+                            }
+                            if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
+                                const parts = trimmed.split(':').map(Number);
+                                return (parts[0] * 60) + parts[1] + (parts[2] / 60);
+                            }
+                            return 0;
+                        },
+
+                        formatMinutesToHHMM(totalMinutes) {
+                            if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
+                            const hours = Math.floor(totalMinutes / 60);
+                            const minutes = Math.floor(totalMinutes % 60);
+                            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                        },
                         
-                        const { boxClass, html } = getTargetCardState({
-                            boundary,
-                            totalWorkTimeEOD,
-                            ticketsNeeded,
-                            ticketsToHitGrade,
-                            productiveMinutesRemaining,
-                            callTimeHtml
-                        });
-                        
-                        targetBox.className = `target-card ${boxClass}`;
-                        targetBox.innerHTML = html;
-                        DOMElements.targetsContent.appendChild(targetBox);
+                        formatMinutesToHHMMShort(totalMinutes) {
+                            if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
+                            if (totalMinutes === 0) return '0m';
+                            const hours = Math.floor(totalMinutes / 60);
+                            const minutes = Math.floor(totalMinutes % 60);
+                            let parts = [];
+                            if (hours > 0) parts.push(`${hours}h`);
+                            if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
+                            return parts.join(' ');
+                        },
+
+                        parseShiftTimeToMinutes(timeStr) {
+                            const parts = timeStr.split(':').map(Number);
+                            return (parts[0] * 60) + parts[1];
+                        },
+
+                        formatTimeAMPM(hour, minute) {
+                            return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+                        }
+                    };
+
+                    function getCallTimeAlternative(boundary, currentTicketsSoFar, totalProductiveMinutes, currentCallTimeSoFar, productiveMinutesRemaining) {
+                        const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min;
+                        const maxRoundedHours = Math.floor(maxAllowableTargetCalc / CONSTANTS.TICKETS_PER_HOUR_RATE);
+                        const maxWorkTimeMinutes = (maxRoundedHours * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
+                        const maxCallTimeAllowed = totalProductiveMinutes - maxWorkTimeMinutes;
+                        const additionalCallMinutes = maxCallTimeAllowed - currentCallTimeSoFar;
+
+                        if (additionalCallMinutes > 0) {
+                            const flooredMinutes = Math.floor(additionalCallMinutes);
+                            const displayTime = TimeUtil.formatMinutesToHHMMShort(flooredMinutes);
+                            if (additionalCallMinutes <= productiveMinutesRemaining) {
+                                return {
+                                    additionalCallMinutes: flooredMinutes,
+                                    callTimeHtml: `<strong>OR</strong> ${displayTime} more calls`
+                                };
+                            } else {
+                                return {
+                                    additionalCallMinutes: flooredMinutes,
+                                    callTimeHtml: `<strong>OR</strong> ${displayTime} (exceeds shift)`
+                                };
+                            }
+                        }
+                        return null; // No positive call time alternative
                     }
-                    
-                    renderCalculationInfo({ 
-                        totalWorkTimeEOD, 
-                        currentTicketsSoFar, 
-                        productiveMinutesRemaining,
-                        roundedWorkHours,
-                        targetTicketGoal,
-                        totalProductiveMinutes,
-                        currentCallTimeSoFar
-                    }, now);
-                }
 
-                // --- NEW: Accordion Function ---
-                function renderScheduleCollapse() {
-                    const isCollapsed = state.ui.isScheduleCollapsed;
-                    DOMElements.scheduleContent.classList.toggle('collapsed', isCollapsed);
-                    DOMElements.scheduleCollapseIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-                }
-
-                // --- Execution ---
-                populateTimeOptions(DOMElements.shiftStart, 6, 12, state.ui?.shiftStart || defaultState.ui.shiftStart); 
-                populateTimeOptions(DOMElements.shiftEnd, 12, 18, state.ui?.shiftEnd || defaultState.ui.shiftEnd); 
-
-                updateInputsFromState();
-
-                // NEW: Accordion listener
-                DOMElements.scheduleHeader.addEventListener('click', () => {
-                    state.ui.isScheduleCollapsed = !state.ui.isScheduleCollapsed;
-                    renderScheduleCollapse();
-                    saveState();
-                });
-
-                DOMElements.shiftStart.addEventListener('input', debouncedCalculateAndSave);
-                DOMElements.shiftEnd.addEventListener('input', debouncedCalculateAndSave);
-                DOMElements.breakTime.addEventListener('input', debouncedCalculateAndSave);
-                DOMElements.currentCallTime.addEventListener('input', debouncedCalculateAndSave);
-                DOMElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
-                DOMElements.btnAddCallTime.addEventListener('click', handleAddCallTime);
-                
-                DOMElements.currentCallTime.addEventListener('blur', () => {
-                    const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(currentMinutes);
-                });
-                
-                DOMElements.btnResetData.addEventListener('click', showResetModal);
-                DOMElements.modalCancelReset.addEventListener('click', hideResetModal);
-                DOMElements.modalConfirmReset.addEventListener('click', handleResetData);
-
-                DOMElements.addCallTime.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') handleAddCallTime();
-                });
-                
-                // REFACTORED: Timer tick
-                function handleTimerTick() {
-                    const now = new Date();
-                    updateTimeDisplays(now); // Update clock every second
-
-                    if (document.visibilityState === 'visible') {
-                        const seconds = now.getSeconds();
-                        if (seconds === 0 || seconds === 30) {
-                            calculateDailyRatings();
+                    function populateTimeOptions(select, startHour, endHour, defaultVal) {
+                        for (let h = startHour; h <= endHour; h++) {
+                            for (let m = 0; m < 60; m += 15) { 
+                                const hourStr = String(h).padStart(2, '0');
+                                const minStr = String(m).padStart(2, '0');
+                                const timeStr = `${hourStr}:${minStr}`;
+                                const option = document.createElement('option');
+                                option.value = timeStr;
+                                option.text = timeStr;
+                                if (timeStr === defaultVal) option.selected = true;
+                                select.appendChild(option);
+                            }
                         }
                     }
-                }
 
-                setInterval(handleTimerTick, 1000);
+                    function updateInputsFromState() {
+                        if (!state.ui) state.ui = { ...defaultState.ui };
+                        
+                        DOMElements.shiftStart.value = state.ui.shiftStart;
+                        DOMElements.shiftEnd.value = state.ui.shiftEnd;
+                        DOMElements.breakTime.value = state.ui.breakTime;
+                        DOMElements.currentCallTime.value = state.ui.currentCallTime;
+                        DOMElements.currentTickets.value = state.ui.currentTickets;
+                    }
 
-                // Initial setup
-                renderScheduleCollapse(); // Apply default collapse state
-                calculateDailyRatings(); 
-                
-                const initialCallMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-                DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(initialCallMinutes);
-                
-                autoImportBookmarkletData();
-                
-                if (Object.keys(state.ui || {}).length > 0) {
-                    SafeUI.showToast('Restored previous session');
-                }
+                    const debouncedCalculateAndSave = SafeUI.debounce(() => {
+                        state.ui.shiftStart = DOMElements.shiftStart.value;
+                        state.ui.shiftEnd = DOMElements.shiftEnd.value;
+                        state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10);
+                        state.ui.currentCallTime = DOMElements.currentCallTime.value;
+                        state.ui.currentTickets = parseInt(DOMElements.currentTickets.value, 10) || 0;
+                        
+                        saveState();
+                        calculateDailyRatings();
+                    }, 250);
 
-            } catch (err) {
-                console.error("Unhandled exception during initialization:", err);
-                const banner = document.getElementById('app-startup-error');
-                if (banner) {
-                    banner.innerHTML = `<strong>Application Error</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Unexpected error: ${err.message}</p>`;
-                    banner.classList.remove('hidden');
+                    function handleAddCallTime() {
+                        const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                        const minutesToAdd = parseInt(DOMElements.addCallTime.value, 10) || 0;
+                        
+                        if (minutesToAdd === 0) return;
+                        
+                        const newTotalMinutes = currentMinutes + minutesToAdd;
+                        DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes); 
+                        DOMElements.addCallTime.value = '';
+                        debouncedCalculateAndSave(); 
+                    }
+                    
+                    function handleResetData() {
+                        state.ui = JSON.parse(JSON.stringify(defaultState.ui));
+                        updateInputsFromState(); 
+                        renderScheduleCollapse(); // Reset collapse state
+                        calculateDailyRatings(); 
+                        saveState(); // Persist the reset
+                        SafeUI.showToast('Data reset to defaults');
+                    }
+
+                    function autoImportBookmarkletData() {
+                        let minsToImport = 0;
+                        try {
+                            // Note: Using localStorage, not part of the standard state backup
+                            minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
+                        } catch (err) {
+                            console.warn("Failed to read from localStorage (sandboxed?):", err.message);
+                            return;
+                        }
+
+                        try {
+                            if (minsToImport > 0) {
+                                const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                                const newTotalMinutes = currentMinutes + minsToImport;
+                                DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
+                                localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
+                                debouncedCalculateAndSave();
+                                SafeUI.showToast(`Imported ${minsToImport} minutes from call logger.`);
+                            }
+                        } catch (err) {
+                            console.error("Failed to process auto-import data:", err);
+                        }
+                    }
+
+                    function getScheduleInfo(now) {
+                        const startTime = new Date(now);
+                        const startMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
+                        startTime.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
+                        
+                        const endTime = new Date(now);
+                        const endMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+                        endTime.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
+
+                        const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10);
+                        const totalShiftMinutes = (endTime - startTime) / 60000;
+                        
+                        if (totalShiftMinutes <= 0) {
+                            return { 
+                                totalProductiveMinutes: 0, productiveMinutesPassed: 0, productiveMinutesRemaining: 0,
+                                error: "Shift end time must be after shift start time."
+                            };
+                        }
+
+                        const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
+                        const leewayTimeMinutes = postBreakMinutes * CONSTANTS.LEEWAY_RATIO;
+                        const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
+                        
+                        let workdayMinutesPassed = (now - startTime) / 60000;
+                        if (workdayMinutesPassed < 0) workdayMinutesPassed = 0; 
+                        if (workdayMinutesPassed > totalShiftMinutes) workdayMinutesPassed = totalShiftMinutes; 
+
+                        let productiveMinutesPassed = 0;
+                        if (totalShiftMinutes > 0) {
+                            productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
+                        }
+                        if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
+                        const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
+
+                        return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
+                    }
+
+                    function updateTimeDisplays(now) {
+                        DOMElements.currentTime.innerText = now.toLocaleTimeString();
+                    }
+                    
+                    function buildTargetCardHTML(label, value, description) {
+                        // Uses standard classes from eod-targets-page styles
+                        return `
+                            <span class="target-label">${label}</span>
+                            <span class="target-value">${value}</span>
+                            <span class="target-desc">${description}</span>
+                        `;
+                    }
+
+                    function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
+                        if (totalWorkTimeEOD < 0) {
+                            return {
+                                boxClass: 'target-danger',
+                                html: buildTargetCardHTML(boundary.name, "0", "Call time exceeds productive time.")
+                            };
+                        }
+                        if (ticketsNeeded <= 0) {
+                            return {
+                                boxClass: 'target-good',
+                                html: buildTargetCardHTML(boundary.name, "GOAL MET!", `Target: ${ticketsToHitGrade} tickets`)
+                            };
+                        }
+                        if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
+                            return {
+                                boxClass: 'target-danger',
+                                html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
+                            };
+                        }
+                        return {
+                            boxClass: 'target-warn',
+                            html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
+                        };
+                    }
+
+                    function calculateGradeRequirements(baseTarget) {
+                        return {
+                            'Satisfactory': baseTarget + gradeBoundaries.Satisfactory.min,
+                            'Excellent': baseTarget + gradeBoundaries.Excellent.min,
+                            'Outstanding': baseTarget + gradeBoundaries.Outstanding.min
+                        };
+                    }
+
+                    // ============================================================================
+                    // REFACTORED: buildGradeStatusRow
+                    // Now uses CSS classes from style.css instead of inline styles
+                    // ============================================================================
+                    function buildGradeStatusRow(gradeName, targetAmount, currentTickets, isPacing = false) {
+                        const ticketsNeeded = Math.max(0, targetAmount - currentTickets);
+                        const achieved = ticketsNeeded === 0;
+                        
+                        let icon, rowClass, message;
+
+                        if (isPacing) {
+                            const reachable = ticketsNeeded <= CONSTANTS.REACHABLE_TICKET_THRESHOLD;
+                            if (achieved) {
+                                icon = '✓';
+                                rowClass = 'pacing-good';
+                                message = 'On track';
+                            } else if (reachable) {
+                                icon = '⚠️';
+                                rowClass = 'pacing-warn';
+                                message = `Need ${ticketsNeeded} more by 3:30 PM`;
+                            } else {
+                                icon = '❌';
+                                rowClass = 'pacing-fail';
+                                message = `Need ${ticketsNeeded} more (challenging)`;
+                            }
+                        } else { // Final status (not pacing)
+                            if (achieved) {
+                                icon = '✓';
+                                rowClass = 'pacing-good';
+                                const ticketsOver = currentTickets - targetAmount;
+                                message = ticketsOver > 0 ? `Achieved (+${ticketsOver} extra)` : 'Achieved';
+                            } else {
+                                icon = '⚠️';
+                                rowClass = 'pacing-fail';
+                                message = `${ticketsNeeded} short`;
+                            }
+                        }
+
+                        // REFACTORED: Removed all inline styles
+                        return `
+                            <div class="pacing-row ${rowClass}">
+                                <div>
+                                    <strong>${icon} ${gradeName}</strong>
+                                    <span class="pacing-details">(${targetAmount} tickets)</span>
+                                </div>
+                                <div class="pacing-message">
+                                    ${message}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    
+                    function renderCalculationInfo(scheduleData, now) {
+                        const {
+                            totalWorkTimeEOD,
+                            currentTicketsSoFar,
+                            productiveMinutesRemaining,
+                            roundedWorkHours,
+                            targetTicketGoal,
+                            totalProductiveMinutes,
+                            currentCallTimeSoFar
+                        } = scheduleData;
+                        
+                        if (totalWorkTimeEOD < 0) {
+                            DOMElements.calcInfoContent.innerHTML = `
+                                <div class="info-box info-box-danger">
+                                    <strong>Status:</strong> Call time exceeds available productive time.
+                                </div>`;
+                            return;
+                        }
+
+                        const currentHour = now.getHours();
+                        const currentMinute = now.getMinutes();
+                        const currentTimeMinutes = currentHour * 60 + currentMinute;
+                        const phonesStillOpen = currentTimeMinutes < CONSTANTS.PHONE_CLOSE_MINUTES;
+                        
+                        const currentGrades = calculateGradeRequirements(targetTicketGoal);
+                        
+                        const shiftStartMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
+                        const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
+                        
+                        if (phonesStillOpen && minutesIntoShift <= 0) {
+                            DOMElements.calcInfoContent.innerHTML = `
+                                <div class="info-box">
+                                    <strong>⏰ Shift Has Not Started</strong>
+                                    <p style="margin: 8px 0 0 0;">Pacing analysis will begin at ${DOMElements.shiftStart.value}.</p>
+                                </div>
+                            `;
+                            return;
+                        }
+
+                        // BEFORE 3:30 PM - Show Pacing
+                        if (phonesStillOpen) {
+                            const callRatePerHour = (currentCallTimeSoFar / minutesIntoShift) * 60;
+                            const minutesUntilPhoneClose = CONSTANTS.PHONE_CLOSE_MINUTES - currentTimeMinutes;
+
+                            const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
+                            const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
+                            const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
+                            const projectedTarget = projectedRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
+                            
+                            const projectedGrades = calculateGradeRequirements(projectedTarget);
+                            
+                            let statusHtml = `
+                                <div class="info-box">
+                                    <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                                        <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> | 
+                                        ${currentTicketsSoFar} tickets | 
+                                        ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
+                                    </div>
+
+                                    <div style="font-size: 0.9em;">
+                                        <strong>Projection by 3:30 PM:</strong>
+                                        <br>
+                                        Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)} 
+                                        <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
+                                        <br>
+                                        Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
+                                        <br>
+                                        Target: <strong>${projectedTarget}</strong> tickets
+                                    </div>
+                                
+                                    <div style="margin-top: 8px;">
+                            `;
+                            
+                            for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
+                                statusHtml += buildGradeStatusRow(gradeName, projectedNeeded, currentTicketsSoFar, true);
+                            }
+                            
+                            statusHtml += `
+                                    </div>
+                                </div>
+                            `;
+                            
+                            DOMElements.calcInfoContent.innerHTML = statusHtml;
+                            
+                        // AFTER 3:30 PM - Show Final Status
+                        } else {
+                            let statusHtml = `
+                                <div class="info-box">
+                                    <strong>📞 Phones Closed</strong>
+                                    <p style="margin: 8px 0 0 0;">
+                                        Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong> 
+                                        → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
+                                    </p>
+                                
+                                    <div style="margin-top: 8px;">
+                            `;
+                            
+                            for (const [gradeName, needed] of Object.entries(currentGrades)) {
+                                statusHtml += buildGradeStatusRow(gradeName, needed, currentTicketsSoFar, false);
+                            }
+                            
+                            statusHtml += `
+                                    </div>
+                                </div>
+                            `;
+                            
+                            DOMElements.calcInfoContent.innerHTML = statusHtml;
+                        }
+                    }
+                    
+                    function renderErrorState(errorMessage, errorData) {
+                        DOMElements.totalWorkTimeEOD.innerText = '00:00';
+                        // Added style to make error span all 3 columns
+                        DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger" style="grid-column: 1 / -1;">${errorMessage}</div>`;
+                        renderCalculationInfo(errorData, new Date()); // Pass 'now'
+                    }
+
+                    function calculateDailyRatings() {
+                        const now = new Date();
+                        
+                        const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = getScheduleInfo(now);
+                        
+                        DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
+
+                        const errorData = { 
+                            totalWorkTimeEOD: -1, 
+                            currentTicketsSoFar: 0, 
+                            productiveMinutesRemaining: 0, 
+                            roundedWorkHours: 0, 
+                            targetTicketGoal: 0,
+                            totalProductiveMinutes: 0,
+                            currentCallTimeSoFar: 0
+                        };
+
+                        if (scheduleError) {
+                            renderErrorState(scheduleError, errorData);
+                            return;
+                        }
+                        if (totalProductiveMinutes <= 0) {
+                            renderErrorState("Invalid Schedule. Total Productive Time must be greater than 0 (check break time).", errorData);
+                            return;
+                        }
+
+                        const currentCallTimeSoFar = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                        const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
+                        
+                        const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
+                        
+                        DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
+                        
+                        const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
+                        const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
+
+                        DOMElements.targetsContent.innerHTML = ''; 
+                        
+                        for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
+                            const targetBox = document.createElement('div');
+                            targetBox.id = `target${targetName}`;
+                            
+                            const ticketsToHitGrade = targetTicketGoal + boundary.min;
+                            const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
+                            
+                            let callTimeHtml = '';
+                            if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
+                                const callAlternative = getCallTimeAlternative(
+                                    boundary,
+                                    currentTicketsSoFar,
+                                    totalProductiveMinutes,
+                                    currentCallTimeSoFar,
+                                    productiveMinutesRemaining
+                                );
+                                if (callAlternative) {
+                                    callTimeHtml = callAlternative.callTimeHtml;
+                                }
+                            }
+                            
+                            const { boxClass, html } = getTargetCardState({
+                                boundary,
+                                totalWorkTimeEOD,
+                                ticketsNeeded,
+                                ticketsToHitGrade,
+                                productiveMinutesRemaining,
+                                callTimeHtml
+                            });
+                            
+                            targetBox.className = `target-card ${boxClass}`;
+                            targetBox.innerHTML = html;
+                            DOMElements.targetsContent.appendChild(targetBox);
+                        }
+                        
+                        renderCalculationInfo({ 
+                            totalWorkTimeEOD, 
+                            currentTicketsSoFar, 
+                            productiveMinutesRemaining,
+                            roundedWorkHours,
+                            targetTicketGoal,
+                            totalProductiveMinutes,
+                            currentCallTimeSoFar
+                        }, now);
+                    }
+
+                    function renderScheduleCollapse() {
+                        const isCollapsed = state.ui.isScheduleCollapsed;
+                        DOMElements.scheduleContent.classList.toggle('collapsed', isCollapsed);
+                        DOMElements.scheduleCollapseIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    }
+
+                    // --- Execution ---
+                    populateTimeOptions(DOMElements.shiftStart, 6, 12, state.ui?.shiftStart || defaultState.ui.shiftStart); 
+                    populateTimeOptions(DOMElements.shiftEnd, 12, 18, state.ui?.shiftEnd || defaultState.ui.shiftEnd); 
+
+                    updateInputsFromState();
+
+                    DOMElements.scheduleHeader.addEventListener('click', () => {
+                        state.ui.isScheduleCollapsed = !state.ui.isScheduleCollapsed;
+                        renderScheduleCollapse();
+                        saveState();
+                    });
+
+                    DOMElements.shiftStart.addEventListener('input', debouncedCalculateAndSave);
+                    DOMElements.shiftEnd.addEventListener('input', debouncedCalculateAndSave);
+                    DOMElements.breakTime.addEventListener('input', debouncedCalculateAndSave);
+                    DOMElements.currentCallTime.addEventListener('input', debouncedCalculateAndSave);
+                    DOMElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
+                    DOMElements.btnAddCallTime.addEventListener('click', handleAddCallTime);
+                    
+                    DOMElements.currentCallTime.addEventListener('blur', () => {
+                        const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                        DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(currentMinutes);
+                    });
+                    
+                    DOMElements.btnResetData.addEventListener('click', () => {
+                        UIPatterns.confirmDelete('Data', 'Reset all saved data? This cannot be undone.', handleResetData);
+                    });
+
+                    DOMElements.addCallTime.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') handleAddCallTime();
+                    });
+                    
+                    function handleTimerTick() {
+                        const now = new Date();
+                        updateTimeDisplays(now); // Update clock every second
+
+                        if (document.visibilityState === 'visible') {
+                            const seconds = now.getSeconds();
+                            if (seconds === 0 || seconds === 30) {
+                                calculateDailyRatings();
+                            }
+                        }
+                    }
+
+                    setInterval(handleTimerTick, 1000);
+
+                    // Initial setup
+                    renderScheduleCollapse();
+                    calculateDailyRatings(); 
+                    
+                    const initialCallMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(initialCallMinutes);
+                    
+                    autoImportBookmarkletData();
+                    
+                    if (Object.keys(state.ui || {}).length > 0) {
+                        SafeUI.showToast('Restored previous session');
+                    }
+
+                } catch (err) {
+                    console.error("Unhandled exception during initialization:", err);
+                    AppLifecycle._showErrorBanner("Application Error", `Unexpected error: ${err.message}`);
                 }
-            }
-        })();
-    }
+            })();
+        }
+        
+        // Run the initialization function
+        initializePage();
+    });
     </script>
 </body>
 </html>
-
 
