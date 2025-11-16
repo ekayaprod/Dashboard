@@ -6,57 +6,77 @@
     <title>EOD Targets</title>
     <!-- Assuming style.css is in the same directory or loaded via bootstrap -->
     <link rel="stylesheet" href="style.css">
-    <!-- Adding some inline styles to support new info boxes until style.css is updated -->
+    <!-- 
+      NEW INLINE STYLES
+      - These replicate the compact look of .eod-targets-page
+      - They apply *within* the standard .main-content
+    -->
     <style>
-        .info-box {
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 0.95em;
-            border: 1px solid transparent;
-        }
-        .info-box-danger {
-            background-color: #fbebeE;
-            border-color: #e74c3c;
-            color: #c0392b;
-        }
-        .info-box-warn {
-            background-color: #fef9e7;
-            border-color: #f39c12;
-            color: #f39c12;
-        }
-        .info-box-success {
-            background-color: #eafaf1;
-            border-color: #27ae60;
-            color: #27ae60;
-        }
-        .info-box strong {
-            color: inherit;
-        }
-        .info-box p {
-            line-height: 1.5;
+        /* Use .main-content > .calc-section to be specific */
+        .main-content > .calc-section {
+            background-color: var(--panel-bg);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            margin-bottom: 0.5rem; 
+            overflow: hidden;
+            /* Padding is handled by content */
+            padding: 0; 
         }
         
-        /* --- NEW STYLES FOR COMPACT UI --- */
-        .calc-section {
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.75rem;
-        }
         .calc-section-header {
-            margin-bottom: 0.5rem;
+            padding: 0.5rem 0.75rem; /* Compact header padding */
+            background-color: var(--info-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        
         .calc-section-header h2 {
+            font-size: 1.0em; /* smaller heading */
+            font-weight: 600;
             margin: 0;
-            font-size: 1.1em; /* smaller heading */
         }
-        /* Apply compact styles to labels */
+        
+        .calc-section-content {
+             padding: 0.75rem; 
+             display: grid;
+             gap: 0.5rem; 
+        }
+        
+        .btn-subtle-reset {
+             font-size: 0.8rem;
+             font-weight: 400;
+             color: var(--subtle-text);
+             background: none;
+             border: none;
+             padding: 0.25rem;
+             text-decoration: underline;
+             cursor: pointer;
+        }
+        .btn-subtle-reset:hover {
+            color: var(--text-color);
+        }
+
+        /* Custom label for this page */
         .sidebar-label {
              font-size: 0.8em;
              margin-bottom: 0.2rem;
              text-transform: uppercase;
              opacity: 0.9;
+             font-weight: 500;
+             color: var(--subtle-text);
         }
         
-        /* Compact Stat Box styles */
+        /* Specific input overrides */
+        .calc-section-content .sidebar-input,
+        .calc-section-content .sidebar-select {
+             margin: 0;
+             font-size: 0.85rem;
+             padding: 0.4rem 0.6rem;
+             border-radius: var(--border-radius-sm);
+        }
+
         .stat-item-compact {
             display: flex;
             justify-content: space-between;
@@ -73,10 +93,91 @@
         .stat-value-compact {
             font-weight: 600;
         }
-        /* --- END NEW STYLES --- */
+
+        .target-card {
+            padding: 0.5rem; 
+            border-radius: var(--border-radius-sm);
+            text-align: center;
+        }
+        .target-label {
+            display: block;
+            font-size: 0.9rem; 
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .target-value {
+            display: block;
+            font-size: 1.25rem; /* Slightly smaller */
+            font-weight: 700;
+            line-height: 1.1;
+        }
+        .target-desc {
+            font-size: 0.8em; /* smaller */
+            opacity: 0.9;
+            margin-top: 0.2rem; 
+        }
+        
+        .target-good {
+            background-color: var(--color-success-bg);
+            border: 1px solid var(--color-success-border);
+            color: var(--color-success);
+        }
+        .target-warn {
+            background-color: var(--color-danger-bg);
+            border: 1px solid var(--color-danger-border);
+            color: var(--color-danger);
+        }
+        .target-danger {
+            background-color: var(--info-bg); 
+            border: 1px solid var(--border-color);
+            color: var(--subtle-text);
+        }
+        .target-danger .target-value { color: var(--subtle-text); }
+        
+        .time-bar {
+            padding: 0.25rem 0.5rem; 
+            background-color: var(--header-bar-bg); 
+            color: var(--header-bar-text); 
+            border-radius: var(--border-radius-sm);
+            text-align: center;
+            font-size: 0.75rem; 
+            font-weight: 500;
+            margin-bottom: 0.5rem; 
+        }
+        
+        .info-box {
+            font-size: 0.85rem; /* smaller */
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius-sm);
+            background-color: var(--info-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color); /* Not subtle */
+        }
+        .info-box.info-box-danger {
+            background-color: var(--color-danger-bg);
+            border-color: var(--color-danger-border);
+            color: var(--color-danger);
+            font-weight: 500;
+        }
+        .info-box.info-box-warn {
+            background-color: var(--color-danger-bg);
+            border-color: var(--color-danger-border);
+            color: var(--color-danger);
+            font-weight: 500;
+        }
+        .info-box.info-box-success {
+            background-color: var(--color-success-bg);
+            border-color: var(--color-success-border);
+            color: var(--color-success);
+            font-weight: 500;
+        }
     </style>
 </head>
-<body class="eod-targets-page">
+<!-- 
+  REMOVED: class="eod-targets-page"
+  This class was causing layout conflicts with style.css
+-->
+<body>
 
     <!-- 
       NAVBAR CONTAINER
@@ -237,7 +338,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.7.0', // Bumped for C/D refactor
+            VERSION: '1.8.3', // Bumped for layout CSS fix
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -272,7 +373,6 @@
                 };
 
                 // Initialize via AppLifecycle (handles Navbar, State Loading, Element Caching)
-                // REFACTORED: Removed 'timePassed' and 'timeRemaining'
                 const ctx = await AppLifecycle.initPage({
                     storageKey: APP_CONFIG.DATA_KEY,
                     defaultState: defaultState,
@@ -597,8 +697,9 @@
                         }
                     }
 
+                    // COMPACTION: Reduced padding from 8px to 6px
                     return `
-                        <div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                        <div style="padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="color: ${color};">${icon} ${gradeName}</strong>
                                 <span style="font-size: 0.85em; opacity: 0.7; margin-left: 8px;">(${targetAmount} tickets)</span>
@@ -692,7 +793,8 @@
                                 </div>
                             </div>
                             
-                            <div class="info-box" style="margin-top: 12px;">
+                            <!-- COMPACTION: Reduced margin-top from 12px to 8px -->
+                            <div class="info-box" style="margin-top: 8px;">
                                 <strong>🎯 Pacing Status</strong>
                                 <div style="margin-top: 8px;">
                         `;
@@ -722,7 +824,8 @@
                                 </p>
                             </div>
                             
-                            <div class="info-box" style="margin-top: 12px;">
+                            <!-- COMPACTION: Reduced margin-top from 12px to 8px -->
+                            <div class="info-box" style="margin-top: 8px;">
                                 <strong>🎯 Final Status</strong>
                                 <div style="margin-top: 8px;">
                         `;
@@ -750,14 +853,16 @@
                     const neededE = Math.max(0, grades.Excellent - currentTicketsSoFar);
                     const neededO = Math.max(0, grades.Outstanding - currentTicketsSoFar);
 
+                    // COMPACTION: Reduced margin-top from 12px to 8px
                     return `
-                        <div class="info-box" style="margin-top: 12px; border-color: #bdc3c7; background: #fdfefe;">
+                        <div class="info-box" style="margin-top: 8px; border-color: #bdc3c7; background: #fdfefe;">
                             <strong>📊 EOD Target Grades</strong>
                             <p style="font-size: 0.85em; opacity: 0.7; margin: 4px 0 0 0;">Based on *current* EOD target of <strong>${targetTicketGoal}</strong> tickets.</p>
                             <table style="width: 100%; font-size: 0.9em; border-collapse: collapse; margin-top: 8px;">
+                                <!-- COMPACTION: Reduced padding from 6px to 4px -->
                                 <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
-                                    <td style="padding: 6px 0;"><strong>Satisfactory</strong> (${grades.Satisfactory})</td>
-                                    <td style="text-align: right; padding: 6px 0;">
+                                    <td style="padding: 4px 0;"><strong>Satisfactory</strong> (${grades.Satisfactory})</td>
+                                    <td style="text-align: right; padding: 4px 0;">
                                         ${neededS === 0
                                             ? '<span style="color: #27ae60;">✓ Achieved</span>'
                                             : `<strong>${neededS} more</strong>`
@@ -765,8 +870,8 @@
                                     </td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
-                                    <td style="padding: 6px 0;"><strong>Excellent</strong> (${grades.Excellent})</td>
-                                    <td style="text-align: right; padding: 6px 0;">
+                                    <td style="padding: 4px 0;"><strong>Excellent</strong> (${grades.Excellent})</td>
+                                    <td style="text-align: right; padding: 4px 0;">
                                         ${neededE === 0
                                             ? '<span style="color: #27ae60;">✓ Achieved</span>'
                                             : `<strong>${neededE} more</strong>`
@@ -774,8 +879,8 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="padding: 6px 0;"><strong>Outstanding</strong> (${grades.Outstanding})</td>
-                                    <td style="text-align: right; padding: 6px 0;">
+                                    <td style="padding: 4px 0;"><strong>Outstanding</strong> (${grades.Outstanding})</td>
+                                    <td style="text-align: right; padding: 4px 0;">
                                         ${neededO === 0
                                             ? '<span style="color: #27ae60;">✓ Achieved</span>'
                                             : `<strong>${neededO} more</strong>`
