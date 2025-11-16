@@ -1,6 +1,6 @@
 <!-- 
-  Version: 1.2.1
-  CLEANUP: Removed "AppSuite" navbar-brand title.
+  Version: 1.2.2
+  CHANGE: Added standard settings button to nav-actions.
   All styles are loaded from the main style.css file.
 -->
 
@@ -15,6 +15,12 @@
     </ul>
     
     <div class="nav-actions">
+        <!-- 
+          ADDED: Standard settings button.
+          'btnSettings' is the conventional ID used by AppLifecycle and SharedSettingsModal.
+          The icon is populated automatically by app-core.js.
+        -->
+        <button id="btnSettings" class="icon-btn" title="Settings"></button>
     </div>
 </nav>
 
@@ -69,3 +75,4 @@
         }
     })();
 </script>
+
