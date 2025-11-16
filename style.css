@@ -9,7 +9,7 @@
     --success-color: #22c55e; 
     --info-bg: #f8fafc;
     --danger-hover-bg: #fee2e2;
-    --primary-hover-bg-light: #e0e7ff;
+    --primary-hover-bg-light: #e0e7ff; /* Used for stat-box-highlight */
     --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     
     --color-danger-bg: #fef2f2;
@@ -55,7 +55,7 @@
 
         --info-bg: #1f2937;
         --danger-hover-bg: #4b1d1d;
-        --primary-hover-bg-light: #374151;
+        --primary-hover-bg-light: #374151; /* Used for stat-box-highlight */
 
         --color-danger-bg: #4b1d1d;
         --color-danger-border: #991b1b;
@@ -993,6 +993,9 @@ body.modal-open > *:not(.modal-overlay) {
     font-weight: 600;
     color: var(--text-color);
     margin: 0;
+    /* REFACTOR: Added styles from inline style block */
+    display: inline-block;
+    vertical-align: middle;
 }
 
 .eod-targets-page .btn-subtle-reset {
@@ -1021,6 +1024,9 @@ body.modal-open > *:not(.modal-overlay) {
     font-weight: 500;
     color: var(--subtle-text);
     margin-bottom: 0.25rem;
+    /* REFACTOR: Added styles from inline style block */
+    text-transform: uppercase;
+    opacity: 0.9;
 }
 .eod-targets-page .sidebar-input,
 .eod-targets-page .sidebar-select,
@@ -1077,20 +1083,26 @@ body.modal-open > *:not(.modal-overlay) {
     font-size: 0.9rem; 
     font-weight: 600;
     margin-bottom: 0.25rem;
+    /* REFACTOR: Added styles from inline style block */
+    font-size: 0.8em;
 }
 .eod-targets-page .target-value {
     display: block;
     font-size: 1.6rem; 
     font-weight: 700;
     line-height: 1.1;
+    /* REFACTOR: Added styles from inline style block */
+    font-size: 1.1em;
+    margin: 0.1rem 0;
 }
 .eod-targets-page .target-desc {
     font-size: 0.7rem; 
     opacity: 0.9;
     margin-top: 0.2rem; 
+    /* REFACTOR: Added styles from inline style block */
+    font-size: 0.8em;
+    opacity: 0.8;
 }
-.eod-targets-page .target-desc strong { font-weight: 600; }
-
 .eod-targets-page .target-good {
     background-color: var(--color-success-bg);
     border: 1px solid var(--color-success-border);
@@ -1127,6 +1139,11 @@ body.modal-open > *:not(.modal-overlay) {
     background-color: var(--info-bg);
     border: 1px solid var(--border-color);
     color: var(--subtle-text);
+    /* REFACTOR: Added styles from inline style block */
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.95em;
+    border: 1px solid transparent;
 }
 .eod-targets-page .info-box.info-box-danger {
     background-color: var(--color-danger-bg);
@@ -1135,7 +1152,6 @@ body.modal-open > *:not(.modal-overlay) {
     font-weight: 500;
 }
 
-/* FIX: Added new styles for assistant advice */
 .eod-targets-page .info-box.info-box-warn {
     background-color: var(--color-danger-bg); /* Using danger/warn colors */
     border-color: var(--color-danger-border);
@@ -1149,29 +1165,102 @@ body.modal-open > *:not(.modal-overlay) {
     font-weight: 500;
 }
 
-/* Reset Confirmation Modal */
-.modal-overlay-custom {
+/* REFACTOR: Added styles from calculator.html inline block */
+.eod-targets-page .calc-section-header.collapsible {
+    cursor: pointer;
+}
+.eod-targets-page .calc-section-header .collapse-icon {
+    transition: transform 0.2s;
+    display: inline-block;
+    margin-right: 0.5rem;
+    font-size: 0.7em;
+    vertical-align: middle;
+}
+.eod-targets-page .calc-section-content.collapsed {
     display: none;
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
 }
-.modal-content-custom {
-    background-color: var(--panel-bg);
-    color: var(--text-color);
-    padding: 1.5rem;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+.eod-targets-page .header-time {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--subtle-text);
 }
-.modal-content-custom h3 { margin-top: 0; }
-.modal-actions-custom {
+.eod-targets-page .info-box p {
+    line-height: 1.5;
+}
+.eod-targets-page .stat-item-compact {
     display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.9em;
+    padding: 0.2rem 0.1rem;
 }
+.eod-targets-page .stat-label-compact {
+    opacity: 0.7;
+    margin-right: 0.5rem;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+.eod-targets-page .stat-value-compact {
+    font-weight: 600;
+}
+
+/* --- ADDED FOR REFACTOR --- */
+
+/* For the "Work Time (EOD)" highlight box */
+.eod-targets-page .stat-box-highlight {
+    padding: 0.5rem;
+    background-color: var(--primary-hover-bg-light);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+}
+.eod-targets-page .stat-box-highlight .stat-label-compact {
+    font-size: 0.9em;
+    opacity: 1;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+.eod-targets-page .stat-box-highlight .stat-value-compact {
+    font-size: 1.1em;
+    color: var(--primary-color);
+}
+
+/* For the Pacing Report (replaces inline styles) */
+.eod-targets-page .pacing-row {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.eod-targets-page .pacing-row .pacing-details {
+    font-size: 0.85em;
+    color: var(--subtle-text);
+    margin-left: 8px;
+}
+.eod-targets-page .pacing-row .pacing-message {
+    text-align: right;
+    font-size: 0.9em;
+}
+
+.eod-targets-page .pacing-row.pacing-good strong,
+.eod-targets-page .pacing-row.pacing-good .pacing-message {
+    color: var(--color-success);
+}
+.eod-targets-page .pacing-row.pacing-warn strong,
+.eod-targets-page .pacing-row.pacing-warn .pacing-message {
+    color: var(--color-danger); /* Using danger for warn */
+}
+.eod-targets-page .pacing-row.pacing-fail strong,
+.eod-targets-page .pacing-row.pacing-fail .pacing-message {
+    color: var(--color-danger);
+}
+/* --- END REFACTOR ADDITIONS --- */
+
+
+/* Reset Confirmation Modal (REMOVED - No longer used) */
+/*
+.modal-overlay-custom { ... }
+.modal-content-custom { ... }
+.modal-actions-custom { ... }
+*/
+
