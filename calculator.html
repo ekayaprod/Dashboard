@@ -93,33 +93,40 @@
                     <span id="currentTime">Loading clock...</span>
                 </div>
 
-                <!-- REFACTORED SECTION 1 -->
+                <!-- REFACTORED SECTION 1 (Now includes Productive Time) -->
                 <div class="calc-section">
                     <div class="calc-section-header">
                         <h2>1. Schedule</h2>
                     </div>
-                    <!-- This grid is now 3 inputs + 1 button -->
-                    <div class="calc-section-content" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem 0.75rem; align-items: flex-end;">
-                        <div>
-                            <label for="shiftStart" class="sidebar-label">Shift Start</label>
-                            <select id="shiftStart" class="sidebar-select"></select>
+                    <div class="calc-section-content">
+                        <!-- This grid is now 3 inputs + 1 button -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem 0.75rem; align-items: flex-end;">
+                            <div>
+                                <label for="shiftStart" class="sidebar-label">Shift Start</label>
+                                <select id="shiftStart" class="sidebar-select"></select>
+                            </div>
+                            <div>
+                                <label for="shiftEnd" class="sidebar-label">Shift End</label>
+                                <select id="shiftEnd" class="sidebar-select"></select>
+                            </div>
+                            <div>
+                                <label for="breakTime" class="sidebar-label">Break (min)</label>
+                                <select id="breakTime" class="sidebar-select">
+                                    <option value="0">0 minutes</option>
+                                    <option value="30">30 minutes</option>
+                                    <option value="45">45 minutes</option>
+                                    <option value="60" selected>60 minutes</option>
+                                    <option value="90">90 minutes</option>
+                                    <option value="120">120 minutes</option>
+                                </select>
+                            </div>
+                            <button id="btnResetData" class="btn-subtle-reset" style="padding: 0.5rem 0.25rem; margin-bottom: 0; white-space: nowrap;">Reset</button>
                         </div>
-                        <div>
-                            <label for="shiftEnd" class="sidebar-label">Shift End</label>
-                            <select id="shiftEnd" class="sidebar-select"></select>
+                        <!-- Productive Time merged into this section -->
+                        <div class="stat-item-compact" style="margin-top: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 0.5rem;">
+                            <span class="stat-label-compact">Total Productive Time:</span>
+                            <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
                         </div>
-                        <div>
-                            <label for="breakTime" class="sidebar-label">Break (min)</label>
-                            <select id="breakTime" class="sidebar-select">
-                                <option value="0">0 minutes</option>
-                                <option value="30">30 minutes</option>
-                                <option value="45">45 minutes</option>
-                                <option value="60" selected>60 minutes</option>
-                                <option value="90">90 minutes</option>
-                                <option value="120">120 minutes</option>
-                            </select>
-                        </div>
-                         <button id="btnResetData" class="btn-subtle-reset" style="padding: 0.5rem 0.25rem; margin-bottom: 0; white-space: nowrap;">Reset</button>
                     </div>
                 </div>
                 
@@ -149,42 +156,29 @@
                     </div>
                 </div>
 
-                <!-- REFACTORED SECTION 3 -->
-                <div class="calc-section">
-                    <div class="calc-section-header">
-                        <h2>3. Status</h2>
-                    </div>
-                    <!-- This grid replaces the padded stat-box items with compact text -->
-                    <div class="calc-section-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 0.75rem;">
-                        <div class="stat-item-compact">
-                            <span class="stat-label-compact">Prod. Time:</span>
-                            <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
-                        </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-label-compact">Time Passed:</span>
-                            <span id="timePassed" class="stat-value-compact">00:00</span>
-                        </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-label-compact">Time Left:</span>
-                            <span id="timeRemaining" class="stat-value-compact">00:00</span>
-                        </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-label-compact">Work Time (EOD):</span>
-                            <span id="totalWorkTimeEOD" class="stat-value-compact">00:00</span>
-                        </div>
+                <!-- REMOVED SECTION 3 (Status) -->
+                
+                <!-- NEW: Key Metric display for Work Time (EOD) -->
+                <div class="calc-section" style="margin-bottom: 0.5rem; padding: 0.5rem; background-color: rgba(41, 128, 185, 0.1); border-radius: 4px;">
+                    <div class="stat-item-compact" style="padding: 0;">
+                        <span class="stat-label-compact" style="font-size: 0.9em; opacity: 1; font-weight: 600;">Work Time (EOD):</span>
+                        <span id="totalWorkTimeEOD" class="stat-value-compact" style="font-size: 1.1em; color: #2980b9;">00:00</span>
                     </div>
                 </div>
 
+
+                <!-- REFACTORED SECTION 3 (was 4) -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <h2>4. EOD Targets</h2>
+                        <h2>3. EOD Targets</h2>
                     </div>
                     <div id="targets-content" class="calc-section-content targets-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;"></div>
                 </div>
                 
+                <!-- REFACTORED SECTION 4 (was 5) -->
                 <div class="calc-section">
                     <div class="calc-section-header">
-                        <h2>5. Live Assistant</h2>
+                        <h2>4. Live Assistant</h2>
                     </div>
                     <div id="calc-info-content" class="calc-section-content">
                         <!-- Info box will be injected here by JS -->
@@ -243,7 +237,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.4.2', // Bumped for A/B fixes
+            VERSION: '1.6.0', // Bumped for UI merge
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -278,6 +272,7 @@
                 };
 
                 // Initialize via AppLifecycle (handles Navbar, State Loading, Element Caching)
+                // REFACTORED: Removed 'timePassed' and 'timeRemaining'
                 const ctx = await AppLifecycle.initPage({
                     storageKey: APP_CONFIG.DATA_KEY,
                     defaultState: defaultState,
@@ -286,7 +281,7 @@
                         'navbar-container', 'toast', 'modal-overlay', 'modal-content',
                         'shiftStart', 'shiftEnd', 'breakTime', 
                         'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
-                        'currentTime', 'totalProductiveTime', 'timePassed', 'timeRemaining', 'totalWorkTimeEOD',
+                        'currentTime', 'totalProductiveTime', 'totalWorkTimeEOD',
                         'targets-content', 'btnResetData',
                         'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset',
                         'calc-info-content',
@@ -543,12 +538,10 @@
                     return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
                 }
 
+                // REFACTORED: Removed 'timePassed' and 'timeRemaining' updates
                 function updateTimeDisplays(now) {
                     const scheduleInfo = getScheduleInfo(now);
                     
-                    // FIX: Use main HHMM formatter
-                    DOMElements.timePassed.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesPassed);
-                    DOMElements.timeRemaining.innerText = TimeUtil.formatMinutesToHHMM(scheduleInfo.productiveMinutesRemaining);
                     DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
                     
                     return scheduleInfo; 
@@ -589,118 +582,8 @@
                 }
                 
                 // ============================================================================
-                // NEW FUNCTION: calculatePacing
-                // ============================================================================
-                function calculatePacing(scheduleData, targetGrade) {
-                    const {
-                        totalWorkTimeEOD,
-                        currentTicketsSoFar,
-                        currentCallTimeSoFar,
-                        roundedWorkHours,
-                        targetTicketGoal,
-                        totalProductiveMinutes
-                    } = scheduleData;
-                    
-                    const now = new Date();
-                    const currentHour = now.getHours();
-                    const currentMinute = now.getMinutes();
-                    const currentTimeMinutes = currentHour * 60 + currentMinute;
-                    
-                    // Get shift times from DOM
-                    const shiftStartStr = DOMElements.shiftStart.value; // e.g., "08:00"
-                    const shiftEndStr = DOMElements.shiftEnd.value; // e.g., "16:00"
-                    const shiftStartMinutes = parseInt(shiftStartStr.split(':')[0]) * 60 + parseInt(shiftStartStr.split(':')[1]);
-                    const shiftEndMinutes = parseInt(shiftEndStr.split(':')[0]) * 60 + parseInt(shiftEndStr.split(':')[1]);
-                    const phoneCloseMinutes = 15 * 60 + 30; // 3:30 PM
-                    
-                    // How long into the shift are we?
-                    const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
-                    const totalShiftMinutes = shiftEndMinutes - shiftStartMinutes;
-                    const minutesUntilPhoneClose = phoneCloseMinutes - currentTimeMinutes;
-                    const minutesUntilEOD = shiftEndMinutes - currentTimeMinutes;
-                    
-                    // Can't calculate pacing if shift hasn't started or is over, or starts after phones close
-                    if (minutesIntoShift <= 0 || minutesUntilEOD <= 0 || shiftStartMinutes >= phoneCloseMinutes) {
-                        return null;
-                    }
-                    
-                    // Calculate call rate (minutes per hour of shift so far)
-                    const callRatePerHour = minutesIntoShift > 0 
-                        ? (currentCallTimeSoFar / minutesIntoShift) * 60 
-                        : 0;
-                    
-                    // Project total calls by 3:30 PM (when phones close)
-                    const projectedCallsByPhoneClose = minutesUntilPhoneClose > 0
-                        ? currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60))
-                        : currentCallTimeSoFar; // Phones already closed
-                    
-                    // Project final work time
-                    const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
-                    const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
-                    const projectedTarget = projectedRoundedHours * TICKETS_PER_HOUR_RATE;
-                    
-                    // Calculate ticket requirement for target grade
-                    const gradeOffset = {
-                        'Satisfactory': gradeBoundaries.Satisfactory.min,
-                        'Excellent': gradeBoundaries.Excellent.min,
-                        'Outstanding': gradeBoundaries.Outstanding.min
-                    }[targetGrade] || 0;
-                    
-                    const projectedTicketsNeeded = projectedTarget + gradeOffset;
-                    const ticketsStillNeeded = Math.max(0, projectedTicketsNeeded - currentTicketsSoFar);
-                    
-                    // Generate hourly pacing milestones (only for hours still remaining)
-                    const milestones = [];
-                    // Ensure we only project up to 3:30 PM
-                    const minutesFromStartToPhoneClose = phoneCloseMinutes - shiftStartMinutes;
-
-                    // FIX B-2: Start from the *current* full hour
-                    const startHour = currentHour;
-                    
-                    for (let h = startHour; h <= 15; h++) { // Loop until 3 PM (for 3:00 PM milestone)
-                        const milestoneHour = h;
-                        const milestoneTimeMinutes = milestoneHour * 60;
-                        const minutesIntoShiftAtMilestone = milestoneTimeMinutes - shiftStartMinutes;
-                        
-                        // Don't create milestones for time before shift start
-                        if (minutesIntoShiftAtMilestone < 0) continue;
-
-                        // Calculate linear pacing (spread tickets evenly)
-                        const percentOfTimeElapsed = minutesIntoShiftAtMilestone / minutesFromStartToPhoneClose;
-                        const linearPaceTickets = Math.ceil(projectedTicketsNeeded * percentOfTimeElapsed);
-                        
-                        milestones.push({
-                            hour: milestoneHour,
-                            timeStr: `${String(milestoneHour % 12 || 12).padStart(2, '0')}:00 ${milestoneHour < 12 ? 'AM' : 'PM'}`,
-                            ticketsNeeded: linearPaceTickets,
-                            ticketsGap: linearPaceTickets - currentTicketsSoFar
-                        });
-                    }
-
-                    // Add a final milestone for 3:30 PM
-                    milestones.push({
-                        hour: 15.5,
-                        timeStr: '3:30 PM',
-                        ticketsNeeded: projectedTicketsNeeded,
-                        ticketsGap: projectedTicketsNeeded - currentTicketsSoFar
-                    });
-                    
-                    return {
-                        projectedCallsByPhoneClose,
-                        projectedFinalWorkTime,
-                        projectedRoundedHours,
-                        projectedTarget,
-                        projectedTicketsNeeded,
-                        ticketsStillNeeded,
-                        callRatePerHour,
-                        milestones,
-                        phonesStillOpen: minutesUntilPhoneClose > 0
-                    };
-                }
-
-
-                // ============================================================================
-                // UPDATED FUNCTION: renderCalculationInfo
+                // REPLACED FUNCTION: renderCalculationInfo
+                // This function no longer needs calculatePacing()
                 // ============================================================================
                 function renderCalculationInfo(scheduleData) {
                     const {
@@ -721,177 +604,181 @@
                         return;
                     }
 
-                    // Determine target grade based on day of week
                     const now = new Date();
-                    const dayOfWeek = now.getDay(); // 0=Sunday, 1=Monday, etc.
-                    let targetGrade = 'Outstanding'; // Default for Wed/Thu/Fri
-                    
-                    if (dayOfWeek === 1 || dayOfWeek === 2) { // Monday or Tuesday
-                        targetGrade = 'Satisfactory';
-                    }
-                    
-                    // Calculate pacing
-                    const pacing = calculatePacing(scheduleData, targetGrade);
-                    
-                    if (!pacing) {
-                        // Can't calculate pacing (outside shift hours)
-                        DOMElements.calcInfoContent.innerHTML = `
-                            <div class="info-box">
-                                <strong>⏰ Outside Shift Hours</strong>
-                                <p style="margin: 8px 0 0 0;">Pacing analysis available during shift hours (8:00 AM - 4:00 PM).</p>
-                            </div>
-                        `;
-                        // Fallback to show grades table anyway
-                        const gradesTableHtml = getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
-                        DOMElements.calcInfoContent.innerHTML += gradesTableHtml;
-                        return;
-                    }
-                    
-                    // ============================================================
-                    // PACING ANALYSIS
-                    // ============================================================
-                    
                     const currentHour = now.getHours();
                     const currentMinute = now.getMinutes();
-                    const currentTimeMinutes = currentHour * 60 + currentMinute; // Added this
-                    const phonesStillOpen = pacing.phonesStillOpen;
+                    const currentTimeMinutes = currentHour * 60 + currentMinute;
+                    const phoneCloseMinutes = 15 * 60 + 30; // 3:30 PM
+                    const phonesStillOpen = currentTimeMinutes < phoneCloseMinutes;
                     
-                    let pacingHtml = '';
+                    // Calculate grade requirements (current EOD targets)
+                    const currentGrades = {
+                        'Satisfactory': targetTicketGoal + gradeBoundaries.Satisfactory.min,
+                        'Excellent': targetTicketGoal + gradeBoundaries.Excellent.min,
+                        'Outstanding': targetTicketGoal + gradeBoundaries.Outstanding.min
+                    };
                     
+                    // ============================================================
+                    // BEFORE 3:30 PM - Show Pacing for All Grades
+                    // ============================================================
                     if (phonesStillOpen) {
-                        // Show projection
-                        const onPace = pacing.ticketsStillNeeded === 0 || (pacing.milestones.length > 0 && pacing.milestones[0].ticketsGap <= 0);
-                        const pacingClass = onPace ? 'info-box-success' : (pacing.ticketsStillNeeded <= 3 ? 'info-box-warn' : 'info-box-danger');
+                        const shiftStartStr = DOMElements.shiftStart.value;
+                        const shiftStartMinutes = parseInt(shiftStartStr.split(':')[0]) * 60 + parseInt(shiftStartStr.split(':')[1]);
+                        const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
                         
-                        pacingHtml = `
-                            <div class="${pacingClass}">
-                                <strong>🎯 Pacing Analysis (Goal: ${targetGrade})</strong>
+                        // Project call rate
+                        const callRatePerHour = minutesIntoShift > 0 
+                            ? (currentCallTimeSoFar / minutesIntoShift) * 60 
+                            : 0;
+                        
+                        const minutesUntilPhoneClose = phoneCloseMinutes - currentTimeMinutes;
+                        // Guard against projections if shift hasn't started
+                        if (minutesIntoShift <= 0) {
+                             DOMElements.calcInfoContent.innerHTML = `
+                                <div class="info-box">
+                                    <strong>⏰ Shift Has Not Started</strong>
+                                    <p style="margin: 8px 0 0 0;">Pacing analysis will begin at ${DOMElements.shiftStart.value}.</p>
+                                </div>
+                            ` + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
+                            return;
+                        }
+
+                        const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
+                        const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
+                        const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
+                        const projectedTarget = projectedRoundedHours * TICKETS_PER_HOUR_RATE;
+                        
+                        // Calculate projected requirements for each grade
+                        const projectedGrades = {
+                            'Satisfactory': projectedTarget + gradeBoundaries.Satisfactory.min,
+                            'Excellent': projectedTarget + gradeBoundaries.Excellent.min,
+                            'Outstanding': projectedTarget + gradeBoundaries.Outstanding.min
+                        };
+                        
+                        let statusHtml = `
+                            <div class="info-box">
+                                <strong>📊 Current Status</strong>
                                 <p style="margin: 8px 0 0 0; font-size: 0.9em;">
-                                    Current time: <strong>${String(currentHour % 12 || 12)}:${String(currentMinute).padStart(2, '0')} ${currentHour < 12 ? 'AM' : 'PM'}</strong>
+                                    <strong>${String(currentHour % 12 || 12)}:${String(currentMinute).padStart(2, '0')} ${currentHour < 12 ? 'AM' : 'PM'}</strong> | 
+                                    ${currentTicketsSoFar} tickets | 
+                                    ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
                                 </p>
                                 
-                                <div style="background: rgba(0,0,0,0.05); padding: 8px; border-radius: 4px; margin-top: 8px;">
-                                    <strong>Current Status:</strong>
-                                    <br>
-                                    Call time: ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} | Tickets: ${currentTicketsSoFar}
-                                    <br>
-                                    Work time: ${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)} → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
-                                </div>
-                                
-                                <div style="background: rgba(52,152,219,0.1); padding: 8px; border-radius: 4px; margin-top: 8px;">
+                                <div style="background: rgba(52,152,219,0.1); padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 0.9em;">
                                     <strong>Projection by 3:30 PM:</strong>
                                     <br>
-                                    Calls: ~${TimeUtil.formatMinutesToHHMM(pacing.projectedCallsByPhoneClose)} 
-                                    (at ${Math.floor(pacing.callRatePerHour)} min/hr rate)
+                                    Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)} 
+                                    <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
                                     <br>
-                                    Final work time: ~${TimeUtil.formatMinutesToHHMM(pacing.projectedFinalWorkTime)} 
-                                    → ${pacing.projectedRoundedHours} hrs → Target: ${pacing.projectedTarget}
+                                    Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
                                     <br>
-                                    <strong style="font-size: 1.1em; color: #2980b9;">${targetGrade} needs: ${pacing.projectedTicketsNeeded} tickets</strong>
+                                    Target: <strong>${projectedTarget}</strong> tickets
                                 </div>
-                                
-                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1);">
-                                    <strong>📅 Pacing Milestones:</strong>
-                                    <div style="margin-top: 8px; font-size: 0.9em;">
+                            </div>
+                            
+                            <div class="info-box" style="margin-top: 12px;">
+                                <strong>🎯 Pacing Status</strong>
+                                <div style="margin-top: 8px;">
                         `;
                         
-                        let milestonesAdded = 0;
-                        pacing.milestones.forEach((milestone, index) => {
-                            // FIX B-2: Check if milestone time is in the future
-                            const milestoneTimeInMinutes = milestone.hour * 60;
+                        // Show pacing for each grade
+                        for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
+                            const ticketsNeeded = Math.max(0, projectedNeeded - currentTicketsSoFar);
+                            const achieved = ticketsNeeded === 0;
+                            const reachable = ticketsNeeded <= 10; // Arbitrary threshold for "reachable"
                             
-                            // Show milestone if its time is after the current time
-                            // Or if it's the special 3:30 PM milestone and it's not 3:30 PM yet
-                            const isFutureHour = milestoneTimeInMinutes > currentTimeMinutes;
-                            const isFuture330 = (milestone.hour === 15.5 && currentTimeMinutes < (15 * 60 + 30));
-
-                            if (isFutureHour || isFuture330) {
-                                const achieved = milestone.ticketsGap <= 0;
-                                // Use a slightly different icon/color logic
-                                const onTrack = milestone.ticketsGap <= 3; // On track if only 3 behind
-                                const icon = achieved ? '✓' : (onTrack ? '⏰' : '⚠️');
-                                const color = achieved ? '#27ae60' : (onTrack ? '#f39c12' : '#e74c3c');
-                                
-                                pacingHtml += `
-                                    <div style="padding: 4px 0; color: ${color};">
-                                        ${icon} <strong>${milestone.timeStr}:</strong> Have ${milestone.ticketsNeeded} tickets
-                                        ${achieved 
-                                            ? '<span style="opacity: 0.7;"> (on track)</span>' 
-                                            : `<span style="font-weight: bold;"> (need ${milestone.ticketsGap} more)</span>`
-                                        }
-                                    </div>
-                                `;
-                                milestonesAdded++;
+                            let icon, color, message;
+                            
+                            if (achieved) {
+                                icon = '✓';
+                                color = '#27ae60';
+                                message = 'On track';
+                            } else if (reachable) {
+                                icon = '⚠️';
+                                color = '#f39c12';
+                                message = `Need ${ticketsNeeded} more by 3:30 PM`;
+                            } else {
+                                icon = '❌';
+                                color = '#e74c3c';
+                                message = `Need ${ticketsNeeded} more (challenging)`;
                             }
-                        });
-
-                        if (milestonesAdded === 0) {
-                             pacingHtml += `<div style="padding: 4px 0; opacity: 0.7;">No milestones remaining.</div>`;
-                        }
-                        
-                        pacingHtml += `
+                            
+                            statusHtml += `
+                                <div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong style="color: ${color};">${icon} ${gradeName}</strong>
+                                        <span style="font-size: 0.85em; opacity: 0.7; margin-left: 8px;">(${projectedNeeded} tickets)</span>
+                                    </div>
+                                    <div style="text-align: right; font-size: 0.9em; color: ${color};">
+                                        ${message}
                                     </div>
                                 </div>
-                                
-                                <div style="background: rgba(46,204,113,0.1); padding: 8px; border-radius: 4px; margin-top: 12px; color: #2c3e50;">
-                                    <strong>💡 Recommendation:</strong>
-                                    ${pacing.ticketsStillNeeded === 0 
-                                        ? `You've hit your projected goal! You can focus on calls.`
-                                        : onPace
-                                            ? `You're on pace. Aim to close ${pacing.ticketsStillNeeded} more ticket${pacing.ticketsStillNeeded === 1 ? '' : 's'} by 3:30 PM.`
-                                            : `You need ${pacing.ticketsStillNeeded} ticket${pacing.ticketsStillNeeded === 1 ? '' : 's'} by 3:30 PM. Try to catch up on the next milestone.`
-                                    }
+                            `;
+                        }
+                        
+                        statusHtml += `
                                 </div>
                             </div>
                         `;
+                        
+                        DOMElements.calcInfoContent.innerHTML = statusHtml + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
+                        
+                    // ============================================================
+                    // AFTER 3:30 PM - Show Final Status
+                    // ============================================================
                     } else {
-                        // Phones closed - show final status
-                        const grades = {
-                            'Satisfactory': targetTicketGoal + gradeBoundaries.Satisfactory.min,
-                            'Excellent': targetTicketGoal + gradeBoundaries.Excellent.min,
-                            'Outstanding': targetTicketGoal + gradeBoundaries.Outstanding.min
-                        };
-                        
-                        const targetNeeded = grades[targetGrade];
-                        const stillNeeded = Math.max(0, targetNeeded - currentTicketsSoFar);
-                        const achieved = stillNeeded === 0;
-                        
-                        pacingHtml = `
-                            <div class="${achieved ? 'info-box-success' : 'info-box-danger'}">
-                                <strong>📞 Phones Closed - Final Push</strong>
+                        let statusHtml = `
+                            <div class="info-box">
+                                <strong>📞 Phones Closed</strong>
                                 <p style="margin: 8px 0 0 0;">
                                     Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong> 
                                     → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
                                 </p>
-                                
-                                <div style="background: rgba(0,0,0,0.05); padding: 8px; border-radius: 4px; margin-top: 8px;">
-                                    <strong>Goal: ${targetGrade}</strong>
-                                    <br>
-                                    Need: ${targetNeeded} tickets
-                                    <br>
-                                    Have: ${currentTicketsSoFar} tickets
-                                    ${achieved 
-                                        ? '<br><strong style="color: #27ae60; font-size: 1.1em;">✓ GOAL ACHIEVED!</strong>'
-                                        : `<br><strong style="color: #e74c3c; font-size: 1.1em;">⚠️ ${stillNeeded} TICKETS SHORT</strong>`
-                                    }
-                                </div>
-                                
-                                ${!achieved ? `
-                                    <div style="background: rgba(231,76,60,0.1); padding: 8px; border-radius: 4px; margin-top: 8px;">
-                                        <strong>🔥 Action Required:</strong> Close ${stillNeeded} ticket${stillNeeded === 1 ? '' : 's'} before EOD.
+                            </div>
+                            
+                            <div class="info-box" style="margin-top: 12px;">
+                                <strong>🎯 Final Status</strong>
+                                <div style="margin-top: 8px;">
+                        `;
+                        
+                        // Show status for each grade
+                        for (const [gradeName, needed] of Object.entries(currentGrades)) {
+                            const ticketsNeeded = Math.max(0, needed - currentTicketsSoFar);
+                            const achieved = ticketsNeeded === 0;
+                            
+                            let icon, color, message;
+                            
+                            if (achieved) {
+                                icon = '✓';
+                                color = '#27ae60';
+                                const ticketsOver = currentTicketsSoFar - needed;
+                                message = ticketsOver > 0 ? `Achieved (+${ticketsOver} extra)` : 'Achieved';
+                            } else {
+                                icon = '⚠️';
+                                color = '#e74c3c';
+                                message = `${ticketsNeeded} short`;
+                            }
+                            
+                            statusHtml += `
+                                <div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong style="color: ${color};">${icon} ${gradeName}</strong>
+                                        <span style="font-size: 0.85em; opacity: 0.7; margin-left: 8px;">(${needed} tickets)</span>
                                     </div>
-                                ` : ''}
+                                    <div style="text-align: right; font-size: 0.9em; color: ${color};">
+                                        ${message}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        statusHtml += `
+                                </div>
                             </div>
                         `;
+                        
+                        DOMElements.calcInfoContent.innerHTML = statusHtml + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
                     }
-                    
-                    // ============================================================
-                    // ADDITIONAL GRADES TABLE
-                    // ============================================================
-                    
-                    const gradesTableHtml = getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
-                    
-                    DOMElements.calcInfoContent.innerHTML = pacingHtml + gradesTableHtml;
                 }
                 
                 // Helper function to generate the grades table
@@ -908,8 +795,8 @@
 
                     return `
                         <div class="info-box" style="margin-top: 12px; border-color: #bdc3c7; background: #fdfefe;">
-                            <strong>📊 All Grade Requirements</strong>
-                            <p style="font-size: 0.85em; opacity: 0.7; margin: 4px 0 0 0;">Based on EOD target of <strong>${targetTicketGoal}</strong> tickets.</p>
+                            <strong>📊 EOD Target Grades</strong>
+                            <p style="font-size: 0.85em; opacity: 0.7; margin: 4px 0 0 0;">Based on *current* EOD target of <strong>${targetTicketGoal}</strong> tickets.</p>
                             <table style="width: 100%; font-size: 0.9em; border-collapse: collapse; margin-top: 8px;">
                                 <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
                                     <td style="padding: 6px 0;"><strong>Satisfactory</strong> (${grades.Satisfactory})</td>
@@ -949,7 +836,7 @@
                     
                     const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
                     
-                    // FIX: Use main HHMM formatter
+                    // REFACTORED: Update 'totalProductiveTime' here
                     DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
 
                     const errorData = { 
@@ -980,7 +867,8 @@
                     const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
                     
                     const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
-                    // FIX: Use main HHMM formatter
+                    
+                    // REFACTORED: Update 'totalWorkTimeEOD' here
                     DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
                     
                     const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
