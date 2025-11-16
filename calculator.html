@@ -243,7 +243,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.4.1', // Bumped for UI Refactor
+            VERSION: '1.4.2', // Bumped for A/B fixes
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -289,11 +289,21 @@
                         'currentTime', 'totalProductiveTime', 'timePassed', 'timeRemaining', 'totalWorkTimeEOD',
                         'targets-content', 'btnResetData',
                         'resetModalOverlay', 'modalConfirmReset', 'modalCancelReset',
-                        'calc-info-content'
+                        'calc-info-content',
+                        'app-startup-error' // Ensure error banner is cached
                     ]
                 });
 
-                if (!ctx) return;
+                // FIX A-1: Add explicit error handling for init failure
+                if (!ctx) {
+                    const banner = document.getElementById('app-startup-error'); // Use raw get just in case elements cache failed
+                    if (banner) {
+                        banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Failed to initialize application context (ctx is null).</p>`;
+                        banner.classList.remove('hidden');
+                    }
+                    console.error("Failed to initialize application context (ctx is null).");
+                    return;
+                }
 
                 const { elements: DOMElements, state, saveState } = ctx;
 
@@ -466,10 +476,18 @@
                     SafeUI.showToast('Data reset to defaults');
                 }
 
+                // FIX B-4: Isolate localStorage read
                 function autoImportBookmarkletData() {
+                    let minsToImport = 0;
                     try {
-                        const minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
-                        
+                        // This read can fail in sandboxed environments
+                        minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
+                    } catch (err) {
+                        console.warn("Failed to read from localStorage (sandboxed?):", err.message);
+                        return; // Can't proceed
+                    }
+
+                    try {
                         if (minsToImport > 0) {
                             // FIX: Use new parse function
                             const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
@@ -483,7 +501,7 @@
                             SafeUI.showToast(`Imported ${minsToImport} minutes from call logger.`);
                         }
                     } catch (err) {
-                        console.error("Failed to auto-import bookmarklet data:", err);
+                        console.error("Failed to process auto-import data:", err);
                     }
                 }
 
@@ -601,8 +619,8 @@
                     const minutesUntilPhoneClose = phoneCloseMinutes - currentTimeMinutes;
                     const minutesUntilEOD = shiftEndMinutes - currentTimeMinutes;
                     
-                    // Can't calculate pacing if shift hasn't started or is over
-                    if (minutesIntoShift <= 0 || minutesUntilEOD <= 0) {
+                    // Can't calculate pacing if shift hasn't started or is over, or starts after phones close
+                    if (minutesIntoShift <= 0 || minutesUntilEOD <= 0 || shiftStartMinutes >= phoneCloseMinutes) {
                         return null;
                     }
                     
@@ -636,13 +654,16 @@
                     // Ensure we only project up to 3:30 PM
                     const minutesFromStartToPhoneClose = phoneCloseMinutes - shiftStartMinutes;
 
-                    // Start from the *next* full hour
-                    const nextHour = currentHour + 1;
+                    // FIX B-2: Start from the *current* full hour
+                    const startHour = currentHour;
                     
-                    for (let h = nextHour; h <= 15; h++) { // Loop until 3 PM (for 3:00 PM milestone)
+                    for (let h = startHour; h <= 15; h++) { // Loop until 3 PM (for 3:00 PM milestone)
                         const milestoneHour = h;
                         const milestoneTimeMinutes = milestoneHour * 60;
                         const minutesIntoShiftAtMilestone = milestoneTimeMinutes - shiftStartMinutes;
+                        
+                        // Don't create milestones for time before shift start
+                        if (minutesIntoShiftAtMilestone < 0) continue;
 
                         // Calculate linear pacing (spread tickets evenly)
                         const percentOfTimeElapsed = minutesIntoShiftAtMilestone / minutesFromStartToPhoneClose;
@@ -776,8 +797,15 @@
                         
                         let milestonesAdded = 0;
                         pacing.milestones.forEach((milestone, index) => {
-                            // Only show milestones in the future
-                            if ((milestone.hour > currentHour) || (milestone.hour === 15.5 && currentTimeMinutes < (15 * 60 + 30))) {
+                            // FIX B-2: Check if milestone time is in the future
+                            const milestoneTimeInMinutes = milestone.hour * 60;
+                            
+                            // Show milestone if its time is after the current time
+                            // Or if it's the special 3:30 PM milestone and it's not 3:30 PM yet
+                            const isFutureHour = milestoneTimeInMinutes > currentTimeMinutes;
+                            const isFuture330 = (milestone.hour === 15.5 && currentTimeMinutes < (15 * 60 + 30));
+
+                            if (isFutureHour || isFuture330) {
                                 const achieved = milestone.ticketsGap <= 0;
                                 // Use a slightly different icon/color logic
                                 const onTrack = milestone.ticketsGap <= 3; // On track if only 3 behind
@@ -1041,16 +1069,22 @@
                     if (e.key === 'Enter') handleAddCallTime();
                 });
                 
-                setInterval(() => {
-                    // We only need to recalculate if the clock ticks over,
-                    // but the live clock update is nice.
-                    // Let's recalculate every 30 seconds instead of every 1s
+                // FIX B-5: Centralized, visibility-aware timer
+                function handleTimerTick() {
                     const now = new Date();
-                    updateTimeDisplays(now);
-                    if (now.getSeconds() % 30 === 0) {
-                        calculateDailyRatings();
+                    updateTimeDisplays(now); // Update clock every second
+
+                    // Only run full recalculation if document is visible
+                    if (document.visibilityState === 'visible') {
+                        // Recalculate on the 0s and 30s mark
+                        const seconds = now.getSeconds();
+                        if (seconds === 0 || seconds === 30) {
+                            calculateDailyRatings();
+                        }
                     }
-                }, 1000);
+                }
+
+                setInterval(handleTimerTick, 1000); // 1-second interval
 
                 calculateDailyRatings(); 
                 
