@@ -237,7 +237,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.6.0', // Bumped for UI merge
+            VERSION: '1.7.0', // Bumped for C/D refactor
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -303,9 +303,14 @@
                 const { elements: DOMElements, state, saveState } = ctx;
 
                 // --- Constants & Utils ---
-                const LEEWAY_RATIO = 1 / 7; 
-                const TICKETS_PER_HOUR_RATE = 6; 
-                const ROUNDING_BOUNDARY_MAX = 29; // Rounds up at 30+ minutes
+                // REFACTOR C-1, C-6: Consolidated constants
+                const CONSTANTS = {
+                    LEEWAY_RATIO: 1 / 7, 
+                    TICKETS_PER_HOUR_RATE: 6, 
+                    ROUNDING_BOUNDARY_MAX: 29, // Rounds up at 30+ minutes
+                    PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 3:30 PM
+                    REACHABLE_TICKET_THRESHOLD: 10
+                };
 
                 const gradeBoundaries = {
                     'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
@@ -314,53 +319,28 @@
                 };
 
                 const TimeUtil = {
-                    // FIX: Replaced with flexible time parser
                     parseTimeToMinutes(input) {
                         if (!input) return 0;
-                        
                         const trimmed = String(input).trim();
-                    
-                    // Case 1: Plain number (interpret as minutes)
-                        // Examples: "157", "90", "45"
-                        if (/^\d+$/.test(trimmed)) {
-                            return parseInt(trimmed, 10);
-                        }
-                        
-                        // Case 2: Decimal number (interpret as hours)
-                        // Examples: "2.5", "1.75", "3.25"
-                        if (/^\d+\.\d+$/.test(trimmed)) {
-                            return parseFloat(trimmed) * 60;
-                        }
-                        
-                        // Case 3: Time format HH:MM or H:MM
-                        // Examples: "2:37", "02:37", "0:45"
+                        if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+                        if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * 60;
                         if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
                             const parts = trimmed.split(':').map(Number);
                             return (parts[0] * 60) + parts[1];
                         }
-                        
-                        // Case 4: Time format HH:MM:SS or H:MM:SS  
-                        // Examples: "2:37:00", "02:37:30", "0:45:15"
                         if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
                             const parts = trimmed.split(':').map(Number);
                             return (parts[0] * 60) + parts[1] + (parts[2] / 60);
                         }
-                        
-                        return 0; // Invalid input
+                        return 0;
                     },
 
-                    // FIX: Renamed to clarify it truncates seconds for display
-                    // This is the primary display function now
                     formatMinutesToHHMM(totalMinutes) {
                         if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
                         const hours = Math.floor(totalMinutes / 60);
                         const minutes = Math.floor(totalMinutes % 60);
                         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
                     },
-                    
-                    // This function is no longer needed for display, but parse handles HH:MM:SS
-                    // Keeping formatMinutesToHHMMSS just in case, but renaming old HHMM
-                    // formatMinutesToHHMM_NoSeconds -> formatMinutesToHHMM
                     
                     formatMinutesToHHMMShort(totalMinutes) {
                         if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
@@ -371,22 +351,27 @@
                         if (hours > 0) parts.push(`${hours}h`);
                         if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
                         return parts.join(' ');
+                    },
+
+                    // REFACTOR C-2, D-3: Helper for parsing shift times
+                    parseShiftTimeToMinutes(timeStr) {
+                        const parts = timeStr.split(':').map(Number);
+                        return (parts[0] * 60) + parts[1];
+                    },
+
+                    // REFACTOR C-3, D-4: Helper for formatting current time
+                    formatTimeAMPM(hour, minute) {
+                        return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
                     }
                 };
 
                 /**
                  * Calculates the call time alternative for a given grade.
-                 * @param {object} boundary - The grade boundary object { min, max }
-                 * @param {number} currentTicketsSoFar
-                 * @param {number} totalProductiveMinutes
-                 * @param {number} currentCallTimeSoFar
-                 * @param {number} productiveMinutesRemaining
-                 * @returns {object|null} - e.g., { additionalCallMinutes: 30, callTimeHtml: "<strong>OR</strong> 30m more calls" } or null
                  */
                 function getCallTimeAlternative(boundary, currentTicketsSoFar, totalProductiveMinutes, currentCallTimeSoFar, productiveMinutesRemaining) {
                     const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min;
-                    const maxRoundedHours = Math.floor(maxAllowableTargetCalc / TICKETS_PER_HOUR_RATE);
-                    const maxWorkTimeMinutes = (maxRoundedHours * 60) + ROUNDING_BOUNDARY_MAX;
+                    const maxRoundedHours = Math.floor(maxAllowableTargetCalc / CONSTANTS.TICKETS_PER_HOUR_RATE);
+                    const maxWorkTimeMinutes = (maxRoundedHours * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
                     const maxCallTimeAllowed = totalProductiveMinutes - maxWorkTimeMinutes;
                     const additionalCallMinutes = maxCallTimeAllowed - currentCallTimeSoFar;
 
@@ -445,14 +430,12 @@
                 }, 250);
 
                 function handleAddCallTime() {
-                    // FIX: Use new parse function
                     const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                     const minutesToAdd = parseInt(DOMElements.addCallTime.value, 10) || 0;
                     
                     if (minutesToAdd === 0) return;
                     
                     const newTotalMinutes = currentMinutes + minutesToAdd;
-                    // FIX: Set value to HH:MM format per user request
                     DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes); 
                     DOMElements.addCallTime.value = '';
                     debouncedCalculateAndSave(); 
@@ -462,7 +445,6 @@
                 function hideResetModal() { DOMElements.resetModalOverlay.style.display = 'none'; }
                 
                 function handleResetData() {
-                    // Reset state object
                     state.ui = JSON.parse(JSON.stringify(defaultState.ui));
                     updateInputsFromState(); 
                     calculateDailyRatings(); 
@@ -471,27 +453,21 @@
                     SafeUI.showToast('Data reset to defaults');
                 }
 
-                // FIX B-4: Isolate localStorage read
                 function autoImportBookmarkletData() {
                     let minsToImport = 0;
                     try {
-                        // This read can fail in sandboxed environments
                         minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
                     } catch (err) {
                         console.warn("Failed to read from localStorage (sandboxed?):", err.message);
-                        return; // Can't proceed
+                        return;
                     }
 
                     try {
                         if (minsToImport > 0) {
-                            // FIX: Use new parse function
                             const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                             const newTotalMinutes = currentMinutes + minsToImport;
-                            // FIX: Set value to HH:MM format per user request
                             DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(newTotalMinutes);
-                            
                             localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
-                            
                             debouncedCalculateAndSave();
                             SafeUI.showToast(`Imported ${minsToImport} minutes from call logger.`);
                         }
@@ -501,16 +477,16 @@
                 }
 
                 function getScheduleInfo(now) {
-                    const startTimeStr = DOMElements.shiftStart.value;
-                    const endTimeStr = DOMElements.shiftEnd.value;
-                    const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10);
-
+                    // REFACTOR C-2: Use helper
                     const startTime = new Date(now);
-                    startTime.setHours(parseInt(startTimeStr.split(':')[0], 10), parseInt(startTimeStr.split(':')[1], 10), 0, 0);
+                    const startMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
+                    startTime.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
                     
                     const endTime = new Date(now);
-                    endTime.setHours(parseInt(endTimeStr.split(':')[0], 10), parseInt(endTimeStr.split(':')[1], 10), 0, 0);
+                    const endMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+                    endTime.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
 
+                    const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10);
                     const totalShiftMinutes = (endTime - startTime) / 60000;
                     
                     if (totalShiftMinutes <= 0) {
@@ -521,7 +497,7 @@
                     }
 
                     const postBreakMinutes = totalShiftMinutes - breakTimeMinutes;
-                    const leewayTimeMinutes = postBreakMinutes * LEEWAY_RATIO;
+                    const leewayTimeMinutes = postBreakMinutes * CONSTANTS.LEEWAY_RATIO;
                     const totalProductiveMinutes = postBreakMinutes - leewayTimeMinutes;
                     
                     let workdayMinutesPassed = (now - startTime) / 60000;
@@ -538,12 +514,9 @@
                     return { totalProductiveMinutes, productiveMinutesPassed, productiveMinutesRemaining, error: null };
                 }
 
-                // REFACTORED: Removed 'timePassed' and 'timeRemaining' updates
                 function updateTimeDisplays(now) {
                     const scheduleInfo = getScheduleInfo(now);
-                    
                     DOMElements.currentTime.innerText = `Current Time: ${now.toLocaleTimeString()}`;
-                    
                     return scheduleInfo; 
                 }
                 
@@ -555,7 +528,6 @@
                     `;
                 }
 
-                // FIX: Replaced function with new logic
                 function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
                     if (totalWorkTimeEOD < 0) {
                         return {
@@ -580,12 +552,68 @@
                         html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
                     };
                 }
+
+                // REFACTOR C-5, D-1: Helper to calculate grade requirements
+                function calculateGradeRequirements(baseTarget) {
+                    return {
+                        'Satisfactory': baseTarget + gradeBoundaries.Satisfactory.min,
+                        'Excellent': baseTarget + gradeBoundaries.Excellent.min,
+                        'Outstanding': baseTarget + gradeBoundaries.Outstanding.min
+                    };
+                }
+
+                // REFACTOR C-7, D-2: Helper to build the status row HTML
+                function buildGradeStatusRow(gradeName, targetAmount, currentTickets, isPacing = false) {
+                    const ticketsNeeded = Math.max(0, targetAmount - currentTickets);
+                    const achieved = ticketsNeeded === 0;
+                    
+                    let icon, color, message;
+
+                    if (isPacing) {
+                        const reachable = ticketsNeeded <= CONSTANTS.REACHABLE_TICKET_THRESHOLD;
+                        if (achieved) {
+                            icon = '✓';
+                            color = '#27ae60';
+                            message = 'On track';
+                        } else if (reachable) {
+                            icon = '⚠️';
+                            color = '#f39c12';
+                            message = `Need ${ticketsNeeded} more by 3:30 PM`;
+                        } else {
+                            icon = '❌';
+                            color = '#e74c3c';
+                            message = `Need ${ticketsNeeded} more (challenging)`;
+                        }
+                    } else { // Final status (not pacing)
+                        if (achieved) {
+                            icon = '✓';
+                            color = '#27ae60';
+                            const ticketsOver = currentTickets - targetAmount;
+                            message = ticketsOver > 0 ? `Achieved (+${ticketsOver} extra)` : 'Achieved';
+                        } else {
+                            icon = '⚠️';
+                            color = '#e74c3c';
+                            message = `${ticketsNeeded} short`;
+                        }
+                    }
+
+                    return `
+                        <div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: ${color};">${icon} ${gradeName}</strong>
+                                <span style="font-size: 0.85em; opacity: 0.7; margin-left: 8px;">(${targetAmount} tickets)</span>
+                            </div>
+                            <div style="text-align: right; font-size: 0.9em; color: ${color};">
+                                ${message}
+                            </div>
+                        </div>
+                    `;
+                }
                 
                 // ============================================================================
                 // REPLACED FUNCTION: renderCalculationInfo
-                // This function no longer needs calculatePacing()
                 // ============================================================================
-                function renderCalculationInfo(scheduleData) {
+                function renderCalculationInfo(scheduleData, now) { // REFACTOR C-4: Pass in 'now'
                     const {
                         totalWorkTimeEOD,
                         currentTicketsSoFar,
@@ -604,62 +632,50 @@
                         return;
                     }
 
-                    const now = new Date();
+                    // const now = new Date(); // REFACTOR C-4: Use passed-in 'now'
                     const currentHour = now.getHours();
                     const currentMinute = now.getMinutes();
                     const currentTimeMinutes = currentHour * 60 + currentMinute;
-                    const phoneCloseMinutes = 15 * 60 + 30; // 3:30 PM
-                    const phonesStillOpen = currentTimeMinutes < phoneCloseMinutes;
+                    const phonesStillOpen = currentTimeMinutes < CONSTANTS.PHONE_CLOSE_MINUTES;
                     
-                    // Calculate grade requirements (current EOD targets)
-                    const currentGrades = {
-                        'Satisfactory': targetTicketGoal + gradeBoundaries.Satisfactory.min,
-                        'Excellent': targetTicketGoal + gradeBoundaries.Excellent.min,
-                        'Outstanding': targetTicketGoal + gradeBoundaries.Outstanding.min
-                    };
+                    // REFACTOR C-5, D-1: Use helper
+                    const currentGrades = calculateGradeRequirements(targetTicketGoal);
                     
+                    // REFACTOR C-4: Flatten guard clause
+                    const shiftStartMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
+                    const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
+                    if (phonesStillOpen && minutesIntoShift <= 0) {
+                        DOMElements.calcInfoContent.innerHTML = `
+                            <div class="info-box">
+                                <strong>⏰ Shift Has Not Started</strong>
+                                <p style="margin: 8px 0 0 0;">Pacing analysis will begin at ${DOMElements.shiftStart.value}.</p>
+                            </div>
+                        ` + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
+                        return;
+                    }
+
                     // ============================================================
                     // BEFORE 3:30 PM - Show Pacing for All Grades
                     // ============================================================
                     if (phonesStillOpen) {
-                        const shiftStartStr = DOMElements.shiftStart.value;
-                        const shiftStartMinutes = parseInt(shiftStartStr.split(':')[0]) * 60 + parseInt(shiftStartStr.split(':')[1]);
-                        const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
-                        
                         // Project call rate
-                        const callRatePerHour = minutesIntoShift > 0 
-                            ? (currentCallTimeSoFar / minutesIntoShift) * 60 
-                            : 0;
-                        
-                        const minutesUntilPhoneClose = phoneCloseMinutes - currentTimeMinutes;
-                        // Guard against projections if shift hasn't started
-                        if (minutesIntoShift <= 0) {
-                             DOMElements.calcInfoContent.innerHTML = `
-                                <div class="info-box">
-                                    <strong>⏰ Shift Has Not Started</strong>
-                                    <p style="margin: 8px 0 0 0;">Pacing analysis will begin at ${DOMElements.shiftStart.value}.</p>
-                                </div>
-                            ` + getGradesTableHtml(targetTicketGoal, currentTicketsSoFar);
-                            return;
-                        }
+                        const callRatePerHour = (currentCallTimeSoFar / minutesIntoShift) * 60;
+                        const minutesUntilPhoneClose = CONSTANTS.PHONE_CLOSE_MINUTES - currentTimeMinutes;
 
                         const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
                         const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
                         const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
-                        const projectedTarget = projectedRoundedHours * TICKETS_PER_HOUR_RATE;
+                        const projectedTarget = projectedRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
                         
-                        // Calculate projected requirements for each grade
-                        const projectedGrades = {
-                            'Satisfactory': projectedTarget + gradeBoundaries.Satisfactory.min,
-                            'Excellent': projectedTarget + gradeBoundaries.Excellent.min,
-                            'Outstanding': projectedTarget + gradeBoundaries.Outstanding.min
-                        };
+                        // REFACTOR C-5, D-1: Use helper
+                        const projectedGrades = calculateGradeRequirements(projectedTarget);
                         
                         let statusHtml = `
                             <div class="info-box">
                                 <strong>📊 Current Status</strong>
                                 <p style="margin: 8px 0 0 0; font-size: 0.9em;">
-                                    <strong>${String(currentHour % 12 || 12)}:${String(currentMinute).padStart(2, '0')} ${currentHour < 12 ? 'AM' : 'PM'}</strong> | 
+                                    <!-- REFACTOR C-3: Use helper -->
+                                    <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> | 
                                     ${currentTicketsSoFar} tickets | 
                                     ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
                                 </p>
@@ -681,39 +697,9 @@
                                 <div style="margin-top: 8px;">
                         `;
                         
-                        // Show pacing for each grade
+                        // REFACTOR C-7, D-2: Use helper
                         for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
-                            const ticketsNeeded = Math.max(0, projectedNeeded - currentTicketsSoFar);
-                            const achieved = ticketsNeeded === 0;
-                            const reachable = ticketsNeeded <= 10; // Arbitrary threshold for "reachable"
-                            
-                            let icon, color, message;
-                            
-                            if (achieved) {
-                                icon = '✓';
-                                color = '#27ae60';
-                                message = 'On track';
-                            } else if (reachable) {
-                                icon = '⚠️';
-                                color = '#f39c12';
-                                message = `Need ${ticketsNeeded} more by 3:30 PM`;
-                            } else {
-                                icon = '❌';
-                                color = '#e74c3c';
-                                message = `Need ${ticketsNeeded} more (challenging)`;
-                            }
-                            
-                            statusHtml += `
-                                <div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong style="color: ${color};">${icon} ${gradeName}</strong>
-                                        <span style="font-size: 0.85em; opacity: 0.7; margin-left: 8px;">(${projectedNeeded} tickets)</span>
-                                    </div>
-                                    <div style="text-align: right; font-size: 0.9em; color: ${color};">
-                                        ${message}
-                                    </div>
-                                </div>
-                            `;
+                            statusHtml += buildGradeStatusRow(gradeName, projectedNeeded, currentTicketsSoFar, true);
                         }
                         
                         statusHtml += `
@@ -741,35 +727,9 @@
                                 <div style="margin-top: 8px;">
                         `;
                         
-                        // Show status for each grade
+                        // REFACTOR C-7, D-2: Use helper
                         for (const [gradeName, needed] of Object.entries(currentGrades)) {
-                            const ticketsNeeded = Math.max(0, needed - currentTicketsSoFar);
-                            const achieved = ticketsNeeded === 0;
-                            
-                            let icon, color, message;
-                            
-                            if (achieved) {
-                                icon = '✓';
-                                color = '#27ae60';
-                                const ticketsOver = currentTicketsSoFar - needed;
-                                message = ticketsOver > 0 ? `Achieved (+${ticketsOver} extra)` : 'Achieved';
-                            } else {
-                                icon = '⚠️';
-                                color = '#e74c3c';
-                                message = `${ticketsNeeded} short`;
-                            }
-                            
-                            statusHtml += `
-                                <div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong style="color: ${color};">${icon} ${gradeName}</strong>
-                                        <span style="font-size: 0.85em; opacity: 0.7; margin-left: 8px;">(${needed} tickets)</span>
-                                    </div>
-                                    <div style="text-align: right; font-size: 0.9em; color: ${color};">
-                                        ${message}
-                                    </div>
-                                </div>
-                            `;
+                            statusHtml += buildGradeStatusRow(gradeName, needed, currentTicketsSoFar, false);
                         }
                         
                         statusHtml += `
@@ -783,11 +743,8 @@
                 
                 // Helper function to generate the grades table
                 function getGradesTableHtml(targetTicketGoal, currentTicketsSoFar) {
-                    const grades = {
-                        'Satisfactory': targetTicketGoal + gradeBoundaries.Satisfactory.min,
-                        'Excellent': targetTicketGoal + gradeBoundaries.Excellent.min,
-                        'Outstanding': targetTicketGoal + gradeBoundaries.Outstanding.min
-                    };
+                    // REFACTOR C-5, D-1: Use helper
+                    const grades = calculateGradeRequirements(targetTicketGoal);
 
                     const neededS = Math.max(0, grades.Satisfactory - currentTicketsSoFar);
                     const neededE = Math.max(0, grades.Excellent - currentTicketsSoFar);
@@ -830,13 +787,18 @@
                     `;
                 }
 
+                // REFACTOR D-5: Helper to render error states
+                function renderErrorState(errorMessage, errorData) {
+                    DOMElements.totalWorkTimeEOD.innerText = '00:00';
+                    DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${errorMessage}</div>`;
+                    renderCalculationInfo(errorData, new Date()); // Pass 'now'
+                }
 
                 function calculateDailyRatings() {
-                    const now = new Date();
+                    const now = new Date(); // REFACTOR C-4: Define 'now' once
                     
                     const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = updateTimeDisplays(now);
                     
-                    // REFACTORED: Update 'totalProductiveTime' here
                     DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
 
                     const errorData = { 
@@ -849,17 +811,13 @@
                         currentCallTimeSoFar: 0
                     };
 
+                    // REFACTOR D-5: Use helper
                     if (scheduleError) {
-                        DOMElements.totalWorkTimeEOD.innerText = '00:00';
-                        DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">${scheduleError}</div>`;
-                        renderCalculationInfo(errorData); // Show error in info box
+                        renderErrorState(scheduleError, errorData);
                         return;
                     }
-
                     if (totalProductiveMinutes <= 0) {
-                        DOMElements.totalWorkTimeEOD.innerText = '00:00';
-                        DOMElements.targetsContent.innerHTML = `<div class="info-box info-box-danger target-info-box">Invalid Schedule. Total Productive Time must be greater than 0 (check break time).</div>`;
-                        renderCalculationInfo(errorData); // Show error in info box
+                        renderErrorState("Invalid Schedule. Total Productive Time must be greater than 0 (check break time).", errorData);
                         return;
                     }
 
@@ -868,11 +826,10 @@
                     
                     const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
                     
-                    // REFACTORED: Update 'totalWorkTimeEOD' here
                     DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
                     
                     const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
-                    const targetTicketGoal = roundedWorkHours * TICKETS_PER_HOUR_RATE;
+                    const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
 
                     DOMElements.targetsContent.innerHTML = ''; 
                     
@@ -883,12 +840,8 @@
                         const ticketsToHitGrade = targetTicketGoal + boundary.min;
                         const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
                         
-                        // FIX: Calculate call time alternative correctly
                         let callTimeHtml = '';
-                        
                         if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
-                            // Strategy: Can I reduce my work time enough to lower the target?
-                            // Find the highest rounded hour count where my current tickets would meet the grade.
                             const callAlternative = getCallTimeAlternative(
                                 boundary,
                                 currentTicketsSoFar,
@@ -901,7 +854,6 @@
                             }
                         }
                         
-                        // FIX: Updated getTargetCardState call to use object and PASS callTimeHtml
                         const { boxClass, html } = getTargetCardState({
                             boundary,
                             totalWorkTimeEOD,
@@ -916,17 +868,16 @@
                         DOMElements.targetsContent.appendChild(targetBox);
                     }
                     
-                    // FIX: Call renderCalculationInfo with the full scheduleData object
+                    // REFACTOR C-4: Pass 'now'
                     renderCalculationInfo({ 
                         totalWorkTimeEOD, 
                         currentTicketsSoFar, 
                         productiveMinutesRemaining,
                         roundedWorkHours,
                         targetTicketGoal,
-                        // Pass these down too for the new logic
                         totalProductiveMinutes,
                         currentCallTimeSoFar
-                    });
+                    }, now);
                 }
 
                 // --- Execution ---
@@ -942,11 +893,9 @@
                 DOMElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
                 DOMElements.btnAddCallTime.addEventListener('click', handleAddCallTime);
                 
-                // FIX: Add blur event listener to format the call time input
                 DOMElements.currentCallTime.addEventListener('blur', () => {
                     const currentMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                     DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(currentMinutes);
-                    // This change will be picked up by the next debounced save or calc
                 });
                 
                 DOMElements.btnResetData.addEventListener('click', showResetModal);
@@ -957,14 +906,11 @@
                     if (e.key === 'Enter') handleAddCallTime();
                 });
                 
-                // FIX B-5: Centralized, visibility-aware timer
                 function handleTimerTick() {
                     const now = new Date();
                     updateTimeDisplays(now); // Update clock every second
 
-                    // Only run full recalculation if document is visible
                     if (document.visibilityState === 'visible') {
-                        // Recalculate on the 0s and 30s mark
                         const seconds = now.getSeconds();
                         if (seconds === 0 || seconds === 30) {
                             calculateDailyRatings();
@@ -972,11 +918,10 @@
                     }
                 }
 
-                setInterval(handleTimerTick, 1000); // 1-second interval
+                setInterval(handleTimerTick, 1000);
 
                 calculateDailyRatings(); 
                 
-                // Auto-format on initial load
                 const initialCallMinutes = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
                 DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(initialCallMinutes);
                 
