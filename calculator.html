@@ -35,6 +35,45 @@
         .info-box p {
             line-height: 1.5;
         }
+        
+        /* --- NEW STYLES FOR COMPACT UI --- */
+        .calc-section {
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+        .calc-section-header {
+            margin-bottom: 0.5rem;
+        }
+        .calc-section-header h2 {
+            margin: 0;
+            font-size: 1.1em; /* smaller heading */
+        }
+        /* Apply compact styles to labels */
+        .sidebar-label {
+             font-size: 0.8em;
+             margin-bottom: 0.2rem;
+             text-transform: uppercase;
+             opacity: 0.9;
+        }
+        
+        /* Compact Stat Box styles */
+        .stat-item-compact {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 0.9em;
+            padding: 0.2rem 0.1rem;
+        }
+        .stat-label-compact {
+            opacity: 0.7;
+            margin-right: 0.5rem;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+        .stat-value-compact {
+            font-weight: 600;
+        }
+        /* --- END NEW STYLES --- */
     </style>
 </head>
 <body class="eod-targets-page">
@@ -54,12 +93,13 @@
                     <span id="currentTime">Loading clock...</span>
                 </div>
 
+                <!-- REFACTORED SECTION 1 -->
                 <div class="calc-section">
                     <div class="calc-section-header">
                         <h2>1. Schedule</h2>
-                        <button id="btnResetData" class="btn-subtle-reset">Reset Data</button>
                     </div>
-                    <div class="calc-section-content input-grid-2">
+                    <!-- This grid is now 3 inputs + 1 button -->
+                    <div class="calc-section-content" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem 0.75rem; align-items: flex-end;">
                         <div>
                             <label for="shiftStart" class="sidebar-label">Shift Start</label>
                             <select id="shiftStart" class="sidebar-select"></select>
@@ -68,8 +108,8 @@
                             <label for="shiftEnd" class="sidebar-label">Shift End</label>
                             <select id="shiftEnd" class="sidebar-select"></select>
                         </div>
-                        <div class="col-span-2">
-                            <label for="breakTime" class="sidebar-label">Break Time (min)</label>
+                        <div>
+                            <label for="breakTime" class="sidebar-label">Break (min)</label>
                             <select id="breakTime" class="sidebar-select">
                                 <option value="0">0 minutes</option>
                                 <option value="30">30 minutes</option>
@@ -79,18 +119,20 @@
                                 <option value="120">120 minutes</option>
                             </select>
                         </div>
+                         <button id="btnResetData" class="btn-subtle-reset" style="padding: 0.5rem 0.25rem; margin-bottom: 0; white-space: nowrap;">Reset</button>
                     </div>
                 </div>
                 
+                <!-- REFACTORED SECTION 2 -->
                 <div class="calc-section">
                     <div class="calc-section-header">
                         <h2>2. Progress</h2>
                     </div>
-                    <div class="calc-section-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; align-items: flex-end;">
+                    <!-- This is now an explicit 2x2 grid -->
+                    <div class="calc-section-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.75rem; align-items: flex-end;">
                         <div>
-                            <!-- FIX: Updated label and placeholder -->
-                            <label for="currentCallTime" class="sidebar-label">Call Time</label>
-                            <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 2:37 or 157 or 2.5" value="0">
+                            <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM)</label>
+                            <input type="text" id="currentCallTime" class="sidebar-input" placeholder="e.g., 2:37" value="0">
                         </div>
                         <div>
                             <label for="currentTickets" class="sidebar-label">Tickets Closed</label>
@@ -98,7 +140,7 @@
                         </div>
                         
                         <div>
-                            <label for="addCallTime" class="sidebar-label">Add Call Minutes</label>
+                            <label for="addCallTime" class="sidebar-label">Add Call (min)</label>
                             <input type="number" id="addCallTime" class="sidebar-input" placeholder="e.g., 13">
                         </div>
                         <div> 
@@ -107,26 +149,28 @@
                     </div>
                 </div>
 
+                <!-- REFACTORED SECTION 3 -->
                 <div class="calc-section">
                     <div class="calc-section-header">
                         <h2>3. Status</h2>
                     </div>
-                    <div class="calc-section-content stat-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
-                        <div class="stat-box">
-                            <span class="stat-label">Productive Time</span>
-                            <span id="totalProductiveTime" class="stat-value">00:00</span>
+                    <!-- This grid replaces the padded stat-box items with compact text -->
+                    <div class="calc-section-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 0.75rem;">
+                        <div class="stat-item-compact">
+                            <span class="stat-label-compact">Prod. Time:</span>
+                            <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
                         </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Time Passed</span>
-                            <span id="timePassed" class="stat-value">00:00</span>
+                        <div class="stat-item-compact">
+                            <span class="stat-label-compact">Time Passed:</span>
+                            <span id="timePassed" class="stat-value-compact">00:00</span>
                         </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Time Left</span>
-                            <span id="timeRemaining" class="stat-value">00:00</span>
+                        <div class="stat-item-compact">
+                            <span class="stat-label-compact">Time Left:</span>
+                            <span id="timeRemaining" class="stat-value-compact">00:00</span>
                         </div>
-                        <div class="stat-box">
-                            <span class="stat-label">Work Time (EOD)</span>
-                            <span id="totalWorkTimeEOD" class="stat-value">00:00</span>
+                        <div class="stat-item-compact">
+                            <span class="stat-label-compact">Work Time (EOD):</span>
+                            <span id="totalWorkTimeEOD" class="stat-value-compact">00:00</span>
                         </div>
                     </div>
                 </div>
@@ -199,7 +243,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '1.4.0', // Bumped for Pacing Analysis
+            VERSION: '1.4.1', // Bumped for UI Refactor
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -688,6 +732,7 @@
                     
                     const currentHour = now.getHours();
                     const currentMinute = now.getMinutes();
+                    const currentTimeMinutes = currentHour * 60 + currentMinute; // Added this
                     const phonesStillOpen = pacing.phonesStillOpen;
                     
                     let pacingHtml = '';
@@ -732,7 +777,7 @@
                         let milestonesAdded = 0;
                         pacing.milestones.forEach((milestone, index) => {
                             // Only show milestones in the future
-                            if (milestone.hour > currentHour || (milestone.hour === 15.5 && currentTimeMinutes < (15 * 60 + 30))) {
+                            if ((milestone.hour > currentHour) || (milestone.hour === 15.5 && currentTimeMinutes < (15 * 60 + 30))) {
                                 const achieved = milestone.ticketsGap <= 0;
                                 // Use a slightly different icon/color logic
                                 const onTrack = milestone.ticketsGap <= 3; // On track if only 3 behind
@@ -1032,4 +1077,5 @@
     </script>
 </body>
 </html>
+
 
