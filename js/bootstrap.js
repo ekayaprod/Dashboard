@@ -1,7 +1,11 @@
 /**
  * bootstrap.js - Centralized dependency loader
  * Loads both JavaScript modules AND shared HTML components (Navbar).
- * Version: 1.1.2 (Fixed export verification)
+ * Version: 1.1.3 (MailTo Fix)
+ *
+ * FIX v1.1.3: Changed msgreader.js to be 'required: true' for mailto.html.
+ * This ensures that if the file fails to load, the bootstrapper stops
+ * and shows an error instead of letting the page fail silently.
  *
  * FIX v1.1.2: Added missing exports to verification lists:
  * - UIUtils (from app-core.js)
@@ -45,7 +49,8 @@
     
     const PAGE_SCRIPTS = {
         'mailto.html': [
-            { url: 'js/msgreader.js', exports: ['MsgReader'], required: false }
+            // FIX: This script is critical for the mailto page, it must be required.
+            { url: 'js/msgreader.js', exports: ['MsgReader'], required: true }
         ]
     };
     
@@ -153,11 +158,16 @@
             }
             
             // 4. Load page specific scripts
-            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+            const currentPage = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0]; // FIX: Ignore query strings
             const pageScripts = PAGE_SCRIPTS[currentPage] || [];
+            
             for (const config of pageScripts) {
-                try { await loadScript(config); } 
-                catch (err) { if (config.required) throw err; }
+                try { 
+                    await loadScript(config); 
+                } catch (err) { 
+                    // Now if 'required: true', this will throw the error and stop bootstrap
+                    if (config.required) throw err; 
+                }
             }
             
             // 5. Wait for HTML to finish loading (if it hasn't already)
