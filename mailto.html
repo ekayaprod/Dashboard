@@ -216,6 +216,8 @@
             
                 if (!ctx || !ctx.elements) {
                     console.error('[MailTo] Context initialization failed. This is the most likely cause of the error.');
+                    // This was the original failure point, AppLifecycle.initPage was returning null
+                    // because of the migration bug in app-core.js.
                     return;
                 }
             
