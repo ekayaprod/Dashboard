@@ -171,7 +171,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '2.0.4', // Bumped for startup fix
+            VERSION: '2.0.5', // Bumped for typo fix
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -458,12 +458,12 @@
 
                     let productiveMinutesPassed = 0;
                     if (totalShiftMinutes > 0) {
-                        productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductVTime;
+                        // FIX: Corrected typo from totalProductVTime to totalProductiveMinutes
+                        productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
                     }
                     if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
                     const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
 
-                    // `productiveMinutesPassed` is calculated but not returned. This is a Mode C finding.
                     return { totalProductiveMinutes, productiveMinutesRemaining, error: null };
                 }
 
