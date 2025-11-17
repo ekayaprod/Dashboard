@@ -1,6 +1,6 @@
 <!-- 
-  Version: 1.2.2
-  CHANGE: Added standard settings button to nav-actions.
+  Version: 1.2.3
+  CHANGE: Removed settings button - each page manages its own settings button to avoid ID conflicts.
   All styles are loaded from the main style.css file.
 -->
 
@@ -15,12 +15,7 @@
     </ul>
     
     <div class="nav-actions">
-        <!-- 
-          ADDED: Standard settings button.
-          'btnSettings' is the conventional ID used by AppLifecycle and SharedSettingsModal.
-          The icon is populated automatically by app-core.js.
-        -->
-        <button id="btnSettings" class="icon-btn" title="Settings"></button>
+        <!-- Reserved for future global actions -->
     </div>
 </nav>
 
