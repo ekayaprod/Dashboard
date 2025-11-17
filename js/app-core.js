@@ -1,10 +1,10 @@
 /**
  * app-core.js
  * Core application initialization, SafeUI wrapper, and DOM utilities.
- * Version: 2.7.0 (Navbar logic moved to bootstrap.js)
+ * Version: 2.7.1 (Fix localStorage migration)
  */
 
-const CORE_VERSION = '2.7.0';
+const CORE_VERSION = '2.7.1';
 
 // ============================================================================
 // MODULE: SVGIcons
@@ -463,14 +463,40 @@ const AppLifecycle = (() => {
 
             let state = stateManager.load();
             
-            // --- State Migration Helper ---
-            if (!state.ui && defaultState.ui) {
+            // --- FIX: Robust State Migration Helper ---
+            let stateWasMigrated = false;
+            if (Array.isArray(state)) {
+                // This is an old array-based state. Convert it.
+                console.warn(`[AppLifecycle] Migrating legacy array state for ${storageKey}`);
+                const oldData = state;
+                state = JSON.parse(JSON.stringify(defaultState)); // Deep copy default
+                
+                // Find the key in defaultState that is an array (e.g., 'library', 'apps')
+                const dataKey = Object.keys(state).find(k => Array.isArray(state[k]));
+                if (dataKey) {
+                    state[dataKey] = oldData;
+                } else {
+                    console.error(`[AppLifecycle] Migration failed: Couldn't find target array in defaultState.`);
+                }
+                stateWasMigrated = true;
+            } else if (!state || typeof state !== 'object') {
+                // State is corrupt (e.g., null, string)
+                 console.error(`[AppLifecycle] State for ${storageKey} is corrupt. Resetting to default.`);
+                 state = JSON.parse(JSON.stringify(defaultState));
+                 stateWasMigrated = true;
+            } else if (!state.ui && defaultState.ui) {
+                // State is an object, but missing the 'ui' property
+                console.log(`[AppLifecycle] Migrating state for ${storageKey}: Added UI state`);
                 state.ui = { ...defaultState.ui };
-                stateManager.save(state);
-                console.log(`[AppLifecycle] Migrated state for ${storageKey}: Added UI state`);
+                stateWasMigrated = true;
             }
+            // --- END FIX ---
 
             const saveState = () => stateManager.save(state);
+
+            if (stateWasMigrated) {
+                saveState(); // Save the migrated state immediately
+            }
 
             return { elements, state, saveState };
         },
