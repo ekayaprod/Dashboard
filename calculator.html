@@ -218,8 +218,8 @@
                         'btnResetData',
                         'calc-info-content',
                         'app-startup-error',
-                        'schedule-header', 'schedule-content', 'schedule-collapse-icon',
-                        'btnSettings'
+                        'schedule-header', 'schedule-content', 'schedule-collapse-icon'
+                        // 'btnSettings' // <-- FIX: Removed this. It's loaded optionally by bootstrap.
                     ]
                 });
 
@@ -233,7 +233,7 @@
 
                 // --- Initialize Standard Settings Modal ---
                 SharedSettingsModal.init({
-                    buttonId: 'btnSettings',
+                    buttonId: 'btnSettings', // This init function will safely handle if 'btnSettings' doesn't exist
                     appName: APP_CONFIG.NAME,
                     state: state, // Pass the entire state object for backup
                     itemValidators: {
@@ -845,5 +845,4 @@
     </script>
 </body>
 </html>
-
 
