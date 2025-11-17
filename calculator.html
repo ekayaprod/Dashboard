@@ -144,9 +144,8 @@
     <script src="js/bootstrap.js"></script>
     
     <script>
-    // FIX: Reverted to the original, correct bootstrap:ready listener
-    // to ensure all dependencies from bootstrap.js are loaded
-    // before this script's logic runs.
+    // This page uses the bootstrap:ready event listener,
+    // which is the correct pattern for this app's architecture.
     
     let bootstrapReady = false;
 
@@ -171,7 +170,7 @@
     function initializePage() {
         const APP_CONFIG = {
             NAME: 'calculator',
-            VERSION: '2.0.5', // Bumped for typo fix
+            VERSION: '2.0.6', // Bumped for leeway logic fix
             DATA_KEY: 'eod_targets_state_v1',
             IMPORT_KEY: 'eod_targets_import_minutes'
         };
@@ -298,6 +297,21 @@
                         const minutes = Math.floor(totalMinutes % 60);
                         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
                     },
+
+                    /**
+                     * FIX: New formatter that allows negative time.
+                     */
+                    formatMinutesToHHMM_Signed(totalMinutes) {
+                        if (isNaN(totalMinutes)) return '00:00';
+                        
+                        const sign = totalMinutes < 0 ? '-' : '';
+                        const absMinutes = Math.abs(totalMinutes);
+                        
+                        const hours = Math.floor(absMinutes / 60);
+                        const minutes = Math.floor(absMinutes % 60);
+                        
+                        return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                    },
                     
                     formatMinutesToHHMMShort(totalMinutes) {
                         if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
@@ -373,7 +387,6 @@
                 const debouncedCalculateAndSave = SafeUI.debounce(() => {
                     state.ui.shiftStart = DOMElements.shiftStart.value;
                     state.ui.shiftEnd = DOMElements.shiftEnd.value;
-                    // FIX: Ensure NaN is not saved to state
                     state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10) || 0;
                     state.ui.currentCallTime = DOMElements.currentCallTime.value;
                     state.ui.currentTickets = parseInt(DOMElements.currentTickets.value, 10) || 0;
@@ -436,7 +449,6 @@
                     const endMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
                     endTime.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
 
-                    // FIX: Ensure breakTime is a number, defaulting to 0 if NaN.
                     const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10) || 0;
                     const totalShiftMinutes = (endTime - startTime) / 60000;
                     
@@ -458,7 +470,6 @@
 
                     let productiveMinutesPassed = 0;
                     if (totalShiftMinutes > 0) {
-                        // FIX: Corrected typo from totalProductVTime to totalProductiveMinutes
                         productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
                     }
                     if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
@@ -481,12 +492,9 @@
                 }
 
                 function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
-                    if (totalWorkTimeEOD < 0) {
-                        return {
-                            boxClass: 'target-danger',
-                            html: buildTargetCardHTML(boundary.name, "0", "Call time exceeds productive time.")
-                        };
-                    }
+                    // FIX: Removed the error block for (totalWorkTimeEOD < 0)
+                    // It will now calculate normally.
+                    
                     if (ticketsNeeded <= 0) {
                         return {
                             boxClass: 'target-good',
@@ -572,13 +580,8 @@
                         currentCallTimeSoFar
                     } = scheduleData;
                     
-                    if (totalWorkTimeEOD < 0) {
-                        DOMElements.calcInfoContent.innerHTML = `
-                            <div class="info-box info-box-danger">
-                                <strong>Status:</strong> Call time exceeds available productive time.
-                            </div>`;
-                        return;
-                    }
+                    // FIX: Removed the error block for (totalWorkTimeEOD < 0)
+                    // It will now calculate normally.
 
                     const currentHour = now.getHours();
                     const currentMinute = now.getMinutes();
@@ -602,7 +605,8 @@
 
                     // BEFORE 3:30 PM - Show Pacing
                     if (phonesStillOpen) {
-                        const callRatePerHour = (currentCallTimeSoFar / minutesIntoShift) * 60;
+                        // FIX: Ensure minutesIntoShift is not zero to avoid divide by zero
+                        const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
                         const minutesUntilPhoneClose = CONSTANTS.PHONE_CLOSE_MINUTES - currentTimeMinutes;
 
                         const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
@@ -708,7 +712,8 @@
                     
                     const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
                     
-                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD);
+                    // FIX: Use the new signed formatter to show negative time
+                    DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
                     
                     const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
                     const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
@@ -723,7 +728,7 @@
                         const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
                         
                         let callTimeHtml = '';
-                        if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
+                        if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) { // Only show call time alt if work time is positive
                             const callAlternative = getCallTimeAlternative(
                                 boundary,
                                 currentTicketsSoFar,
