@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MailTo Generator</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -164,8 +164,7 @@
         }
     }, 5000);
 
-    // FIX: Reverted to a synchronous function that fires an async IIFE
-    // This matches the working pattern from passwords.html
+    // FIX: Using the working pattern from index.html and passwords.html
     function initializePage() {
         (async () => {
             // ============================================================================
@@ -182,8 +181,8 @@
             console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
 
             try {
-                // NOTE: Manual dependency checks removed from here.
-                // bootstrap:ready ensures all scripts (including MsgReader) are loaded.
+                // FIX: Removed the old manual dependency checks for 'SafeUI' and 'MsgReader'.
+                // 'bootstrap:ready' firing guarantees these are loaded.
                 
                 console.log(`[MailTo] Dependencies loaded.`);
 
