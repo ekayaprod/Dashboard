@@ -1,6 +1,6 @@
 /**
  * js/msgreader.js
- * Version 2.0.5 (ES6 Module - Fixed recipient extraction and .oft body parsing)
+ * Version 2.0.6 (ES6 Module - Fixed UTF-16LE decoding with TextDecoder)
  */
 
 'use strict';
@@ -57,6 +57,7 @@ function _normalizeText(text) {
 }
 
 function dataViewToString(view, encoding) {
+    // Handle UTF-8 with TextDecoder
     if (encoding === 'utf-8') {
         try {
             if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
@@ -65,11 +66,33 @@ function dataViewToString(view, encoding) {
             return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
         } catch (e) { return dataViewToString(view, 'ascii'); }
     }
+    
+    // Handle UTF-16LE with TextDecoder (Fix for null byte issue)
+    if (encoding === 'utf16le') {
+        try {
+            if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
+            let decoded = new TextDecoder('utf-16le', { fatal: false }).decode(view);
+            const nullIdx = decoded.indexOf('\0');
+            return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
+        } catch (e) {
+            // Fallback manual decode
+            let result = '';
+            // Ensure we don't overrun buffer if length is odd
+            for (let i = 0; i < view.byteLength - 1; i += 2) {
+                let charCode = view.getUint16(i, true);
+                if (charCode === 0) break;
+                result += String.fromCharCode(charCode);
+            }
+            return result;
+        }
+    }
+    
+    // ASCII fallback
     let result = '';
-    for (let i = 0; i < view.byteLength; i += (encoding === 'utf16le' ? 2 : 1)) {
-        let charCode = encoding === 'utf16le' ? view.getUint16(i, true) : view.getUint8(i);
+    for (let i = 0; i < view.byteLength; i++) {
+        let charCode = view.getUint8(i);
         if (charCode === 0) break;
-        if (encoding !== 'utf16le' && (charCode < 32 || charCode > 126) && charCode !== 9 && charCode !== 10 && charCode !== 13) continue;
+        if ((charCode < 32 || charCode > 126) && charCode !== 9 && charCode !== 10 && charCode !== 13) continue;
         result += String.fromCharCode(charCode);
     }
     return result;
