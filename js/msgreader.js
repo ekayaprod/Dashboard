@@ -1,6 +1,6 @@
 /**
  * js/msgreader.js
- * Version 2.0.7 (ES6 Module - Robust UTF-16LE Bounds Check)
+ * Version 2.0.8 (ES6 Module - Fixed Single Character Truncation Bug)
  */
 
 'use strict';
@@ -429,11 +429,23 @@ MsgReaderParser.prototype.convertPropertyValue = function(data, type, propId) {
             return (printableCount / s.length) > 0.7;
         };
         
+        // HEURISTIC FIX V2.0.8: Detect Truncated UTF-8
+        // If u8 is 'printable' but significantly shorter than u16 (indicating early null termination 
+        // caused by reading UTF-16 as UTF-8), we must prefer u16.
+        // Common Case: "S" (length 1) vs "Subject" (length 7).
+        let u16IsBetter = isPrintable(u16);
+        let u8IsBetter = isPrintable(u8);
+        
+        if (u8IsBetter && u16IsBetter && u8.length < u16.length && u8.length < 5) {
+             // Force u16 preference if u8 is suspiciously short
+             u8IsBetter = false;
+        }
+        
         let useU16 = false;
         if (type === PROP_TYPE_STRING8) {
-            useU16 = isPrintable(u16) && !isPrintable(u8);
+            useU16 = u16IsBetter && !u8IsBetter;
         } else {
-            useU16 = isPrintable(u16);
+            useU16 = u16IsBetter;
         }
         
         let text = useU16 ? u16 : u8;
