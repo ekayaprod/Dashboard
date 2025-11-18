@@ -1256,14 +1256,196 @@ body.modal-open > *:not(.modal-overlay) {
 .eod-targets-page .pacing-row.pacing-fail .pacing-message {
     color: var(--color-danger);
 }
+
+/* FIX (Mode C): Added .phase-header class to consolidate inline styles */
+.phase-header {
+    font-size: 0.9rem !important;
+    color: var(--subtle-text) !important;
+}
+
 /* --- END REFACTOR ADDITIONS --- */
 
 
-/* Reset Confirmation Modal (REMOVED - No longer used) */
-/*
-.modal-overlay-custom { ... }
-.modal-content-custom { ... }
-.modal-actions-custom { ... }
-*/
+/* --- MAILTO PAGE STYLES (Refactored) --- */
 
-/* REMOVED duplicate rule from line 612 */
+.mailto-page .accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 0.2rem 0.4rem;
+}
+.mailto-page .accordion-header:hover {
+    background-color: var(--info-bg);
+}
+.mailto-page .accordion-content {
+    max-height: 1500px; /* Allow for large content */
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+    opacity: 1;
+    padding: 0 0.4rem 0.4rem 0.4rem;
+}
+.mailto-page .accordion-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.mailto-page .accordion-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    font-size: 0.75rem;
+    padding: 0.25rem;
+}
+.mailto-page .accordion-content.collapsed + .accordion-header .accordion-icon,
+.mailto-page .accordion-header.collapsed .accordion-icon {
+    transform: rotate(-90deg);
+}
+
+.mailto-page .upload-wrapper {
+    padding: 1rem;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    text-align: center;
+    background-color: var(--info-bg);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.mailto-page .upload-wrapper.dragover {
+    background-color: var(--primary-hover-bg-light);
+    border-color: var(--primary-color);
+}
+.mailto-page .upload-wrapper input[type="file"] {
+    display: none;
+}
+.mailto-page .upload-wrapper label.button-primary {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+.mailto-page .upload-wrapper p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--subtle-text);
+}
+
+.mailto-page .breadcrumb-container {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+    color: var(--subtle-text);
+    background-color: var(--info-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+.mailto-page .breadcrumb-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    cursor: pointer;
+}
+.mailto-page .breadcrumb-link:hover {
+    text-decoration: underline;
+}
+.mailto-page .breadcrumb-separator {
+    margin: 0 0.25rem;
+}
+.mailto-page .breadcrumb-current {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.mailto-page .tree-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0.1rem; /* Padding for list items */
+}
+.mailto-page .list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.2s;
+}
+.mailto-page .list-item:hover {
+    background-color: var(--info-bg);
+}
+.mailto-page .list-item .list-item-icon {
+    flex-shrink: 0;
+    color: var(--subtle-text);
+}
+.mailto-page .list-item .list-item-icon.folder {
+    color: var(--primary-color);
+}
+.mailto-page .list-item .list-item-icon.template {
+    color: var(--subtle-text);
+}
+.mailto-page .list-item .list-item-icon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+.mailto-page .list-item a.list-item-name {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mailto-page .list-item a.list-item-name:hover {
+    text-decoration: underline;
+}
+.mailto-page .list-item span.list-item-name-folder {
+    font-weight: 500;
+    font-size: 0.9rem;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+.mailto-page .list-item .list-item-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.mailto-page .move-folder-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+}
+.mailto-page .move-folder-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+.mailto-page .move-folder-item:hover {
+    background-color: var(--info-bg);
+}
+.mailto-page .move-folder-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: transparent;
+}
+.mailto-page .move-folder-item svg {
+    width: 16px;
+    height: 16px;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.mailto-page .app-section-box {
+    padding: 0.75rem;
+    background-color: var(--info-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
