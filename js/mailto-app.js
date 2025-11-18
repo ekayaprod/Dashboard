@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module)
- * Version: 2.0.2 (ES6 Module Refactor - Patched)
+ * Version: 2.0.3 (ES6 Module Refactor - Navbar Fix)
  */
 
 // Explicit imports - browser guarantees these load first
@@ -15,7 +15,7 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.0.2', // Patched version
+    VERSION: '2.0.3', // Navbar path fix
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
@@ -824,18 +824,20 @@ async function init() {
     
     // Load navbar
     try {
-        // FIX: Corrected path to fetch from parent directory
-        const navResponse = await fetch('../navbar.html');
+        // FIX: Corrected path to fetch from the same directory (root)
+        // Previous "fix" used '../navbar.html' which was incorrect for root files.
+        const navResponse = await fetch('navbar.html');
         const navContainer = document.getElementById('navbar-container');
         if (navContainer && navResponse.ok) {
             navContainer.innerHTML = await navResponse.text();
-            // Manually run the navbar script
+            // Manually run the navbar script because innerHTML scripts don't auto-execute
             const navScript = navContainer.querySelector('script');
             if (navScript) {
+                // Use new Function to execute the script content safely within the current scope
                 new Function(navScript.innerHTML)();
             }
         } else if (navContainer) {
-            navContainer.innerHTML = `<div style="color:red; padding:1rem;">Error: Could not load navbar.html. Path incorrect or file missing.</div>`;
+            navContainer.innerHTML = `<div style="color:red; padding:1rem;">Error: Could not load navbar.html. Verify file existence.</div>`;
         }
     } catch (e) {
         console.error("Failed to load navbar:", e);
