@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module)
- * Version: 2.0.1 (ES6 Module Refactor - Patched)
+ * Version: 2.0.2 (ES6 Module Refactor - Patched)
  */
 
 // Explicit imports - browser guarantees these load first
@@ -15,7 +15,7 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.0.1', // Patched version
+    VERSION: '2.0.2', // Patched version
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
@@ -824,7 +824,8 @@ async function init() {
     
     // Load navbar
     try {
-        const navResponse = await fetch('navbar.html');
+        // FIX: Corrected path to fetch from parent directory
+        const navResponse = await fetch('../navbar.html');
         const navContainer = document.getElementById('navbar-container');
         if (navContainer && navResponse.ok) {
             navContainer.innerHTML = await navResponse.text();
@@ -833,6 +834,8 @@ async function init() {
             if (navScript) {
                 new Function(navScript.innerHTML)();
             }
+        } else if (navContainer) {
+            navContainer.innerHTML = `<div style="color:red; padding:1rem;">Error: Could not load navbar.html. Path incorrect or file missing.</div>`;
         }
     } catch (e) {
         console.error("Failed to load navbar:", e);
