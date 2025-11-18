@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MailTo Generator</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- 
+      FIX (Mode A): 
+      1. Moved script to <head> with `defer` to optimize load order.
+      2. Added `onerror` handler to catch module load/parse failures, 
+         preventing a silent failure (blank page).
+    -->
+    <script 
+        type="module" 
+        src="js/mailto-app.js" 
+        defer 
+        onerror="document.getElementById('app-startup-error').innerHTML = '<strong>Application Failed to Load</strong><p>A critical script (mailto-app.js) could not be loaded. Please check your network connection or contact support.</p>'; document.getElementById('app-startup-error').classList.remove('hidden');"
+    ></script>
 </head>
 <body class="mailto-page">
     <div id="navbar-container"></div>
@@ -121,6 +134,10 @@
     
     <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top">↑</button>
 
-    <script type="module" src="js/mailto-app.js"></script>
+    <!-- 
+      FIX (Mode A): 
+      Script tag was moved to <head>
+    -->
 </body>
 </html>
+
