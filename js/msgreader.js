@@ -1,6 +1,6 @@
 /**
  * js/msgreader.js
- * Version 2.0.6 (ES6 Module - Fixed UTF-16LE decoding with TextDecoder)
+ * Version 2.0.7 (ES6 Module - Robust UTF-16LE Bounds Check)
  */
 
 'use strict';
@@ -57,7 +57,7 @@ function _normalizeText(text) {
 }
 
 function dataViewToString(view, encoding) {
-    // Handle UTF-8 with TextDecoder
+    // 1. Handle UTF-8
     if (encoding === 'utf-8') {
         try {
             if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
@@ -67,17 +67,18 @@ function dataViewToString(view, encoding) {
         } catch (e) { return dataViewToString(view, 'ascii'); }
     }
     
-    // Handle UTF-16LE with TextDecoder (Fix for null byte issue)
+    // 2. Handle UTF-16LE
     if (encoding === 'utf16le') {
+        // Primary: TextDecoder
         try {
             if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
             let decoded = new TextDecoder('utf-16le', { fatal: false }).decode(view);
             const nullIdx = decoded.indexOf('\0');
             return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
         } catch (e) {
-            // Fallback manual decode
+            // Fallback: Manual Loop (Safe Version)
             let result = '';
-            // Ensure we don't overrun buffer if length is odd
+            // IMPORTANT: Bounds check (view.byteLength - 1) prevents RangeError on odd-length buffers
             for (let i = 0; i < view.byteLength - 1; i += 2) {
                 let charCode = view.getUint16(i, true);
                 if (charCode === 0) break;
@@ -87,7 +88,7 @@ function dataViewToString(view, encoding) {
         }
     }
     
-    // ASCII fallback
+    // 3. ASCII Fallback
     let result = '';
     for (let i = 0; i < view.byteLength; i++) {
         let charCode = view.getUint8(i);
