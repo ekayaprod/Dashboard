@@ -1,230 +1,910 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module)
- * Version: 2.0.5 (Module Graph Fixed)
+ * Version: 2.1.0 (Full Implementation)
  */
 
 import { SafeUI, DOMHelpers, AppLifecycle } from './app-core.js';
-import { DataValidator, CsvManager } from './app-data.js';
+import { BackupRestore, DataValidator, CsvManager } from './app-data.js';
 import { UIPatterns, ListRenderer, SharedSettingsModal } from './app-ui.js';
 import { MsgReader } from './msgreader.js';
 
+// --- Configuration ---
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.0.5',
+    VERSION: '2.1.0',
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAILTO_FIELDS = ['to', 'cc', 'bcc', 'subject', 'body'];
 const ICONS = {
     folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5-.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
     template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79l-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
 };
+const CSV_PATH_REGEX = /^\/[\w\s\/-]*$/;
 
-let DOMElements, state, saveState, currentFolderId = 'root', currentMailtoCommand = null;
+// --- State Management ---
+const defaultState = {
+    library: [],
+    ui: {
+        currentFolderId: 'root',
+        catalogueScrollTop: 0,
+        accordionCollapsed: true
+    }
+};
 
-// --- Accordion ---
-function toggleAccordion(e, forceCollapse = false) {
-    if (e && e.target.closest('button') && e.currentTarget.id === 'mailto-accordion-header') { e.stopPropagation(); return; }
-    const content = DOMElements.mailtoAccordionContent;
-    const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
-    const header = DOMElements.mailtoAccordionHeader;
-    let isCollapsed = forceCollapse ? true : content.classList.toggle('collapsed');
-    if (forceCollapse) content.classList.add('collapsed');
-    if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-    if (header) header.setAttribute('aria-expanded', !isCollapsed);
-    if (state.ui) { state.ui.accordionCollapsed = isCollapsed; saveState(); }
-    if (!isCollapsed) { DOMHelpers.triggerTextareaResize(DOMElements.resultBody); DOMHelpers.triggerTextareaResize(DOMElements.resultMailto); }
-}
+let DOMElements;
+let state;
+let saveState;
+let currentFolderId = 'root';
+let currentMailtoCommand = null;
 
-// --- Logic ---
-function parseMailto(str) {
-    const data = {to:'', cc:'', bcc:'', subject:'', body:''};
-    if (!str || !str.startsWith('mailto:')) return data;
+// --- Logic: MailTo Parsing & Building ---
+
+function parseMailto(mailtoStr) {
+    const data = {};
+    MAILTO_FIELDS.forEach(field => data[field] = '');
+
+    if (!mailtoStr || !mailtoStr.startsWith('mailto:')) return data;
+    // Basic validity check, though we proceed gracefully
+    if (!/^mailto:[^\s]*/.test(mailtoStr)) return data;
+
     try {
-        const url = new URL(str.replace(/ /g, '%20'));
+        // Replace spaces with %20 to help URL constructor
+        const url = new URL(mailtoStr.replace(/ /g, '%20'));
         data.to = decodeURIComponent(url.pathname || '');
-        ['cc', 'bcc', 'subject', 'body'].forEach(k => data[k] = decodeURIComponent(url.searchParams.get(k) || ''));
+        MAILTO_FIELDS.slice(1).forEach(field => {
+            data[field] = decodeURIComponent(url.searchParams.get(field) || '');
+        });
         return data;
-    } catch (e) { return data; }
+    } catch (e) {
+        console.warn("Mailto string parsing failed:", mailtoStr, e);
+        // Fallback for simple mailto without query params
+        if (mailtoStr.indexOf('?') === -1) {
+            try {
+                data.to = decodeURIComponent(mailtoStr.substring(7));
+            } catch {
+                data.to = mailtoStr.substring(7);
+            }
+        }
+        return data;
+    }
 }
 
 function buildMailto(data) {
-    let params = [];
-    ['cc', 'bcc', 'subject'].forEach(k => { if(data[k]) params.push(`${k}=${encodeURIComponent(data[k])}`); });
-    if(data.body) params.push(`body=${encodeURIComponent(data.body).replace(/%0A/g, '%0D%0A')}`);
-    return `mailto:${encodeURIComponent(data.to)}?${params.join('&')}`;
+    let mailto = 'mailto:';
+    if (data.to) {
+        // Clean and encode recipients
+        const recipients = data.to.split(',').map(r => r.trim()).filter(Boolean);
+        mailto += recipients.map(r => encodeURIComponent(r)).join(',');
+    }
+    
+    const params = [];
+    
+    MAILTO_FIELDS.slice(1).forEach(field => {
+        if (data[field]) {
+            if (field === 'body') {
+                // Normalize newlines and encode specifically for mail clients
+                const normalizedBody = data.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const encodedBody = encodeURIComponent(normalizedBody).replace(/%0A/g, '%0D%0A');
+                params.push('body=' + encodedBody);
+            } else {
+                params.push(field + '=' + encodeURIComponent(data[field]));
+            }
+        }
+    });
+    
+    if (params.length > 0) {
+        mailto += '?' + params.join('&');
+    }
+    return mailto;
 }
 
-function findItemById(id, items = state.library) {
-    if (id === 'root') return { id: 'root', name: 'Root', children: state.library };
+// --- Logic: Library Navigation ---
+
+function findItemById(id, items = state.library, visited = new Set()) {
+    if (id === 'root') return { id: 'root', name: 'Root', children: state.library, path: '/' };
     for (const item of items) {
+        if (visited.has(item.id)) continue;
+        visited.add(item.id);
+
         if (item.id === id) return item;
         if (item.type === 'folder' && item.children) {
-            const found = findItemById(id, item.children);
+            const found = findItemById(id, item.children, visited);
             if (found) return found;
         }
     }
     return null;
 }
 
-function renderCatalogue() {
-    // Simplified Breadcrumbs for brevity
-    DOMElements.breadcrumbContainer.innerHTML = currentFolderId === 'root' ? 'Root' : `<a class="breadcrumb-link" data-id="root">Root</a> / ...`;
+function findParentOfItem(childId, parent = { id: 'root', children: state.library }, visited = new Set()) {
+    if (visited.has(parent.id)) return null;
+    visited.add(parent.id);
     
+    if (parent.children) {
+        if (parent.children.some(child => child.id === childId)) return parent;
+        for (const item of parent.children) {
+            if (item.type === 'folder') {
+                const foundParent = findParentOfItem(childId, item, visited);
+                if (foundParent) return foundParent;
+            }
+        }
+    }
+    return null;
+}
+
+function getItemsInCurrentFolder() {
+    if (currentFolderId === 'root') return state.library;
     const folder = findItemById(currentFolderId);
-    const items = folder ? (folder.children || []) : [];
+    return folder ? folder.children : [];
+}
+
+function getBreadcrumbPath(folderId) {
+    if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
+
+    const path = [];
+    const visitedIds = new Set();
+    let iterations = 0;
+    const maxIterations = (state.library.length || 1) * 10; // Safety brake
+
+    const stack = state.library.map(item => [item, []]); // [item, parentPath]
+
+    while (stack.length > 0) {
+        if (++iterations > maxIterations) {
+            console.warn('[MailTo] getBreadcrumbPath: Max iterations reached');
+            break;
+        }
+
+        const [currentItem, parentPath] = stack.pop();
+        
+        if (visitedIds.has(currentItem.id)) continue;
+        visitedIds.add(currentItem.id);
+
+        const currentPath = [...parentPath, { id: currentItem.id, name: currentItem.name }];
+
+        if (currentItem.id === folderId) {
+            path.push(...currentPath);
+            break;
+        }
+
+        if (currentItem.type === 'folder' && currentItem.children) {
+            for (let i = currentItem.children.length - 1; i >= 0; i--) {
+                stack.push([currentItem.children[i], currentPath]);
+            }
+        }
+    }
+    
+    // Prepend root
+    path.unshift({ id: 'root', name: 'Root' });
+    return path;
+}
+
+function navigateToFolder(id) {
+    currentFolderId = id;
+    if (state.ui) {
+        state.ui.currentFolderId = id;
+        saveState();
+    }
+    renderCatalogue();
+}
+
+// --- UI: Accordion ---
+
+function toggleAccordion(e, forceCollapse = false) {
+    // Prevent toggle if clicking internal buttons within header
+    if (e && e.target.closest('button') && e.currentTarget.id === 'mailto-accordion-header') {
+        e.stopPropagation();
+        return;
+    }
+
+    const content = DOMElements.mailtoAccordionContent;
+    const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
+    const header = DOMElements.mailtoAccordionHeader;
+    
+    let isCollapsed;
+    
+    if (forceCollapse) {
+        isCollapsed = true;
+        content.classList.add('collapsed');
+    } else {
+        isCollapsed = content.classList.toggle('collapsed');
+    }
+    
+    if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+    if (header) header.setAttribute('aria-expanded', !isCollapsed);
+    
+    if (state.ui) {
+        state.ui.accordionCollapsed = isCollapsed;
+        saveState();
+    }
+    
+    if (!isCollapsed) {
+        // Resize textareas when becoming visible
+        DOMHelpers.triggerTextareaResize(DOMElements.resultBody);
+        DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
+    }
+}
+
+function initAccordion() {
+    let collapsed = state.ui ? state.ui.accordionCollapsed : true;
+    
+    const content = DOMElements.mailtoAccordionContent;
+    const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
+    const header = DOMElements.mailtoAccordionHeader;
+
+    if (collapsed) {
+        content.classList.add('collapsed');
+        if (icon) icon.style.transform = 'rotate(-90deg)';
+        if (header) header.setAttribute('aria-expanded', 'false');
+    } else {
+        content.classList.remove('collapsed');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+        if (header) header.setAttribute('aria-expanded', 'true');
+    }
+    
+    DOMElements.mailtoAccordionToggle.addEventListener('click', toggleAccordion);
+    DOMElements.mailtoAccordionHeader.addEventListener('click', toggleAccordion);
+}
+
+// --- UI: Editor & Rendering ---
+
+function clearEditorFields() {
+    currentMailtoCommand = null;
+    MAILTO_FIELDS.forEach(field => {
+        const id = 'result' + field.charAt(0).toUpperCase() + field.slice(1);
+        if (DOMElements[id]) DOMElements[id].value = '';
+    });
+    DOMElements.saveTemplateName.value = '';
+    DOMElements.outputWrapper.classList.add('hidden');
+}
+
+function renderBreadcrumbs(path) {
+    const html = path.map((part, index) => {
+        const escapedId = SafeUI.escapeHTML(part.id);
+        const escapedName = SafeUI.escapeHTML(part.name);
+
+        if (index === path.length - 1) {
+            return `<span class="breadcrumb-current">${escapedName}</span>`;
+        } else {
+            return `<a class="breadcrumb-link" data-id="${escapedId}">${escapedName}</a><span class="breadcrumb-separator">/</span>`;
+        }
+    }).join('');
+    DOMElements.breadcrumbContainer.innerHTML = html;
+}
+
+function renderCatalogue() {
+    const path = getBreadcrumbPath(currentFolderId);
+    renderBreadcrumbs(path);
+
+    const items = getItemsInCurrentFolder();
+    const sortedItems = [...items].sort((a, b) => {
+        if (a.type === 'folder' && b.type !== 'folder') return -1;
+        if (a.type !== 'folder' && b.type === 'folder') return 1;
+        return (a.name || '').localeCompare(b.name || '');
+    });
     
     ListRenderer.renderList({
         container: DOMElements.treeListContainer,
-        items: items,
-        emptyMessage: "Empty folder.",
+        items: sortedItems,
+        emptyMessage: "This folder is empty. Click 'New Folder' to add one, or 'Create New Template' above.",
         createItemElement: (item) => {
             const div = document.createElement('div');
             div.className = 'list-item';
             div.dataset.id = item.id;
-            div.innerHTML = `<div class="list-item-icon ${item.type}">${ICONS[item.type === 'folder' ? 'folder' : 'template']}</div>
-                             <a class="list-item-name">${SafeUI.escapeHTML(item.name)}</a>
-                             <div class="list-item-actions">
-                                ${item.type === 'item' ? '<button class="icon-btn copy-btn">📋</button>' : ''}
-                                <button class="icon-btn delete-btn">🗑</button>
-                             </div>`;
+            div.dataset.type = item.type;
+            
+            const iconType = item.type === 'folder' ? 'folder' : 'template';
+            const iconSvg = ICONS[iconType];
+            
+            let nameElement = '';
+            const escapedName = SafeUI.escapeHTML(item.name);
+
+            if (item.type === 'folder') {
+                nameElement = `<span class="list-item-name-folder">${escapedName}</span>`;
+            } else {
+                const escapedMailto = SafeUI.escapeHTML(item.mailto);
+                nameElement = `<a href="${escapedMailto}" class="list-item-name" title="Launch: ${escapedName}">${escapedName}</a>`;
+            }
+
+            const moveButton = item.type === 'item' ?
+                `<button class="icon-btn move-btn" title="Move to...">${SafeUI.SVGIcons.pencil}</button>` : '';
+
+            div.innerHTML = `
+                <div class="list-item-icon ${iconType}">${iconSvg}</div>
+                ${nameElement}
+                <div class="list-item-actions">
+                    ${item.type === 'item' ? `<button class="icon-btn copy-btn" title="Copy mailto: command" data-mailto="${SafeUI.escapeHTML(item.mailto)}">${SafeUI.SVGIcons.copy}</button>` : ''}
+                    ${moveButton}
+                    <button class="icon-btn delete-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                </div>
+            `;
             return div;
         }
     });
 }
 
-function handleFile(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const d = MsgReader.read(e.target.result);
-            DOMElements.resultSubject.value = d.subject || '';
-            DOMElements.resultBody.value = d.body || '';
-            const map = {1:[], 2:[], 3:[]}; // TO, CC, BCC
-            d.recipients.forEach(r => {
-                const addr = r.email || (r.name.includes('@')?r.name:'');
-                if(addr) map[r.recipientType || 1].push(addr);
-            });
-            DOMElements.resultTo.value = map[1].join(', ');
-            DOMElements.resultCc.value = map[2].join(', ');
-            DOMElements.resultBcc.value = map[3].join(', ');
-            toggleAccordion(null, false); // Open accordion
-        } catch (err) { SafeUI.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]); }
-    };
-    reader.readAsArrayBuffer(file);
+// --- Event Handlers ---
+
+function handleTreeItemCopy(item, copyBtn) {
+    const mailtoCommand = copyBtn.dataset.mailto;
+    if (mailtoCommand && mailtoCommand !== 'undefined' && mailtoCommand !== 'null') {
+        SafeUI.copyToClipboard(mailtoCommand);
+        SafeUI.showToast(`Copied "${item.name}" to clipboard!`);
+    } else {
+        SafeUI.showToast('No command to copy from this template.');
+    }
 }
 
-async function init() {
-    if (!MsgReader || !MsgReader.read) throw new Error("MsgReader failed to load.");
-    
-    // Fetch Navbar
-    try {
-        const resp = await fetch('navbar.html');
-        if (resp.ok) {
-            document.getElementById('navbar-container').innerHTML = await resp.text();
-            new Function(document.getElementById('navbar-container').querySelector('script').innerHTML)();
+function handleTreeItemDelete(id, item) {
+    UIPatterns.confirmDelete(item.type, item.name, () => {
+        const parent = findParentOfItem(id);
+        if (parent) {
+            const index = parent.children.findIndex(i => i.id === id);
+            if (index > -1) {
+                parent.children.splice(index, 1);
+                saveState();
+                renderCatalogue();
+            }
         }
-    } catch(e) { console.error("Navbar load error", e); }
+    });
+}
 
+function handleTreeItemMove(id, item) {
+    const folders = [];
+    function findFolders(container, path, currentFolderId) {
+        folders.push({
+            id: currentFolderId,
+            name: path,
+            disabled: currentFolderId === findParentOfItem(id)?.id
+        });
+        container.forEach(i => {
+            if (i.type === 'folder') {
+                findFolders(i.children, path + i.name + '/', i.id);
+            }
+        });
+    }
+    
+    findFolders(state.library, '/', 'root');
+
+    const folderListHtml = folders.map(folder => `
+        <li class="move-folder-item ${folder.disabled ? 'disabled' : ''}" data-folder-id="${SafeUI.escapeHTML(folder.id)}">
+            ${ICONS.folder} ${SafeUI.escapeHTML(folder.name)}
+        </li>
+    `).join('');
+
+    const modalHtml = `
+        <p>Move "<strong>${SafeUI.escapeHTML(item.name)}</strong>" to:</p>
+        <ul class="move-folder-list">
+            ${folderListHtml}
+        </ul>
+    `;
+    
+    SafeUI.showModal('Move Template', modalHtml, [{ label: 'Cancel' }]);
+    
+    const modalList = document.querySelector('.move-folder-list');
+    if (modalList) {
+        modalList.addEventListener('click', (e) => {
+            const targetFolderEl = e.target.closest('.move-folder-item');
+            if (!targetFolderEl || targetFolderEl.classList.contains('disabled')) return;
+            
+            const targetFolderId = targetFolderEl.dataset.folderId;
+            
+            const originalParent = findParentOfItem(id);
+            if (!originalParent) return;
+            
+            const itemIndex = originalParent.children.findIndex(i => i.id === id);
+            if (itemIndex === -1) return;
+            
+            const [itemToMove] = originalParent.children.splice(itemIndex, 1);
+            
+            let newParentContainer;
+            if (targetFolderId === 'root') {
+                newParentContainer = state.library;
+            } else {
+                newParentContainer = findItemById(targetFolderId)?.children;
+            }
+            
+            if (!newParentContainer) {
+                // Fallback if folder not found
+                originalParent.children.splice(itemIndex, 0, itemToMove);
+                return;
+            }
+            
+            newParentContainer.push(itemToMove);
+            
+            saveState();
+            renderCatalogue();
+            SafeUI.hideModal();
+            SafeUI.showToast('Template moved!');
+        });
+    }
+}
+
+function handleFile(file) {
+    try {
+        if (!file) return SafeUI.showModal('Error', '<p>No file selected.</p>', [{label: 'OK'}]);
+        if (file.size > MAX_FILE_SIZE_BYTES) return SafeUI.showModal('File Too Large', '<p>File must be under 10MB.</p>', [{label: 'OK'}]);
+
+        // Check extensions
+        const validExts = ['.msg', '.oft', '.eml', '.email'];
+        if (!validExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+            return SafeUI.showModal('Invalid File', '<p>Please upload a <strong>.msg, .oft, .eml,</strong> or <strong>.email</strong> file.</p>', [{label: 'OK'}]);
+        }
+        
+        clearEditorFields();
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const arrayBuffer = e.target.result;
+                if (!arrayBuffer) throw new Error('File is empty.');
+                
+                // Use MsgReader to parse the buffer
+                const fileData = MsgReader.read(arrayBuffer);
+                if (!fileData) throw new Error('Parser failed to return data.');
+                
+                DOMElements.resultSubject.value = fileData.subject || '';
+                DOMElements.resultBody.value = fileData.body || '';
+                
+                const recipients = fileData.recipients || [];
+                const toRecipients = [];
+                const ccRecipients = [];
+                const bccRecipients = [];
+
+                recipients.forEach(r => {
+                    const addr = r.email || '';
+                    if (!addr) return;
+                    
+                    let cleanAddr = addr;
+                    // Extract email from "Name <email>" format
+                    const match = addr.match(/<([^>]+)>/);
+                    if (match) cleanAddr = match[1];
+                    
+                    cleanAddr = cleanAddr.trim();
+                    if (!cleanAddr) return;
+                    
+                    // Sort into To/CC/BCC
+                    if (r.recipientType === 2) ccRecipients.push(cleanAddr);
+                    else if (r.recipientType === 3) bccRecipients.push(cleanAddr);
+                    else toRecipients.push(cleanAddr);
+                });
+
+                DOMElements.resultTo.value = toRecipients.join(', ');
+                DOMElements.resultCc.value = ccRecipients.join(', ');
+                DOMElements.resultBcc.value = bccRecipients.join(', ');
+
+                DOMElements.outputWrapper.classList.add('hidden');
+                
+                // Open accordion and resize
+                toggleAccordion(null, false);
+                setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultBody), 10);
+                
+                SafeUI.showToast('File loaded successfully!');
+                
+            } catch (err) {
+                console.error('File parsing error:', err);
+                SafeUI.showModal('File Error', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{label: 'OK'}]);
+            }
+        };
+        reader.onerror = () => SafeUI.showModal('File Error', '<p>File reading failed.</p>', [{label: 'OK'}]);
+        reader.readAsArrayBuffer(file);
+
+    } catch (e) {
+        console.error('File operation failed:', e);
+        SafeUI.showToast('File operation failed.');
+    }
+}
+
+function generateAndShowMailto() {
+    const mailtoData = {
+        to: DOMElements.resultTo.value.trim(),
+        cc: DOMElements.resultCc.value.trim(),
+        bcc: DOMElements.resultBcc.value.trim(),
+        subject: DOMElements.resultSubject.value.trim(),
+        body: DOMElements.resultBody.value
+    };
+
+    const mailto = buildMailto(mailtoData);
+
+    currentMailtoCommand = mailto;
+    DOMElements.resultMailto.value = mailto;
+    DOMElements.resultLink.href = mailto;
+    DOMElements.outputWrapper.classList.remove('hidden');
+    
+    // Auto-fill template name if empty
+    const templateNameValue = DOMElements.saveTemplateName.value;
+    if (!templateNameValue.trim()) {
+        const subject = mailtoData.subject || 'New Template';
+        DOMElements.saveTemplateName.value = subject.replace(/[\r\n\t\/\\]/g, ' ').trim();
+    }
+
+    setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto), 10);
+}
+
+function handleNewFolder() {
+    SafeUI.showModal('New Folder', '<input id="folder-name-input" class="sidebar-input" placeholder="Folder Name">', [
+        {label: 'Cancel'},
+        {label: 'Create', class: 'button-primary', callback: () => {
+            try {
+                const nameInput = document.getElementById('folder-name-input');
+                const name = nameInput.value.trim();
+                
+                if (name.includes('/') || name.includes('\\')) return SafeUI.showValidationError('Invalid Name', 'Folder name cannot contain path separators.', 'folder-name-input');
+                if (!SafeUI.validators.notEmpty(name)) return SafeUI.showValidationError('Invalid Name', 'Folder name cannot be empty.', 'folder-name-input');
+                
+                const container = getItemsInCurrentFolder();
+                if (DataValidator.hasDuplicate(container, 'name', name)) return SafeUI.showValidationError('Duplicate Name', 'A folder with this name already exists.', 'folder-name-input');
+                
+                container.push({
+                    id: SafeUI.generateId(),
+                    type: 'folder',
+                    name: name,
+                    children: []
+                });
+                saveState();
+                renderCatalogue();
+            } catch(e) {
+                console.error('Folder creation failed:', e);
+                SafeUI.showToast('Folder creation failed.');
+            }
+        }}
+    ]);
+}
+
+function handleSaveToLibrary() {
+    if (!currentMailtoCommand) return SafeUI.showValidationError('No Command Generated', 'Click "Generate Command" first.', 'btn-generate');
+
+    const name = DOMElements.saveTemplateName.value.trim();
+    if (!SafeUI.validators.notEmpty(name)) return SafeUI.showValidationError('Invalid Name', 'Template name cannot be empty.', 'save-template-name');
+    
+    const container = getItemsInCurrentFolder();
+    if (DataValidator.hasDuplicate(container, 'name', name)) return SafeUI.showValidationError('Duplicate Name', 'An item with this name already exists.', 'save-template-name');
+    
+    container.push({
+        id: SafeUI.generateId(),
+        type: 'item',
+        name: name,
+        mailto: currentMailtoCommand
+    });
+    saveState();
+    SafeUI.showToast('Template saved!');
+    
+    clearEditorFields();
+    toggleAccordion(null, true); // Collapse after save
+    
+    renderCatalogue();
+}
+
+// --- Drag & Drop Handlers ---
+
+function handleDragEnterOver(e) {
+    e.preventDefault();
+    DOMElements.uploadWrapper.classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    DOMElements.uploadWrapper.classList.remove('dragover');
+}
+
+function handleDrop(e) {
+    // Call leave handler to remove styles
+    handleDragLeave(e); 
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        handleFile(files[0]);
+    }
+}
+
+// --- Settings Modal ---
+
+function setupSettingsModal() {
+    const pageDataHtml = `
+        <button id="modal-export-csv-btn" class="button-base">Export Library (CSV)</button>
+        <button id="modal-import-csv-btn" class="button-base">Import Library (CSV)</button>
+    `;
+
+    const onModalOpen = () => {
+        CsvManager.setupExport({
+            exportBtn: document.getElementById('modal-export-csv-btn'),
+            headers: APP_CONFIG.CSV_HEADERS,
+            dataGetter: () => {
+                const csvData = [];
+                function walk(items, currentPath) {
+                    for (const item of items) {
+                        if (item.type === 'folder') {
+                            walk(item.children, currentPath + item.name + '/');
+                        } else if (item.type === 'item') {
+                            const mailtoParts = parseMailto(item.mailto);
+                            const row = { name: item.name, path: currentPath };
+                            MAILTO_FIELDS.forEach(field => { row[field] = mailtoParts[field]; });
+                            csvData.push(row);
+                        }
+                    }
+                }
+                walk(state.library, '/');
+                if (csvData.length === 0) {
+                    SafeUI.showToast("Library is empty, nothing to export.");
+                    return [];
+                }
+                return csvData;
+            },
+            filename: `${APP_CONFIG.NAME}-export.csv`
+        });
+        
+        const validateCsvRow = (row, index) => {
+            if (!row.name || !row.name.trim()) return { error: `Row ${index + 2}: 'name' column is required.` };
+            if (!row.path || !CSV_PATH_REGEX.test(row.path.trim())) return { error: `Row ${index + 2}: 'path' must be a valid folder path.` };
+            return { entry: row };
+        };
+        
+        const confirmCsvImport = (validatedData, importErrors) => {
+            const summaryHtml = `<p>This will <strong>ADD ${validatedData.length} templates</strong> to your library.</p>
+                                ${importErrors.length > 0 ? `<p><strong>${importErrors.length} rows had errors and will be skipped.</strong></p>` : ''}
+                                <p>Do you want to continue?</p>`;
+            SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                { label: 'Cancel' },
+                {
+                    label: 'Import',
+                    class: 'button-primary',
+                    callback: () => {
+                        let importedCount = 0;
+                        let skippedCount = 0;
+                        for (const row of validatedData) {
+                            // Parse path
+                            const pathParts = row.path.split('/').filter(p => p.trim().length > 0);
+                            let currentContainer = state.library;
+                            
+                            // Traverse/Create folders
+                            for (const part of pathParts) {
+                                let folder = currentContainer.find(i => i.type === 'folder' && i.name.toLowerCase() === part.toLowerCase());
+                                if (!folder) {
+                                    folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
+                                    currentContainer.push(folder);
+                                }
+                                currentContainer = folder.children;
+                            }
+                            
+                            // Add Item
+                            if (DataValidator.hasDuplicate(currentContainer, 'name', row.name)) {
+                                skippedCount++;
+                            } else {
+                                const newMailto = buildMailto(row);
+                                currentContainer.push({ id: SafeUI.generateId(), type: 'item', name: row.name.trim(), mailto: newMailto });
+                                importedCount++;
+                            }
+                        }
+                        if (importedCount > 0) { saveState(); renderCatalogue(); }
+                        SafeUI.showToast(`Import complete. Added ${importedCount}, skipped ${skippedCount}.`);
+                        SafeUI.hideModal();
+                    }
+                }
+            ]);
+            return false;
+        };
+        
+        CsvManager.setupImport({
+            importBtn: document.getElementById('modal-import-csv-btn'),
+            headers: APP_CONFIG.CSV_HEADERS,
+            onValidate: validateCsvRow,
+            onConfirm: confirmCsvImport
+        });
+    };
+
+    const onRestore = (dataToRestore) => {
+        state.library = dataToRestore.library || [];
+        
+        if (dataToRestore.ui) state.ui = dataToRestore.ui;
+        else state.ui = { ...defaultState.ui };
+        
+        currentFolderId = 'root';
+        if (state.ui) state.ui.currentFolderId = 'root';
+        
+        saveState();
+        renderCatalogue();
+        initAccordion();
+        SafeUI.showToast('Restored previous session');
+    };
+
+    SharedSettingsModal.init({
+        buttonId: 'btn-settings',
+        appName: APP_CONFIG.NAME,
+        state: state,
+        pageSpecificDataHtml: pageDataHtml,
+        onModalOpen: onModalOpen,
+        onRestoreCallback: onRestore,
+        itemValidators: {
+            library: []
+        }
+    });
+}
+
+// --- Initialization ---
+
+async function init() {
+    console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
+    
+    // CRITICAL DEPENDENCY CHECK
+    if (typeof MsgReader === 'undefined' || typeof MsgReader.read !== 'function') {
+        const errorMsg = "Critical Dependency Missing: MsgReader is not loaded or invalid.";
+        console.error(errorMsg);
+        const banner = document.getElementById('app-startup-error');
+        if (banner) {
+            banner.innerHTML = `<strong>Application Startup Error</strong><p>${errorMsg}</p>`;
+            banner.classList.remove('hidden');
+        }
+        throw new Error(errorMsg);
+    }
+
+    // Load Navbar
+    try {
+        const navResponse = await fetch('navbar.html');
+        const navContainer = document.getElementById('navbar-container');
+        if (navContainer && navResponse.ok) {
+            navContainer.innerHTML = await navResponse.text();
+            const navScript = navContainer.querySelector('script');
+            if (navScript) {
+                new Function(navScript.innerHTML)();
+            }
+        } else if (navContainer) {
+            navContainer.innerHTML = `<div style="color:red; padding:1rem;">Error: Could not load navbar.html.</div>`;
+        }
+    } catch (e) {
+        console.error("Failed to load navbar:", e);
+    }
+    
+    // Initialize App Lifecycle
     const ctx = await AppLifecycle.initPage({
         storageKey: APP_CONFIG.DATA_KEY,
         defaultState: defaultState,
         version: APP_CONFIG.VERSION,
         requiredElements: [
-            'navbar-container', 'catalogue-view', 'btn-new-folder', 'btn-settings', 'breadcrumb-container', 'tree-list-container',
-            'btn-generate', 'upload-wrapper', 'msg-upload', 'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
-            'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', 'save-template-name', 'btn-save-to-library',
-            'mailto-accordion-header', 'mailto-accordion-toggle', 'mailto-accordion-content', 'scroll-to-top'
+            'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+            'catalogue-view', 'btn-new-folder', 'btn-settings',
+            'breadcrumb-container', 'tree-list-container',
+            'btn-generate', 'upload-wrapper', 'msg-upload',
+            'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
+            'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn',
+            'save-template-name', 'btn-save-to-library',
+            'mailto-accordion-header', 'mailto-accordion-toggle', 'mailto-accordion-content',
+            'scroll-to-top'
         ]
     });
-
-    if (!ctx) return; 
-    ({ elements: DOMElements, state, saveState } = ctx);
-
-    // Event Listeners
-    DOMElements.btnNewFolder.addEventListener('click', () => {
-        SafeUI.showModal('New Folder', '<input id="fn" class="sidebar-input">', [{label:'Create', class:'button-primary', callback:()=>{
-            const name = document.getElementById('fn').value.trim();
-            if(name) {
-                const f = findItemById(currentFolderId);
-                if(f && f.children) { f.children.push({id: SafeUI.generateId(), type:'folder', name, children:[]}); saveState(); renderCatalogue(); }
-            }
-        }}, {label:'Cancel'}]);
-    });
-
-    DOMElements.mailtoAccordionToggle.addEventListener('click', toggleAccordion);
-    DOMElements.mailtoAccordionHeader.addEventListener('click', toggleAccordion);
     
-    DOMElements.uploadWrapper.addEventListener('dragover', e => { e.preventDefault(); DOMElements.uploadWrapper.classList.add('dragover'); });
-    DOMElements.uploadWrapper.addEventListener('dragleave', e => { e.preventDefault(); DOMElements.uploadWrapper.classList.remove('dragover'); });
-    DOMElements.uploadWrapper.addEventListener('drop', e => { 
-        e.preventDefault(); DOMElements.uploadWrapper.classList.remove('dragover');
-        if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
-    DOMElements.msgUpload.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
-
-    DOMElements.btnGenerate.addEventListener('click', () => {
-        const d = {
-            to: DOMElements.resultTo.value, cc: DOMElements.resultCc.value, bcc: DOMElements.resultBcc.value,
-            subject: DOMElements.resultSubject.value, body: DOMElements.resultBody.value
-        };
-        const m = buildMailto(d);
-        DOMElements.resultMailto.value = m;
-        DOMElements.resultLink.href = m;
-        DOMElements.outputWrapper.classList.remove('hidden');
-    });
-
-    DOMElements.btnSaveToLibrary.addEventListener('click', () => {
-        const name = DOMElements.saveTemplateName.value.trim();
-        if(!name) return SafeUI.showToast("Name required");
-        const f = findItemById(currentFolderId);
-        if(f) {
-            f.children.push({
-                id: SafeUI.generateId(), type:'item', name, 
-                mailto: DOMElements.resultMailto.value
-            });
-            saveState(); renderCatalogue();
-            SafeUI.showToast("Saved");
+    if (!ctx || !ctx.elements) {
+        console.error('[MailTo] Context initialization failed');
+        return;
+    }
+    
+    DOMElements = ctx.elements;
+    state = ctx.state;
+    saveState = ctx.saveState;
+    
+    // Setup UI
+    DOMElements.btnNewFolder.innerHTML = SafeUI.SVGIcons.plus + ICONS.folder; // Folder icon
+    
+    DOMHelpers.setupTextareaAutoResize(DOMElements.resultBody);
+    DOMHelpers.setupTextareaAutoResize(DOMElements.resultMailto, 150);
+    
+    // Attach Listeners
+    attachEventListeners();
+    
+    // Restore UI State
+    if (state.ui) {
+        if (state.ui.currentFolderId && findItemById(state.ui.currentFolderId)) {
+            currentFolderId = state.ui.currentFolderId;
         }
-    });
-
-    DOMElements.treeListContainer.addEventListener('click', e => {
-        const itemEl = e.target.closest('.list-item');
-        if(!itemEl) return;
-        const id = itemEl.dataset.id;
-        const item = findItemById(id); // Need global search or recursive search from root
-        // NOTE: In simplified code, findItemById might need to search whole tree if not in current folder.
-        // For now assuming current folder render.
-        if(item && item.type === 'folder') { currentFolderId = item.id; renderCatalogue(); }
         
-        if(e.target.closest('.delete-btn')) {
-            // Delete logic here
-            const f = findItemById(currentFolderId);
-            f.children = f.children.filter(c => c.id !== id);
-            saveState(); renderCatalogue();
+        renderCatalogue();
+        initAccordion(); // IMPORTANT: Set initial accordion state
+        
+        // Restore scroll position
+        const mainContent = document.querySelector('.main-content');
+        if (state.ui.catalogueScrollTop && mainContent) {
+            setTimeout(() => {
+                mainContent.scrollTop = state.ui.catalogueScrollTop;
+            }, 0);
         }
-    });
-
-    DOMElements.breadcrumbContainer.addEventListener('click', e => {
-        if(e.target.dataset.id) { currentFolderId = e.target.dataset.id; renderCatalogue(); }
-    });
-
-    // Init Accordion State
-    if (state.ui && state.ui.accordionCollapsed) DOMElements.mailtoAccordionContent.classList.add('collapsed');
-    renderCatalogue();
+    } else {
+        renderCatalogue();
+        initAccordion();
+    }
     
-    SharedSettingsModal.init({
-        buttonId: 'btn-settings', appName: APP_CONFIG.NAME, state,
-        pageSpecificDataHtml: `<button id="exp" class="button-base">Export CSV</button><button id="imp" class="button-base">Import CSV</button>`,
-        onModalOpen: () => {
-            CsvManager.setupExport({exportBtn: document.getElementById('exp'), headers: APP_CONFIG.CSV_HEADERS, dataGetter: ()=>[], filename:'export.csv'});
-            CsvManager.setupImport({importBtn: document.getElementById('imp'), headers: APP_CONFIG.CSV_HEADERS, onValidate: (r)=>({entry:r}), onConfirm: (d)=>{}});
-        },
-        onRestoreCallback: (d) => { state.library = d.library; saveState(); renderCatalogue(); }
-    });
-
-    console.log("[MailTo] Ready");
+    console.log('[MailTo] Init complete');
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+// --- Event Listeners Setup ---
+
+function attachEventListeners() {
+    setupSettingsModal();
+
+    DOMElements.btnNewFolder.addEventListener('click', handleNewFolder);
+    DOMElements.btnGenerate.addEventListener('click', generateAndShowMailto);
+    DOMElements.btnSaveToLibrary.addEventListener('click', handleSaveToLibrary);
+    
+    DOMElements.copyMailtoBtn.addEventListener('click', async () => {
+        if (!currentMailtoCommand) return SafeUI.showToast('No command to copy');
+        const success = await SafeUI.copyToClipboard(currentMailtoCommand);
+        SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
+    });
+    
+    // Drag & Drop
+    DOMElements.uploadWrapper.addEventListener('dragenter', handleDragEnterOver);
+    DOMElements.uploadWrapper.addEventListener('dragover', handleDragEnterOver);
+    DOMElements.uploadWrapper.addEventListener('dragleave', handleDragLeave);
+    DOMElements.uploadWrapper.addEventListener('drop', handleDrop);
+    
+    // File Input
+    DOMElements.msgUpload.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    // Tree Navigation
+    DOMElements.treeListContainer.addEventListener('click', (e) => {
+        const itemEl = e.target.closest('.list-item');
+        if (!itemEl) return;
+        if (e.target.closest('.list-item-name')) return; // Allow text selection/click
+        
+        e.preventDefault();
+
+        const id = itemEl.dataset.id;
+        const item = findItemById(id);
+        if (!item) return;
+
+        // Folder Click
+        if (e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) {
+            if (item.type === 'folder') navigateToFolder(item.id);
+            return;
+        }
+
+        // Action Buttons
+        const copyBtn = e.target.closest('.copy-btn');
+        if (copyBtn) return handleTreeItemCopy(item, copyBtn);
+        
+        const moveBtn = e.target.closest('.move-btn');
+        if (moveBtn) return handleTreeItemMove(id, item);
+        
+        if (e.target.closest('.delete-btn')) return handleTreeItemDelete(id, item);
+    });
+    
+    // Breadcrumbs
+    DOMElements.breadcrumbContainer.addEventListener('click', (e) => {
+        const link = e.target.closest('.breadcrumb-link');
+        if (link && link.dataset.id) {
+            const targetId = link.dataset.id;
+            if (targetId === 'root' || findItemById(targetId)) navigateToFolder(targetId);
+            else navigateToFolder('root');
+        }
+    });
+    
+    // Scroll Persistence
+    const mainContent = document.querySelector('.main-content');
+    mainContent.addEventListener('scroll', SafeUI.debounce(() => {
+        if (state.ui) {
+            state.ui.catalogueScrollTop = mainContent.scrollTop;
+            saveState();
+        }
+        // Scroll to Top Button visibility
+        const scrollToTopBtn = document.getElementById('scroll-to-top');
+        if (scrollToTopBtn) {
+            scrollToTopBtn.classList.toggle('visible', mainContent.scrollTop > 300);
+        }
+    }, 200));
+    
+    const scrollToTopBtn = document.getElementById('scroll-to-top');
+    if (scrollToTopBtn) {
+        scrollToTopBtn.addEventListener('click', () => {
+            mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+}
+
+// --- Bootstrap ---
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
