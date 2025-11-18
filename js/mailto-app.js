@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
- * Version: 2.1.1 (Uses Global Core Libs)
+ * Version: 2.1.2 (QA Fixes Applied: Edit Button, Auto-Open, Bounds Checks)
  */
 
 // NOTE: Core libraries (SafeUI, etc.) are loaded globally via script tags
@@ -13,7 +13,7 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.1.1',
+    VERSION: '2.1.2',
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
@@ -79,12 +79,25 @@ function parseMailto(str) {
     const data = {to:'', cc:'', bcc:'', subject:'', body:''};
     if (!str || !str.startsWith('mailto:')) return data;
     try {
-        const url = new URL(str.replace(/ /g, '%20'));
-        data.to = decodeURIComponent(url.pathname || '');
-        ['cc', 'bcc', 'subject', 'body'].forEach(k => data[k] = decodeURIComponent(url.searchParams.get(k) || ''));
+        // Simple parse for basic mailto
+        if(str.indexOf('?') === -1) {
+            data.to = decodeURIComponent(str.substring(7));
+            return data;
+        }
+        
+        // Complex parse
+        const parts = str.split('?');
+        data.to = decodeURIComponent(parts[0].substring(7));
+        const params = new URLSearchParams(parts[1]);
+        
+        if(params.has('subject')) data.subject = params.get('subject');
+        if(params.has('body')) data.body = params.get('body');
+        if(params.has('cc')) data.cc = params.get('cc');
+        if(params.has('bcc')) data.bcc = params.get('bcc');
+        
         return data;
     } catch (e) { 
-        if(str.indexOf('?') === -1) data.to = decodeURIComponent(str.substring(7));
+        console.error("Mailto parse error", e);
         return data; 
     }
 }
@@ -102,6 +115,17 @@ function findItemById(id, items = state.library) {
         if (item.id === id) return item;
         if (item.type === 'folder' && item.children) {
             const found = findItemById(id, item.children);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+function findParentOfItem(childId, items = state.library, parent = {id:'root', children: state.library}) {
+    for (const item of items) {
+        if (item.id === childId) return parent;
+        if (item.type === 'folder' && item.children) {
+            const found = findParentOfItem(childId, item.children, item);
             if (found) return found;
         }
     }
@@ -162,7 +186,7 @@ function renderCatalogue() {
                              }
                              <div class="list-item-actions">
                                 ${item.type === 'item' ? `<button class="icon-btn copy-btn" data-mailto="${SafeUI.escapeHTML(item.mailto)}">${SafeUI.SVGIcons.copy}</button>` : ''}
-                                <button class="icon-btn move-btn">${SafeUI.SVGIcons.pencil}</button>
+                                <button class="icon-btn move-btn" title="${item.type === 'folder' ? 'Rename Folder' : 'Edit/Load Template'}">${SafeUI.SVGIcons.pencil}</button>
                                 <button class="icon-btn delete-btn">${SafeUI.SVGIcons.trash}</button>
                              </div>`;
             return div;
@@ -185,7 +209,14 @@ function handleFile(file) {
             DOMElements.resultTo.value = map[1].join(', ');
             DOMElements.resultCc.value = map[2].join(', ');
             DOMElements.resultBcc.value = map[3].join(', ');
-            toggleAccordion(null, false); 
+            
+            // UX Fix: Auto-open accordion
+            DOMElements.mailtoAccordionContent.classList.remove('collapsed');
+            const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
+            if(icon) icon.style.transform = 'rotate(0deg)';
+            DOMElements.mailtoAccordionHeader.setAttribute('aria-expanded', 'true');
+            if (state.ui) { state.ui.accordionCollapsed = false; saveState(); }
+            
             SafeUI.showToast('File loaded');
         } catch (err) { SafeUI.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]); }
     };
@@ -237,9 +268,6 @@ async function init() {
         }}, {label:'Cancel'}]);
     });
 
-    DOMElements.mailtoAccordionToggle.addEventListener('click', toggleAccordion);
-    DOMElements.mailtoAccordionHeader.addEventListener('click', toggleAccordion);
-    
     // Drag & Drop
     const handleDragEnterOver = e => { e.preventDefault(); DOMElements.uploadWrapper.classList.add('dragover'); };
     const handleDragLeave = e => { e.preventDefault(); DOMElements.uploadWrapper.classList.remove('dragover'); };
@@ -260,12 +288,28 @@ async function init() {
             subject: DOMElements.resultSubject.value, body: DOMElements.resultBody.value
         };
         const m = buildMailto(d);
+        
+        // Warn if too long
+        if (m.length > 2000) {
+            SafeUI.showModal(
+                "Warning: Content Too Long", 
+                `<p>The generated MailTo command is <strong>${m.length}</strong> characters long.</p>
+                 <p>Most email clients (Outlook, Gmail) and browsers limit these links to approx 2000 characters. This link may fail to open or text may be truncated.</p>`,
+                [{label: "I Understand", class: "button-primary"}]
+            );
+        }
+
         DOMElements.resultMailto.value = m;
         DOMElements.resultLink.href = m;
         DOMElements.outputWrapper.classList.remove('hidden');
         const tName = DOMElements.saveTemplateName.value;
         if(!tName.trim()) DOMElements.saveTemplateName.value = (d.subject||'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
-        setTimeout(() => DOMHelpers.triggerTextareaResize(DOMElements.resultMailto), 10);
+        
+        // UX: Scroll to result
+        setTimeout(() => {
+            DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
+            DOMElements.outputWrapper.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        }, 100);
     });
 
     DOMElements.copyMailtoBtn.addEventListener('click', () => {
@@ -288,6 +332,17 @@ async function init() {
             toggleAccordion(null, true);
         }
     });
+
+    function clearEditorFields() {
+        DOMElements.resultTo.value = '';
+        DOMElements.resultCc.value = '';
+        DOMElements.resultBcc.value = '';
+        DOMElements.resultSubject.value = '';
+        DOMElements.resultBody.value = '';
+        DOMElements.resultMailto.value = '';
+        DOMElements.outputWrapper.classList.add('hidden');
+        DOMElements.saveTemplateName.value = '';
+    }
 
     // Tree Navigation
     DOMElements.treeListContainer.addEventListener('click', e => {
@@ -312,6 +367,39 @@ async function init() {
                 const p = findParentOfItem(id);
                 if(p) { p.children = p.children.filter(c => c.id !== id); saveState(); renderCatalogue(); }
             });
+        }
+
+        // EDIT / RENAME (Fix for BUG-01)
+        if(e.target.closest('.move-btn')) {
+            if (item.type === 'folder') {
+                SafeUI.showModal('Rename Folder', `<input id="rn" class="sidebar-input" value="${SafeUI.escapeHTML(item.name)}">`, [
+                    {label:'Save', class:'button-primary', callback:()=>{
+                        const newName = document.getElementById('rn').value.trim();
+                        if(newName) { item.name = newName; saveState(); renderCatalogue(); }
+                    }}, 
+                    {label:'Cancel'}
+                ]);
+            } else {
+                // Load into editor
+                const parsed = parseMailto(item.mailto);
+                DOMElements.resultTo.value = parsed.to || '';
+                DOMElements.resultCc.value = parsed.cc || '';
+                DOMElements.resultBcc.value = parsed.bcc || '';
+                DOMElements.resultSubject.value = parsed.subject || '';
+                DOMElements.resultBody.value = parsed.body || '';
+                
+                DOMElements.saveTemplateName.value = item.name;
+                
+                // Open editor
+                DOMElements.mailtoAccordionContent.classList.remove('collapsed');
+                const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
+                if(icon) icon.style.transform = 'rotate(0deg)';
+                DOMElements.mailtoAccordionHeader.setAttribute('aria-expanded', 'true');
+                if (state.ui) { state.ui.accordionCollapsed = false; saveState(); }
+                
+                SafeUI.showToast("Loaded into editor");
+                DOMElements.mailtoAccordionHeader.scrollIntoView({behavior: 'smooth'});
+            }
         }
     });
 
