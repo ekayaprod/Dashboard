@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module)
- * Version: 2.0.0 (ES6 Module Refactor)
+ * Version: 2.0.1 (ES6 Module Refactor - Patched)
  */
 
 // Explicit imports - browser guarantees these load first
@@ -15,7 +15,7 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.0.0',
+    VERSION: '2.0.1', // Patched version
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
@@ -579,6 +579,42 @@ showValidationError('Invalid Name', 'Template name cannot be empty.', 'save-temp
 }
 
 // ============================================================================
+// DRAG AND DROP HANDLERS (Refactored for Mode D)
+// ============================================================================
+
+/**
+ * Handles dragenter and dragover events.
+ * @param {DragEvent} e 
+ */
+function handleDragEnterOver(e) {
+    e.preventDefault();
+    DOMElements.uploadWrapper.classList.add('dragover');
+}
+
+/**
+ * Handles dragleave event.
+ * @param {DragEvent} e 
+ */
+function handleDragLeave(e) {
+    e.preventDefault();
+    DOMElements.uploadWrapper.classList.remove('dragover');
+}
+
+/**
+ * Handles drop event.
+ * @param {DragEvent} e 
+ */
+function handleDrop(e) {
+    // Call leave handler to remove styles
+    handleDragLeave(e); 
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        handleFile(files[0]);
+    }
+}
+
+// ============================================================================
 // SETTINGS MODAL
 // ============================================================================
 
@@ -716,24 +752,11 @@ function attachEventListeners() {
         SafeUI.showToast(success ? "Command copied to clipboard!" : "Failed to copy.");
     });
     
-    DOMElements.uploadWrapper.addEventListener('dragenter', (e) => {
-        e.preventDefault();
-        DOMElements.uploadWrapper.classList.add('dragover');
-    });
-    DOMElements.uploadWrapper.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        DOMElements.uploadWrapper.classList.add('dragover');
-    });
-    DOMElements.uploadWrapper.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        DOMElements.uploadWrapper.classList.remove('dragover');
-    });
-    DOMElements.uploadWrapper.addEventListener('drop', (e) => {
-        e.preventDefault();
-        DOMElements.uploadWrapper.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files && files.length > 0) handleFile(files[0]);
-    });
+    // Refactor (Mode D): Use consolidated drag/drop handlers
+    DOMElements.uploadWrapper.addEventListener('dragenter', handleDragEnterOver);
+    DOMElements.uploadWrapper.addEventListener('dragover', handleDragEnterOver);
+    DOMElements.uploadWrapper.addEventListener('dragleave', handleDragLeave);
+    DOMElements.uploadWrapper.addEventListener('drop', handleDrop);
     
     DOMElements.msgUpload.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
@@ -800,10 +823,19 @@ async function init() {
     console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
     
     // Load navbar
-    const navResponse = await fetch('navbar.html');
-    const navContainer = document.getElementById('navbar-container');
-    if (navContainer && navResponse.ok) {
-        navContainer.innerHTML = await navResponse.text();
+    try {
+        const navResponse = await fetch('navbar.html');
+        const navContainer = document.getElementById('navbar-container');
+        if (navContainer && navResponse.ok) {
+            navContainer.innerHTML = await navResponse.text();
+            // Manually run the navbar script
+            const navScript = navContainer.querySelector('script');
+            if (navScript) {
+                new Function(navScript.innerHTML)();
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load navbar:", e);
     }
     
     // Initialize page
@@ -819,12 +851,19 @@ async function init() {
             'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
             'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn',
             'save-template-name', 'btn-save-to-library',
-            'mailto-accordion-header', 'mailto-accordion-toggle', 'mailto-accordion-content'
+            'mailto-accordion-header', 'mailto-accordion-toggle', 'mailto-accordion-content',
+            'scroll-to-top' // Added missing element
         ]
     });
     
     if (!ctx || !ctx.elements) {
         console.error('[MailTo] Context initialization failed');
+        // We must show the error in the banner, as the inline handler might not exist
+        const banner = document.getElementById('app-startup-error');
+        if(banner) {
+            banner.innerHTML = '<strong>Application Failed to Load</strong><p>AppLifecycle.initPage() failed. Check console for details.</p>';
+            banner.classList.remove('hidden');
+        }
         return;
     }
     
