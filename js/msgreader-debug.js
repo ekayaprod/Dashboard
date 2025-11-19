@@ -1,6 +1,6 @@
 /**
  * js/msgreader-debug.js
- * Version 3.2 (QA Instrumented - Crash Proof & Null Safety)
+ * Version 3.3 (QA Instrumented - Unified Report)
  */
 
 'use strict';
@@ -117,7 +117,6 @@ MsgReaderDebugParser.prototype.parse = function() {
         this.logger.add(`Total Directory Entries: ${this.dirEntries.length}`);
 
         // 3.5 Codepage Check
-        // Fix 3.2: Safe navigation
         const cpEntry = this.dirEntries.find(e => e.name && e.name.includes('3FDE'));
         if (cpEntry) {
             this.logger.add("\n  [Codepage Detected]");
@@ -131,7 +130,7 @@ MsgReaderDebugParser.prototype.parse = function() {
         // 4. Property Analysis (Targeted)
         this.dirEntries.forEach((entry, idx) => {
             const name = entry.name;
-            if (!name) return; // Fix 3.2: Skip empty entries
+            if (!name) return;
 
             // Subject (0037), Body (1000), DisplayTo (0E04), DisplayCC (0E03), HTML (1013), RTF (1009)
             // Strings (001E, 001F)
@@ -169,7 +168,6 @@ MsgReaderDebugParser.prototype.parse = function() {
         });
 
         this.logger.section("6. Full Property Inventory (Hierarchy)");
-        // Flattened hierarchy dump to see where data hides
         const dumpTree = (parentId, depth) => {
             const children = this.findChildren(parentId);
             children.forEach(c => {
@@ -406,12 +404,22 @@ MsgReaderDebugParser.prototype.parseMime = function() {
 };
 
 export const MsgReaderDebug = {
-    generateReport: function(arrayBuffer) {
+    generateReport: function(arrayBuffer, meta = {}) {
         const logger = new LogBuffer();
-        logger.section("MSG READER DEBUG REPORT v3.2 (SAFE MODE)");
+        
+        // HEADER
+        logger.section("MSG READER DEBUG REPORT v3.3 (UNIFIED)");
+        logger.add(`File Name: ${meta.filename || "Unknown"}`);
+        logger.add(`File Type: ${meta.type || "Unknown"}`);
         logger.add(`File Size: ${arrayBuffer.byteLength} bytes`);
         
         const parser = new MsgReaderDebugParser(arrayBuffer, logger);
-        return parser.parse();
+        parser.parse();
+        
+        // FOOTER: PRODUCTION OUTPUT
+        logger.section("7. PRODUCTION PARSER OUTPUT");
+        logger.add(meta.prodOutput || "No production output provided.");
+        
+        return logger.output;
     }
 };
