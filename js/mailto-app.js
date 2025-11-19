@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
- * Version: 2.1.5 (QA Fixes Applied: A.2, A.6, B.1-B.6, C.5, C.6, C.7, C.8)
+ * Version: 2.1.6 (QA Fixes Applied + Debug Logging)
  */
 
 // NOTE: Core libraries (SafeUI, etc.) are loaded globally via script tags
@@ -13,13 +13,12 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.1.5',
+    VERSION: '2.1.6',
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-// FIX C.7: Module-level constant for Mailto keys (reused)
 const MAILTO_PARAM_KEYS = ['cc', 'bcc', 'subject']; 
 const ICONS = {
     folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
@@ -101,7 +100,6 @@ function initAccordion() {
 
 // --- Logic ---
 function parseMailto(str) {
-    // FIX B.1: Correctly handle mailto strings with multiple '?' delimiters
     const data = {to:'', cc:'', bcc:'', subject:'', body:''};
     if (!str || !str.startsWith('mailto:')) return data;
     try {
@@ -127,10 +125,8 @@ function parseMailto(str) {
 }
 
 function buildMailto(data) {
-    // FIX B.3: Wrap URI encoding in try-catch
     try {
         let params = [];
-        // FIX C.7: Use constant
         MAILTO_PARAM_KEYS.forEach(k => { if(data[k]) params.push(`${k}=${encodeURIComponent(data[k])}`); });
         if(data.body) params.push(`body=${encodeURIComponent(data.body).replace(/%0A/g, '%0D%0A')}`);
         return `mailto:${encodeURIComponent(data.to)}?${params.join('&')}`;
@@ -162,7 +158,6 @@ function getBreadcrumbPath(folderId) {
 function getItemsInCurrentFolder() {
     if (currentFolderId === 'root') return state.library;
     const f = findItemById(currentFolderId);
-    // Fallback to root if current folder not found (Fix B.2 part 2 safety)
     if (!f) { currentFolderId = 'root'; return state.library; }
     return f ? f.children : [];
 }
@@ -209,23 +204,27 @@ function handleFile(file) {
     reader.onload = (e) => {
         try {
             const d = MsgReader.read(e.target.result);
+            
+            // DEBUG LOGGING
+            console.log('===== MAILTO-APP FILE LOAD DEBUG =====');
+            console.log('Raw parsed data:', d);
+            console.log('Subject type:', typeof d.subject, 'Value:', d.subject);
+            console.log('Body type:', typeof d.body, 'Value length:', d.body ? d.body.length : 0);
+            
             DOMElements.resultSubject.value = d.subject || '';
             DOMElements.resultBody.value = d.body || '';
             
-            // FIX C.8: Define magic numbers
             const RECIP_TO = 1, RECIP_CC = 2, RECIP_BCC = 3;
             const map = {[RECIP_TO]:[], [RECIP_CC]:[], [RECIP_BCC]:[]}; 
             
             d.recipients.forEach(r => {
                 const addr = r.email || (r.name && r.name.includes('@')?r.name:'');
-                // Default to TO (1) if type undefined
                 if(addr) map[r.recipientType || RECIP_TO].push(addr);
             });
             DOMElements.resultTo.value = map[RECIP_TO].join(', ');
             DOMElements.resultCc.value = map[RECIP_CC].join(', ');
             DOMElements.resultBcc.value = map[RECIP_BCC].join(', ');
             
-            // UX Fix: Auto-open accordion
             DOMElements.mailtoAccordionContent.classList.remove('collapsed');
             const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
             if(icon) icon.style.transform = 'rotate(0deg)';
@@ -233,7 +232,10 @@ function handleFile(file) {
             if (state.ui) { state.ui.accordionCollapsed = false; saveState(); }
             
             SafeUI.showToast('File loaded');
-        } catch (err) { SafeUI.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]); }
+        } catch (err) { 
+            console.error("Handle File Error:", err);
+            SafeUI.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]); 
+        }
     };
     reader.readAsArrayBuffer(file);
 }
@@ -248,7 +250,6 @@ async function init() {
         return;
     }
 
-    // Fix A.6: Verify FileReader API existence
     if (typeof FileReader === 'undefined') {
         console.error("FileReader API missing");
         document.getElementById('app-startup-error').innerHTML = "<strong>Browser Incompatible</strong><p>This browser does not support the FileReader API required to process files.</p>";
@@ -312,9 +313,8 @@ async function init() {
         };
         const m = buildMailto(d);
         
-        if(!m) return; // Error handled in buildMailto
+        if(!m) return; 
 
-        // Warn if too long
         if (m.length > 2000) {
             SafeUI.showModal(
                 "Warning: Content Too Long", 
@@ -330,7 +330,6 @@ async function init() {
         const tName = DOMElements.saveTemplateName.value;
         if(!tName.trim()) DOMElements.saveTemplateName.value = (d.subject||'New Template').replace(/[\r\n\t\/\\]/g, ' ').trim();
         
-        // UX: Scroll to result
         setTimeout(() => {
             DOMHelpers.triggerTextareaResize(DOMElements.resultMailto);
             DOMElements.outputWrapper.scrollIntoView({behavior: 'smooth', block: 'nearest'});
@@ -369,7 +368,6 @@ async function init() {
         DOMElements.saveTemplateName.value = '';
     }
 
-    // FIX C.5: Flattened Event Listener
     DOMElements.treeListContainer.addEventListener('click', e => {
         const itemEl = e.target.closest('.list-item');
         if(!itemEl) return;
@@ -377,20 +375,17 @@ async function init() {
         const item = findItemById(id); 
         if(!item) return;
 
-        // Navigate
         if(e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) { 
             currentFolderId = item.id; renderCatalogue(); 
             return;
         }
         
-        // Copy
         if(e.target.closest('.copy-btn')) {
             SafeUI.copyToClipboard(item.mailto);
             SafeUI.showToast("Copied command");
             return;
         }
 
-        // Delete
         if(e.target.closest('.delete-btn')) {
             UIPatterns.confirmDelete(item.type, item.name, () => {
                 const p = findParentOfItem(id);
@@ -404,7 +399,6 @@ async function init() {
             return;
         }
 
-        // Edit / Move
         if(e.target.closest('.move-btn')) {
             if (item.type === 'folder') {
                 SafeUI.showModal('Rename Folder', `<input id="rn" class="sidebar-input" value="${SafeUI.escapeHTML(item.name)}">`, [
@@ -415,7 +409,6 @@ async function init() {
                     {label:'Cancel'}
                 ]);
             } else {
-                // Load into editor
                 const parsed = parseMailto(item.mailto);
                 DOMElements.resultTo.value = parsed.to || '';
                 DOMElements.resultCc.value = parsed.cc || '';
@@ -425,7 +418,6 @@ async function init() {
                 
                 DOMElements.saveTemplateName.value = item.name;
                 
-                // Open editor
                 DOMElements.mailtoAccordionContent.classList.remove('collapsed');
                 const icon = DOMElements.mailtoAccordionToggle.querySelector('.accordion-icon');
                 if(icon) icon.style.transform = 'rotate(0deg)';
@@ -452,12 +444,10 @@ async function init() {
         pageSpecificDataHtml: `<button id="exp" class="button-base">Export CSV</button><button id="imp" class="button-base">Import CSV</button>`,
         onModalOpen: () => {
             CsvManager.setupExport({exportBtn: document.getElementById('exp'), headers: APP_CONFIG.CSV_HEADERS, dataGetter: ()=>[], filename:'export.csv'});
-            // FIX B.6: Strict Import Validation
             CsvManager.setupImport({
                 importBtn: document.getElementById('imp'), 
                 headers: APP_CONFIG.CSV_HEADERS, 
                 onValidate: (r) => {
-                    // Verify minimum viable record
                     if (!r.name || typeof r.name !== 'string' || !r.name.trim()) return null;
                     if (!r.to && !r.subject && !r.body) return null; // Must have some content
                     return {entry: r};
