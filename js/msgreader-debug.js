@@ -1,6 +1,6 @@
 /**
  * js/msgreader-debug.js
- * Version 3.0 (QA Instrumented - With Full Property Inventory)
+ * Version 3.2 (QA Instrumented - Crash Proof & Null Safety)
  */
 
 'use strict';
@@ -9,11 +9,11 @@ class LogBuffer {
     constructor() { this.lines = []; }
     add(str) { this.lines.push(str); }
     section(title) { 
-        this.lines.push('\n' + '='.repeat(60)); 
+        this.lines.push('\n' + '='.repeat(80)); 
         this.lines.push(` ${title.toUpperCase()}`); 
-        this.lines.push('='.repeat(60)); 
+        this.lines.push('='.repeat(80)); 
     }
-    hexDump(view, limit = 128) {
+    hexDump(view, limit = 256) {
         let output = [];
         const len = Math.min(view.byteLength, limit);
         
@@ -70,7 +70,7 @@ function dataViewToStringDebug(view, encoding, logger, label) {
         res = `<Error: ${e.message}>`;
     }
     
-    logger.add(`    > Try ${label.padEnd(10)}: "${res.substring(0, 40).replace(/\n/g, '\\n')}..."`);
+    logger.add(`    > Try ${label.padEnd(10)}: "${res.substring(0, 50).replace(/\n/g, '\\n')}..."`);
     logger.add(`        Len: ${res.length} | Printable Score: ${(score * 100).toFixed(1)}%`);
     return res;
 }
@@ -88,99 +88,112 @@ function MsgReaderDebugParser(arrayBuffer, logger) {
 }
 
 MsgReaderDebugParser.prototype.parse = function() {
-    this.logger.section("1. File Header Check");
-    
-    // Signature Check
-    const sig = this.dataView.getUint32(0, true);
-    this.logger.add(`Signature: 0x${sig.toString(16).toUpperCase()} (Expected: 0xE011CFD0)`);
-    
-    if (sig !== 0xE011CFD0) {
-        this.logger.add("!!! INVALID OLE SIGNATURE - Parsing as text/MIME");
-        return this.parseMime();
-    }
-
-    // Read Header
-    this.readHeader();
-    this.logger.add(`Sector Shift: ${this.header.sectorShift} (Size: ${this.header.sectorSize})`);
-    this.logger.add(`Mini Sector Shift: ${this.header.miniSectorShift} (Size: ${this.header.miniSectorSize})`);
-    this.logger.add(`Directory Start Sector: ${this.header.directoryFirstSector}`);
-
-    this.logger.section("2. FAT Chain Analysis");
-    this.readFAT();
-    this.readMiniFAT();
-    this.logger.add(`FAT Entries: ${this.fat.length}`);
-    this.logger.add(`MiniFAT Entries: ${this.miniFat ? this.miniFat.length : 0}`);
-
-    this.logger.section("3. Directory Entries Scan");
-    this.readDirectory();
-    this.logger.add(`Total Directory Entries: ${this.dirEntries.length}`);
-
-    // 3.5 Codepage Check
-    const cpEntry = this.dirEntries.find(e => e.name.includes('3FDE'));
-    if (cpEntry) {
-        this.logger.add("\n  [Codepage Detected]");
-        const data = this.readFullStream(cpEntry, cpEntry.size >= 4096);
-        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-        this.logger.add(`    PR_MESSAGE_CODEPAGE (0x3FDE): ${view.getInt32(0, true)}`);
-    } else {
-        this.logger.add("\n  [No Codepage Property (0x3FDE) Found]");
-    }
-
-    // 4. Property Analysis (Targeted)
-    this.dirEntries.forEach((entry, idx) => {
-        const name = entry.name;
-        // Subject (0037), Body (1000), DisplayTo (0E04), DisplayCC (0E03), HTML (1013), RTF (1009)
-        // Strings (001E, 001F)
-        const interesting = ['0037', '1000', '1013', '1009', '0E04', '0E03', '001E', '001F'];
-        if (interesting.some(k => name.includes(k))) {
-             this.logger.add(`\n  [Entry ${idx}] ${name} | Size: ${entry.size} | Start: ${entry.startSector}`);
-             this.analyzeProperty(entry);
+    try {
+        this.logger.section("1. File Header Check");
+        
+        // Signature Check
+        const sig = this.dataView.getUint32(0, true);
+        this.logger.add(`Signature: 0x${sig.toString(16).toUpperCase()} (Expected: 0xE011CFD0)`);
+        
+        if (sig !== 0xE011CFD0) {
+            this.logger.add("!!! INVALID OLE SIGNATURE - Parsing as text/MIME");
+            return this.parseMime();
         }
-    });
 
-    this.logger.section("5. Recipient Entries");
-    const recipients = this.dirEntries.filter(e => e.name.includes('__recip_version1.0_'));
-    if (recipients.length === 0) this.logger.add("No Recipient Storages found.");
-    recipients.forEach((r, i) => {
-        this.logger.add(`Recipient Storage ${i}: ${r.name} (ID: ${r.id})`);
-        const children = this.findChildren(r.id);
-        children.forEach(child => {
-            if (child.name.includes('3001') || child.name.includes('3003') || 
-                child.name.includes('39FE') || child.name.includes('0C15')) {
+        // Read Header
+        this.readHeader();
+        this.logger.add(`Sector Shift: ${this.header.sectorShift} (Size: ${this.header.sectorSize})`);
+        this.logger.add(`Mini Sector Shift: ${this.header.miniSectorShift} (Size: ${this.header.miniSectorSize})`);
+        this.logger.add(`Directory Start Sector: ${this.header.directoryFirstSector}`);
+
+        this.logger.section("2. FAT Chain Analysis");
+        this.readFAT();
+        this.readMiniFAT();
+        this.logger.add(`FAT Entries: ${this.fat.length}`);
+        this.logger.add(`MiniFAT Entries: ${this.miniFat ? this.miniFat.length : 0}`);
+
+        this.logger.section("3. Directory Entries Scan");
+        this.readDirectory();
+        this.logger.add(`Total Directory Entries: ${this.dirEntries.length}`);
+
+        // 3.5 Codepage Check
+        // Fix 3.2: Safe navigation
+        const cpEntry = this.dirEntries.find(e => e.name && e.name.includes('3FDE'));
+        if (cpEntry) {
+            this.logger.add("\n  [Codepage Detected]");
+            const data = this.readFullStream(cpEntry, cpEntry.size >= 4096);
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            this.logger.add(`    PR_MESSAGE_CODEPAGE (0x3FDE): ${view.getInt32(0, true)}`);
+        } else {
+            this.logger.add("\n  [No Codepage Property (0x3FDE) Found]");
+        }
+
+        // 4. Property Analysis (Targeted)
+        this.dirEntries.forEach((entry, idx) => {
+            const name = entry.name;
+            if (!name) return; // Fix 3.2: Skip empty entries
+
+            // Subject (0037), Body (1000), DisplayTo (0E04), DisplayCC (0E03), HTML (1013), RTF (1009)
+            // Strings (001E, 001F)
+            const interesting = ['0037', '1000', '1013', '1009', '0E04', '0E03', '001E', '001F'];
+            if (interesting.some(k => name.includes(k))) {
+                 this.logger.add(`\n  [Entry ${idx}] ${name} | Size: ${entry.size} | Start: ${entry.startSector}`);
+                 this.analyzeProperty(entry);
+            }
+        });
+
+        this.logger.section("5. Recipient Entries");
+        const recipients = this.dirEntries.filter(e => e.name && e.name.includes('__recip_version1.0_'));
+        if (recipients.length === 0) this.logger.add("No Recipient Storages found.");
+        recipients.forEach((r, i) => {
+            this.logger.add(`Recipient Storage ${i}: ${r.name} (ID: ${r.id})`);
+            const children = this.findChildren(r.id);
+            children.forEach(child => {
+                if (!child.name) return;
                 
-                this.logger.add(`    Property: ${child.name} (Size: ${child.size})`);
-                const data = this.readFullStream(child, child.size >= 4096);
-                if (data.length > 0 && data.length < 128) {
-                    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-                    if (child.name.includes('0C15')) {
-                        this.logger.add(`        Value (Int32): ${view.getInt32(0, true)}`);
-                    } else {
-                        const s = dataViewToStringDebug(view, child.name.endsWith('001F') ? 'utf16' : 'utf8', this.logger, 'RecipVal');
+                if (child.name.includes('3001') || child.name.includes('3003') || 
+                    child.name.includes('39FE') || child.name.includes('0C15')) {
+                    
+                    this.logger.add(`    Property: ${child.name} (Size: ${child.size})`);
+                    const data = this.readFullStream(child, child.size >= 4096);
+                    if (data.length > 0 && data.length < 128) {
+                        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+                        if (child.name.includes('0C15')) {
+                            this.logger.add(`        Value (Int32): ${view.getInt32(0, true)}`);
+                        } else {
+                            const s = dataViewToStringDebug(view, child.name.endsWith('001F') ? 'utf16' : 'utf8', this.logger, 'RecipVal');
+                        }
                     }
                 }
-            }
+            });
         });
-    });
 
-    this.logger.section("6. Full Property Inventory (Hierarchy)");
-    // Flattened hierarchy dump to see where data hides
-    const dumpTree = (parentId, depth) => {
-        const children = this.findChildren(parentId);
-        children.forEach(c => {
-            const indent = '  '.repeat(depth);
-            this.logger.add(`${indent}- ${c.name} (Type: ${c.type}, Size: ${c.size})`);
-            if (c.type === 1) { // Storage
-                dumpTree(c.id, depth + 1);
-            }
-        });
-    };
-    const root = this.dirEntries.find(e => e.type === 5);
-    if (root) {
-        this.logger.add("ROOT");
-        dumpTree(root.id, 1);
+        this.logger.section("6. Full Property Inventory (Hierarchy)");
+        // Flattened hierarchy dump to see where data hides
+        const dumpTree = (parentId, depth) => {
+            const children = this.findChildren(parentId);
+            children.forEach(c => {
+                const indent = '  '.repeat(depth);
+                const displayName = c.name || "<NULL>";
+                this.logger.add(`${indent}- ${displayName} (Type: ${c.type}, Size: ${c.size})`);
+                if (c.type === 1) { // Storage
+                    dumpTree(c.id, depth + 1);
+                }
+            });
+        };
+        const root = this.dirEntries.find(e => e.type === 5);
+        if (root) {
+            this.logger.add("ROOT");
+            dumpTree(root.id, 1);
+        }
+
+        return this.logger.output;
+
+    } catch (err) {
+        this.logger.add("\n\n!!! CRITICAL PARSER CRASH !!!");
+        this.logger.add(err.stack);
+        return this.logger.output;
     }
-
-    return this.logger.output;
 };
 
 // --- OLE READ HELPERS ---
@@ -343,6 +356,9 @@ MsgReaderDebugParser.prototype.analyzeProperty = function(entry) {
     this.logger.add(`    >>> ANALYZING PROPERTY: ${entry.name} <<<`);
     
     const name = entry.name;
+    // Fix 3.2: Ensure name is long enough
+    if (name.length < 4) return;
+    
     const typeCode = name.substring(name.length - 4);
     const typeMap = {
         '001E': 'STRING8 (8-bit, likely Win-1252 or UTF-8)',
@@ -392,7 +408,7 @@ MsgReaderDebugParser.prototype.parseMime = function() {
 export const MsgReaderDebug = {
     generateReport: function(arrayBuffer) {
         const logger = new LogBuffer();
-        logger.section("MSG READER DEBUG REPORT v3.0 (DEEP INSPECT)");
+        logger.section("MSG READER DEBUG REPORT v3.2 (SAFE MODE)");
         logger.add(`File Size: ${arrayBuffer.byteLength} bytes`);
         
         const parser = new MsgReaderDebugParser(arrayBuffer, logger);
