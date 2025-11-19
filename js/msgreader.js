@@ -1,9 +1,10 @@
 /**
  * js/msgreader.js
- * Version 2.0.14 (ES6 Module - Fix: Binary HTML Body Crash)
+ * Version 2.0.15 (ES6 Module - Fix: Restore missing loop variable 'sectorsRead')
  * * CHANGE LOG:
- * - Added logic to force-decode BODY/HTML_BODY properties even if they are stored as BINARY (0102).
- * - Added type safety to _stripHtml to prevent crashes on non-string inputs.
+ * - Fixed ReferenceError in readMiniFAT where sectorsRead was used but not defined.
+ * - Maintained strict fatal:true for UTF-8 to prevent character corruption.
+ * - Maintained binary-to-text forcing for HTML bodies.
  */
 
 'use strict';
@@ -71,7 +72,7 @@ function _decodeQuotedPrintable(str) {
 }
 
 function _stripHtml(html) {
-    if (!html || typeof html !== 'string') return ''; // FIX: Added type safety
+    if (!html || typeof html !== 'string') return ''; 
     let text = html.replace(/<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n').replace(/<[^>]+>/g, '');
     let parser = getDOMParser();
     if (parser) {
@@ -90,6 +91,7 @@ function dataViewToString(view, encoding) {
     if (encoding === 'utf-8') {
         try {
             if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
+            // Strict decoding to catch ANSI disguised as UTF-8
             let decoded = new TextDecoder('utf-8', { fatal: true }).decode(view);
             const nullIdx = decoded.indexOf('\0');
             return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
@@ -115,6 +117,7 @@ function dataViewToString(view, encoding) {
         }
     }
     
+    // Windows-1252 Fallback
     try {
         let decoded = getTextDecoder('windows-1252').decode(view);
         const nullIdx = decoded.indexOf('\0');
@@ -286,6 +289,8 @@ MsgReaderParser.prototype.readMiniFAT = function() {
     if (this.header.miniFatFirstSector === 0xFFFFFFFE) { this.miniFat = []; return; }
     this.miniFat = [];
     let sector = this.header.miniFatFirstSector, sectorSize = this.header.sectorSize;
+    // FIX: Restore 'sectorsRead' variable and increment it to prevent ReferenceError
+    let sectorsRead = 0; 
     while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
         let offset = 512 + sector * sectorSize;
         for (let i = 0; i < sectorSize / 4; i++) {
@@ -293,6 +298,7 @@ MsgReaderParser.prototype.readMiniFAT = function() {
         }
         if (sector >= this.fat.length) break;
         sector = this.fat[sector];
+        sectorsRead++;
     }
 };
 
@@ -450,9 +456,7 @@ MsgReaderParser.prototype.extractProperties = function() {
     let bodyHtml = getVal(PROP_ID_HTML_BODY, PROP_TYPE_STRING);
     if (bodyHtml) this.properties[PROP_ID_HTML_BODY] = { id: PROP_ID_HTML_BODY, value: bodyHtml };
     
-    // FIX: Handle HTML body if plain body is missing or binary
     if (this.properties[PROP_ID_HTML_BODY] && this.properties[PROP_ID_HTML_BODY].value instanceof Uint8Array) {
-        // Decode binary HTML body
         let view = new DataView(this.properties[PROP_ID_HTML_BODY].value.buffer);
         let decoded = dataViewToString(view, 'utf-8');
         this.properties[PROP_ID_HTML_BODY].value = decoded;
@@ -461,7 +465,6 @@ MsgReaderParser.prototype.extractProperties = function() {
 
     let body = getVal(PROP_ID_BODY, PROP_TYPE_STRING);
     
-    // FIX: Handle Binary Body if marked as Text
     if (body instanceof Uint8Array) {
          let view = new DataView(body.buffer);
          body = dataViewToString(view, 'utf-8');
@@ -488,8 +491,6 @@ MsgReaderParser.prototype.convertPropertyValue = function(data, type, propId) {
     if (!data || data.length === 0) return null;
     let view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     
-    // FIX: Force decode for BODY/HTML_BODY even if type is BINARY (0102)
-    // This happens with Web Outlook exports.
     const isBodyProp = (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY);
     
     if (isBodyProp || type === PROP_TYPE_STRING || type === PROP_TYPE_STRING8) {
