@@ -14,12 +14,13 @@
     <!-- 
       APP MODULE
       Loads after core scripts. Uses 'defer' and error handling.
+      Updated onerror to wait for DOMContentLoaded (Fix A.2)
     -->
     <script 
         type="module" 
         src="js/mailto-app.js" 
         defer 
-        onerror="document.getElementById('app-startup-error').innerHTML = '<strong>Application Failed to Load</strong><p>A critical script (mailto-app.js) could not be loaded. Please check your network connection or contact support.</p>'; document.getElementById('app-startup-error').classList.remove('hidden');"
+        onerror="window.addEventListener('DOMContentLoaded', function() { var el = document.getElementById('app-startup-error'); if(el) { el.innerHTML = '<strong>Application Failed to Load</strong><p>A critical script (mailto-app.js) could not be loaded. Please check your network connection or contact support.</p>'; el.classList.remove('hidden'); } });"
     ></script>
 </head>
 <body class="mailto-page">
@@ -134,5 +135,4 @@
     <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top">↑</button>
 </body>
 </html>
-
 
