@@ -1,6 +1,6 @@
 /**
  * js/msgreader-debug.js
- * Version 3.3 (QA Instrumented - Unified Report)
+ * Version 3.4 (QA Instrumented - Explicit Headers for Batch Processing)
  */
 
 'use strict';
@@ -406,12 +406,17 @@ MsgReaderDebugParser.prototype.parseMime = function() {
 export const MsgReaderDebug = {
     generateReport: function(arrayBuffer, meta = {}) {
         const logger = new LogBuffer();
+        const fileName = meta.filename || "Unknown_File";
         
-        // HEADER
-        logger.section("MSG READER DEBUG REPORT v3.3 (UNIFIED)");
-        logger.add(`File Name: ${meta.filename || "Unknown"}`);
-        logger.add(`File Type: ${meta.type || "Unknown"}`);
-        logger.add(`File Size: ${arrayBuffer.byteLength} bytes`);
+        // META HEADER (Crucial for concatenating reports)
+        logger.add("================================================================================");
+        logger.add(`FILE REPORT: ${fileName}`);
+        logger.add(`TYPE:        ${meta.type || "n/a"}`);
+        logger.add(`SIZE:        ${arrayBuffer.byteLength} bytes`);
+        logger.add(`DATE:        ${new Date().toISOString()}`);
+        logger.add("================================================================================");
+        
+        logger.section("MSG READER DEBUG REPORT v3.4");
         
         const parser = new MsgReaderDebugParser(arrayBuffer, logger);
         parser.parse();
@@ -419,6 +424,13 @@ export const MsgReaderDebug = {
         // FOOTER: PRODUCTION OUTPUT
         logger.section("7. PRODUCTION PARSER OUTPUT");
         logger.add(meta.prodOutput || "No production output provided.");
+        
+        // TERMINATOR
+        logger.add("\n");
+        logger.add("================================================================================");
+        logger.add(`END REPORT: ${fileName}`);
+        logger.add("================================================================================");
+        logger.add("\n\n"); // Spacing for concatenation
         
         return logger.output;
     }
