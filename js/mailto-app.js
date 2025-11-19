@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
- * Version: 2.1.6 (QA Fixes Applied + Debug Logging)
+ * Version: 2.1.7 (QA Fixes Applied + Debug Logging)
  */
 
 // NOTE: Core libraries (SafeUI, etc.) are loaded globally via script tags
@@ -13,7 +13,7 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.1.6',
+    VERSION: '2.1.7',
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
