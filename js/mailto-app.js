@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
- * Version: 2.1.2 (QA Fixes Applied: Edit Button, Auto-Open, Bounds Checks)
+ * Version: 2.1.5 (QA Fixes Applied: A.2, A.6, B.1-B.6, C.5, C.6, C.7, C.8)
  */
 
 // NOTE: Core libraries (SafeUI, etc.) are loaded globally via script tags
@@ -13,13 +13,14 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.1.2',
+    VERSION: '2.1.5',
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const MAILTO_FIELDS = ['to', 'cc', 'bcc', 'subject', 'body'];
+// FIX C.7: Module-level constant for Mailto keys (reused)
+const MAILTO_PARAM_KEYS = ['cc', 'bcc', 'subject']; 
 const ICONS = {
     folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
     template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79l-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
@@ -41,6 +42,30 @@ let state;
 let saveState;
 let currentFolderId = 'root';
 let currentMailtoCommand = null;
+
+// FIX C.6: Generic Recursive Finder
+function findInTree(items, predicate, parent = null) {
+    for (const item of items) {
+        if (predicate(item)) return { item, parent };
+        if (item.type === 'folder' && item.children) {
+            const result = findInTree(item.children, predicate, item);
+            if (result) return result;
+        }
+    }
+    return null;
+}
+
+function findItemById(id) {
+    if (id === 'root') return { id: 'root', name: 'Root', children: state.library };
+    const result = findInTree(state.library, i => i.id === id);
+    return result ? result.item : null;
+}
+
+function findParentOfItem(childId) {
+    if (childId === 'root') return null; 
+    const result = findInTree(state.library, i => i.id === childId);
+    return result ? (result.parent || {id: 'root', children: state.library}) : null;
+}
 
 // --- Accordion ---
 function toggleAccordion(e, forceCollapse = false) {
@@ -76,19 +101,18 @@ function initAccordion() {
 
 // --- Logic ---
 function parseMailto(str) {
+    // FIX B.1: Correctly handle mailto strings with multiple '?' delimiters
     const data = {to:'', cc:'', bcc:'', subject:'', body:''};
     if (!str || !str.startsWith('mailto:')) return data;
     try {
-        // Simple parse for basic mailto
-        if(str.indexOf('?') === -1) {
+        const qIndex = str.indexOf('?');
+        if(qIndex === -1) {
             data.to = decodeURIComponent(str.substring(7));
             return data;
         }
         
-        // Complex parse
-        const parts = str.split('?');
-        data.to = decodeURIComponent(parts[0].substring(7));
-        const params = new URLSearchParams(parts[1]);
+        data.to = decodeURIComponent(str.substring(7, qIndex));
+        const params = new URLSearchParams(str.substring(qIndex + 1));
         
         if(params.has('subject')) data.subject = params.get('subject');
         if(params.has('body')) data.body = params.get('body');
@@ -103,33 +127,17 @@ function parseMailto(str) {
 }
 
 function buildMailto(data) {
-    let params = [];
-    ['cc', 'bcc', 'subject'].forEach(k => { if(data[k]) params.push(`${k}=${encodeURIComponent(data[k])}`); });
-    if(data.body) params.push(`body=${encodeURIComponent(data.body).replace(/%0A/g, '%0D%0A')}`);
-    return `mailto:${encodeURIComponent(data.to)}?${params.join('&')}`;
-}
-
-function findItemById(id, items = state.library) {
-    if (id === 'root') return { id: 'root', name: 'Root', children: state.library };
-    for (const item of items) {
-        if (item.id === id) return item;
-        if (item.type === 'folder' && item.children) {
-            const found = findItemById(id, item.children);
-            if (found) return found;
-        }
+    // FIX B.3: Wrap URI encoding in try-catch
+    try {
+        let params = [];
+        // FIX C.7: Use constant
+        MAILTO_PARAM_KEYS.forEach(k => { if(data[k]) params.push(`${k}=${encodeURIComponent(data[k])}`); });
+        if(data.body) params.push(`body=${encodeURIComponent(data.body).replace(/%0A/g, '%0D%0A')}`);
+        return `mailto:${encodeURIComponent(data.to)}?${params.join('&')}`;
+    } catch (e) {
+        SafeUI.showModal("Encoding Error", "<p>Failed to generate link. Please check for invalid characters.</p>", [{label:'OK'}]);
+        return '';
     }
-    return null;
-}
-
-function findParentOfItem(childId, items = state.library, parent = {id:'root', children: state.library}) {
-    for (const item of items) {
-        if (item.id === childId) return parent;
-        if (item.type === 'folder' && item.children) {
-            const found = findParentOfItem(childId, item.children, item);
-            if (found) return found;
-        }
-    }
-    return null;
 }
 
 function getBreadcrumbPath(folderId) {
@@ -154,6 +162,8 @@ function getBreadcrumbPath(folderId) {
 function getItemsInCurrentFolder() {
     if (currentFolderId === 'root') return state.library;
     const f = findItemById(currentFolderId);
+    // Fallback to root if current folder not found (Fix B.2 part 2 safety)
+    if (!f) { currentFolderId = 'root'; return state.library; }
     return f ? f.children : [];
 }
 
@@ -201,14 +211,19 @@ function handleFile(file) {
             const d = MsgReader.read(e.target.result);
             DOMElements.resultSubject.value = d.subject || '';
             DOMElements.resultBody.value = d.body || '';
-            const map = {1:[], 2:[], 3:[]}; 
+            
+            // FIX C.8: Define magic numbers
+            const RECIP_TO = 1, RECIP_CC = 2, RECIP_BCC = 3;
+            const map = {[RECIP_TO]:[], [RECIP_CC]:[], [RECIP_BCC]:[]}; 
+            
             d.recipients.forEach(r => {
                 const addr = r.email || (r.name && r.name.includes('@')?r.name:'');
-                if(addr) map[r.recipientType || 1].push(addr);
+                // Default to TO (1) if type undefined
+                if(addr) map[r.recipientType || RECIP_TO].push(addr);
             });
-            DOMElements.resultTo.value = map[1].join(', ');
-            DOMElements.resultCc.value = map[2].join(', ');
-            DOMElements.resultBcc.value = map[3].join(', ');
+            DOMElements.resultTo.value = map[RECIP_TO].join(', ');
+            DOMElements.resultCc.value = map[RECIP_CC].join(', ');
+            DOMElements.resultBcc.value = map[RECIP_BCC].join(', ');
             
             // UX Fix: Auto-open accordion
             DOMElements.mailtoAccordionContent.classList.remove('collapsed');
@@ -229,6 +244,14 @@ async function init() {
     if (typeof SafeUI === 'undefined') {
         console.error("Core libraries missing!");
         document.getElementById('app-startup-error').innerHTML = "Core libraries failed to load.";
+        document.getElementById('app-startup-error').classList.remove('hidden');
+        return;
+    }
+
+    // Fix A.6: Verify FileReader API existence
+    if (typeof FileReader === 'undefined') {
+        console.error("FileReader API missing");
+        document.getElementById('app-startup-error').innerHTML = "<strong>Browser Incompatible</strong><p>This browser does not support the FileReader API required to process files.</p>";
         document.getElementById('app-startup-error').classList.remove('hidden');
         return;
     }
@@ -289,6 +312,8 @@ async function init() {
         };
         const m = buildMailto(d);
         
+        if(!m) return; // Error handled in buildMailto
+
         // Warn if too long
         if (m.length > 2000) {
             SafeUI.showModal(
@@ -344,32 +369,42 @@ async function init() {
         DOMElements.saveTemplateName.value = '';
     }
 
-    // Tree Navigation
+    // FIX C.5: Flattened Event Listener
     DOMElements.treeListContainer.addEventListener('click', e => {
         const itemEl = e.target.closest('.list-item');
         if(!itemEl) return;
         const id = itemEl.dataset.id;
         const item = findItemById(id); 
-        
         if(!item) return;
 
+        // Navigate
         if(e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) { 
             currentFolderId = item.id; renderCatalogue(); 
+            return;
         }
         
+        // Copy
         if(e.target.closest('.copy-btn')) {
             SafeUI.copyToClipboard(item.mailto);
             SafeUI.showToast("Copied command");
+            return;
         }
 
+        // Delete
         if(e.target.closest('.delete-btn')) {
             UIPatterns.confirmDelete(item.type, item.name, () => {
                 const p = findParentOfItem(id);
-                if(p) { p.children = p.children.filter(c => c.id !== id); saveState(); renderCatalogue(); }
+                if(p) { 
+                    p.children = p.children.filter(c => c.id !== id); 
+                    if (currentFolderId === id) currentFolderId = 'root';
+                    saveState(); 
+                    renderCatalogue(); 
+                }
             });
+            return;
         }
 
-        // EDIT / RENAME (Fix for BUG-01)
+        // Edit / Move
         if(e.target.closest('.move-btn')) {
             if (item.type === 'folder') {
                 SafeUI.showModal('Rename Folder', `<input id="rn" class="sidebar-input" value="${SafeUI.escapeHTML(item.name)}">`, [
@@ -417,7 +452,18 @@ async function init() {
         pageSpecificDataHtml: `<button id="exp" class="button-base">Export CSV</button><button id="imp" class="button-base">Import CSV</button>`,
         onModalOpen: () => {
             CsvManager.setupExport({exportBtn: document.getElementById('exp'), headers: APP_CONFIG.CSV_HEADERS, dataGetter: ()=>[], filename:'export.csv'});
-            CsvManager.setupImport({importBtn: document.getElementById('imp'), headers: APP_CONFIG.CSV_HEADERS, onValidate: (r)=>({entry:r}), onConfirm: (d)=>{}});
+            // FIX B.6: Strict Import Validation
+            CsvManager.setupImport({
+                importBtn: document.getElementById('imp'), 
+                headers: APP_CONFIG.CSV_HEADERS, 
+                onValidate: (r) => {
+                    // Verify minimum viable record
+                    if (!r.name || typeof r.name !== 'string' || !r.name.trim()) return null;
+                    if (!r.to && !r.subject && !r.body) return null; // Must have some content
+                    return {entry: r};
+                }, 
+                onConfirm: (d)=>{}
+            });
         },
         onRestoreCallback: (d) => { state.library = d.library; saveState(); renderCatalogue(); }
     });
