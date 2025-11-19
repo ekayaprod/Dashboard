@@ -1,6 +1,9 @@
 /**
  * js/msgreader.js
- * Version 2.0.11 (ES6 Module - Fixes: C.1, C.2, C.3, C.4 - Structural Optimization)
+ * Version 2.0.14 (ES6 Module - Fix: Binary HTML Body Crash)
+ * * CHANGE LOG:
+ * - Added logic to force-decode BODY/HTML_BODY properties even if they are stored as BINARY (0102).
+ * - Added type safety to _stripHtml to prevent crashes on non-string inputs.
  */
 
 'use strict';
@@ -29,17 +32,12 @@ const RECIPIENT_TYPE_TO = 1;
 const RECIPIENT_TYPE_CC = 2;
 const RECIPIENT_TYPE_BCC = 3;
 
-// --- Module-Level Caches (Fix C.3, C.4) ---
-let _textDecoderUtf8 = null;
+// --- Module-Level Caches ---
 let _textDecoderUtf16 = null;
 let _textDecoderWin1252 = null;
 let _domParser = null;
 
 function getTextDecoder(encoding) {
-    if (encoding === 'utf-8') {
-        if (!_textDecoderUtf8) _textDecoderUtf8 = new TextDecoder('utf-8', { fatal: false });
-        return _textDecoderUtf8;
-    }
     if (encoding === 'utf-16le') {
         if (!_textDecoderUtf16) _textDecoderUtf16 = new TextDecoder('utf-16le', { fatal: false });
         return _textDecoderUtf16;
@@ -68,12 +66,12 @@ function _decodeQuotedPrintable(str) {
     try {
         let bytes = new Uint8Array(decoded.length);
         for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
-        return getTextDecoder('utf-8').decode(bytes);
+        return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
     } catch (e) { return decoded; }
 }
 
 function _stripHtml(html) {
-    if (!html) return '';
+    if (!html || typeof html !== 'string') return ''; // FIX: Added type safety
     let text = html.replace(/<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n').replace(/<[^>]+>/g, '');
     let parser = getDOMParser();
     if (parser) {
@@ -89,28 +87,25 @@ function _normalizeText(text) {
 }
 
 function dataViewToString(view, encoding) {
-    // 1. Handle UTF-8
     if (encoding === 'utf-8') {
         try {
             if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
-            let decoded = getTextDecoder('utf-8').decode(view);
+            let decoded = new TextDecoder('utf-8', { fatal: true }).decode(view);
             const nullIdx = decoded.indexOf('\0');
             return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
-        } catch (e) { return dataViewToString(view, 'ascii'); }
+        } catch (e) { 
+            return dataViewToString(view, 'ascii'); 
+        }
     }
     
-    // 2. Handle UTF-16LE
     if (encoding === 'utf16le') {
-        // Primary: TextDecoder
         try {
             if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
             let decoded = getTextDecoder('utf-16le').decode(view);
             const nullIdx = decoded.indexOf('\0');
             return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
         } catch (e) {
-            // Fallback: Manual Loop (Safe Version)
             let result = '';
-            // FIX A.8: Bounds check (view.byteLength - 1) prevents RangeError on odd-length buffers
             for (let i = 0; i < view.byteLength - 1; i += 2) {
                 let charCode = view.getUint16(i, true);
                 if (charCode === 0) break;
@@ -120,14 +115,11 @@ function dataViewToString(view, encoding) {
         }
     }
     
-    // 3. ASCII / Legacy Fallback (FIX B.8 - No silent data loss)
     try {
-        // Prefer proper 8-bit decoding (Windows-1252 covers ASCII + Western Euro)
         let decoded = getTextDecoder('windows-1252').decode(view);
         const nullIdx = decoded.indexOf('\0');
         return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
     } catch(e) {
-        // Ultimate fallback
         let result = '';
         for (let i = 0; i < view.byteLength; i++) {
             let charCode = view.getUint8(i);
@@ -186,7 +178,6 @@ function parseAddress(addr) {
 
 // --- Internal Parser Class ---
 function MsgReaderParser(arrayBuffer) {
-    // FIX B.7: Strict Type Guard for Constructor
     if (!(arrayBuffer instanceof ArrayBuffer) && !(arrayBuffer instanceof Uint8Array)) {
         throw new Error("MsgReader: Input must be ArrayBuffer or Uint8Array.");
     }
@@ -211,9 +202,9 @@ MsgReaderParser.prototype.parseMime = function() {
     console.log('Parsing as MIME/text file');
     this._mimeScanCache = null;
     let rawText = '';
-    try { rawText = getTextDecoder('utf-8').decode(this.dataView); }
+    try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
     catch (e) { 
-        try { rawText = getTextDecoder('latin1').decode(this.dataView); }
+        try { rawText = new TextDecoder('latin1').decode(this.dataView); }
         catch (e2) { rawText = ''; }
     }
     
@@ -295,7 +286,6 @@ MsgReaderParser.prototype.readMiniFAT = function() {
     if (this.header.miniFatFirstSector === 0xFFFFFFFE) { this.miniFat = []; return; }
     this.miniFat = [];
     let sector = this.header.miniFatFirstSector, sectorSize = this.header.sectorSize;
-    let sectorsRead = 0;
     while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
         let offset = 512 + sector * sectorSize;
         for (let i = 0; i < sectorSize / 4; i++) {
@@ -303,14 +293,12 @@ MsgReaderParser.prototype.readMiniFAT = function() {
         }
         if (sector >= this.fat.length) break;
         sector = this.fat[sector];
-        sectorsRead++;
     }
 };
 
 MsgReaderParser.prototype.readDirectory = function() {
     let sector = this.header.directoryFirstSector, sectorSize = this.header.sectorSize, entrySize = 128;
     let sectorsRead = 0;
-    // FIX B.4: Removed arbitrary '1000' limit
     while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
         let offset = 512 + sector * sectorSize;
         for (let i = 0; i < sectorSize / entrySize; i++) {
@@ -343,7 +331,6 @@ MsgReaderParser.prototype.readDirectoryEntry = function(offset) {
     };
 };
 
-// Fix C.1: Parameterized Sector Chain Reader
 MsgReaderParser.prototype._readSectorChain = function(startSector, sectorSize, fatArray, totalSize) {
     let data = new Uint8Array(totalSize);
     let dataOffset = 0;
@@ -356,11 +343,10 @@ MsgReaderParser.prototype._readSectorChain = function(startSector, sectorSize, f
             
         let sourceData = (fatArray === this.miniFat)
             ? this._miniStreamData
-            : this.dataView; // Will be handled by byte access loop below
+            : this.dataView; 
             
         let copy = Math.min(sectorSize, totalSize - dataOffset);
         
-        // Optimize read based on source
         for (let i = 0; i < copy; i++) {
             data[dataOffset++] = (fatArray === this.miniFat) 
                 ? sourceData[offset + i] 
@@ -376,19 +362,16 @@ MsgReaderParser.prototype._readSectorChain = function(startSector, sectorSize, f
 MsgReaderParser.prototype.readStream = function(entry) {
     if (!entry || entry.size === 0) return new Uint8Array(0);
     
-    // Fix C.1: Use the new helper
-    if (entry.size < 4096) {
+    if (entry.size < 4096 && entry.type !== 5) {
         let root = this.directoryEntries.find(e => e.type === 5);
         if (!root) return new Uint8Array(0);
         
-        // Cache mini stream data if needed (optimization)
         if (!this._miniStreamData) {
              this._miniStreamData = this.readStream(root);
         }
         
         return this._readSectorChain(entry.startSector, this.header.miniSectorSize, this.miniFat, entry.size);
     } else {
-        this._miniStreamData = null; // Reset if switching contexts
         return this._readSectorChain(entry.startSector, this.header.sectorSize, this.fat, entry.size);
     }
 };
@@ -397,9 +380,9 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
     if (this._mimeScanCache) return this._mimeScanCache;
     
     if (!rawText) {
-        try { rawText = getTextDecoder('utf-8').decode(this.dataView); }
+        try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
         catch (e) { 
-            try { rawText = getTextDecoder('latin1').decode(this.dataView); }
+            try { rawText = new TextDecoder('latin1').decode(this.dataView); }
             catch (e2) { 
                 console.warn('Could not decode raw buffer for MIME scan.');
                 return { subject: null, to: null, cc: null, body: null };
@@ -409,7 +392,6 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
 
     let result = { subject: null, to: null, cc: null, body: null };
     
-    // FIX B.5: Replaced Regex ReDoS Hazard with String methods
     const findField = (name) => {
         const search = new RegExp(`\\b${name}:\\s*([^\\r\\n]+)`, 'i');
         const match = rawText.match(search);
@@ -424,12 +406,9 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
     if (headerEndIndex === -1) headerEndIndex = rawText.indexOf('\n\n');
     
     if (headerEndIndex !== -1) {
-        // Extract body using substring (safer than greedy regex)
-        let bodyText = rawText.substring(headerEndIndex + 4); // Skip \r\n\r\n
+        let bodyText = rawText.substring(headerEndIndex + 4);
         
-        // Simple logic to find boundaries if multipart
         if (rawText.indexOf('Content-Type: multipart') !== -1) {
-             // Try to find plain text part manually without complex regex
              const plainTypeIndex = bodyText.indexOf('Content-Type: text/plain');
              if (plainTypeIndex !== -1) {
                  const start = bodyText.indexOf('\n\n', plainTypeIndex);
@@ -471,7 +450,24 @@ MsgReaderParser.prototype.extractProperties = function() {
     let bodyHtml = getVal(PROP_ID_HTML_BODY, PROP_TYPE_STRING);
     if (bodyHtml) this.properties[PROP_ID_HTML_BODY] = { id: PROP_ID_HTML_BODY, value: bodyHtml };
     
+    // FIX: Handle HTML body if plain body is missing or binary
+    if (this.properties[PROP_ID_HTML_BODY] && this.properties[PROP_ID_HTML_BODY].value instanceof Uint8Array) {
+        // Decode binary HTML body
+        let view = new DataView(this.properties[PROP_ID_HTML_BODY].value.buffer);
+        let decoded = dataViewToString(view, 'utf-8');
+        this.properties[PROP_ID_HTML_BODY].value = decoded;
+        bodyHtml = decoded;
+    }
+
     let body = getVal(PROP_ID_BODY, PROP_TYPE_STRING);
+    
+    // FIX: Handle Binary Body if marked as Text
+    if (body instanceof Uint8Array) {
+         let view = new DataView(body.buffer);
+         body = dataViewToString(view, 'utf-8');
+         this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: body };
+    }
+
     if (!body && bodyHtml) body = _stripHtml(bodyHtml);
     if (body) this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: body };
 
@@ -492,7 +488,11 @@ MsgReaderParser.prototype.convertPropertyValue = function(data, type, propId) {
     if (!data || data.length === 0) return null;
     let view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     
-    if (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY || type === PROP_TYPE_STRING || type === PROP_TYPE_STRING8 || type === PROP_TYPE_BINARY) {
+    // FIX: Force decode for BODY/HTML_BODY even if type is BINARY (0102)
+    // This happens with Web Outlook exports.
+    const isBodyProp = (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY);
+    
+    if (isBodyProp || type === PROP_TYPE_STRING || type === PROP_TYPE_STRING8) {
         let u16 = '', u8 = '';
         try { u16 = dataViewToString(view, 'utf16le'); } catch (e) {}
         try { u8 = dataViewToString(view, 'utf-8'); } catch (e) {}
@@ -503,7 +503,6 @@ MsgReaderParser.prototype.convertPropertyValue = function(data, type, propId) {
             return (printableCount / s.length) > 0.7;
         };
         
-        // HEURISTIC FIX V2.0.8: Detect Truncated UTF-8
         let u16IsBetter = isPrintable(u16);
         let u8IsBetter = isPrintable(u8);
         
@@ -521,16 +520,17 @@ MsgReaderParser.prototype.convertPropertyValue = function(data, type, propId) {
         let text = useU16 ? u16 : u8;
 
         if (propId === PROP_ID_BODY) return _normalizeText(_stripHtml(text));
-        if (type === PROP_TYPE_BINARY) return data;
+        
         return text;
     }
+    
+    if (type === PROP_TYPE_BINARY) return data;
     if (type === PROP_TYPE_INTEGER32) return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
     if (type === PROP_TYPE_BOOLEAN) return view.byteLength > 0 ? view.getUint8(0) !== 0 : false;
     if (type === PROP_TYPE_TIME) return view.byteLength >= 8 ? filetimeToDate(view.getUint32(0, true), view.getUint32(4, true)) : null;
     return data;
 };
 
-// Fix C.2: Helper for address extraction
 function _extractAddresses(displayString) {
     let emails = [];
     if (displayString) {
@@ -612,7 +612,6 @@ MsgReaderParser.prototype.extractRecipients = function() {
     console.log('  DisplayCc:', displayCc);
     
     if (displayTo || displayCc) {
-        // FIX C.2: Use helper
         let displayToEmails = _extractAddresses(displayTo);
         let displayCcEmails = _extractAddresses(displayCc);
         
