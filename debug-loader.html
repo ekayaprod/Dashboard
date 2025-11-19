@@ -2,43 +2,64 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MsgReader Debugger</title>
+    <title>MsgReader Debugger (Safe Mode)</title>
     <style>
-        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
-        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        textarea { width: 100%; height: 600px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; white-space: pre; overflow-x: auto; border: 1px solid #ccc; background: #2d2d2d; color: #fff; padding: 10px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
-        h1 { margin-top: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; color: #1a73e8; }
+        .controls { background: #e8f0fe; padding: 20px; border-radius: 8px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; border: 1px solid #d2e3fc; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .panel h3 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        textarea { width: 100%; height: 600px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 11px; white-space: pre; overflow: auto; border: 1px solid #ccc; background: #282c34; color: #abb2bf; padding: 15px; border-radius: 6px; box-sizing: border-box; line-height: 1.4; }
+        button { padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; background: #1a73e8; color: white; border: none; border-radius: 6px; transition: background 0.2s; }
+        button:hover { background: #1557b0; }
+        input[type="file"] { font-size: 14px; }
     </style>
     <script type="module">
-        import { MsgReaderDebug } from './js/msgreader-debug.js';
-        import { MsgReader } from './js/msgreader.js';
-
-        window.handleFile = function(input) {
+        // We attach to window immediately to ensure the UI is responsive
+        window.handleFile = async function(input) {
             if (input.files.length === 0) return;
             const file = input.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    // 1. Debug Report
-                    const report = MsgReaderDebug.generateReport(e.target.result);
-                    document.getElementById('debug-output').value = report;
+            const debugBox = document.getElementById('debug-output');
+            const prodBox = document.getElementById('prod-output');
 
-                    // 2. Production Output
+            // Reset UI
+            debugBox.value = "Loading Debug Module...";
+            prodBox.value = "Waiting for Debugger...";
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const buffer = e.target.result;
+
+                // 1. DYNAMIC IMPORT DEBUGGER (Isolates failure)
+                try {
+                    const { MsgReaderDebug } = await import('./js/msgreader-debug.js');
+                    const report = MsgReaderDebug.generateReport(buffer);
+                    debugBox.value = report;
+                } catch (err) {
+                    debugBox.value = "CRITICAL ERROR LOADING DEBUG MODULE:\n" + err.stack;
+                    console.error(err);
+                    return; // Stop if debugger fails
+                }
+
+                // 2. DYNAMIC IMPORT PRODUCTION READER (Isolates failure)
+                try {
+                    prodBox.value = "Loading Production Module...";
+                    const { MsgReader } = await import('./js/msgreader.js');
+                    
                     try {
-                        const prodResult = MsgReader.read(e.target.result);
-                        document.getElementById('prod-output').value = JSON.stringify({
+                        const prodResult = MsgReader.read(buffer);
+                        prodBox.value = JSON.stringify({
                             subject: prodResult.subject,
-                            body: prodResult.body ? prodResult.body.substring(0, 500) + (prodResult.body.length > 500 ? '...' : '') : null,
+                            body: prodResult.body ? (prodResult.body.substring(0, 1000) + (prodResult.body.length > 1000 ? '... [truncated]' : '')) : null,
                             recipients: prodResult.recipients
                         }, null, 2);
-                    } catch (prodErr) {
-                         document.getElementById('prod-output').value = "PRODUCTION PARSER CRASHED:\n" + prodErr.stack;
+                    } catch (runErr) {
+                        prodBox.value = "PARSING ERROR:\n" + runErr.stack;
                     }
 
-                } catch (err) {
-                    document.getElementById('debug-output').value = "CRITICAL DEBUGGER ERROR:\n" + err.stack;
+                } catch (importErr) {
+                    prodBox.value = "MODULE LOAD ERROR:\nCould not load 'js/msgreader.js'.\n" + importErr.message + "\n\n(The Debug Report on the left is still valid)";
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -54,18 +75,20 @@
 </head>
 <body>
     <div class="container">
-        <h1>MsgReader Binary Inspector</h1>
-        <p>Select an .msg or .oft file to generate a deep-dive structural report and compare with production output.</p>
-        <div style="margin-bottom: 20px;">
+        <h1>MsgReader Diagnostic Tool</h1>
+        <p>Select an .msg or .oft file. The tool will generate a deep-dive structural report (Left) and attempt to run the app parser (Right).</p>
+        
+        <div class="controls">
             <input type="file" id="file-in" onchange="handleFile(this)">
-            <button onclick="copyReport()">Copy Report to Clipboard</button>
+            <button onclick="copyReport()">Copy Debug Report</button>
         </div>
+        
         <div class="grid">
-            <div>
-                <h3>Raw Debug Report</h3>
+            <div class="panel">
+                <h3>Raw Debug Inspection</h3>
                 <textarea id="debug-output" readonly>Waiting for file...</textarea>
             </div>
-            <div>
+            <div class="panel">
                 <h3>Production Parser Result</h3>
                 <textarea id="prod-output" readonly>Waiting for file...</textarea>
             </div>
