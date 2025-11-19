@@ -1,10 +1,9 @@
 /**
  * js/msgreader.js
- * Version 2.0.15 (ES6 Module - Fix: Restore missing loop variable 'sectorsRead')
+ * Version 2.0.16 (ES6 Module - Fix: Clean MIME Body Extraction)
  * * CHANGE LOG:
- * - Fixed ReferenceError in readMiniFAT where sectorsRead was used but not defined.
- * - Maintained strict fatal:true for UTF-8 to prevent character corruption.
- * - Maintained binary-to-text forcing for HTML bodies.
+ * - Improved _scanBufferForMimeText to correctly extract only the text/plain content
+ * from multipart MIME bodies, removing headers and boundaries.
  */
 
 'use strict';
@@ -91,7 +90,6 @@ function dataViewToString(view, encoding) {
     if (encoding === 'utf-8') {
         try {
             if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
-            // Strict decoding to catch ANSI disguised as UTF-8
             let decoded = new TextDecoder('utf-8', { fatal: true }).decode(view);
             const nullIdx = decoded.indexOf('\0');
             return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
@@ -117,7 +115,6 @@ function dataViewToString(view, encoding) {
         }
     }
     
-    // Windows-1252 Fallback
     try {
         let decoded = getTextDecoder('windows-1252').decode(view);
         const nullIdx = decoded.indexOf('\0');
@@ -289,7 +286,6 @@ MsgReaderParser.prototype.readMiniFAT = function() {
     if (this.header.miniFatFirstSector === 0xFFFFFFFE) { this.miniFat = []; return; }
     this.miniFat = [];
     let sector = this.header.miniFatFirstSector, sectorSize = this.header.sectorSize;
-    // FIX: Restore 'sectorsRead' variable and increment it to prevent ReferenceError
     let sectorsRead = 0; 
     while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
         let offset = 512 + sector * sectorSize;
@@ -412,6 +408,7 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
     if (headerEndIndex === -1) headerEndIndex = rawText.indexOf('\n\n');
     
     if (headerEndIndex !== -1) {
+        // FIX: Smarter extraction for Multipart bodies
         let bodyText = rawText.substring(headerEndIndex + 4);
         
         if (rawText.indexOf('Content-Type: multipart') !== -1) {
@@ -419,8 +416,9 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
              if (plainTypeIndex !== -1) {
                  const start = bodyText.indexOf('\n\n', plainTypeIndex);
                  if (start !== -1) {
-                     let end = bodyText.indexOf('--', start);
+                     let end = bodyText.indexOf('\n--', start);
                      if (end === -1) end = bodyText.length;
+                     
                      bodyText = bodyText.substring(start + 2, end).trim();
                  }
              }
