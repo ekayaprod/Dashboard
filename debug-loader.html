@@ -2,97 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MsgReader Debugger (Safe Mode)</title>
+    <title>MsgReader Debugger (Unified)</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
         .container { max-width: 1400px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h1 { margin-top: 0; color: #1a73e8; }
         .controls { background: #e8f0fe; padding: 20px; border-radius: 8px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; border: 1px solid #d2e3fc; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
-        .panel h3 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        textarea { width: 100%; height: 600px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 11px; white-space: pre; overflow: auto; border: 1px solid #ccc; background: #282c34; color: #abb2bf; padding: 15px; border-radius: 6px; box-sizing: border-box; line-height: 1.4; }
+        textarea { width: 100%; height: 700px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 11px; white-space: pre; overflow: auto; border: 1px solid #ccc; background: #282c34; color: #abb2bf; padding: 15px; border-radius: 6px; box-sizing: border-box; line-height: 1.4; }
         button { padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; background: #1a73e8; color: white; border: none; border-radius: 6px; transition: background 0.2s; }
         button:hover { background: #1557b0; }
         input[type="file"] { font-size: 14px; }
     </style>
     <script type="module">
-        // We attach to window immediately to ensure the UI is responsive
         window.handleFile = async function(input) {
             if (input.files.length === 0) return;
             const file = input.files[0];
-            const debugBox = document.getElementById('debug-output');
-            const prodBox = document.getElementById('prod-output');
+            const outputBox = document.getElementById('unified-output');
 
-            // Reset UI
-            debugBox.value = "Loading Debug Module...";
-            prodBox.value = "Waiting for Debugger...";
+            outputBox.value = "Processing...";
 
             const reader = new FileReader();
             reader.onload = async function(e) {
                 const buffer = e.target.result;
+                let prodOutputString = "Production Parser did not run.";
 
-                // 1. DYNAMIC IMPORT DEBUGGER (Isolates failure)
+                // 1. RUN PRODUCTION PARSER (Capture result for the report)
                 try {
-                    const { MsgReaderDebug } = await import('./js/msgreader-debug.js');
-                    const report = MsgReaderDebug.generateReport(buffer);
-                    debugBox.value = report;
-                } catch (err) {
-                    debugBox.value = "CRITICAL ERROR LOADING DEBUG MODULE:\n" + err.stack;
-                    console.error(err);
-                    return; // Stop if debugger fails
-                }
-
-                // 2. DYNAMIC IMPORT PRODUCTION READER (Isolates failure)
-                try {
-                    prodBox.value = "Loading Production Module...";
                     const { MsgReader } = await import('./js/msgreader.js');
-                    
                     try {
                         const prodResult = MsgReader.read(buffer);
-                        prodBox.value = JSON.stringify({
+                        prodOutputString = JSON.stringify({
                             subject: prodResult.subject,
                             body: prodResult.body ? (prodResult.body.substring(0, 1000) + (prodResult.body.length > 1000 ? '... [truncated]' : '')) : null,
                             recipients: prodResult.recipients
                         }, null, 2);
                     } catch (runErr) {
-                        prodBox.value = "PARSING ERROR:\n" + runErr.stack;
+                        prodOutputString = "PRODUCTION PARSER CRASHED:\n" + runErr.stack;
                     }
-
                 } catch (importErr) {
-                    prodBox.value = "MODULE LOAD ERROR:\nCould not load 'js/msgreader.js'.\n" + importErr.message + "\n\n(The Debug Report on the left is still valid)";
+                    prodOutputString = "MODULE LOAD ERROR (js/msgreader.js missing?):\n" + importErr.message;
+                }
+
+                // 2. RUN DEBUG PARSER (Generate full report)
+                try {
+                    const { MsgReaderDebug } = await import('./js/msgreader-debug.js');
+                    
+                    // Pass metadata and production output to the debugger to include in the final text
+                    const report = MsgReaderDebug.generateReport(buffer, {
+                        filename: file.name,
+                        type: file.type || "n/a",
+                        prodOutput: prodOutputString
+                    });
+                    
+                    outputBox.value = report;
+
+                } catch (err) {
+                    outputBox.value = "CRITICAL DEBUGGER ERROR:\n" + err.stack;
+                    console.error(err);
                 }
             };
             reader.readAsArrayBuffer(file);
         };
 
         window.copyReport = function() {
-            const el = document.getElementById('debug-output');
+            const el = document.getElementById('unified-output');
             el.select();
             document.execCommand('copy');
-            alert('Debug Report copied to clipboard!');
+            alert('Full Report copied to clipboard!');
         };
     </script>
 </head>
 <body>
     <div class="container">
-        <h1>MsgReader Diagnostic Tool</h1>
-        <p>Select an .msg or .oft file. The tool will generate a deep-dive structural report (Left) and attempt to run the app parser (Right).</p>
+        <h1>MsgReader Unified Diagnostic Tool</h1>
+        <p>Select an .msg or .oft file. Generates a combined report of raw binary structures and production parser results.</p>
         
         <div class="controls">
             <input type="file" id="file-in" onchange="handleFile(this)">
-            <button onclick="copyReport()">Copy Debug Report</button>
+            <button onclick="copyReport()">Copy Full Report</button>
         </div>
         
-        <div class="grid">
-            <div class="panel">
-                <h3>Raw Debug Inspection</h3>
-                <textarea id="debug-output" readonly>Waiting for file...</textarea>
-            </div>
-            <div class="panel">
-                <h3>Production Parser Result</h3>
-                <textarea id="prod-output" readonly>Waiting for file...</textarea>
-            </div>
-        </div>
+        <textarea id="unified-output" readonly>Waiting for file...</textarea>
     </div>
 </body>
 </html>
