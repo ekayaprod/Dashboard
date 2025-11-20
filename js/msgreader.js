@@ -1,9 +1,11 @@
 /**
  * js/msgreader.js
- * Version 2.0.16 (ES6 Module - Fix: Clean MIME Body Extraction)
+ * Version 2.0.17 (ES6 Module - Fix: Gmail/MIME CRLF Handling)
  * * CHANGE LOG:
- * - Improved _scanBufferForMimeText to correctly extract only the text/plain content
- * from multipart MIME bodies, removing headers and boundaries.
+ * - Fixed bug where Gmail/MIME bodies were not extracted because the parser
+ * missed '\r\n\r\n' line endings (was looking for '\n\n').
+ * - Improved header detection to be case-insensitive.
+ * - Scoped transfer-encoding checks to the specific body part.
  */
 
 'use strict';
@@ -408,25 +410,63 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
     if (headerEndIndex === -1) headerEndIndex = rawText.indexOf('\n\n');
     
     if (headerEndIndex !== -1) {
-        // FIX: Smarter extraction for Multipart bodies
         let bodyText = rawText.substring(headerEndIndex + 4);
-        
-        if (rawText.indexOf('Content-Type: multipart') !== -1) {
-             const plainTypeIndex = bodyText.indexOf('Content-Type: text/plain');
-             if (plainTypeIndex !== -1) {
-                 const start = bodyText.indexOf('\n\n', plainTypeIndex);
+        let encoding = null;
+
+        // FIX: Robust Multipart Body Extraction
+        // Look for Content-Type: multipart... (case insensitive)
+        if (/Content-Type:\s*multipart/i.test(rawText)) {
+             // Find the start of the text/plain part headers
+             const plainMatch = bodyText.match(/Content-Type:\s*text\/plain/i);
+             if (plainMatch) {
+                 const plainTypeIndex = plainMatch.index;
+                 
+                 // Isolate the headers for this part to check for Transfer-Encoding
+                 // We assume the headers end at the next double-newline
+                 let start = -1;
+                 let startOffset = 0;
+                 
+                 // Check both Windows (CRLF) and Unix (LF) styles for the header end
+                 const rnrn = bodyText.indexOf('\r\n\r\n', plainTypeIndex);
+                 const nn = bodyText.indexOf('\n\n', plainTypeIndex);
+                 
+                 if (rnrn !== -1 && (nn === -1 || rnrn < nn)) {
+                     start = rnrn;
+                     startOffset = 4;
+                 } else if (nn !== -1) {
+                     start = nn;
+                     startOffset = 2;
+                 }
+                 
+                 // Check for QP in this part's headers
+                 const partHeaders = bodyText.substring(plainTypeIndex, start);
+                 if (/Content-Transfer-Encoding:\s*quoted-printable/i.test(partHeaders)) {
+                     encoding = 'quoted-printable';
+                 }
+
                  if (start !== -1) {
-                     let end = bodyText.indexOf('\n--', start);
+                     // Find the next boundary (starts with --)
+                     let end = -1;
+                     // Boundary usually starts on a new line
+                     const boundRN = bodyText.indexOf('\r\n--', start + startOffset);
+                     const boundN = bodyText.indexOf('\n--', start + startOffset);
+                     
+                     if (boundRN !== -1 && (boundN === -1 || boundRN < boundN)) {
+                         end = boundRN;
+                     } else if (boundN !== -1) {
+                         end = boundN;
+                     }
+                     
                      if (end === -1) end = bodyText.length;
                      
-                     bodyText = bodyText.substring(start + 2, end).trim();
+                     bodyText = bodyText.substring(start + startOffset, end).trim();
                  }
              }
-        }
-
-        let encoding = null;
-        if (rawText.match(/^Content-Transfer-Encoding:\s*quoted-printable/im)) {
-            encoding = 'quoted-printable';
+        } else {
+             // Not multipart, check global headers for QP
+             if (rawText.match(/^Content-Transfer-Encoding:\s*quoted-printable/im)) {
+                encoding = 'quoted-printable';
+             }
         }
         
         result.body = (encoding === 'quoted-printable') ? _decodeQuotedPrintable(bodyText) : bodyText;
