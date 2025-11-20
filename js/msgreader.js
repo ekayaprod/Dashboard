@@ -1,11 +1,9 @@
 /**
  * js/msgreader.js
- * Version 2.0.17 (ES6 Module - Fix: Gmail/MIME CRLF Handling)
+ * Version 2.0.18 (ES6 Module - Fix: Remove CSS/Script content from HTML Body)
  * * CHANGE LOG:
- * - Fixed bug where Gmail/MIME bodies were not extracted because the parser
- * missed '\r\n\r\n' line endings (was looking for '\n\n').
- * - Improved header detection to be case-insensitive.
- * - Scoped transfer-encoding checks to the specific body part.
+ * - Updated _stripHtml to remove <style>, <script>, and <head> blocks entirely
+ * (content included) preventing CSS rules from appearing in the text body.
  */
 
 'use strict';
@@ -74,12 +72,28 @@ function _decodeQuotedPrintable(str) {
 
 function _stripHtml(html) {
     if (!html || typeof html !== 'string') return ''; 
-    let text = html.replace(/<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n').replace(/<[^>]+>/g, '');
+    
+    // FIX: Remove entire blocks of non-content code first
+    let text = html
+        .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<\?xml[^>]*\?>/gi, '');
+
+    // Convert block tags to newlines for spacing
+    text = text.replace(/<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n');
+    
     let parser = getDOMParser();
     if (parser) {
+        // Use DOMParser to strip remaining tags and handle HTML entities
         let doc = parser.parseFromString(text, 'text/html');
-        text = doc.documentElement.textContent || '';
+        text = doc.body ? doc.body.textContent : (doc.documentElement.textContent || '');
+    } else {
+        // Fallback regex strip
+        text = text.replace(/<[^>]+>/g, '');
     }
+    
     return text.replace(/(\r\n|\r|\n){3,}/g, '\n\n').trim();
 }
 
@@ -413,20 +427,14 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
         let bodyText = rawText.substring(headerEndIndex + 4);
         let encoding = null;
 
-        // FIX: Robust Multipart Body Extraction
-        // Look for Content-Type: multipart... (case insensitive)
         if (/Content-Type:\s*multipart/i.test(rawText)) {
-             // Find the start of the text/plain part headers
              const plainMatch = bodyText.match(/Content-Type:\s*text\/plain/i);
              if (plainMatch) {
                  const plainTypeIndex = plainMatch.index;
                  
-                 // Isolate the headers for this part to check for Transfer-Encoding
-                 // We assume the headers end at the next double-newline
                  let start = -1;
                  let startOffset = 0;
                  
-                 // Check both Windows (CRLF) and Unix (LF) styles for the header end
                  const rnrn = bodyText.indexOf('\r\n\r\n', plainTypeIndex);
                  const nn = bodyText.indexOf('\n\n', plainTypeIndex);
                  
@@ -438,16 +446,13 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
                      startOffset = 2;
                  }
                  
-                 // Check for QP in this part's headers
                  const partHeaders = bodyText.substring(plainTypeIndex, start);
                  if (/Content-Transfer-Encoding:\s*quoted-printable/i.test(partHeaders)) {
                      encoding = 'quoted-printable';
                  }
 
                  if (start !== -1) {
-                     // Find the next boundary (starts with --)
                      let end = -1;
-                     // Boundary usually starts on a new line
                      const boundRN = bodyText.indexOf('\r\n--', start + startOffset);
                      const boundN = bodyText.indexOf('\n--', start + startOffset);
                      
@@ -463,7 +468,6 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
                  }
              }
         } else {
-             // Not multipart, check global headers for QP
              if (rawText.match(/^Content-Transfer-Encoding:\s*quoted-printable/im)) {
                 encoding = 'quoted-printable';
              }
