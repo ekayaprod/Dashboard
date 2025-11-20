@@ -38,7 +38,7 @@
     --menu-bg: var(--panel-bg);
     --menu-item-hover: var(--bg-color);
     
-    /* NEW: Link Color for better control */
+    /* Link Color for better control */
     --link-color: #2563eb;
     --link-hover: #1d4ed8;
 
@@ -230,10 +230,18 @@ body {
 
 .hidden { display: none !important; }
 
-/* --- MAILTO PAGE STYLES --- */
+/* --- MAILTO PAGE SPECIFIC STYLES --- */
+/* All specific styles are now scoped to .mailto-page to prevent leaks */
+
+.mailto-page .panel {
+    /* Ensure panel in this app uses full height/width correctly if needed */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
 
 /* Accordion */
-.accordion-section {
+.mailto-page .accordion-section {
     display: flex;
     flex-direction: column;
     background-color: var(--panel-bg);
@@ -243,13 +251,13 @@ body {
     transition: flex-grow 0.3s ease, box-shadow 0.2s;
     flex-shrink: 0;
 }
-.accordion-section.expanded {
+.mailto-page .accordion-section.expanded {
     flex-grow: 1;
     flex-shrink: 1;
     box-shadow: var(--box-shadow-lg);
     min-height: 300px;
 }
-.accordion-header {
+.mailto-page .accordion-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -260,11 +268,11 @@ body {
     transition: background-color 0.2s;
     user-select: none;
 }
-.accordion-section.expanded .accordion-header {
+.mailto-page .accordion-section.expanded .accordion-header {
     border-bottom-color: var(--border-color);
     background-color: var(--panel-bg);
 }
-.accordion-content {
+.mailto-page .accordion-content {
     display: none;
     flex-direction: column;
     height: 100%;
@@ -273,14 +281,14 @@ body {
     box-sizing: border-box;
     background-color: var(--panel-bg);
 }
-.accordion-section.expanded .accordion-content { display: flex; }
-.accordion-icon { transition: transform 0.3s; }
-.accordion-section.expanded .accordion-icon { transform: rotate(180deg); }
+.mailto-page .accordion-section.expanded .accordion-content { display: flex; }
+.mailto-page .accordion-icon { transition: transform 0.3s; }
+.mailto-page .accordion-section.expanded .accordion-icon { transform: rotate(180deg); }
 
 /* Tree View / Library Styles */
-.tree-list-container { flex-grow: 1; overflow-y: auto; }
+.mailto-page .tree-list-container { flex-grow: 1; overflow-y: auto; }
 
-.list-item {
+.mailto-page .list-item {
     padding: 0.4rem 0.5rem;
     border-bottom: 1px solid var(--border-color);
     display: flex;
@@ -288,11 +296,11 @@ body {
     gap: 0.5rem;
     transition: background-color 0.1s;
 }
-.list-item:hover { background-color: var(--info-bg); }
-.list-item:last-child { border-bottom: none; }
+.mailto-page .list-item:hover { background-color: var(--info-bg); }
+.mailto-page .list-item:last-child { border-bottom: none; }
 
 /* Icon wrapper to prevent shrinking */
-.list-item-icon {
+.mailto-page .list-item-icon {
     flex-shrink: 0;
     width: 20px;
     height: 20px;
@@ -301,12 +309,12 @@ body {
     justify-content: center;
     color: var(--subtle-text);
 }
-.list-item-icon.folder { color: #eab308; } /* Yellow folder */
-.list-item-icon.template { color: var(--primary-color); }
+.mailto-page .list-item-icon.folder { color: #eab308; } /* Yellow folder */
+.mailto-page .list-item-icon.template { color: var(--primary-color); }
 
 /* Text handling - Critical for preventing spillover */
-.list-item-name-folder,
-.list-item-name {
+.mailto-page .list-item-name-folder,
+.mailto-page .list-item-name {
     flex: 1;
     white-space: nowrap;
     overflow: hidden;
@@ -318,21 +326,21 @@ body {
     color: var(--text-color);
 }
 /* Use specific variable for links to fix dark mode visibility */
-.list-item-name { color: var(--link-color); }
-.list-item-name:hover { text-decoration: underline; color: var(--link-hover); }
+.mailto-page .list-item-name { color: var(--link-color); }
+.mailto-page .list-item-name:hover { text-decoration: underline; color: var(--link-hover); }
 
 /* Action buttons */
-.list-item-actions {
+.mailto-page .list-item-actions {
     display: flex;
     gap: 0.1rem;
     flex-shrink: 0;
     opacity: 0.6;
     transition: opacity 0.2s;
 }
-.list-item:hover .list-item-actions { opacity: 1; }
+.mailto-page .list-item:hover .list-item-actions { opacity: 1; }
 
 /* Breadcrumbs */
-.breadcrumb-container {
+.mailto-page .breadcrumb-container {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -342,29 +350,29 @@ body {
     border-bottom: 1px solid var(--border-color);
     font-size: 0.85rem;
 }
-.breadcrumb-link {
+.mailto-page .breadcrumb-link {
     color: var(--subtle-text);
     cursor: pointer;
     text-decoration: none;
 }
-.breadcrumb-link:hover { color: var(--primary-color); text-decoration: underline; }
-.breadcrumb-current { font-weight: 600; color: var(--text-color); }
-.breadcrumb-separator { color: var(--border-color); }
+.mailto-page .breadcrumb-link:hover { color: var(--primary-color); text-decoration: underline; }
+.mailto-page .breadcrumb-current { font-weight: 600; color: var(--text-color); }
+.mailto-page .breadcrumb-separator { color: var(--border-color); }
 
 /* Editor Layout */
-.editor-container {
+.mailto-page .editor-container {
     display: flex;
     flex-direction: column;
     height: 100%;
     gap: 0.5rem;
 }
-.body-group {
+.mailto-page .body-group {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
     min-height: 150px;
 }
-.body-input {
+.mailto-page .body-input {
     flex-grow: 1;
     height: 100%;
     resize: none;
@@ -372,8 +380,8 @@ body {
     line-height: 1.4;
 }
 
-/* Improved Upload Zone - Looks like a big button/drop area */
-.upload-wrapper {
+/* Improved Upload Zone */
+.mailto-page .upload-wrapper {
     padding: 1.5rem 1rem;
     border: 2px dashed var(--border-color);
     border-radius: var(--border-radius);
@@ -387,18 +395,19 @@ body {
     align-items: center;
     justify-content: center;
 }
-.upload-wrapper:hover, .upload-wrapper.dragover {
+.mailto-page .upload-wrapper:hover, 
+.mailto-page .upload-wrapper.dragover {
     border-color: var(--primary-color);
     background-color: var(--primary-hover-bg-light);
 }
-.upload-wrapper input[type="file"] {
+.mailto-page .upload-wrapper input[type="file"] {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
     opacity: 0;
     cursor: pointer;
     z-index: 10;
 }
-.upload-label {
+.mailto-page .upload-label {
     pointer-events: none; /* Let click pass to input */
     display: flex;
     flex-direction: column;
@@ -406,7 +415,7 @@ body {
     gap: 0.5rem;
     color: var(--subtle-text);
 }
-.upload-icon { width: 24px; height: 24px; margin-bottom: 0.25rem; }
+.mailto-page .upload-icon { width: 24px; height: 24px; margin-bottom: 0.25rem; }
 
 /* Modal Styles */
 .modal-overlay { 
