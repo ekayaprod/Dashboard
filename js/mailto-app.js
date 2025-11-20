@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
- * Version: 2.3.0 (Restored & Feature Added)
+ * Version: 2.3.3 (Final Corrected)
  */
 
 import { MsgReader } from './msgreader.js';
@@ -9,14 +9,14 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.3.0',
+    VERSION: '2.3.3',
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
 
 const MAILTO_PARAM_KEYS = ['cc', 'bcc', 'subject']; 
 
-// Internal SVGs (No external requests)
+// Internal SVGs
 const ICONS = {
     folder: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
     template: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/></svg>',
@@ -59,11 +59,12 @@ function findItemById(id) {
 }
 
 function findParentOfItem(childId) {
+    if (childId === 'root') return null; 
     const result = findInTree(state.library, i => i.id === childId);
     return result ? (result.parent || {id: 'root', children: state.library}) : null;
 }
 
-// Helper to get flattened folders for dropdowns
+// Helper for Folder Dropdowns
 function getAllFolders(items = state.library, level = 0) {
     let folders = [];
     if (level === 0) folders.push({ id: 'root', name: 'Root', level: 0 });
@@ -83,7 +84,7 @@ function populateFolderSelect(selectEl, excludeId = null) {
     const folders = getAllFolders();
     selectEl.innerHTML = '';
     folders.forEach(f => {
-        if (f.id === excludeId) return; // Prevent moving into self
+        if (f.id === excludeId) return; 
         const opt = document.createElement('option');
         opt.value = f.id;
         opt.innerHTML = '&nbsp;'.repeat(f.level * 2) + (f.level > 0 ? '📂 ' : '') + SafeUI.escapeHTML(f.name);
@@ -96,17 +97,33 @@ function setActiveSection(sectionName) {
     const libSec = document.getElementById('library-section');
     const editSec = document.getElementById('editor-section');
     
+    // Toggle helper
+    const setExpanded = (el, isExpanded) => {
+        if (isExpanded) {
+            el.classList.add('expanded');
+            el.classList.remove('collapsed');
+        } else {
+            el.classList.remove('expanded');
+            el.classList.add('collapsed');
+        }
+    };
+
+    // Logic: 2-state toggle + Mutex
+    // If 'library' passed: Library Open, Editor Closed
+    // If 'editor' passed: Editor Open, Library Closed
+    // If null passed: Both Closed
+    
     if (sectionName === 'library') {
-        libSec.classList.add('expanded');
-        libSec.classList.remove('collapsed');
-        editSec.classList.remove('expanded');
-        editSec.classList.add('collapsed');
+        setExpanded(libSec, true);
+        setExpanded(editSec, false);
+    } else if (sectionName === 'editor') {
+        setExpanded(editSec, true);
+        setExpanded(libSec, false);
     } else {
-        editSec.classList.add('expanded');
-        editSec.classList.remove('collapsed');
-        libSec.classList.remove('expanded');
-        libSec.classList.add('collapsed');
+        setExpanded(libSec, false);
+        setExpanded(editSec, false);
     }
+    
     if (state.ui) { state.ui.activeSection = sectionName; saveState(); }
 }
 
@@ -115,8 +132,10 @@ function clearEditorFields() {
         const el = document.getElementById(id);
         if(el) el.value = '';
     });
+    
     const fileInput = document.getElementById('msg-upload');
     if (fileInput) fileInput.value = '';
+    
     document.getElementById('output-wrapper').classList.add('hidden');
     SafeUI.showToast("Editor cleared");
 }
@@ -158,6 +177,7 @@ function handleFile(file) {
             const d = MsgReader.read(e.target.result);
             DOMElements.resultSubject.value = d.subject || '';
             DOMElements.resultBody.value = d.body || '';
+            
             const map = {1:[], 2:[], 3:[]}; 
             d.recipients.forEach(r => {
                 const addr = r.email || (r.name && r.name.includes('@')?r.name:'');
@@ -166,6 +186,7 @@ function handleFile(file) {
             DOMElements.resultTo.value = map[1].join(', ');
             DOMElements.resultCc.value = map[2].join(', ');
             DOMElements.resultBcc.value = map[3].join(', ');
+            
             setActiveSection('editor');
             SafeUI.showToast('File loaded');
         } catch (err) { 
@@ -227,17 +248,17 @@ function renderCatalogue() {
             const isFolder = item.type === 'folder';
             
             div.innerHTML = `
-                <div class="list-item-icon ${isFolder?'folder':'template'}">${ICONS[isFolder ? 'folder' : 'template']}</div>
-                ${isFolder 
+                 <div class="list-item-icon ${isFolder?'folder':'template'}">${ICONS[isFolder ? 'folder' : 'template']}</div>
+                 ${isFolder 
                     ? `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>` 
                     : `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name">${SafeUI.escapeHTML(item.name)}</a>`
-                }
-                <div class="list-item-actions">
-                    ${!isFolder ? `<button class="icon-btn copy-btn" title="Copy Link">${ICONS.folder}</button>` : ''} 
+                 }
+                 <div class="list-item-actions">
+                    ${!isFolder ? `<button class="icon-btn copy-btn" title="Copy Link">${ICONS.folder}</button>` : ''}
                     <button class="icon-btn move-btn" title="Move">${ICONS.move}</button>
                     <button class="icon-btn edit-btn" title="${isFolder?'Rename':'Edit'}">${ICONS.edit}</button>
                     <button class="icon-btn delete-btn" title="Delete">${ICONS.trash}</button>
-                </div>`;
+                 </div>`;
             return div;
         }
     });
@@ -261,21 +282,24 @@ function openMoveModal(itemId) {
             callback: () => {
                 const targetId = document.getElementById('move-target-select').value;
                 if(targetId && targetId !== itemId) {
+                    // Remove from old
                     const oldParent = findParentOfItem(itemId);
                     if (oldParent) oldParent.children = oldParent.children.filter(c => c.id !== itemId);
+                    
+                    // Add to new
                     const newParent = findItemById(targetId);
                     if (newParent && newParent.children) {
                         newParent.children.push(item);
                         saveState();
                         renderCatalogue();
-                        SafeUI.showToast("Moved successfully");
+                        SafeUI.showToast("Item moved");
                     }
                 }
             }
         },
         { label: 'Cancel' }
     ]);
-    
+
     setTimeout(() => {
         const sel = document.getElementById('move-target-select');
         if(sel) populateFolderSelect(sel, item.type === 'folder' ? itemId : null);
@@ -284,8 +308,10 @@ function openMoveModal(itemId) {
 
 async function init() {
     console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
-    if (typeof SafeUI === 'undefined') { return; } 
+    
+    if (typeof SafeUI === 'undefined') { return; } // Safety check
 
+    // Fetch Navbar
     try {
         const resp = await fetch('navbar.html');
         if (resp.ok) {
@@ -309,9 +335,9 @@ async function init() {
     if (!ctx) return; 
     ({ elements: DOMElements, state, saveState } = ctx);
 
+    // Set Initial Section
     setActiveSection(state.ui.activeSection || 'editor');
 
-    // Refresh the "Save to Folder" dropdown logic
     const refreshSaveDropdown = () => {
         const el = document.getElementById('save-target-folder');
         if(el) {
@@ -320,19 +346,31 @@ async function init() {
         }
     };
 
+    // Accordion Toggles - Simple 2-State Toggle Logic
+    const handleHeaderClick = (section) => {
+        // If clicking current open section -> Close it (null)
+        // If clicking closed section -> Open it (section)
+        const next = state.ui.activeSection === section ? null : section;
+        setActiveSection(next);
+        if(next === 'editor') refreshSaveDropdown();
+    };
+
     document.getElementById('library-header').addEventListener('click', (e) => {
-        if (!e.target.closest('button')) setActiveSection('library');
+        if (!e.target.closest('button')) handleHeaderClick('library');
     });
     document.getElementById('editor-header').addEventListener('click', (e) => {
-        if (!e.target.closest('button')) setActiveSection('editor');
-        refreshSaveDropdown();
+        if (!e.target.closest('button')) handleHeaderClick('editor');
     });
 
+    // Clear Button
     DOMElements.btnClearAll.addEventListener('click', (e) => {
         e.stopPropagation();
-        UIPatterns.confirmDelete('Form Data', 'Current Content', clearEditorFields);
+        UIPatterns.confirmDelete('Form Data', 'Current Content', () => {
+             clearEditorFields();
+        });
     });
 
+    // New Folder
     DOMElements.btnNewFolder.addEventListener('click', (e) => {
         e.stopPropagation();
         SafeUI.showModal('New Folder', '<input id="fn" class="sidebar-input" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
@@ -349,65 +387,66 @@ async function init() {
         }}, {label:'Cancel'}]);
     });
 
-    // Improved Upload Logic (Click wrapper triggers input)
+    // Drag & Drop (Click wrapper triggers input)
     const uploadWrapper = document.getElementById('upload-wrapper');
     uploadWrapper.addEventListener('click', (e) => {
         if (e.target !== DOMElements.msgUpload) DOMElements.msgUpload.click();
     });
     DOMElements.msgUpload.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
     
-    // Drag & Drop
-    const handleDrag = e => { 
-        e.preventDefault(); 
-        e.stopPropagation();
-    };
+    const handleDrag = e => { e.preventDefault(); e.stopPropagation(); };
     const handleDrop = e => { 
-        e.preventDefault(); 
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); 
     };
     uploadWrapper.addEventListener('dragenter', handleDrag);
     uploadWrapper.addEventListener('dragover', handleDrag);
     uploadWrapper.addEventListener('drop', handleDrop);
 
+    // Generate
     DOMElements.btnGenerate.addEventListener('click', () => {
         const d = {
             to: DOMElements.resultTo.value, cc: DOMElements.resultCc.value, bcc: DOMElements.resultBcc.value,
             subject: DOMElements.resultSubject.value, body: DOMElements.resultBody.value
         };
         const m = buildMailto(d);
+        if (m.length > 2000) SafeUI.showToast("Warning: Link length > 2000 chars");
+
         DOMElements.resultMailto.value = m;
         DOMElements.resultLink.href = m;
         DOMElements.outputWrapper.classList.remove('hidden');
         refreshSaveDropdown();
+        
         // Scroll to bottom
         const scrollTarget = document.querySelector('#editor-section .accordion-content');
         if(scrollTarget) scrollTarget.scrollTop = scrollTarget.scrollHeight;
     });
 
+    // Copy
     DOMElements.copyMailtoBtn.addEventListener('click', () => {
         SafeUI.copyToClipboard(DOMElements.resultMailto.value);
         SafeUI.showToast("Copied");
     });
 
+    // Save Template
     DOMElements.btnSaveToLibrary.addEventListener('click', () => {
         if (!DOMElements.resultMailto.value) DOMElements.btnGenerate.click();
         
         const name = DOMElements.saveTemplateName.value.trim() || DOMElements.resultSubject.value.trim() || "New Template";
         const targetId = document.getElementById('save-target-folder').value || currentFolderId;
         const f = findItemById(targetId);
-        
+
         if(f) {
             f.children.push({
                 id: SafeUI.generateId(), type:'item', name, 
                 mailto: DOMElements.resultMailto.value
             });
-            saveState(); 
-            renderCatalogue();
+            saveState(); renderCatalogue();
             SafeUI.showToast("Saved to Library");
         }
     });
 
+    // Tree Navigation & Actions
     DOMElements.treeListContainer.addEventListener('click', e => {
         const itemEl = e.target.closest('.list-item');
         if(!itemEl) return;
@@ -421,12 +460,7 @@ async function init() {
         
         if(e.target.closest('.copy-btn')) {
             SafeUI.copyToClipboard(item.mailto);
-            SafeUI.showToast("Copied link");
-            return;
-        }
-        
-        if(e.target.closest('.move-btn')) {
-            openMoveModal(id);
+            SafeUI.showToast("Copied command");
             return;
         }
 
@@ -460,6 +494,10 @@ async function init() {
                 SafeUI.showToast("Loaded");
             }
         }
+        
+        if(e.target.closest('.move-btn')) {
+            openMoveModal(id);
+        }
     });
 
     DOMElements.breadcrumbContainer.addEventListener('click', e => {
@@ -469,10 +507,9 @@ async function init() {
     renderCatalogue();
     refreshSaveDropdown();
     
-    // Settings (CSV)
     SharedSettingsModal.init({
         buttonId: 'btn-settings', appName: APP_CONFIG.NAME, state,
-        pageSpecificDataHtml: `<button id="exp" class="button-base">Export CSV</button><button id="imp" class="button-base">Import CSV</button>`,
+        pageSpecificDataHtml: `<button id=\"exp\" class=\"button-base\">Export CSV</button><button id=\"imp\" class=\"button-base\">Import CSV</button>`,
         onModalOpen: () => {
             CsvManager.setupExport({exportBtn: document.getElementById('exp'), headers: APP_CONFIG.CSV_HEADERS, dataGetter: ()=>[], filename:'export.csv'});
             CsvManager.setupImport({
