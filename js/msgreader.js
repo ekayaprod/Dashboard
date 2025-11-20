@@ -1,10 +1,10 @@
 /**
  * js/msgreader.js
- * Version 2.0.21 (ES6 Module - Fix: Prevent Double Spacing in HTML-to-Text)
+ * Version 2.0.22 (ES6 Module - Fix: Double Spacing & EML Encoding)
  * * CHANGE LOG:
- * - Updated _stripHtml to consume source-code whitespace surrounding block tags.
- * - This prevents "double newline" artifacts in New Outlook .msg files caused by
- * combining source newlines with tag-converted newlines.
+ * - Updated _stripHtml to collapse multiple newlines into single/double newlines correctly.
+ * - Updated _scanBufferForMimeText to detect and apply 'charset' from MIME headers
+ * during Quoted-Printable decoding (fixes Schrödinger in .eml).
  */
 
 'use strict';
@@ -47,7 +47,8 @@ function getTextDecoder(encoding) {
         if (!_textDecoderWin1252) _textDecoderWin1252 = new TextDecoder('windows-1252', { fatal: false });
         return _textDecoderWin1252;
     }
-    return new TextDecoder(encoding);
+    // Dynamic encoding (e.g. iso-8859-1), don't cache or cache separately if needed
+    return new TextDecoder(encoding, { fatal: false });
 }
 
 function getDOMParser() {
@@ -59,16 +60,29 @@ function getDOMParser() {
 
 // --- Helpers ---
 
-function _decodeQuotedPrintable(str) {
+function _decodeQuotedPrintable(str, charset = 'utf-8') {
     if (!str) return '';
+    
+    // Basic QP decoding to bytes
     let decoded = str
-        .replace(/=(\r\n|\n)/g, '')
+        .replace(/=(\r\n|\n)/g, '') // Join soft lines
         .replace(/=([0-9A-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+    
     try {
+        // Convert the binary string to a Uint8Array
         let bytes = new Uint8Array(decoded.length);
         for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
-        return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-    } catch (e) { return decoded; }
+        
+        // Decode using the specified charset
+        // Normalize charset names
+        let encoding = charset.toLowerCase();
+        if (encoding === 'us-ascii') encoding = 'utf-8'; // Compatible fallback
+        
+        return new TextDecoder(encoding, { fatal: false }).decode(bytes);
+    } catch (e) { 
+        console.warn(`QP Decode Error for charset ${charset}:`, e);
+        return decoded; 
+    }
 }
 
 function _stripHtml(html) {
@@ -85,8 +99,8 @@ function _stripHtml(html) {
     // Remove Outlook-specific raw CSS artifacts
     text = text.replace(/[.#a-z0-9_]+\s*\{[^}]+\}/gi, '');
 
-    // FIX: Convert block tags to newlines, consuming surrounding whitespace
-    // This prevents \r\n<div> becoming \n\n (double spacing)
+    // FIX: Better whitespace handling for block tags
+    // Replace block tags with a placeholder, consume surrounding whitespace
     text = text.replace(/\s*<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>\s*/gi, '\n');
     
     // Pass 2: DOM Parsing
@@ -104,8 +118,7 @@ function _stripHtml(html) {
         text = text.replace(/<[^>]+>/g, '');
     }
     
-    // Final whitespace cleanup (handled in _normalizeText)
-    return text;
+    return _normalizeText(text);
 }
 
 function _normalizeText(text) {
@@ -114,7 +127,8 @@ function _normalizeText(text) {
     return text
         .replace(/\r\n/g, '\n') // Windows to Unix
         .replace(/\r/g, '\n')   // Mac to Unix
-        .replace(/\n{3,}/g, '\n\n') // Max 2 newlines
+        // FIX: Collapse multiple newlines (3 or more) into 2 (Paragraph break)
+        .replace(/\n{3,}/g, '\n\n') 
         .trim();
 }
 
@@ -215,8 +229,7 @@ function MsgReaderParser(arrayBuffer) {
     }
     this.buffer = arrayBuffer instanceof ArrayBuffer ? arrayBuffer : new Uint8Array(arrayBuffer).buffer;
     this.dataView = new DataView(this.buffer);
-    this.header = null;
-    this.fat = null; this.miniFat = null;
+    this.header = null; this.fat = null; this.miniFat = null;
     this.directoryEntries = []; this.properties = {}; this._mimeScanCache = null;
 }
 
@@ -443,6 +456,7 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
     if (headerEndIndex !== -1) {
         let bodyText = rawText.substring(headerEndIndex + 4);
         let encoding = null;
+        let charset = 'utf-8'; // Default
 
         if (/Content-Type:\s*multipart/i.test(rawText)) {
              const plainMatch = bodyText.match(/Content-Type:\s*text\/plain/i);
@@ -467,6 +481,9 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
                  if (/Content-Transfer-Encoding:\s*quoted-printable/i.test(partHeaders)) {
                      encoding = 'quoted-printable';
                  }
+                 // FIX: Capture charset from part headers (e.g. iso-8859-1)
+                 const charsetMatch = partHeaders.match(/charset=["']?([^"';\r\n]+)/i);
+                 if (charsetMatch) charset = charsetMatch[1];
 
                  if (start !== -1) {
                      let end = -1;
@@ -488,9 +505,13 @@ MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
              if (rawText.match(/^Content-Transfer-Encoding:\s*quoted-printable/im)) {
                 encoding = 'quoted-printable';
              }
+             // Check global charset
+             const charsetMatch = rawText.match(/charset=["']?([^"';\r\n]+)/i);
+             if (charsetMatch) charset = charsetMatch[1];
         }
         
-        result.body = (encoding === 'quoted-printable') ? _decodeQuotedPrintable(bodyText) : bodyText;
+        // FIX: Pass charset to decoder
+        result.body = (encoding === 'quoted-printable') ? _decodeQuotedPrintable(bodyText, charset) : bodyText;
     }
     
     this._mimeScanCache = result;
