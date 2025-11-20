@@ -1,11 +1,10 @@
 /**
  * js/msgreader.js
- * Version 2.0.19 (ES6 Module - Fix: Aggressive HTML/CSS Cleaning)
+ * Version 2.0.21 (ES6 Module - Fix: Prevent Double Spacing in HTML-to-Text)
  * * CHANGE LOG:
- * - Enhanced _stripHtml with a multi-pass cleaning strategy.
- * - Added DOM-level node removal for <style> and <script> tags to catch
- * elements that evade Regex filters.
- * - Ensures "P {margin...}" CSS artifacts are removed from New Outlook bodies.
+ * - Updated _stripHtml to consume source-code whitespace surrounding block tags.
+ * - This prevents "double newline" artifacts in New Outlook .msg files caused by
+ * combining source newlines with tag-converted newlines.
  */
 
 'use strict';
@@ -75,8 +74,7 @@ function _decodeQuotedPrintable(str) {
 function _stripHtml(html) {
     if (!html || typeof html !== 'string') return ''; 
     
-    // Pass 1: Aggressive Regex Removal of Metadata Blocks
-    // We remove HEAD completely because Outlook puts styles there.
+    // Pass 1: Aggressive Regex Removal
     let text = html
         .replace(/<head[\s\S]*?<\/head>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -84,36 +82,40 @@ function _stripHtml(html) {
         .replace(/<!--[\s\S]*?-->/g, '')
         .replace(/<\?xml[^>]*\?>/gi, '');
 
-    // Convert block tags to newlines for spacing (Visual formatting)
-    text = text.replace(/<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n');
+    // Remove Outlook-specific raw CSS artifacts
+    text = text.replace(/[.#a-z0-9_]+\s*\{[^}]+\}/gi, '');
+
+    // FIX: Convert block tags to newlines, consuming surrounding whitespace
+    // This prevents \r\n<div> becoming \n\n (double spacing)
+    text = text.replace(/\s*<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>\s*/gi, '\n');
     
-    // Pass 2: DOM Parsing for Entity Decoding and Deep Cleaning
+    // Pass 2: DOM Parsing
     let parser = getDOMParser();
     if (parser) {
         try {
             let doc = parser.parseFromString(text, 'text/html');
-            
-            // Safety: Remove any style/script nodes that survived regex (e.g. in body)
             const junk = doc.querySelectorAll('style, script, link, meta, title');
             junk.forEach(el => el.remove());
-            
             text = doc.body ? doc.body.textContent : (doc.documentElement.textContent || '');
         } catch (e) {
-            // If DOMParser fails, fall back to Regex stripping
             text = text.replace(/<[^>]+>/g, '');
         }
     } else {
-        // Fallback if no DOMParser
         text = text.replace(/<[^>]+>/g, '');
     }
     
-    // Normalize whitespace
-    return text.replace(/(\r\n|\r|\n){3,}/g, '\n\n').trim();
+    // Final whitespace cleanup (handled in _normalizeText)
+    return text;
 }
 
 function _normalizeText(text) {
     if (!text) return '';
-    return text.replace(/(\r\n|\r|\n){3,}/g, '\n\n');
+    // Normalize line endings and trim excessive whitespace
+    return text
+        .replace(/\r\n/g, '\n') // Windows to Unix
+        .replace(/\r/g, '\n')   // Mac to Unix
+        .replace(/\n{3,}/g, '\n\n') // Max 2 newlines
+        .trim();
 }
 
 function dataViewToString(view, encoding) {
@@ -213,7 +215,8 @@ function MsgReaderParser(arrayBuffer) {
     }
     this.buffer = arrayBuffer instanceof ArrayBuffer ? arrayBuffer : new Uint8Array(arrayBuffer).buffer;
     this.dataView = new DataView(this.buffer);
-    this.header = null; this.fat = null; this.miniFat = null;
+    this.header = null;
+    this.fat = null; this.miniFat = null;
     this.directoryEntries = []; this.properties = {}; this._mimeScanCache = null;
 }
 
