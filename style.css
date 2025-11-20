@@ -38,6 +38,7 @@
     --menu-bg: var(--panel-bg);
     --menu-item-hover: var(--bg-color);
     
+    /* NEW: Link Color for better control */
     --link-color: #2563eb;
     --link-hover: #1d4ed8;
 
@@ -85,6 +86,7 @@
         --menu-bg: #1f2937;
         --menu-item-hover: #374151;
         
+        /* High contrast link color for dark mode */
         --link-color: #60a5fa;
         --link-hover: #93c5fd;
     }
@@ -315,6 +317,7 @@ body {
     text-decoration: none;
     color: var(--text-color);
 }
+/* Use specific variable for links to fix dark mode visibility */
 .list-item-name { color: var(--link-color); }
 .list-item-name:hover { text-decoration: underline; color: var(--link-hover); }
 
@@ -369,7 +372,7 @@ body {
     line-height: 1.4;
 }
 
-/* Improved Upload Zone */
+/* Improved Upload Zone - Looks like a big button/drop area */
 .upload-wrapper {
     padding: 1.5rem 1rem;
     border: 2px dashed var(--border-color);
@@ -380,6 +383,9 @@ body {
     transition: all 0.2s;
     cursor: pointer;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .upload-wrapper:hover, .upload-wrapper.dragover {
     border-color: var(--primary-color);
@@ -390,6 +396,7 @@ body {
     top: 0; left: 0; width: 100%; height: 100%;
     opacity: 0;
     cursor: pointer;
+    z-index: 10;
 }
 .upload-label {
     pointer-events: none; /* Let click pass to input */
