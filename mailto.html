@@ -6,21 +6,17 @@
     <title>MailTo Generator</title>
     <link rel="stylesheet" href="style.css">
 
-    <!-- CORE SCRIPTS (Loaded globally for compatibility with legacy app pages) -->
+    <!-- CORE SCRIPTS -->
     <script src="js/app-core.js"></script>
     <script src="js/app-data.js"></script>
     <script src="js/app-ui.js"></script>
 
-    <!-- 
-      APP MODULE
-      Loads after core scripts. Uses 'defer' and error handling.
-      Updated onerror to wait for DOMContentLoaded (Fix A.2)
-    -->
+    <!-- APP MODULE -->
     <script 
         type="module" 
         src="js/mailto-app.js" 
         defer 
-        onerror="window.addEventListener('DOMContentLoaded', function() { var el = document.getElementById('app-startup-error'); if(el) { el.innerHTML = '<strong>Application Failed to Load</strong><p>A critical script (mailto-app.js) could not be loaded. Please check your network connection or contact support.</p>'; el.classList.remove('hidden'); } });"
+        onerror="window.addEventListener('DOMContentLoaded', function() { var el = document.getElementById('app-startup-error'); if(el) { el.innerHTML = '<strong>Application Failed to Load</strong><p>A critical script (mailto-app.js) could not be loaded.</p>'; el.classList.remove('hidden'); } });"
     ></script>
 </head>
 <body class="mailto-page">
@@ -31,93 +27,87 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
                 
-                <div id="catalogue-view" class="generator-section">
-                    <div class="section-header-wrapper">
-                        <h3 class="section-header">Email Template Library</h3>
-                        <div class="button-group">
-                            <button id="btn-settings" class="button-base icon-btn" title="Settings"></button>
-                            <button id="btn-new-folder" class="button-base icon-btn" title="New Folder"></button>
+                <!-- SECTION 1: LIBRARY (Accordion) -->
+                <div id="library-section" class="accordion-section collapsed">
+                    <div class="accordion-header" id="library-header">
+                        <div class="section-header-wrapper" style="margin:0; flex-grow:1;">
+                            <h3 class="section-header">Template Library</h3>
                         </div>
-                    </div>
-
-                    <div id="breadcrumb-container" class="breadcrumb-container"></div>
-                    <div id="tree-list-container" class="tree-list-container"></div>
-                </div>
-
-                <div class="generator-section">
-                    <div class="accordion-header" id="mailto-accordion-header" role="button" aria-expanded="false" aria-controls="mailto-accordion-content">
-                        <h3 class="section-header">Create New Template</h3>
-                        <button id="mailto-accordion-toggle" class="icon-btn" title="Toggle settings" tabindex="-1">
-                            <span class="accordion-icon">▼</span>
-                        </button>
+                        <div class="button-group" style="margin-right: 10px;">
+                             <button id="btn-settings" class="icon-btn" title="Settings" style="padding:2px;">⚙️</button>
+                             <button id="btn-new-folder" class="icon-btn" title="New Folder" style="padding:2px;">📂+</button>
+                        </div>
+                        <span class="accordion-icon">▼</span>
                     </div>
                     
-                    <div id="mailto-accordion-content" class="accordion-content collapsed">
-                        <div class="section-header-wrapper" style="margin-top: 0.5rem;">
-                            <h3 class="section-header phase-header">Phase 1: Create or Upload</h3>
-                        </div>
+                    <div class="accordion-content">
+                        <div id="breadcrumb-container" class="breadcrumb-container"></div>
+                        <div id="tree-list-container" class="tree-list-container"></div>
+                    </div>
+                </div>
 
-                        <div id="upload-wrapper" class="upload-wrapper form-group">
-                            <input type="file" id="msg-upload" accept=".msg,.oft,.eml,.email">
-                            <label for="msg-upload" class="button-base button-primary">
-                                Upload .msg, .oft, .eml, or .email file
-                            </label>
-                            <p>or drag and drop a file here</p>
+                <!-- SECTION 2: EDITOR (Accordion - Default Open) -->
+                <div id="editor-section" class="accordion-section expanded">
+                    <div class="accordion-header" id="editor-header">
+                        <h3 class="section-header">Editor & Upload</h3>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <button id="btn-clear-all" class="button-base button-danger" style="padding: 2px 8px; font-size: 0.75rem;">Clear All</button>
+                            <span class="accordion-icon">▼</span>
                         </div>
+                    </div>
+                    
+                    <div class="accordion-content">
+                        <div class="editor-container">
+                            <!-- Upload Zone -->
+                            <div id="upload-wrapper" class="upload-wrapper">
+                                <input type="file" id="msg-upload" accept=".msg,.oft,.eml,.email">
+                                <label for="msg-upload" class="button-base button-primary">
+                                    Upload Email File
+                                </label>
+                                <p>Drag & drop .msg, .oft, .eml</p>
+                            </div>
 
-                        <div class="divider"></div>
-
-                        <div class="section-header-wrapper">
-                            <h3 class="section-header phase-header">Phase 2: Review and Edit Fields</h3>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="result-to">To</label>
-                            <input type="text" id="result-to" class="sidebar-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="result-cc">CC</label>
-                            <input type="text" id="result-cc" class="sidebar-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="result-bcc">BCC</label>
-                            <input type="text" id="result-bcc" class="sidebar-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="result-subject">Subject</label>
-                            <input type="text" id="result-subject" class="sidebar-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="result-body">Body (Text)</label>
-                            <textarea id="result-body" class="sidebar-textarea"></textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                             <button id="btn-generate" class="button-base button-primary" style="width: 100%;">Generate Command</button>
-                        </div>
-
-                        <div id="output-wrapper" class="hidden">
-                            <div class="divider"></div>
-                            <div class="section-header-wrapper">
-                                <h3 class="section-header phase-header">Phase 3: Generated Output</h3>
-                                <a href="#" id="result-link" target="_blank" class="button-base button-primary">Open in Email Client</a>
+                            <!-- Input Fields -->
+                            <div class="form-group">
+                                <input type="text" id="result-to" class="sidebar-input" placeholder="To">
+                            </div>
+                            <div class="grid-2-tight">
+                                <div class="form-group">
+                                    <input type="text" id="result-cc" class="sidebar-input" placeholder="CC">
+                                </div>
+                                <div class="form-group">
+                                    <input type="text" id="result-bcc" class="sidebar-input" placeholder="BCC">
+                                </div>
                             </div>
                             <div class="form-group">
-                                <div class="label-group">
-                                    <label for="result-mailto">MailTo Command</label>
-                                    <button id="copy-mailto-btn" class="button-base">Copy</button>
-                                </div>
-                                <textarea id="result-mailto" class="sidebar-textarea" readonly placeholder="Generated command will appear here..."></textarea>
+                                <input type="text" id="result-subject" class="sidebar-input" placeholder="Subject">
                             </div>
                             
-                            <div class="app-section-box" style="padding: 0.75rem; background-color: var(--info-bg); border-radius: var(--border-radius);">
-                                 <div class="form-group">
-                                    <label for="save-template-name">Template Name</label>
-                                    <input type="text" id="save-template-name" class="sidebar-input" placeholder="e.g., Weekly Report Stub">
+                            <!-- Growing Body Field -->
+                            <div class="form-group body-group">
+                                <textarea id="result-body" class="sidebar-textarea body-input" placeholder="Body content..."></textarea>
+                            </div>
+                            
+                            <!-- Actions -->
+                            <div class="grid-2">
+                                <button id="btn-generate" class="button-base button-primary">Generate Link</button>
+                                <button id="btn-save-to-library" class="button-base button-success">Save Template</button>
+                            </div>
+
+                            <!-- Hidden Output (Shows only when needed) -->
+                            <div id="output-wrapper" class="hidden" style="margin-top:1rem;">
+                                <div class="form-group">
+                                    <label>Template Name</label>
+                                    <input type="text" id="save-template-name" class="sidebar-input">
                                 </div>
-                                <div class="button-group">
-                                    <button id="btn-save-to-library" class="button-base button-success">Save to Library</button>
+                                <div class="form-group">
+                                    <label>MailTo Link</label>
+                                    <div style="display:flex; gap:5px;">
+                                        <input type="text" id="result-mailto" class="sidebar-input" readonly>
+                                        <button id="copy-mailto-btn" class="button-base">Copy</button>
+                                    </div>
                                 </div>
+                                <a href="#" id="result-link" target="_blank" class="button-base button-primary" style="width:100%; text-align:center;">Open in Client</a>
                             </div>
                         </div>
                     </div>
@@ -131,8 +121,5 @@
         <div id="modal-content" class="modal-content"></div>
     </div>
     <div id="toast" class="toast"></div>
-    
-    <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top">↑</button>
 </body>
 </html>
-
