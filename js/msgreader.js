@@ -1,9 +1,11 @@
 /**
  * js/msgreader.js
- * Version 2.0.18 (ES6 Module - Fix: Remove CSS/Script content from HTML Body)
+ * Version 2.0.19 (ES6 Module - Fix: Aggressive HTML/CSS Cleaning)
  * * CHANGE LOG:
- * - Updated _stripHtml to remove <style>, <script>, and <head> blocks entirely
- * (content included) preventing CSS rules from appearing in the text body.
+ * - Enhanced _stripHtml with a multi-pass cleaning strategy.
+ * - Added DOM-level node removal for <style> and <script> tags to catch
+ * elements that evade Regex filters.
+ * - Ensures "P {margin...}" CSS artifacts are removed from New Outlook bodies.
  */
 
 'use strict';
@@ -73,27 +75,39 @@ function _decodeQuotedPrintable(str) {
 function _stripHtml(html) {
     if (!html || typeof html !== 'string') return ''; 
     
-    // FIX: Remove entire blocks of non-content code first
+    // Pass 1: Aggressive Regex Removal of Metadata Blocks
+    // We remove HEAD completely because Outlook puts styles there.
     let text = html
-        .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<head[\s\S]*?<\/head>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<!--[\s\S]*?-->/g, '')
         .replace(/<\?xml[^>]*\?>/gi, '');
 
-    // Convert block tags to newlines for spacing
+    // Convert block tags to newlines for spacing (Visual formatting)
     text = text.replace(/<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n');
     
+    // Pass 2: DOM Parsing for Entity Decoding and Deep Cleaning
     let parser = getDOMParser();
     if (parser) {
-        // Use DOMParser to strip remaining tags and handle HTML entities
-        let doc = parser.parseFromString(text, 'text/html');
-        text = doc.body ? doc.body.textContent : (doc.documentElement.textContent || '');
+        try {
+            let doc = parser.parseFromString(text, 'text/html');
+            
+            // Safety: Remove any style/script nodes that survived regex (e.g. in body)
+            const junk = doc.querySelectorAll('style, script, link, meta, title');
+            junk.forEach(el => el.remove());
+            
+            text = doc.body ? doc.body.textContent : (doc.documentElement.textContent || '');
+        } catch (e) {
+            // If DOMParser fails, fall back to Regex stripping
+            text = text.replace(/<[^>]+>/g, '');
+        }
     } else {
-        // Fallback regex strip
+        // Fallback if no DOMParser
         text = text.replace(/<[^>]+>/g, '');
     }
     
+    // Normalize whitespace
     return text.replace(/(\r\n|\r|\n){3,}/g, '\n\n').trim();
 }
 
