@@ -1,7 +1,7 @@
 /**
  * mailto-app.js
- * MailTo Generator Application Logic (ES6 Module / Hybrid)
- * Version: 2.2.0 (UX Overhaul: Sidebar Optimized)
+ * MailTo Generator Application Logic (ES6 Module)
+ * Version: 2.3.0 (UI Polish & Move Logic)
  */
 
 import { MsgReader } from './msgreader.js';
@@ -9,15 +9,21 @@ import { MsgReader } from './msgreader.js';
 // Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
-    VERSION: '2.2.0',
+    VERSION: '2.3.0',
     DATA_KEY: 'mailto_library_v1',
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
 
 const MAILTO_PARAM_KEYS = ['cc', 'bcc', 'subject']; 
+
+// Fixed icons (Simple SVGs)
 const ICONS = {
-    folder: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
-    template: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm.15-1.4-1.291.79l-4.276 2.624V4.697l5.562 3.42zM16 4.697v7.104l-5.803-3.558zM9.031 8.83l1.291.79 4.276 2.624V4.697l-5.562 3.42z"/></svg>'
+    folder: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
+    template: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/></svg>',
+    trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg>',
+    edit: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>',
+    copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/></svg>',
+    move: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2zM0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm5.854 8.854a.5.5 0 1 0-.708-.708L4 11.293V1.5a.5.5 0 0 0-1 0v9.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2z"/></svg>' // Simplified move icon
 };
 
 // Default state
@@ -25,7 +31,6 @@ const defaultState = {
     library: [],
     ui: {
         currentFolderId: 'root',
-        // 'editor' or 'library'
         activeSection: 'editor' 
     }
 };
@@ -36,7 +41,8 @@ let state;
 let saveState;
 let currentFolderId = 'root';
 
-// --- Recursive Finders ---
+// --- Helper Functions ---
+
 function findInTree(items, predicate, parent = null) {
     for (const item of items) {
         if (predicate(item)) return { item, parent };
@@ -49,15 +55,44 @@ function findInTree(items, predicate, parent = null) {
 }
 
 function findItemById(id) {
-    if (id === 'root') return { id: 'root', name: 'Root', children: state.library };
+    if (id === 'root') return { id: 'root', name: 'Root', children: state.library, type: 'folder' };
     const result = findInTree(state.library, i => i.id === id);
     return result ? result.item : null;
 }
 
 function findParentOfItem(childId) {
-    if (childId === 'root') return null; 
     const result = findInTree(state.library, i => i.id === childId);
     return result ? (result.parent || {id: 'root', children: state.library}) : null;
+}
+
+// Recursively get all folders for dropdowns
+function getAllFolders(items = state.library, level = 0) {
+    let folders = [];
+    // Always include root at level 0 if called initially
+    if (level === 0) folders.push({ id: 'root', name: 'Root', level: 0 });
+
+    items.forEach(item => {
+        if (item.type === 'folder') {
+            folders.push({ id: item.id, name: item.name, level: level + 1 });
+            if (item.children) {
+                folders = folders.concat(getAllFolders(item.children, level + 1));
+            }
+        }
+    });
+    return folders;
+}
+
+// Populate any select element with folders
+function populateFolderSelect(selectEl, excludeId = null) {
+    const folders = getAllFolders();
+    selectEl.innerHTML = '';
+    folders.forEach(f => {
+        if (f.id === excludeId) return; // Don't move folder into itself
+        const opt = document.createElement('option');
+        opt.value = f.id;
+        opt.innerHTML = '&nbsp;'.repeat(f.level * 2) + (f.level > 0 ? '📂 ' : '') + SafeUI.escapeHTML(f.name);
+        selectEl.appendChild(opt);
+    });
 }
 
 // --- UX Logic ---
@@ -76,7 +111,6 @@ function setActiveSection(sectionName) {
         libSec.classList.remove('expanded');
         libSec.classList.add('collapsed');
     }
-    
     if (state.ui) { state.ui.activeSection = sectionName; saveState(); }
 }
 
@@ -141,7 +175,7 @@ function handleFile(file) {
             DOMElements.resultBcc.value = map[3].join(', ');
             
             setActiveSection('editor');
-            SafeUI.showToast('File loaded');
+            SafeUI.showToast('File loaded successfully');
         } catch (err) { 
             SafeUI.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]); 
         }
@@ -198,25 +232,82 @@ function renderCatalogue() {
             const div = document.createElement('div');
             div.className = 'list-item';
             div.dataset.id = item.id;
-            div.innerHTML = `<div class="list-item-icon ${item.type === 'folder'?'folder':'template'}">${ICONS[item.type === 'folder' ? 'folder' : 'template']}</div>
-                             ${item.type === 'folder' 
-                                ? `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>` 
-                                : `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name">${SafeUI.escapeHTML(item.name)}</a>`
-                             }
-                             <div class="list-item-actions">
-                                ${item.type === 'item' ? `<button class="icon-btn copy-btn" data-mailto="${SafeUI.escapeHTML(item.mailto)}">${SafeUI.SVGIcons.copy}</button>` : ''}
-                                <button class="icon-btn move-btn" title="${item.type === 'folder' ? 'Rename Folder' : 'Edit/Load Template'}">${SafeUI.SVGIcons.pencil}</button>
-                                <button class="icon-btn delete-btn">${SafeUI.SVGIcons.trash}</button>
-                             </div>`;
+            
+            const isFolder = item.type === 'folder';
+            
+            // Move Logic Button
+            // Edit/Rename Button
+            // Delete Button
+            // Copy Link (Item only)
+            
+            div.innerHTML = `
+                <div class="list-item-icon ${isFolder?'folder':'template'}">
+                    ${ICONS[isFolder ? 'folder' : 'template']}
+                </div>
+                ${isFolder 
+                    ? `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>` 
+                    : `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name">${SafeUI.escapeHTML(item.name)}</a>`
+                }
+                <div class="list-item-actions">
+                    ${!isFolder ? `<button class="icon-btn copy-btn" title="Copy Link">${ICONS.copy}</button>` : ''}
+                    <button class="icon-btn edit-btn" title="${isFolder ? 'Rename' : 'Edit'}">${ICONS.edit}</button>
+                    <button class="icon-btn move-btn" title="Move">${ICONS.folder}→</button>
+                    <button class="icon-btn delete-btn" title="Delete">${ICONS.trash}</button>
+                </div>
+            `;
             return div;
         }
     });
 }
 
+// --- Move Logic ---
+function openMoveModal(itemId) {
+    const item = findItemById(itemId);
+    if(!item) return;
+
+    const content = `
+        <p>Move <strong>${SafeUI.escapeHTML(item.name)}</strong> to:</p>
+        <div class="form-group">
+            <select id="move-target-select" class="sidebar-select"></select>
+        </div>
+    `;
+
+    SafeUI.showModal("Move Item", content, [
+        {
+            label: 'Move',
+            class: 'button-primary',
+            callback: () => {
+                const targetId = document.getElementById('move-target-select').value;
+                if(targetId && targetId !== itemId) {
+                    // Remove from old parent
+                    const oldParent = findParentOfItem(itemId);
+                    if (oldParent) {
+                        oldParent.children = oldParent.children.filter(c => c.id !== itemId);
+                    }
+                    
+                    // Add to new parent
+                    const newParent = findItemById(targetId);
+                    if (newParent && newParent.children) {
+                        newParent.children.push(item);
+                        saveState();
+                        renderCatalogue();
+                        SafeUI.showToast("Item moved");
+                    }
+                }
+            }
+        },
+        { label: 'Cancel' }
+    ]);
+
+    // Populate select after modal renders
+    const sel = document.getElementById('move-target-select');
+    if(sel) populateFolderSelect(sel, item.type === 'folder' ? itemId : null);
+}
+
 async function init() {
     console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
     
-    if (typeof SafeUI === 'undefined') { return; } // Safety check
+    if (typeof SafeUI === 'undefined') { return; } 
 
     // Fetch Navbar
     try {
@@ -245,38 +336,55 @@ async function init() {
     // Set Initial Section
     setActiveSection(state.ui.activeSection || 'editor');
 
-    // Accordion Toggles
+    // Populate "Save to Folder" dropdown initially
+    const updateSaveDropdown = () => {
+        const saveSelect = document.getElementById('save-target-folder');
+        if(saveSelect) {
+            populateFolderSelect(saveSelect);
+            // Try to set to current folder
+            if(currentFolderId) saveSelect.value = currentFolderId;
+        }
+    };
+
+    // Events
     document.getElementById('library-header').addEventListener('click', (e) => {
-        // Don't toggle if clicking buttons
         if (!e.target.closest('button')) setActiveSection('library');
     });
     document.getElementById('editor-header').addEventListener('click', (e) => {
         if (!e.target.closest('button')) setActiveSection('editor');
+        updateSaveDropdown(); // Refresh dropdown when opening editor
     });
 
-    // Clear Button
     DOMElements.btnClearAll.addEventListener('click', (e) => {
         e.stopPropagation();
-        UIPatterns.confirmDelete('Form Data', 'Current Content', () => {
-             clearEditorFields();
-        });
+        UIPatterns.confirmDelete('Form Data', 'Current Content', clearEditorFields);
     });
 
-    // New Folder
     DOMElements.btnNewFolder.addEventListener('click', (e) => {
         e.stopPropagation();
-        SafeUI.showModal('New Folder', '<input id="fn" class="sidebar-input">', [{label:'Create', class:'button-primary', callback:()=>{
+        SafeUI.showModal('New Folder', '<input id="fn" class="sidebar-input" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
             const name = document.getElementById('fn').value.trim();
             if(name) {
                 const f = findItemById(currentFolderId);
-                if(f && f.children) { f.children.push({id: SafeUI.generateId(), type:'folder', name, children:[]}); saveState(); renderCatalogue(); }
+                if(f && f.children) { 
+                    f.children.push({id: SafeUI.generateId(), type:'folder', name, children:[]}); 
+                    saveState(); 
+                    renderCatalogue(); 
+                    updateSaveDropdown();
+                }
             }
         }}, {label:'Cancel'}]);
     });
 
-    // Drag & Drop
-    const handleDrag = e => { e.preventDefault(); DOMElements.uploadWrapper.classList.toggle('dragover', e.type === 'dragenter' || e.type === 'dragover'); };
-    const handleDrop = e => { handleDrag(e); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); };
+    // Drag & Drop Upload Logic
+    const handleDrag = e => { 
+        e.preventDefault(); 
+        DOMElements.uploadWrapper.classList.toggle('dragover', e.type === 'dragenter' || e.type === 'dragover'); 
+    };
+    const handleDrop = e => { 
+        handleDrag(e); 
+        if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); 
+    };
     
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => DOMElements.uploadWrapper.addEventListener(evt, evt === 'drop' ? handleDrop : handleDrag));
     DOMElements.msgUpload.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
@@ -288,17 +396,13 @@ async function init() {
             subject: DOMElements.resultSubject.value, body: DOMElements.resultBody.value
         };
         const m = buildMailto(d);
-        if (m.length > 2000) SafeUI.showToast("Warning: Link length > 2000 chars");
-
         DOMElements.resultMailto.value = m;
         DOMElements.resultLink.href = m;
         DOMElements.outputWrapper.classList.remove('hidden');
-        
-        // Auto-scroll to bottom of editor container
+        updateSaveDropdown();
         document.querySelector('#editor-section .accordion-content').scrollTop = 9999;
     });
 
-    // Copy
     DOMElements.copyMailtoBtn.addEventListener('click', () => {
         SafeUI.copyToClipboard(DOMElements.resultMailto.value);
         SafeUI.showToast("Copied");
@@ -306,22 +410,25 @@ async function init() {
 
     // Save Template
     DOMElements.btnSaveToLibrary.addEventListener('click', () => {
-        // Ensure output is generated first
         if (!DOMElements.resultMailto.value) DOMElements.btnGenerate.click();
         
         const name = DOMElements.saveTemplateName.value.trim() || DOMElements.resultSubject.value.trim() || "New Template";
-        const f = findItemById(currentFolderId);
+        const targetFolderId = document.getElementById('save-target-folder').value || currentFolderId;
+        
+        const f = findItemById(targetFolderId);
         if(f) {
             f.children.push({
                 id: SafeUI.generateId(), type:'item', name, 
                 mailto: DOMElements.resultMailto.value
             });
-            saveState(); renderCatalogue();
+            saveState(); 
+            renderCatalogue();
             SafeUI.showToast("Saved to Library");
+            DOMElements.saveTemplateName.value = ''; // clear name after save
         }
     });
 
-    // Tree Navigation
+    // Tree Navigation & Actions
     DOMElements.treeListContainer.addEventListener('click', e => {
         const itemEl = e.target.closest('.list-item');
         if(!itemEl) return;
@@ -329,53 +436,70 @@ async function init() {
         const item = findItemById(id); 
         if(!item) return;
 
+        // Navigation
         if(e.target.closest('.list-item-name-folder') || e.target.closest('.list-item-icon.folder')) { 
-            currentFolderId = item.id; renderCatalogue(); return;
+            currentFolderId = item.id; renderCatalogue(); updateSaveDropdown(); return;
         }
         
+        // Copy
         if(e.target.closest('.copy-btn')) {
             SafeUI.copyToClipboard(item.mailto);
-            SafeUI.showToast("Copied command");
+            SafeUI.showToast("Copied link");
             return;
         }
 
+        // Delete
         if(e.target.closest('.delete-btn')) {
             UIPatterns.confirmDelete(item.type, item.name, () => {
                 const p = findParentOfItem(id);
                 if(p) { 
                     p.children = p.children.filter(c => c.id !== id); 
                     if (currentFolderId === id) currentFolderId = 'root';
-                    saveState(); renderCatalogue(); 
+                    saveState(); renderCatalogue(); updateSaveDropdown();
                 }
             });
             return;
         }
 
-        if(e.target.closest('.move-btn')) {
+        // Edit / Rename
+        if(e.target.closest('.edit-btn')) {
             if (item.type === 'folder') {
-                // Rename logic...
+                SafeUI.showModal('Rename Folder', `<input id="ren" class="sidebar-input" value="${SafeUI.escapeHTML(item.name)}">`, [{
+                    label:'Rename', class:'button-primary', callback: () => {
+                        const newName = document.getElementById('ren').value.trim();
+                        if(newName) { item.name = newName; saveState(); renderCatalogue(); updateSaveDropdown(); }
+                    }
+                }, {label:'Cancel'}]);
             } else {
+                // Load into editor
                 const parsed = parseMailto(item.mailto);
                 DOMElements.resultTo.value = parsed.to || '';
                 DOMElements.resultCc.value = parsed.cc || '';
                 DOMElements.resultBcc.value = parsed.bcc || '';
                 DOMElements.resultSubject.value = parsed.subject || '';
                 DOMElements.resultBody.value = parsed.body || '';
-                DOMElements.saveTemplateName.value = item.name;
+                DOMElements.saveTemplateName.value = item.name; // Pre-fill name for re-saving
                 
                 setActiveSection('editor');
-                SafeUI.showToast("Loaded");
+                SafeUI.showToast("Template Loaded");
             }
+            return;
+        }
+
+        // Move
+        if(e.target.closest('.move-btn')) {
+            openMoveModal(id);
         }
     });
 
     DOMElements.breadcrumbContainer.addEventListener('click', e => {
-        if(e.target.dataset.id) { currentFolderId = e.target.dataset.id; renderCatalogue(); }
+        if(e.target.dataset.id) { currentFolderId = e.target.dataset.id; renderCatalogue(); updateSaveDropdown(); }
     });
 
     renderCatalogue();
-    
-    // Settings Modal (CSV) logic kept same as before...
+    updateSaveDropdown(); // Initial population
+
+    // SharedSettingsModal kept as is
     SharedSettingsModal.init({
         buttonId: 'btn-settings', appName: APP_CONFIG.NAME, state,
         pageSpecificDataHtml: `<button id="exp" class="button-base">Export CSV</button><button id="imp" class="button-base">Import CSV</button>`,
@@ -388,7 +512,7 @@ async function init() {
                 onConfirm: (d)=>{}
             });
         },
-        onRestoreCallback: (d) => { state.library = d.library; saveState(); renderCatalogue(); }
+        onRestoreCallback: (d) => { state.library = d.library; saveState(); renderCatalogue(); updateSaveDropdown(); }
     });
 
     console.log("[MailTo] Ready");
