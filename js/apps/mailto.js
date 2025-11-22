@@ -4,7 +4,7 @@
  * Version: 2.3.3 (Final Corrected)
  */
 
-import { MsgReader } from './msgreader.js';
+import { MsgReader } from '../msgreader.js';
 
 // Configuration
 const APP_CONFIG = {
@@ -271,7 +271,7 @@ function openMoveModal(itemId) {
     const content = `
         <p>Move <strong>${SafeUI.escapeHTML(item.name)}</strong> to:</p>
         <div class="form-group">
-            <select id="move-target-select" class="sidebar-input"></select>
+            <select id="move-target-select" class="form-control"></select>
         </div>
     `;
 
@@ -366,7 +366,7 @@ async function init() {
     // New Folder
     DOMElements.btnNewFolder.addEventListener('click', (e) => {
         e.stopPropagation();
-        SafeUI.showModal('New Folder', '<input id="fn" class="sidebar-input" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
+        SafeUI.showModal('New Folder', '<input id="fn" class="form-control" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
             const name = document.getElementById('fn').value.trim();
             if(name) {
                 const f = findItemById(currentFolderId);
@@ -471,7 +471,7 @@ async function init() {
 
         if(e.target.closest('.edit-btn')) {
             if (item.type === 'folder') {
-                SafeUI.showModal('Rename', `<input id="ren" class="sidebar-input" value="${SafeUI.escapeHTML(item.name)}">`, [{label:'Save', class:'button-primary', callback:()=>{
+                SafeUI.showModal('Rename', `<input id="ren" class="form-control" value="${SafeUI.escapeHTML(item.name)}">`, [{label:'Save', class:'button-primary', callback:()=>{
                     const v = document.getElementById('ren').value.trim();
                     if(v) { item.name = v; saveState(); renderCatalogue(); refreshSaveDropdown(); }
                 }}, {label:'Cancel'}]);
@@ -502,7 +502,7 @@ async function init() {
     
     SharedSettingsModal.init({
         buttonId: 'btn-settings', appName: APP_CONFIG.NAME, state,
-        pageSpecificDataHtml: `<button id=\"exp\" class=\"button-base\">Export CSV</button><button id=\"imp\" class=\"button-base\">Import CSV</button>`,
+        pageSpecificDataHtml: `<button id=\"exp\" class=\"btn\">Export CSV</button><button id=\"imp\" class=\"btn\">Import CSV</button>`,
         onModalOpen: () => {
             CsvManager.setupExport({exportBtn: document.getElementById('exp'), headers: APP_CONFIG.CSV_HEADERS, dataGetter: ()=>[], filename:'export.csv'});
             CsvManager.setupImport({

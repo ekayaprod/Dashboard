@@ -47,12 +47,7 @@
         }
     ];
     
-    const PAGE_SCRIPTS = {
-        'mailto.html': [
-            // FIX: This script is critical for the mailto page, it must be required.
-            { url: 'js/msgreader.js', exports: ['MsgReader'], required: true }
-        ]
-    };
+    const PAGE_SCRIPTS = {};
     
     // State tracking
     let loadedScripts = new Set();

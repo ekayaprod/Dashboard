@@ -207,7 +207,7 @@ const NotepadManager = (() => {
         }, 500));
         
         DOMElements.newNoteBtn.addEventListener('click', () => {
-            SafeUI.showModal('New Note', '<input id="new-note-title" class="sidebar-input" placeholder="Note title">', [
+            SafeUI.showModal('New Note', '<input id="new-note-title" class="form-control" placeholder="Note title">', [
                 {label: 'Cancel'},
                 {label: 'Create', class: 'button-primary', callback: () => {
                     const titleInput = document.getElementById('new-note-title');
@@ -230,7 +230,7 @@ const NotepadManager = (() => {
             const note = DataHelpers.findById(state, 'notes', activeNoteId);
             if (!note) return;
             
-            SafeUI.showModal('Rename Note', `<input id="rename-note-title" class="sidebar-input" value="${SafeUI.escapeHTML(note.title)}">`, [
+            SafeUI.showModal('Rename Note', `<input id="rename-note-title" class="form-control" value="${SafeUI.escapeHTML(note.title)}">`, [
                 {label: 'Cancel'},
                 {label: 'Rename', class: 'button-primary', callback: () => {
                     const titleInput = document.getElementById('rename-note-title');
@@ -421,8 +421,8 @@ const SharedSettingsModal = (() => {
                 <label>Advanced Data Management (All Apps)</label>
                 <p class="form-help">Use these tools for disaster recovery. This will backup/restore *all* data for *all* apps.</p>
                 <div class="button-group">
-                    <button id="modal-backup-btn" class="button-base">Backup ALL (JSON)</button>
-                    <button id="modal-restore-btn" class="button-base">Restore ALL (JSON)</button>
+                    <button id="modal-backup-btn" class="btn">Backup ALL (JSON)</button>
+                    <button id="modal-restore-btn" class="btn">Restore ALL (JSON)</button>
                 </div>
             </div>
         `;
