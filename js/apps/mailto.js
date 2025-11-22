@@ -363,6 +363,9 @@ async function init() {
         });
     });
 
+    // Prevent event bubbling for clear button (just in case)
+    DOMElements.btnClearAll.addEventListener('mousedown', (e) => e.stopPropagation());
+
     // New Folder
     DOMElements.btnNewFolder.addEventListener('click', (e) => {
         e.stopPropagation();
