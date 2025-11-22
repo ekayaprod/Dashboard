@@ -311,14 +311,7 @@ async function init() {
     
     if (typeof SafeUI === 'undefined') { return; } // Safety check
 
-    // Fetch Navbar
-    try {
-        const resp = await fetch('navbar.html');
-        if (resp.ok) {
-            document.getElementById('navbar-container').innerHTML = await resp.text();
-            new Function(document.getElementById('navbar-container').querySelector('script').innerHTML)();
-        }
-    } catch(e) { console.error("Navbar load error", e); }
+    // Navbar is handled by bootstrap.js
 
     const ctx = await AppLifecycle.initPage({
         storageKey: APP_CONFIG.DATA_KEY,
@@ -525,4 +518,30 @@ async function init() {
     console.log("[MailTo] Ready");
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+// Wait for bootstrap, but timeout if it fails
+let bootstrapReady = false;
+
+// Check if bootstrap already finished before we loaded
+if (typeof SafeUI !== 'undefined' && SafeUI.isReady) {
+    bootstrapReady = true;
+    init();
+} else {
+    document.addEventListener('bootstrap:ready', () => {
+        if (!bootstrapReady) {
+            bootstrapReady = true;
+            init();
+        }
+    });
+
+    // Fallback: If bootstrap doesn't fire within 5 seconds, show error
+    setTimeout(() => {
+        if (!bootstrapReady) {
+            console.error('Bootstrap did not complete within 5 seconds');
+            const banner = document.getElementById('app-startup-error');
+            if (banner) {
+                banner.innerHTML = `<strong>Application Startup Timeout</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">The application failed to load within 5 seconds. Check the browser console for errors.</p>`;
+                banner.classList.remove('hidden');
+            }
+        }
+    }, 5000);
+}
