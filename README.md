@@ -16,7 +16,7 @@ CSS Consolidation (Global Style)
 All page-specific styles have been centralized into style.css to prevent inline CSS, improve maintainability, and reduce HTML file size.
 | New Global Class | Former Location/Use | Rationale |
 |---|---|---|
-| .ui-card | Replaces redundant classes like .app-section-box and .generator-section as a universal container for content panels. | Reduces duplicated styling definitions. |
+| .panel | Replaces redundant classes like .app-section-box and .generator-section as a universal container for content panels. | Reduces duplicated styling definitions. |
 | .view, .list-item, .upload-wrapper | Styles migrated from the <style> blocks in mailto.html and passwords.html. | Decouples presentation from structure. |
 3. Page-Specific Architecture
 index.html (Dashboard)

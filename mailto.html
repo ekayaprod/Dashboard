@@ -6,11 +6,6 @@
     <title>MailTo Generator</title>
     <link rel="stylesheet" href="style.css">
 
-    <!-- CORE SCRIPTS -->
-    <script src="js/app-core.js"></script>
-    <script src="js/app-data.js"></script>
-    <script src="js/app-ui.js"></script>
-
     <!-- APP MODULE -->
     <script 
         type="module" 
@@ -131,5 +126,11 @@
         <div id="modal-content" class="modal-content"></div>
     </div>
     <div id="toast" class="toast"></div>
+
+    <!--
+      CRITICAL: Bootstrap script must be at the END of the body.
+      It loads the Navbar HTML and all JS dependencies in parallel.
+    -->
+    <script src="js/bootstrap.js"></script>
 </body>
 </html>
