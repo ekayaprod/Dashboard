@@ -258,7 +258,7 @@ const UIUtils = (() => {
 
         actions.forEach(action => {
             const btn = document.createElement('button');
-            btn.className = `button-base ${action.class || ''}`;
+            btn.className = `btn ${action.class || ''}`;
             btn.textContent = action.label;
             btn.onclick = () => {
                 if (action.callback) {
