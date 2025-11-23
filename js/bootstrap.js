@@ -129,9 +129,15 @@
         try {
             const htmlLoaders = HTML_FRAGMENTS.map(loadHtmlFragment);
 
-            for (const config of CORE_SCRIPTS) {
-                await loadScript(config);
+            // Load app-core first as it is a dependency for others
+            const coreScript = CORE_SCRIPTS.find(c => c.url.includes('app-core.js'));
+            if (coreScript) {
+                await loadScript(coreScript);
             }
+
+            // Load remaining core scripts in parallel
+            const remainingCoreScripts = CORE_SCRIPTS.filter(c => !c.url.includes('app-core.js'));
+            await Promise.all(remainingCoreScripts.map(loadScript));
             
             console.log('[Bootstrap] Verifying exports...');
             const allMissingExports = [];

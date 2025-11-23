@@ -106,60 +106,13 @@ function initializePage() {
                 'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
             };
 
+            // Use shared DateUtils from app-core.js
+            // Extend with page-specific helper if needed
             const TimeUtil = {
-                parseTimeToMinutes(input) {
-                    if (!input) return 0;
-                    const trimmed = String(input).trim();
-                    if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
-                    if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * 60;
-                    if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
-                        const parts = trimmed.split(':').map(Number);
-                        return (parts[0] * 60) + parts[1];
-                    }
-                    if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
-                        const parts = trimmed.split(':').map(Number);
-                        return (parts[0] * 60) + parts[1] + (parts[2] / 60);
-                    }
-                    return 0;
-                },
-
-                formatMinutesToHHMM(totalMinutes) {
-                    if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
-                    const hours = Math.floor(totalMinutes / 60);
-                    const minutes = Math.floor(totalMinutes % 60);
-                    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                },
-
-                formatMinutesToHHMM_Signed(totalMinutes) {
-                    if (isNaN(totalMinutes)) return '00:00';
-
-                    const sign = totalMinutes < 0 ? '-' : '';
-                    const absMinutes = Math.abs(totalMinutes);
-
-                    const hours = Math.floor(absMinutes / 60);
-                    const minutes = Math.floor(absMinutes % 60);
-
-                    return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                },
-
-                formatMinutesToHHMMShort(totalMinutes) {
-                    if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
-                    if (totalMinutes === 0) return '0m';
-                    const hours = Math.floor(totalMinutes / 60);
-                    const minutes = Math.floor(totalMinutes % 60);
-                    let parts = [];
-                    if (hours > 0) parts.push(`${hours}h`);
-                    if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
-                    return parts.join(' ');
-                },
-
+                ...DateUtils,
                 parseShiftTimeToMinutes(timeStr) {
                     const parts = timeStr.split(':').map(Number);
                     return (parts[0] * 60) + parts[1];
-                },
-
-                formatTimeAMPM(hour, minute) {
-                    return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
                 }
             };
 
