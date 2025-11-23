@@ -103,8 +103,12 @@ const UIUtils = (() => {
     };
 
     const generateId = () => {
-        if (crypto && crypto.randomUUID) {
-            return crypto.randomUUID();
+        try {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+        } catch (e) {
+            console.warn('crypto.randomUUID not available, falling back to Date.now()');
         }
         return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     };
@@ -118,6 +122,10 @@ const UIUtils = (() => {
     };
 
     const copyToClipboard = async (text) => {
+        if (!navigator.clipboard) {
+            console.error('Clipboard API not available');
+            return false;
+        }
         try {
             await navigator.clipboard.writeText(text);
             return true;

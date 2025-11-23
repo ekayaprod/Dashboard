@@ -47,7 +47,14 @@
         }
     ];
     
-    const PAGE_SCRIPTS = {};
+    const PAGE_SCRIPTS = {
+        'index.html': [{ url: 'js/apps/dashboard.js', required: true }],
+        '': [{ url: 'js/apps/dashboard.js', required: true }], // Default for root
+        'calculator.html': [{ url: 'js/apps/calculator.js', required: true }],
+        'lookup.html': [{ url: 'js/apps/lookup.js', required: true }],
+        'passwords.html': [{ url: 'js/apps/passwords.js', required: true }],
+        'mailto.html': [{ url: 'js/apps/mailto.js', required: true, type: 'module' }]
+    };
     
     // State tracking
     let loadedScripts = new Set();
@@ -109,6 +116,9 @@
             const script = document.createElement('script');
             script.src = config.url;
             script.async = false;
+            if (config.type) {
+                script.type = config.type;
+            }
             
             script.onload = () => {
                 console.log(`[Bootstrap] ✓ Script Loaded: ${config.url}`);

@@ -23,14 +23,9 @@ setTimeout(() => {
 }, 5000);
 
 function initializePage() {
-    // Move ALL existing initialization code inside this function
-    // Remove the (() => { dependency check })(); wrapper
-    // Remove the AppLifecycle.run() wrapper
-    // Keep only the actual application logic
-
     const APP_CONFIG = {
         NAME: 'passwords',
-        VERSION: '1.4.8', // Added seasonal tooltip
+        VERSION: '1.4.10', // Version bump
         DATA_KEY: 'passwords_v1_data',
     };
 
@@ -67,6 +62,7 @@ function initializePage() {
     };
 
     (async () => {
+        try {
         const ctx = await AppLifecycle.initPage({
             storageKey: APP_CONFIG.DATA_KEY,
             defaultState: defaultState,
@@ -84,7 +80,6 @@ function initializePage() {
                 'toast', 'modal-overlay', 'modal-content',
                 'navbar-container',
                 'custom-gen-header', 'accordion-toggle', 'custom-generator-config',
-                // FEATURE: Added info button
                 'seasonal-info-btn'
             ]
         });
@@ -102,64 +97,72 @@ function initializePage() {
             SafeUI.showModal(title, `<p>${SafeUI.escapeHTML(err.message || err)}</p>`, [{label: 'OK'}]);
         };
 
-        // NEW: Accordion state management
-        const ACCORDION_STATE_KEY = 'password_generator_accordion_collapsed';
+        // NEW: Accordion state management (Unified)
+        const ACCORDION_STATE_KEY = 'password_generator_accordion_expanded';
 
         const toggleAccordion = (e) => {
             if (e) {
-                if (e.target.closest('button') && e.currentTarget.id === 'custom-gen-header') {
+                // Prevent propagation if clicking the toggle button directly when the header listener catches it
+                if (e.target.closest('button') && e.currentTarget.id === 'custom-gen-header' && e.target.id !== 'accordion-toggle') {
                     e.stopPropagation();
                     return;
                 }
-                if (e.target.id === 'custom-gen-header' && e.currentTarget.id === 'accordion-toggle') {
-                        e.stopPropagation();
-                    return;
-                }
             }
 
-            const content = DOMElements.customGeneratorConfig;
-            const icon = document.querySelector('.accordion-icon');
-            const header = DOMElements.customGenHeader;
-            const isCollapsed = content.classList.toggle('collapsed');
+            // Find the parent .accordion div by ID to be safe
+            const header = document.getElementById('custom-gen-header');
+            const accordion = header ? header.closest('.accordion') : null;
 
-            if (icon) {
-                icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-            }
-            if (header) {
-                header.setAttribute('aria-expanded', !isCollapsed);
-            }
+            if (!accordion) return;
+
+            const isExpanded = accordion.classList.toggle('expanded');
+
+            // Update ARIA
+            if (header) header.setAttribute('aria-expanded', isExpanded);
 
             try {
-                localStorage.setItem(ACCORDION_STATE_KEY, isCollapsed);
+                localStorage.setItem(ACCORDION_STATE_KEY, isExpanded);
             } catch (err) {
                 console.warn("Could not save accordion state to localStorage.", err);
             }
         };
 
         const initAccordion = () => {
-            let collapsed = false;
+            let expanded = false;
             try {
-                collapsed = localStorage.getItem(ACCORDION_STATE_KEY) === 'true';
+                const savedState = localStorage.getItem(ACCORDION_STATE_KEY);
+                expanded = savedState === 'true';
             } catch (err) {
                 console.warn("Could not read accordion state from localStorage.", err);
             }
 
-            const content = DOMElements.customGeneratorConfig;
-            const icon = document.querySelector('.accordion-icon');
-            const header = DOMElements.customGenHeader;
-
-            if (collapsed) {
-                content.classList.add('collapsed');
-                if (icon) icon.style.transform = 'rotate(-90deg)';
-                if (header) header.setAttribute('aria-expanded', 'false');
-            } else {
-                content.classList.remove('collapsed');
-                if (icon) icon.style.transform = 'rotate(0deg)';
-                if (header) header.setAttribute('aria-expanded', 'true');
+            const accordion = DOMElements.customGenHeader.closest('.accordion');
+            if (accordion) {
+                if (expanded) {
+                    accordion.classList.add('expanded');
+                    DOMElements.customGenHeader.setAttribute('aria-expanded', 'true');
+                } else {
+                    accordion.classList.remove('expanded');
+                    DOMElements.customGenHeader.setAttribute('aria-expanded', 'false');
+                }
             }
 
-            DOMElements.accordionToggle?.addEventListener('click', toggleAccordion);
-            DOMElements.customGenHeader?.addEventListener('click', toggleAccordion);
+            // Attach listeners robustly
+            if (DOMElements.accordionToggle) {
+                DOMElements.accordionToggle.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleAccordion(null);
+                };
+            }
+
+            if (DOMElements.customGenHeader) {
+                DOMElements.customGenHeader.onclick = (e) => {
+                    // Only toggle if we didn't click the button (handled by stopPropagation above, but safe check)
+                    if (!e.target.closest('#accordion-toggle')) {
+                        toggleAccordion(e);
+                    }
+                };
+            }
         };
 
         // ====================================================================
@@ -356,9 +359,21 @@ function initializePage() {
                 saveState();
                 return true;
             } catch (err) {
-                console.error("Fatal Error loading wordbank:", err);
-                SafeUI.showModal("Fatal Error", `<p>Failed to load the default wordbank file from <code>wordbanks/wordbank-base.json</code>.</p><p>Please ensure the file exists and the application is run from a web server.</p>`, [{label: 'OK'}]);
-                return false;
+                console.warn("Failed to load wordbank (offline/missing). Using fallback.", err);
+
+                state.wordBank = {
+                    "Adjective": ["Happy", "Sunny", "Fast", "Bright", "Cool", "Safe", "Strong", "Wise", "Kind", "Brave"],
+                    "Noun": ["Tiger", "Mountain", "River", "Eagle", "Forest", "Ocean", "Star", "Tree", "Moon", "Sun"],
+                    "Verb": ["Jump", "Run", "Fly", "Swim", "Walk", "Sing", "Read", "Write", "Play", "Work"],
+                    "Color": ["Red", "Blue", "Green", "Gold", "Silver", "White", "Black", "Purple", "Orange", "Yellow"],
+                    "Animal": ["Cat", "Dog", "Bear", "Wolf", "Fox", "Lion", "Hawk", "Owl", "Fish", "Bird"],
+                    "Object": ["Table", "Chair", "Book", "Pen", "Phone", "Key", "Door", "Window", "Lamp", "Desk"],
+                    "Word": ["Code", "Data", "Link", "Web", "Net", "App", "Site", "File", "Text", "User"],
+                    "Compound": ["Sunshine", "Moonlight", "Starfish", "Sunflower", "Moonbeam", "Firefly", "Dragonfly", "Raindrop", "Snowflake", "Seashell"]
+                };
+
+                SafeUI.showToast("Offline Mode: Using limited wordbank.");
+                return true;
             }
         };
 
@@ -511,8 +526,9 @@ li.className = 'result-item';
 
             renderResults();
 
-            const content = DOMElements.customGeneratorConfig;
-            if (content && !content.classList.contains('collapsed')) {
+            // Auto-collapse accordion if open, to show results
+            const accordion = DOMElements.customGenHeader.closest('.accordion');
+            if (accordion && accordion.classList.contains('expanded')) {
                 toggleAccordion(null);
             }
         };
@@ -751,7 +767,7 @@ li.className = 'result-item';
                     config: {
                         passNumWords: 1, passSeparator: "", passNumDigits: 1,
                         passNumSymbols: 0, minLength: 12, maxLength: 16,
-                        padToMin: false, seasonalBank: "auto"
+                        padToMin: true, seasonalBank: "auto"
                     }
                 });
             });
@@ -781,8 +797,8 @@ li.className = 'result-item';
             const generatorInputs = DOMElements.customGeneratorConfig.querySelectorAll('input, select');
             generatorInputs.forEach(input => {
                 input.addEventListener('focus', () => {
-                    const content = DOMElements.customGeneratorConfig;
-                    if (content && content.classList.contains('collapsed')) {
+                    const accordion = DOMElements.customGenHeader.closest('.accordion');
+                    if (accordion && !accordion.classList.contains('expanded')) {
                         toggleAccordion(null);
                     }
                 });
@@ -809,5 +825,13 @@ li.className = 'result-item';
         }
 
         init();
+        } catch (err) {
+            console.error("Unhandled exception during initialization:", err);
+            const banner = document.getElementById('app-startup-error');
+            if (banner) {
+                banner.innerHTML = `<strong>Application Error</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Unexpected error: ${err.message}</p>`;
+                banner.classList.remove('hidden');
+            }
+        }
     })();
 }
