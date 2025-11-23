@@ -37,7 +37,7 @@ function initializePage() {
 
     const defaultPhraseStructures = {
         "standard": {
-            "1": [["Compound"]],
+            "1": [["LongWord"]],
             "2": [["Adjective","Animal"],["Color","Object"]],
             "3": [["Adjective","Color","Animal"]],
             "4": [["Adjective","Animal","Color","Verb"]]
@@ -240,12 +240,6 @@ function initializePage() {
                 if (!struct || struct.length === 0) {
                     if (C.passNumWords === 0) {
                             struct = [];
-                    } else {
-                        const fallbackCat = W['Object'] ? 'Object' : (W['Word'] ? 'Word' : 'Adjective');
-                        if (!W[fallbackCat] || W[fallbackCat].length === 0) {
-                            return "[No fallback words available]";
-                        }
-                        struct = Array(C.passNumWords).fill(fallbackCat);
                     }
                 }
 
@@ -369,7 +363,7 @@ function initializePage() {
                     "Animal": ["Cat", "Dog", "Bear", "Wolf", "Fox", "Lion", "Hawk", "Owl", "Fish", "Bird"],
                     "Object": ["Table", "Chair", "Book", "Pen", "Phone", "Key", "Door", "Window", "Lamp", "Desk"],
                     "Word": ["Code", "Data", "Link", "Web", "Net", "App", "Site", "File", "Text", "User"],
-                    "Compound": ["Sunshine", "Moonlight", "Starfish", "Sunflower", "Moonbeam", "Firefly", "Dragonfly", "Raindrop", "Snowflake", "Seashell"]
+                    "LongWord": ["Information", "Performance", "Environment", "Mathematics", "Celebration", "Destination", "Engineering", "Application", "Combination", "Imagination"]
                 };
 
                 SafeUI.showToast("Offline Mode: Using limited wordbank.");

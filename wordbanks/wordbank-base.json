@@ -246,7 +246,7 @@
             "Peach",
             "Aqua"
         ],
-        "Compound": [
+        "LongWord": [
             "Applebutter",
             "Appleslicer",
             "Automobiles",
@@ -363,7 +363,22 @@
             "Woodpeckers",
             "Workbenches",
             "Yellowfinch",
-            "Yellowstone"
+            "Yellowstone",
+            "Information",
+            "Performance",
+            "Environment",
+            "Mathematics",
+            "Celebration",
+            "Destination",
+            "Engineering",
+            "Application",
+            "Combination",
+            "Imagination",
+            "Certificate",
+            "Instruction",
+            "Preparation",
+            "Temperature",
+            "Underground"
         ]
     }
 }
