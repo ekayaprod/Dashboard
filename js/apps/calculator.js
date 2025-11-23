@@ -223,11 +223,11 @@ function initializePage() {
             function updateInputsFromState() {
                 if (!state.ui) state.ui = { ...defaultState.ui };
 
-                DOMElements.shiftStart.value = state.ui.shiftStart;
-                DOMElements.shiftEnd.value = state.ui.shiftEnd;
-                DOMElements.breakTime.value = state.ui.breakTime;
-                DOMElements.currentCallTime.value = state.ui.currentCallTime;
-                DOMElements.currentTickets.value = state.ui.currentTickets;
+                DOMElements.shiftStart.value = state.ui.shiftStart || defaultState.ui.shiftStart;
+                DOMElements.shiftEnd.value = state.ui.shiftEnd || defaultState.ui.shiftEnd;
+                DOMElements.breakTime.value = isNaN(state.ui.breakTime) ? defaultState.ui.breakTime : state.ui.breakTime;
+                DOMElements.currentCallTime.value = state.ui.currentCallTime || '00:00';
+                DOMElements.currentTickets.value = isNaN(state.ui.currentTickets) ? 0 : state.ui.currentTickets;
             }
 
             const debouncedCalculateAndSave = SafeUI.debounce(() => {

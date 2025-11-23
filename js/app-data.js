@@ -286,6 +286,10 @@ const DataConverter = (() => {
                         const headerLine = lines.shift();
                         const headers = _parseCsvLine(headerLine).map(h => h.trim());
 
+                        if (headers.length === 0 || (headers.length === 1 && headers[0] === '')) {
+                             return reject(new Error("CSV file is empty or has invalid headers."));
+                        }
+
                         const errors = [];
 
                         for (const reqHeader of requiredHeaders) {

@@ -199,6 +199,13 @@ function initializePage() {
 
         const generatePassphrase = (config) => {
             const C = { ...config };
+
+            C.passNumWords = Math.max(0, C.passNumWords || 0);
+            C.passNumDigits = Math.max(0, C.passNumDigits || 0);
+            C.passNumSymbols = Math.max(0, C.passNumSymbols || 0);
+            C.minLength = Math.max(0, C.minLength || 0);
+            C.maxLength = Math.max(1, C.maxLength || 1);
+
             const P_structs = availableStructures;
             const W = activeWordBank;
             const SYMBOL_RULES = state.symbolRules;
