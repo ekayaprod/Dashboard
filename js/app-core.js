@@ -71,29 +71,6 @@ const DataHelpers = Object.freeze({
 // MODULE: UIUtils
 // ============================================================================
 const UIUtils = (() => {
-    // loadNavbar is now handled by bootstrap.js but kept as fallback utility
-    const loadNavbar = (function() {
-        let loaded = false;
-        return async function(containerId) {
-            if (loaded) return;
-            const navContainer = document.getElementById(containerId);
-            if (!navContainer || navContainer.children.length > 0) {
-                return; 
-            }
-
-            try {
-                console.log('[loadNavbar] Fetching navbar.html...');
-                const response = await fetch(`navbar.html`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                navContainer.innerHTML = await response.text();
-                loaded = true;
-            } catch (error) {
-                console.error('Failed to load navbar:', error);
-                navContainer.innerHTML = `<div style="background: #fef2f2; color: #dc2626; padding: 0.5rem;">⚠️ Navigation failed to load: ${error.message}</div>`;
-            }
-        };
-    })();
-
     const escapeHTML = (str) => {
         const p = document.createElement('p');
         p.textContent = str ?? '';
@@ -303,7 +280,6 @@ const UIUtils = (() => {
     return {
         SVGIcons,
         validators: CoreValidators,
-        loadNavbar,
         escapeHTML,
         generateId,
         debounce,
@@ -333,7 +309,6 @@ const SafeUI = (() => {
     return {
         isReady: true,
         SVGIcons: getSVGIcons(),
-        loadNavbar: (containerId) => UIUtils.loadNavbar(containerId),
         showModal: (title, content, actions) => UIUtils.showModal(title, content, actions),
         showValidationError: (title, msg, elId) => UIUtils.showValidationError(title, msg, elId),
         hideModal: () => UIUtils.hideModal(),
@@ -387,6 +362,58 @@ const DOMHelpers = (() => {
 })();
 
 // ============================================================================
+// MODULE: DateUtils
+// ============================================================================
+const DateUtils = {
+    parseTimeToMinutes(input) {
+        if (!input) return 0;
+        const trimmed = String(input).trim();
+        if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+        if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * 60;
+        if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+            const parts = trimmed.split(':').map(Number);
+            return (parts[0] * 60) + parts[1];
+        }
+        if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
+            const parts = trimmed.split(':').map(Number);
+            return (parts[0] * 60) + parts[1] + (parts[2] / 60);
+        }
+        return 0;
+    },
+
+    formatMinutesToHHMM(totalMinutes) {
+        if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = Math.floor(totalMinutes % 60);
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    },
+
+    formatMinutesToHHMM_Signed(totalMinutes) {
+        if (isNaN(totalMinutes)) return '00:00';
+        const sign = totalMinutes < 0 ? '-' : '';
+        const absMinutes = Math.abs(totalMinutes);
+        const hours = Math.floor(absMinutes / 60);
+        const minutes = Math.floor(absMinutes % 60);
+        return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    },
+
+    formatMinutesToHHMMShort(totalMinutes) {
+        if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
+        if (totalMinutes === 0) return '0m';
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = Math.floor(totalMinutes % 60);
+        let parts = [];
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
+        return parts.join(' ');
+    },
+
+    formatTimeAMPM(hour, minute) {
+        return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+    }
+};
+
+// ============================================================================
 // MODULE: AppLifecycle
 // ============================================================================
 const AppLifecycle = (() => {
@@ -430,21 +457,6 @@ const AppLifecycle = (() => {
     });
 
     return {
-        run: (initFn) => {
-            document.addEventListener('DOMContentLoaded', async () => {
-                try {
-                    if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
-                        _showErrorBanner("Application Failed to Load", "Critical dependencies missing.");
-                        return;
-                    }
-                    await initFn();
-                } catch (err) {
-                    console.error("Unhandled exception during initialization:", err);
-                    _showErrorBanner("Application Error", `Unexpected error: ${err.message}`);
-                }
-            });
-        },
-
         onBootstrap: (initFn) => {
             let bootstrapReady = false;
             document.addEventListener('bootstrap:ready', () => {
@@ -533,3 +545,4 @@ window.SafeUI = SafeUI;
 window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
 window.DataHelpers = DataHelpers;
+window.DateUtils = DateUtils;
