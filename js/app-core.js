@@ -325,32 +325,30 @@ const UIUtils = (() => {
 // MODULE: SafeUI (Proxy layer)
 // ============================================================================
 const SafeUI = (() => {
-    const isReady = typeof UIUtils !== 'undefined' && UIUtils;
-
     const getSVGIcons = () => {
-        if (isReady && UIUtils.SVGIcons) return UIUtils.SVGIcons;
+        if (UIUtils.SVGIcons) return UIUtils.SVGIcons;
         return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋' };
     };
 
     return {
-        isReady,
+        isReady: true,
         SVGIcons: getSVGIcons(),
-        loadNavbar: (containerId) => { if (isReady) UIUtils.loadNavbar(containerId); },
-        showModal: (title, content, actions) => { if (isReady) return UIUtils.showModal(title, content, actions); },
-        showValidationError: (title, msg, elId) => { if (isReady) return UIUtils.showValidationError(title, msg, elId); },
-        hideModal: () => { if (isReady) UIUtils.hideModal(); },
-        showToast: (msg) => { if (isReady) return UIUtils.showToast(msg); },
-        escapeHTML: (str) => isReady ? UIUtils.escapeHTML(str) : str,
-        generateId: () => isReady ? UIUtils.generateId() : Date.now().toString(),
-        debounce: (func, delay) => isReady ? UIUtils.debounce(func, delay) : func,
-        copyToClipboard: (text) => isReady ? UIUtils.copyToClipboard(text) : Promise.resolve(false),
-        downloadJSON: (data, filename, mimeType) => { if (isReady) return UIUtils.downloadJSON(data, filename, mimeType); },
-        openFilePicker: (cb, accept) => { if (isReady) return UIUtils.openFilePicker(cb, accept); },
-        readJSONFile: (file, onSuccess, onError) => { if (isReady) return UIUtils.readJSONFile(file, onSuccess, onError); },
-        readTextFile: (file, onSuccess, onError) => { if (isReady) return UIUtils.readTextFile(file, onSuccess, onError); },
-        parseJSON: (str, success, error) => { if (isReady) return UIUtils.parseJSON(str, success, error); },
-        createStateManager: (key, defaults, version, onCorruption) => { return isReady ? UIUtils.createStateManager(key, defaults, version, onCorruption) : null; },
-        validators: isReady ? UIUtils.validators : { url: (v) => v, notEmpty: (v) => v, maxLength: (v, m) => v }
+        loadNavbar: (containerId) => UIUtils.loadNavbar(containerId),
+        showModal: (title, content, actions) => UIUtils.showModal(title, content, actions),
+        showValidationError: (title, msg, elId) => UIUtils.showValidationError(title, msg, elId),
+        hideModal: () => UIUtils.hideModal(),
+        showToast: (msg) => UIUtils.showToast(msg),
+        escapeHTML: (str) => UIUtils.escapeHTML(str),
+        generateId: () => UIUtils.generateId(),
+        debounce: (func, delay) => UIUtils.debounce(func, delay),
+        copyToClipboard: (text) => UIUtils.copyToClipboard(text),
+        downloadJSON: (data, filename, mimeType) => UIUtils.downloadJSON(data, filename, mimeType),
+        openFilePicker: (cb, accept) => UIUtils.openFilePicker(cb, accept),
+        readJSONFile: (file, onSuccess, onError) => UIUtils.readJSONFile(file, onSuccess, onError),
+        readTextFile: (file, onSuccess, onError) => UIUtils.readTextFile(file, onSuccess, onError),
+        parseJSON: (str, success, error) => UIUtils.parseJSON(str, success, error),
+        createStateManager: (key, defaults, version, onCorruption) => UIUtils.createStateManager(key, defaults, version, onCorruption),
+        validators: UIUtils.validators
     };
 })();
 
@@ -445,6 +443,20 @@ const AppLifecycle = (() => {
                     _showErrorBanner("Application Error", `Unexpected error: ${err.message}`);
                 }
             });
+        },
+
+        onBootstrap: (initFn) => {
+            let bootstrapReady = false;
+            document.addEventListener('bootstrap:ready', () => {
+                bootstrapReady = true;
+                initFn();
+            });
+            setTimeout(() => {
+                if (!bootstrapReady) {
+                    console.error('Bootstrap did not complete within 5 seconds');
+                    _showErrorBanner("Application Startup Timeout", "The application failed to load within 5 seconds. Check the browser console for errors.");
+                }
+            }, 5000);
         },
 
         initPage: async (config) => {

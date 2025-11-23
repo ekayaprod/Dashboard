@@ -487,17 +487,16 @@ async function init() {
     console.log("[MailTo] Ready");
 }
 
-let bootstrapReady = false;
-
-if (typeof SafeUI !== 'undefined' && SafeUI.isReady) {
-    bootstrapReady = true;
-    init();
+// MailTo uses ES modules so we need to be careful about scope,
+// but AppLifecycle should be available globally via bootstrap.
+if (typeof AppLifecycle !== 'undefined') {
+    AppLifecycle.onBootstrap(init);
 } else {
+    // Fallback if AppLifecycle isn't loaded yet (rare race condition in modules)
+    let bootstrapReady = false;
     document.addEventListener('bootstrap:ready', () => {
-        if (!bootstrapReady) {
-            bootstrapReady = true;
-            init();
-        }
+        bootstrapReady = true;
+        init();
     });
 
     setTimeout(() => {
