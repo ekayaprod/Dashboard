@@ -156,16 +156,17 @@ const DataValidator = (() => {
                 const fieldRules = rules[fieldName];
                 if (!fieldRules) continue;
 
-                const trimmedValue = String(value).trim();
-
-                if (fieldRules.required && !trimmedValue) {
+                // Optimization: Use CoreValidators via SafeUI for standard checks
+                if (fieldRules.required && !SafeUI.validators.notEmpty(value)) {
                     errors.push(`${fieldName} is required`);
                     continue;
                 }
 
-                if (fieldRules.maxLength && trimmedValue.length > fieldRules.maxLength) {
+                if (fieldRules.maxLength && !SafeUI.validators.maxLength(value, fieldRules.maxLength)) {
                     errors.push(`${fieldName} must be ${fieldRules.maxLength} characters or less`);
                 }
+
+                const trimmedValue = String(value).trim();
 
                 if (fieldRules.minLength && trimmedValue.length < fieldRules.minLength) {
                     errors.push(`${fieldName} must be at least ${fieldRules.minLength} characters`);
