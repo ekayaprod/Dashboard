@@ -73,7 +73,12 @@
         if (!container) return;
 
         try {
-            const response = await fetch(config.url);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            const response = await fetch(config.url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const html = await response.text();
             container.innerHTML = html;

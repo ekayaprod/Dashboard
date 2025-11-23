@@ -450,6 +450,11 @@ const AppLifecycle = (() => {
         initPage: async (config) => {
             const { storageKey, defaultState, requiredElements, onCorruption, version } = config;
             
+            if (!storageKey || !defaultState) {
+                _showErrorBanner("Application Failed to Start", "Invalid configuration: Missing storageKey or defaultState.");
+                return null;
+            }
+
             const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
             if (!allFound) {
                 _showErrorBanner("Application Failed to Start", "Missing critical DOM elements.");
@@ -506,6 +511,7 @@ const AppLifecycle = (() => {
             if (typeof promptFunction === 'function') beforeUnloadPrompt = promptFunction;
         },
         
+        showStartupError: _showErrorBanner,
         _showErrorBanner
     };
 })();
