@@ -22,7 +22,11 @@
         "Seed",
         "Tulip",
         "Rose",
-        "Rain"
+        "Rain",
+        "Shower",
+        "Puddle",
+        "Lily",
+        "Daisy"
     ],
     "Adjective": [
         "Alive",

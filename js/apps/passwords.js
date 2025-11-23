@@ -779,10 +779,10 @@ li.className = 'result-item';
                 const infoHtml = `
                     <ul style="list-style-type: none; padding-left: 0; margin: 0; font-size: 0.9rem; text-align: left;">
                         <li style="margin-bottom: 0.5rem;"><strong>Auto:</strong> Automatically selects the current season.</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Winter:</strong> December, January, February</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Spring:</strong> March, April, May</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Summer:</strong> June, July, August</li>
-                        <li><strong>Autumn:</strong> September, October, November</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Winter:</strong> Months 12, 1, 2 (Dec-Feb)</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Spring:</strong> Months 3, 4, 5 (Mar-May)</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Summer:</strong> Months 6, 7, 8 (Jun-Aug)</li>
+                        <li><strong>Autumn:</strong> Months 9, 10, 11 (Sep-Nov)</li>
                     </ul>
                 `;
                 SafeUI.showModal('Seasonal Date Ranges', infoHtml, [{ label: 'OK' }]);
