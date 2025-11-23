@@ -16,7 +16,13 @@
         "Snow",
         "Storm",
         "Tundra",
-        "Yule"
+        "Yule",
+        "Hockey",
+        "Skiing",
+        "Cocoa",
+        "Heater",
+        "Slush",
+        "Sleet"
     ],
     "Adjective": [
         "Barren",
