@@ -2,7 +2,6 @@
 // PAGE-SPECIFIC LOGIC: Passwords (passwords.html)
 // ============================================================================
 
-// Wait for bootstrap, but timeout if it fails
 let bootstrapReady = false;
 
 document.addEventListener('bootstrap:ready', () => {
@@ -10,7 +9,6 @@ document.addEventListener('bootstrap:ready', () => {
     initializePage();
 });
 
-// Fallback: If bootstrap doesn't fire within 5 seconds, show error
 setTimeout(() => {
     if (!bootstrapReady) {
         console.error('Bootstrap did not complete within 5 seconds');
@@ -25,7 +23,7 @@ setTimeout(() => {
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'passwords',
-        VERSION: '1.4.10', // Version bump
+        VERSION: '1.4.10',
         DATA_KEY: 'passwords_v1_data',
     };
 
@@ -97,19 +95,16 @@ function initializePage() {
             SafeUI.showModal(title, `<p>${SafeUI.escapeHTML(err.message || err)}</p>`, [{label: 'OK'}]);
         };
 
-        // NEW: Accordion state management (Unified)
         const ACCORDION_STATE_KEY = 'password_generator_accordion_expanded';
 
         const toggleAccordion = (e) => {
             if (e) {
-                // Prevent propagation if clicking the toggle button directly when the header listener catches it
                 if (e.target.closest('button') && e.currentTarget.id === 'custom-gen-header' && e.target.id !== 'accordion-toggle') {
                     e.stopPropagation();
                     return;
                 }
             }
 
-            // Find the parent .accordion div by ID to be safe
             const header = document.getElementById('custom-gen-header');
             const accordion = header ? header.closest('.accordion') : null;
 
@@ -117,7 +112,6 @@ function initializePage() {
 
             const isExpanded = accordion.classList.toggle('expanded');
 
-            // Update ARIA
             if (header) header.setAttribute('aria-expanded', isExpanded);
 
             try {
@@ -147,7 +141,6 @@ function initializePage() {
                 }
             }
 
-            // Attach listeners robustly
             if (DOMElements.accordionToggle) {
                 DOMElements.accordionToggle.onclick = (e) => {
                     e.stopPropagation();
@@ -157,7 +150,6 @@ function initializePage() {
 
             if (DOMElements.customGenHeader) {
                 DOMElements.customGenHeader.onclick = (e) => {
-                    // Only toggle if we didn't click the button (handled by stopPropagation above, but safe check)
                     if (!e.target.closest('#accordion-toggle')) {
                         toggleAccordion(e);
                     }
@@ -321,7 +313,7 @@ function initializePage() {
                     continue;
                 }
 
-                return finalPass; // Success!
+                return finalPass;
             }
 
             console.warn(`Failed to generate password with constraints after ${MAX_RETRIES} retries.`);
@@ -334,7 +326,7 @@ function initializePage() {
 
         const loadWordBank = async () => {
             if (state.wordBank && state.wordBank.Adjective) {
-                return true; // Already loaded
+                return true;
             }
 
             try {
@@ -520,7 +512,6 @@ li.className = 'result-item';
 
             renderResults();
 
-            // Auto-collapse accordion if open, to show results
             const accordion = DOMElements.customGenHeader.closest('.accordion');
             if (accordion && accordion.classList.contains('expanded')) {
                 toggleAccordion(null);
@@ -774,7 +765,6 @@ li.className = 'result-item';
                 await analyzeWordBank();
             });
 
-            // FEATURE: Add click listener for the info button
             DOMElements.seasonalInfoBtn.addEventListener('click', () => {
                 const infoHtml = `
                     <ul style="list-style-type: none; padding-left: 0; margin: 0; font-size: 0.9rem; text-align: left;">

@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 
-      NAVBAR CONTAINER
-      Populated automatically by bootstrap.js (HTML_FRAGMENTS)
-    -->
     <div id="navbar-container"></div>
 
     <div class="app-container">
@@ -18,7 +14,6 @@
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <!-- FIX: Corrected class typo from class.bind to class -->
                 <div id="shortcuts-container" class="shortcuts-container"></div>
 
                 <div class="section-header-wrapper">
@@ -78,10 +73,6 @@
     </div>
     <div id="toast" class="toast"></div>
 
-    <!-- 
-      CRITICAL: Bootstrap script must be at the END of the body.
-      It loads the Navbar HTML and all JS dependencies in parallel.
-    -->
     <script src="js/bootstrap.js"></script>
 </body>
 </html>

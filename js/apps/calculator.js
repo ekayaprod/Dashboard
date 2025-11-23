@@ -2,7 +2,6 @@
 // PAGE-SPECIFIC LOGIC: Calculator (calculator.html)
 // ============================================================================
 
-// Wait for bootstrap, but timeout if it fails
 let bootstrapReady = false;
 
 document.addEventListener('bootstrap:ready', () => {
@@ -10,7 +9,6 @@ document.addEventListener('bootstrap:ready', () => {
     initializePage();
 });
 
-// Fallback: If bootstrap doesn't fire within 5 seconds, show error
 setTimeout(() => {
     if (!bootstrapReady) {
         console.error('Bootstrap did not complete within 5 seconds');
@@ -26,7 +24,7 @@ setTimeout(() => {
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '2.0.6', // Bumped for leeway logic fix
+        VERSION: '2.0.6',
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -36,7 +34,6 @@ function initializePage() {
     // ============================================================================
     (async () => {
         try {
-            // Critical dependency check
             if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined' || typeof UIPatterns === 'undefined' || typeof SharedSettingsModal === 'undefined' || typeof BackupRestore === 'undefined') {
                 const banner = document.getElementById('app-startup-error');
                 if (banner) {
@@ -60,7 +57,6 @@ function initializePage() {
                 }
             };
 
-            // Initialize via AppLifecycle
             const ctx = await AppLifecycle.initPage({
                 storageKey: APP_CONFIG.DATA_KEY,
                 defaultState: defaultState,
@@ -75,7 +71,6 @@ function initializePage() {
                     'calc-info-content',
                     'app-startup-error',
                     'schedule-header', 'schedule-content', 'schedule-collapse-icon'
-                    // 'btnSettings' // <-- FIX: Removed this. It's loaded optionally by bootstrap.
                 ]
             });
 
@@ -87,11 +82,10 @@ function initializePage() {
 
             const { elements: DOMElements, state, saveState } = ctx;
 
-            // --- Initialize Standard Settings Modal ---
             SharedSettingsModal.init({
-                buttonId: 'btnSettings', // This init function will safely handle if 'btnSettings' doesn't exist
+                buttonId: 'btnSettings',
                 appName: APP_CONFIG.NAME,
-                state: state, // Pass the entire state object for backup
+                state: state,
                 itemValidators: {
                     'ui': ['shiftStart', 'shiftEnd', 'breakTime']
                 },
@@ -99,28 +93,27 @@ function initializePage() {
                     const dataToRestore = restoredData.ui ? restoredData.ui : restoredData;
 
                     if (dataToRestore.shiftStart && dataToRestore.shiftEnd) {
-                        state.ui = dataToRestore; // Overwrite the UI state
+                        state.ui = dataToRestore;
                         saveState();
 
                         updateInputsFromState();
                         calculateDailyRatings();
                         renderScheduleCollapse();
                         SafeUI.showToast('Calculator settings restored.');
-                        return true; // Close modal
+                        return true;
                     } else {
                         SafeUI.showModal('Restore Error', '<p>The backup file did not contain valid calculator UI data.</p>', [{ label: 'OK' }]);
-                        return false; // Keep modal open
+                        return false;
                     }
                 }
             });
 
 
-            // --- Constants & Utils ---
             const CONSTANTS = {
                 LEEWAY_RATIO: 1 / 7,
                 TICKETS_PER_HOUR_RATE: 6,
-                ROUNDING_BOUNDARY_MAX: 29, // Rounds up at 30+ minutes
-                PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 3:30 PM
+                ROUNDING_BOUNDARY_MAX: 29,
+                PHONE_CLOSE_MINUTES: 15 * 60 + 30,
                 REACHABLE_TICKET_THRESHOLD: 10
             };
 
@@ -154,9 +147,6 @@ function initializePage() {
                     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
                 },
 
-                /**
-                 * FIX: New formatter that allows negative time.
-                 */
                 formatMinutesToHHMM_Signed(totalMinutes) {
                     if (isNaN(totalMinutes)) return '00:00';
 
@@ -212,7 +202,7 @@ function initializePage() {
                         };
                     }
                 }
-                return null; // No positive call time alternative
+                return null;
             }
 
             function populateTimeOptions(select, startHour, endHour, defaultVal) {
@@ -266,16 +256,15 @@ function initializePage() {
             function handleResetData() {
                 state.ui = JSON.parse(JSON.stringify(defaultState.ui));
                 updateInputsFromState();
-                renderScheduleCollapse(); // Reset collapse state
+                renderScheduleCollapse();
                 calculateDailyRatings();
-                saveState(); // Persist the reset
+                saveState();
                 SafeUI.showToast('Data reset to defaults');
             }
 
             function autoImportBookmarkletData() {
                 let minsToImport = 0;
                 try {
-                    // Note: Using localStorage, not part of the standard state backup
                     minsToImport = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
                 } catch (err) {
                     console.warn("Failed to read from localStorage (sandboxed?):", err.message);
@@ -339,7 +328,6 @@ function initializePage() {
             }
 
             function buildTargetCardHTML(label, value, description) {
-                // Uses standard classes from eod-targets-page styles
                 return `
                     <span class="target-label">${label}</span>
                     <span class="target-value">${value}</span>
@@ -348,9 +336,6 @@ function initializePage() {
             }
 
             function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
-                // FIX: Removed the error block for (totalWorkTimeEOD < 0)
-                // It will now calculate normally.
-
                 if (ticketsNeeded <= 0) {
                     return {
                         boxClass: 'target-good',
@@ -398,7 +383,7 @@ function initializePage() {
                         rowClass = 'pacing-fail';
                         message = `Need ${ticketsNeeded} more (challenging)`;
                     }
-                } else { // Final status (not pacing)
+                } else {
                     if (achieved) {
                         icon = '✓';
                         rowClass = 'pacing-good';
@@ -436,9 +421,6 @@ function initializePage() {
                     currentCallTimeSoFar
                 } = scheduleData;
 
-                // FIX: Removed the error block for (totalWorkTimeEOD < 0)
-                // It will now calculate normally.
-
                 const currentHour = now.getHours();
                 const currentMinute = now.getMinutes();
                 const currentTimeMinutes = currentHour * 60 + currentMinute;
@@ -459,9 +441,7 @@ function initializePage() {
                     return;
                 }
 
-                // BEFORE 3:30 PM - Show Pacing
                 if (phonesStillOpen) {
-                    // FIX: Ensure minutesIntoShift is not zero to avoid divide by zero
                     const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
                     const minutesUntilPhoneClose = CONSTANTS.PHONE_CLOSE_MINUTES - currentTimeMinutes;
 
@@ -505,7 +485,6 @@ function initializePage() {
 
                     DOMElements.calcInfoContent.innerHTML = statusHtml;
 
-                // AFTER 3:30 PM - Show Final Status
                 } else {
                     let statusHtml = `
                         <div class="info-box">
@@ -534,7 +513,7 @@ function initializePage() {
             function renderErrorState(errorMessage, errorData) {
                 DOMElements.totalWorkTimeEOD.innerText = '00:00';
                 DOMElements.targetsGrid.innerHTML = `<div class="info-box info-box-danger" style="grid-column: 1 / -1;">${errorMessage}</div>`;
-                renderCalculationInfo(errorData, new Date()); // Pass 'now'
+                renderCalculationInfo(errorData, new Date());
             }
 
             function calculateDailyRatings() {
@@ -568,7 +547,6 @@ function initializePage() {
 
                 const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
 
-                // FIX: Use the new signed formatter to show negative time
                 DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
 
                 const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
@@ -584,7 +562,7 @@ function initializePage() {
                     const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
 
                     let callTimeHtml = '';
-                    if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) { // Only show call time alt if work time is positive
+                    if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
                         const callAlternative = getCallTimeAlternative(
                             boundary,
                             currentTicketsSoFar,
@@ -625,18 +603,14 @@ function initializePage() {
             function renderScheduleCollapse() {
                 const isCollapsed = state.ui.isScheduleCollapsed;
 
-                // --- FIX: Unified Accordion Logic ---
-                // The unified accordion uses 'expanded' class on the parent container, not 'collapsed'
                 const accordionContainer = DOMElements.scheduleContent.parentElement;
                 if (isCollapsed) {
                         accordionContainer.classList.remove('expanded');
                 } else {
                         accordionContainer.classList.add('expanded');
                 }
-                // DOMElements.scheduleCollapseIcon.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
             }
 
-            // --- Execution ---
             populateTimeOptions(DOMElements.shiftStart, 6, 12, state.ui?.shiftStart || defaultState.ui.shiftStart);
             populateTimeOptions(DOMElements.shiftEnd, 12, 18, state.ui?.shiftEnd || defaultState.ui.shiftEnd);
 
@@ -670,7 +644,7 @@ function initializePage() {
 
             function handleTimerTick() {
                 const now = new Date();
-                updateTimeDisplays(now); // Update clock every second
+                updateTimeDisplays(now);
 
                 if (document.visibilityState === 'visible') {
                     const seconds = now.getSeconds();
@@ -682,7 +656,6 @@ function initializePage() {
 
             setInterval(handleTimerTick, 1000);
 
-            // Initial setup
             renderScheduleCollapse();
             calculateDailyRatings();
 
@@ -697,7 +670,6 @@ function initializePage() {
 
         } catch (err) {
             console.error("Unhandled exception during initialization:", err);
-            // Use the raw banner getter as a fallback
             const banner = document.getElementById('app-startup-error');
             if (banner) {
                 banner.innerHTML = `<strong>Application Error</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Unexpected error: ${err.message}</p>`;

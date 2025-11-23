@@ -2,7 +2,6 @@
 // PAGE-SPECIFIC LOGIC: Lookup (lookup.html)
 // ============================================================================
 
-// Wait for bootstrap, but timeout if it fails
 let bootstrapReady = false;
 
 document.addEventListener('bootstrap:ready', () => {
@@ -10,7 +9,6 @@ document.addEventListener('bootstrap:ready', () => {
     initializePage();
 });
 
-// Fallback: If bootstrap doesn't fire within 5 seconds, show error
 setTimeout(() => {
     if (!bootstrapReady) {
         console.error('Bootstrap did not complete within 5 seconds');
@@ -25,7 +23,7 @@ setTimeout(() => {
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'lookup',
-        VERSION: '2.3.1', // Bumped for bootstrap update
+        VERSION: '2.3.1',
         DATA_KEY: 'lookup_v2_data',
         CSV_HEADERS: ['id', 'keyword', 'assignmentGroup', 'notes', 'phoneLogPath']
     };
@@ -34,11 +32,9 @@ function initializePage() {
 
     // ============================================================================
     // INITIALIZATION ROUTINE
-    // Bypasses AppLifecycle.run() to avoid the DOMContentLoaded race condition.
     // ============================================================================
     (async () => {
         try {
-            // Critical dependency check
             if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
                 const banner = document.getElementById('app-startup-error');
                 if (banner) {
@@ -63,7 +59,6 @@ function initializePage() {
                 }
             };
 
-            // Note: AppLifecycle.initPage will set up state manager but NOT load navbar (bootstrap does that)
             const ctx = await AppLifecycle.initPage({
                 storageKey: APP_CONFIG.DATA_KEY,
                 defaultState: defaultState,
@@ -278,7 +273,6 @@ function initializePage() {
                 renderLocalList(searchTerm);
                 renderCustomSearches(searchTerm);
 
-                // Update clear button visibility
                 DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
             };
 
@@ -673,7 +667,6 @@ function initializePage() {
                     sortAndSaveState();
                     renderAll();
 
-                    // Restore edit mode UI state
                     isEditMode = state.ui.isEditMode || false;
                     DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
                     DOMElements.btnEditMode.classList.toggle('btn-primary', isEditMode);
@@ -699,7 +692,6 @@ function initializePage() {
             }
 
             function attachEventListeners() {
-                // Search bar with persistence
                 const debouncedSearchSave = SafeUI.debounce(() => {
                     if (state.ui) {
                         state.ui.searchTerm = DOMElements.searchInput.value.trim();
@@ -758,7 +750,6 @@ function initializePage() {
                     }
                 });
 
-                // Clear Search Button
                 DOMElements.btnClearSearch.addEventListener('click', () => {
                     DOMElements.searchInput.value = '';
                     if (state.ui) {
@@ -768,7 +759,6 @@ function initializePage() {
                     renderAll();
                 });
 
-                // Scroll Persistence
                 DOMElements.localResults.addEventListener('scroll', SafeUI.debounce(() => {
                     if (state.ui) {
                         state.ui.scrollTop = DOMElements.localResults.scrollTop;
@@ -776,7 +766,6 @@ function initializePage() {
                     }
                 }, 500));
 
-                // Scroll to Top
                 const scrollToTopBtn = document.getElementById('scroll-to-top');
                 if (scrollToTopBtn) {
                     DOMElements.localResults.addEventListener('scroll', SafeUI.debounce(() => {
@@ -791,7 +780,6 @@ function initializePage() {
             function toggleEditMode() {
                 isEditMode = !isEditMode;
 
-                // Persist Edit Mode
                 if (state.ui) {
                     state.ui.isEditMode = isEditMode;
                     saveState();
@@ -805,7 +793,6 @@ function initializePage() {
             function init() {
                 attachEventListeners();
 
-                // Restore UI State
                 if (state.ui) {
                     if (state.ui.searchTerm) {
                         DOMElements.searchInput.value = state.ui.searchTerm;
@@ -820,7 +807,6 @@ function initializePage() {
 
                     renderAll();
 
-                    // Restore scroll after render
                     if (state.ui.scrollTop) {
                         setTimeout(() => {
                             DOMElements.localResults.scrollTop = state.ui.scrollTop;

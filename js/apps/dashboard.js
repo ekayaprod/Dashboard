@@ -3,7 +3,6 @@
 // Handles Applications, Shortcuts, and local settings
 // ============================================================================
 
-// Wait for bootstrap, but timeout if it fails
 let bootstrapReady = false;
 
 document.addEventListener('bootstrap:ready', () => {
@@ -11,7 +10,6 @@ document.addEventListener('bootstrap:ready', () => {
     initializePage();
 });
 
-// Fallback: If bootstrap doesn't fire within 5 seconds, show error
 setTimeout(() => {
     if (!bootstrapReady) {
         console.error('Bootstrap did not complete within 5 seconds');

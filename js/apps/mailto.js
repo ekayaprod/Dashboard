@@ -1,12 +1,10 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
- * Version: 2.3.3 (Final Corrected)
  */
 
 import { MsgReader } from '../msgreader.js';
 
-// Configuration
 const APP_CONFIG = {
     NAME: 'mailto_library',
     VERSION: '2.3.3',
@@ -16,7 +14,6 @@ const APP_CONFIG = {
 
 const MAILTO_PARAM_KEYS = ['cc', 'bcc', 'subject']; 
 
-// Internal SVGs
 const ICONS = {
     folder: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
     template: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/></svg>',
@@ -25,7 +22,6 @@ const ICONS = {
     edit: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>'
 };
 
-// Default state
 const defaultState = {
     library: [],
     ui: {
@@ -34,13 +30,11 @@ const defaultState = {
     }
 };
 
-// Globals
 let DOMElements;
 let state;
 let saveState;
 let currentFolderId = 'root';
 
-// --- Recursive Finders ---
 function findInTree(items, predicate, parent = null) {
     for (const item of items) {
         if (predicate(item)) return { item, parent };
@@ -64,7 +58,6 @@ function findParentOfItem(childId) {
     return result ? (result.parent || {id: 'root', children: state.library}) : null;
 }
 
-// Helper for Folder Dropdowns
 function getAllFolders(items = state.library, level = 0) {
     let folders = [];
     if (level === 0) folders.push({ id: 'root', name: 'Root', level: 0 });
@@ -92,12 +85,10 @@ function populateFolderSelect(selectEl, excludeId = null) {
     });
 }
 
-// --- UX Logic ---
 function setActiveSection(sectionName) {
     const libSec = document.getElementById('library-section');
     const editSec = document.getElementById('editor-section');
     
-    // Toggle helper
     const setExpanded = (el, isExpanded) => {
         if (isExpanded) {
             el.classList.add('expanded');
@@ -107,11 +98,6 @@ function setActiveSection(sectionName) {
             el.classList.add('collapsed');
         }
     };
-
-    // Logic: 2-state toggle + Mutex
-    // If 'library' passed: Library Open, Editor Closed
-    // If 'editor' passed: Editor Open, Library Closed
-    // If null passed: Both Closed
     
     if (sectionName === 'library') {
         setExpanded(libSec, true);
@@ -140,7 +126,6 @@ function clearEditorFields() {
     SafeUI.showToast("Editor cleared");
 }
 
-// --- Mailto Logic ---
 function parseMailto(str) {
     const data = {to:'', cc:'', bcc:'', subject:'', body:''};
     if (!str || !str.startsWith('mailto:')) return data;
@@ -169,7 +154,6 @@ function buildMailto(data) {
     } catch (e) { return ''; }
 }
 
-// --- File Handling ---
 function handleFile(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -196,7 +180,6 @@ function handleFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
-// --- Navigation ---
 function getBreadcrumbPath(folderId) {
     if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
     const path = [];
@@ -282,11 +265,9 @@ function openMoveModal(itemId) {
             callback: () => {
                 const targetId = document.getElementById('move-target-select').value;
                 if(targetId && targetId !== itemId) {
-                    // Remove from old
                     const oldParent = findParentOfItem(itemId);
                     if (oldParent) oldParent.children = oldParent.children.filter(c => c.id !== itemId);
                     
-                    // Add to new
                     const newParent = findItemById(targetId);
                     if (newParent && newParent.children) {
                         newParent.children.push(item);
@@ -309,9 +290,7 @@ function openMoveModal(itemId) {
 async function init() {
     console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
     
-    if (typeof SafeUI === 'undefined') { return; } // Safety check
-
-    // Navbar is handled by bootstrap.js
+    if (typeof SafeUI === 'undefined') { return; }
 
     const ctx = await AppLifecycle.initPage({
         storageKey: APP_CONFIG.DATA_KEY,
@@ -328,7 +307,6 @@ async function init() {
     if (!ctx) return; 
     ({ elements: DOMElements, state, saveState } = ctx);
 
-    // Set Initial Section
     setActiveSection(state.ui.activeSection || 'editor');
 
     const refreshSaveDropdown = () => {
@@ -339,10 +317,7 @@ async function init() {
         }
     };
 
-    // Accordion Toggles - Simple 2-State Toggle Logic
     const handleHeaderClick = (section) => {
-        // If clicking current open section -> Close it (null)
-        // If clicking closed section -> Open it (section)
         const next = state.ui.activeSection === section ? null : section;
         setActiveSection(next);
         if(next === 'editor') refreshSaveDropdown();
@@ -355,7 +330,6 @@ async function init() {
         if (!e.target.closest('button')) handleHeaderClick('editor');
     });
 
-    // Clear Button
     DOMElements.btnClearAll.addEventListener('click', (e) => {
         e.stopPropagation();
         UIPatterns.confirmDelete('Form Data', 'Current Content', () => {
@@ -363,10 +337,8 @@ async function init() {
         });
     });
 
-    // Prevent event bubbling for clear button (just in case)
     DOMElements.btnClearAll.addEventListener('mousedown', (e) => e.stopPropagation());
 
-    // New Folder
     DOMElements.btnNewFolder.addEventListener('click', (e) => {
         e.stopPropagation();
         SafeUI.showModal('New Folder', '<input id="fn" class="form-control" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
@@ -383,7 +355,6 @@ async function init() {
         }}, {label:'Cancel'}]);
     });
 
-    // Drag & Drop (Click wrapper triggers input)
     const uploadWrapper = document.getElementById('upload-wrapper');
     uploadWrapper.addEventListener('click', (e) => {
         if (e.target !== DOMElements.msgUpload) DOMElements.msgUpload.click();
@@ -399,7 +370,6 @@ async function init() {
     uploadWrapper.addEventListener('dragover', handleDrag);
     uploadWrapper.addEventListener('drop', handleDrop);
 
-    // Generate
     DOMElements.btnGenerate.addEventListener('click', () => {
         const d = {
             to: DOMElements.resultTo.value, cc: DOMElements.resultCc.value, bcc: DOMElements.resultBcc.value,
@@ -413,18 +383,15 @@ async function init() {
         DOMElements.outputWrapper.classList.remove('hidden');
         refreshSaveDropdown();
         
-        // Scroll to bottom
         const scrollTarget = document.querySelector('#editor-section .accordion-content');
         if(scrollTarget) scrollTarget.scrollTop = scrollTarget.scrollHeight;
     });
 
-    // Copy
     DOMElements.copyMailtoBtn.addEventListener('click', () => {
         SafeUI.copyToClipboard(DOMElements.resultMailto.value);
         SafeUI.showToast("Copied");
     });
 
-    // Save Template
     DOMElements.btnSaveToLibrary.addEventListener('click', () => {
         if (!DOMElements.resultMailto.value) DOMElements.btnGenerate.click();
         
@@ -442,7 +409,6 @@ async function init() {
         }
     });
 
-    // Tree Navigation & Actions
     DOMElements.treeListContainer.addEventListener('click', e => {
         const itemEl = e.target.closest('.list-item');
         if(!itemEl) return;
@@ -521,10 +487,8 @@ async function init() {
     console.log("[MailTo] Ready");
 }
 
-// Wait for bootstrap, but timeout if it fails
 let bootstrapReady = false;
 
-// Check if bootstrap already finished before we loaded
 if (typeof SafeUI !== 'undefined' && SafeUI.isReady) {
     bootstrapReady = true;
     init();
@@ -536,7 +500,6 @@ if (typeof SafeUI !== 'undefined' && SafeUI.isReady) {
         }
     });
 
-    // Fallback: If bootstrap doesn't fire within 5 seconds, show error
     setTimeout(() => {
         if (!bootstrapReady) {
             console.error('Bootstrap did not complete within 5 seconds');
