@@ -126,7 +126,6 @@ const NotepadManager = (() => {
         notesCollection.forEach(note => fragment.appendChild(new Option(note.title, note.id)));
         noteSelect.appendChild(fragment);
 
-        // Restore active note from UI state if available, otherwise default logic
         if (state.ui && state.ui.activeNoteId && notesCollection.some(n => n.id === state.ui.activeNoteId)) {
             activeNoteId = state.ui.activeNoteId;
         } else {
@@ -140,7 +139,6 @@ const NotepadManager = (() => {
             DOMElements.notepadEditor.value = activeNote.content;
             DOMElements.notepadEditor.disabled = false;
             
-            // Restore scroll position
             if (state.ui && state.ui.notepadScrollTop) {
                 setTimeout(() => {
                     if (DOMElements.notepadEditor) DOMElements.notepadEditor.scrollTop = state.ui.notepadScrollTop;
@@ -172,7 +170,6 @@ const NotepadManager = (() => {
         DOMElements.noteSelect.addEventListener('change', () => {
             activeNoteId = DOMElements.noteSelect.value;
             
-            // Persist selection to UI state
             if (state.ui) {
                 state.ui.activeNoteId = activeNoteId;
                 saveState();
@@ -183,14 +180,12 @@ const NotepadManager = (() => {
             DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
         });
 
-        // Debounced save for content + scroll position
         const debouncedUpdate = SafeUI.debounce(() => {
             if (!activeNoteId) return;
             
             const note = DataHelpers.findById(state, 'notes', activeNoteId);
             if (note) {
                 note.content = DOMElements.notepadEditor.value;
-                // Update scroll state
                 if (state.ui) {
                     state.ui.notepadScrollTop = DOMElements.notepadEditor.scrollTop;
                 }
@@ -215,7 +210,6 @@ const NotepadManager = (() => {
                     const newNote = { id: SafeUI.generateId(), title, content: '' };
                     DataHelpers.getCollection(state, 'notes').push(newNote);
                     
-                    // Update UI state
                     if (state.ui) state.ui.activeNoteId = newNote.id;
                     
                     saveState();
@@ -317,7 +311,6 @@ const QuickListManager = (() => {
             nameElement = document.createElement('button');
             nameElement.className = 'quick-action-btn';
             nameElement.textContent = name;
-            // Inline styles to mimic link appearance
             nameElement.style.all = 'unset';
             nameElement.style.color = 'var(--primary-color)';
             nameElement.style.textDecoration = 'none';

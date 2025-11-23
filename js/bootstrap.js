@@ -1,32 +1,19 @@
 /**
  * bootstrap.js - Centralized dependency loader
  * Loads both JavaScript modules AND shared HTML components (Navbar).
- * Version: 1.1.3 (MailTo Fix)
- *
- * FIX v1.1.3: Changed msgreader.js to be 'required: true' for mailto.html.
- * This ensures that if the file fails to load, the bootstrapper stops
- * and shows an error instead of letting the page fail silently.
- *
- * FIX v1.1.2: Added missing exports to verification lists:
- * - UIUtils (from app-core.js)
- * - APP_UI_VERSION (from app-ui.js)
- * - APP_DATA_VERSION (from app-data.js)
  */
 
 (function() {
     'use strict';
 
-    // Configuration: HTML Components to load
-    // These are loaded in parallel with scripts but ensured to be in DOM before 'ready' fires.
     const HTML_FRAGMENTS = [
         { 
             url: 'navbar.html', 
             targetId: 'navbar-container', 
-            required: false // If container exists, we load it. If not, we skip.
+            required: false
         }
     ];
 
-    // Configuration: JS Scripts to load
     const CORE_SCRIPTS = [
         { 
             url: 'js/app-core.js', 
@@ -49,14 +36,13 @@
     
     const PAGE_SCRIPTS = {
         'index.html': [{ url: 'js/apps/dashboard.js', required: true }],
-        '': [{ url: 'js/apps/dashboard.js', required: true }], // Default for root
+        '': [{ url: 'js/apps/dashboard.js', required: true }],
         'calculator.html': [{ url: 'js/apps/calculator.js', required: true }],
         'lookup.html': [{ url: 'js/apps/lookup.js', required: true }],
         'passwords.html': [{ url: 'js/apps/passwords.js', required: true }],
         'mailto.html': [{ url: 'js/apps/mailto.js', required: true, type: 'module' }]
     };
     
-    // State tracking
     let loadedScripts = new Set();
     let failedScripts = new Set();
     
@@ -82,12 +68,8 @@
         }
     }
 
-    /**
-     * Fetches an HTML fragment and injects it into the target container.
-     */
     async function loadHtmlFragment(config) {
         const container = document.getElementById(config.targetId);
-        // If the page doesn't have the container (e.g. login page might not have navbar), skip it.
         if (!container) return;
 
         try {
@@ -98,7 +80,6 @@
             console.log(`[Bootstrap] ✓ HTML Loaded: ${config.url}`);
         } catch (error) {
             console.error(`[Bootstrap] ✗ Failed to load HTML ${config.url}:`, error);
-            // We don't fail the whole app for a missing navbar, but we log it visibly
             container.innerHTML = `<div style="color:red; padding:10px; border:1px solid red; background:#fff;">Failed to load ${config.url}</div>`;
         }
     }
@@ -141,15 +122,12 @@
         console.log('[Bootstrap] Starting dependency loader...');
         
         try {
-            // 1. Start loading HTML fragments in parallel
             const htmlLoaders = HTML_FRAGMENTS.map(loadHtmlFragment);
 
-            // 2. Load core scripts sequentially
             for (const config of CORE_SCRIPTS) {
                 await loadScript(config);
             }
             
-            // 3. Verify exports
             console.log('[Bootstrap] Verifying exports...');
             const allMissingExports = [];
             for (const config of CORE_SCRIPTS) {
@@ -162,25 +140,21 @@
                 throw new Error(`Scripts loaded but missing exports:\n${allMissingExports.join('\n')}`);
             }
             
-            // 4. Load page specific scripts
-            const currentPage = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0]; // FIX: Ignore query strings
+            const currentPage = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0];
             const pageScripts = PAGE_SCRIPTS[currentPage] || [];
             
             for (const config of pageScripts) {
                 try { 
                     await loadScript(config); 
                 } catch (err) { 
-                    // Now if 'required: true', this will throw the error and stop bootstrap
                     if (config.required) throw err; 
                 }
             }
             
-            // 5. Wait for HTML to finish loading (if it hasn't already)
             await Promise.all(htmlLoaders);
 
             console.log('[Bootstrap] ✓ System Ready');
             
-            // 6. Dispatch Ready Event
             document.dispatchEvent(new CustomEvent('bootstrap:ready'));
             
         } catch (error) {
