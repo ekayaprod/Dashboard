@@ -360,21 +360,9 @@ function initializePage() {
                 saveState();
                 return true;
             } catch (err) {
-                console.warn("Failed to load wordbank (offline/missing). Using fallback.", err);
-
-                state.wordBank = {
-                    "Adjective": ["Happy", "Sunny", "Fast", "Bright", "Cool", "Safe", "Strong", "Wise", "Kind", "Brave"],
-                    "Noun": ["Tiger", "Mountain", "River", "Eagle", "Forest", "Ocean", "Star", "Tree", "Moon", "Sun"],
-                    "Verb": ["Jump", "Run", "Fly", "Swim", "Walk", "Sing", "Read", "Write", "Play", "Work"],
-                    "Color": ["Red", "Blue", "Green", "Gold", "Silver", "White", "Black", "Purple", "Orange", "Yellow"],
-                    "Animal": ["Cat", "Dog", "Bear", "Wolf", "Fox", "Lion", "Hawk", "Owl", "Fish", "Bird"],
-                    "Object": ["Table", "Chair", "Book", "Pen", "Phone", "Key", "Door", "Window", "Lamp", "Desk"],
-                    "Word": ["Code", "Data", "Link", "Web", "Net", "App", "Site", "File", "Text", "User"],
-                    "LongWord": ["Information", "Performance", "Environment", "Mathematics", "Celebration", "Destination", "Engineering", "Application", "Combination", "Imagination"]
-                };
-
-                SafeUI.showToast("Offline Mode: Using limited wordbank.");
-                return true;
+                console.error("Failed to load wordbank:", err);
+                AppLifecycle.showStartupError("Wordbank Load Error", `Failed to load base wordbank: ${err.message}`);
+                return false;
             }
         };
 
@@ -771,7 +759,7 @@ li.className = 'result-item';
                     config: {
                         passNumWords: 1, passSeparator: "", passNumDigits: 1,
                         passNumSymbols: 0, minLength: 12, maxLength: 16,
-                        padToMin: true, seasonalBank: "auto"
+                        padToMin: true, seasonalBank: "none"
                     }
                 });
             });
