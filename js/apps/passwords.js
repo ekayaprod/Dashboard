@@ -173,14 +173,6 @@ function initializePage() {
         const R = (a) => a[getRand(a.length)];
         const Cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
-        const getSeason = (d) => {
-            const m = d.getMonth(); // 0-11
-            if (m === 11 || m === 0 || m === 1) return 'winter';
-            if (m >= 2 && m <= 4) return 'spring';
-            if (m >= 5 && m <= 7) return 'summer';
-            return 'autumn';
-        };
-
         const generatePassphrase = (config) => {
             const C = { ...config };
 
@@ -205,7 +197,7 @@ function initializePage() {
 
             let resolvedSeason = C.seasonalBank;
             if (C.seasonalBank === 'auto') {
-                resolvedSeason = getSeason(new Date());
+                resolvedSeason = DateUtils.getSeason(new Date());
             }
 
             let minEstimate = C.passNumDigits + C.passNumSymbols + (C.passNumWords * 4);

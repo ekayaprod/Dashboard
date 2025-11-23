@@ -410,6 +410,14 @@ const DateUtils = {
 
     formatTimeAMPM(hour, minute) {
         return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+    },
+
+    getSeason(d) {
+        const m = d.getMonth(); // 0-11
+        if (m === 11 || m === 0 || m === 1) return 'winter';
+        if (m >= 2 && m <= 4) return 'spring';
+        if (m >= 5 && m <= 7) return 'summer';
+        return 'autumn';
     }
 };
 
