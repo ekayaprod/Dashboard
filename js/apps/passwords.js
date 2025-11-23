@@ -92,7 +92,11 @@ function initializePage() {
 
         const showError = (title, err) => {
             console.error(title, err);
-            SafeUI.showModal(title, `<p>${SafeUI.escapeHTML(err.message || err)}</p>`, [{label: 'OK'}]);
+            if (AppLifecycle.showStartupError) {
+                AppLifecycle.showStartupError(title, err.message || err);
+            } else {
+                SafeUI.showModal(title, `<p>${SafeUI.escapeHTML(err.message || err)}</p>`, [{label: 'OK'}]);
+            }
         };
 
         const ACCORDION_STATE_KEY = 'password_generator_accordion_expanded';
@@ -330,7 +334,11 @@ function initializePage() {
             }
 
             try {
-                const response = await fetch('wordbanks/wordbank-base.json');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const response = await fetch('wordbanks/wordbank-base.json', { signal: controller.signal });
+                clearTimeout(timeoutId);
+
                 if (!response.ok) {
                     throw new Error(`Failed to fetch 'wordbanks/wordbank-base.json': ${response.statusText}`);
                 }
@@ -375,7 +383,11 @@ function initializePage() {
 
             if (selectedSeason !== 'none' && selectedSeason !== 'auto') {
                 try {
-                    const response = await fetch(`wordbanks/wordbank-${selectedSeason}.json`);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    const response = await fetch(`wordbanks/wordbank-${selectedSeason}.json`, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+
                     if (!response.ok) throw new Error(`File not found or failed to load (Status: ${response.status})`);
                     const seasonalBank = await response.json();
 
@@ -811,10 +823,14 @@ li.className = 'result-item';
         init();
         } catch (err) {
             console.error("Unhandled exception during initialization:", err);
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Error</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Unexpected error: ${err.message}</p>`;
-                banner.classList.remove('hidden');
+            if (AppLifecycle.showStartupError) {
+                AppLifecycle.showStartupError("Application Error", `Unexpected error: ${err.message}`);
+            } else {
+                const banner = document.getElementById('app-startup-error');
+                if (banner) {
+                    banner.innerHTML = `<strong>Application Error</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Unexpected error: ${err.message}</p>`;
+                    banner.classList.remove('hidden');
+                }
             }
         }
     })();
