@@ -79,32 +79,26 @@
                                 <textarea id="result-body" class="form-control body-input" placeholder="Body content..."></textarea>
                             </div>
                             
-                            <!-- Actions -->
-                            <div class="grid-2">
-                                <button id="btn-generate" class="btn btn-primary">Generate Link</button>
-                                <button id="btn-save-to-library" class="btn btn-success">Save Template</button>
+                            <!-- Hidden Fields for Save Logic (Now handled in Modal, but placeholders kept in state) -->
+                            <div class="hidden">
+                                <input type="text" id="save-template-name">
+                                <select id="save-target-folder"></select>
                             </div>
 
-                            <!-- Hidden Output (Shows only when needed) -->
-                            <div id="output-wrapper" class="hidden" style="margin-top:1rem;">
-                                <div class="grid-2-tight" style="margin-bottom: 0.5rem;">
-                                    <div class="form-group">
-                                        <label>Template Name</label>
-                                        <input type="text" id="save-template-name" class="form-control" placeholder="New Template">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Save To</label>
-                                        <select id="save-target-folder" class="form-control"></select>
-                                    </div>
-                                </div>
+                            <!-- Live Output & Actions -->
+                            <div id="output-wrapper" style="margin-top:1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
                                 <div class="form-group">
-                                    <label>MailTo Link</label>
+                                    <label>Live Link Preview</label>
                                     <div style="display:flex; gap:5px;">
-                                        <input type="text" id="result-mailto" class="form-control" readonly>
+                                        <input type="text" id="result-mailto" class="form-control" readonly placeholder="mailto:...">
                                         <button id="copy-mailto-btn" class="btn">Copy</button>
                                     </div>
                                 </div>
-                                <a href="#" id="result-link" target="_blank" class="btn btn-primary" style="width:100%; text-align:center;">Open in Client</a>
+
+                                <div class="grid-2">
+                                    <button id="btn-save-to-library" class="btn btn-success">Save Template</button>
+                                    <a href="#" id="result-link" target="_blank" class="btn btn-primary" style="width:100%; text-align:center;">Open in Client</a>
+                                </div>
                             </div>
                         </div>
                     </div>
