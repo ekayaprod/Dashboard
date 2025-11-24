@@ -73,9 +73,17 @@ function getAllFolders(items = state.library, level = 0) {
     return folders;
 }
 
-function populateFolderSelect(selectEl, excludeId = null) {
+function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = false) {
     const folders = getAllFolders();
     selectEl.innerHTML = '';
+
+    if (includeCreateNew) {
+        const createOpt = document.createElement('option');
+        createOpt.value = '__CREATE_NEW__';
+        createOpt.innerHTML = '➕ &lt; Create New Folder &gt;';
+        selectEl.appendChild(createOpt);
+    }
+
     folders.forEach(f => {
         if (f.id === excludeId) return; 
         const opt = document.createElement('option');
@@ -113,6 +121,26 @@ function setActiveSection(sectionName) {
     if (state.ui) { state.ui.activeSection = sectionName; saveState(); }
 }
 
+function updateLivePreview() {
+    const d = {
+        to: DOMElements.resultTo.value,
+        cc: DOMElements.resultCc.value,
+        bcc: DOMElements.resultBcc.value,
+        subject: DOMElements.resultSubject.value,
+        body: DOMElements.resultBody.value
+    };
+    const m = buildMailto(d);
+    DOMElements.resultMailto.value = m;
+    DOMElements.resultLink.href = m || '#';
+
+    const hasContent = m.length > 7; // 'mailto:' length
+    if (hasContent) {
+        DOMElements.resultLink.classList.remove('disabled');
+    } else {
+        DOMElements.resultLink.classList.add('disabled');
+    }
+}
+
 function clearEditorFields() {
     ['result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', 'result-mailto', 'save-template-name'].forEach(id => {
         const el = document.getElementById(id);
@@ -122,7 +150,7 @@ function clearEditorFields() {
     const fileInput = document.getElementById('msg-upload');
     if (fileInput) fileInput.value = '';
     
-    document.getElementById('output-wrapper').classList.add('hidden');
+    updateLivePreview();
     SafeUI.showToast("Editor cleared");
 }
 
@@ -298,7 +326,7 @@ async function init() {
         version: APP_CONFIG.VERSION,
         requiredElements: [
             'navbar-container', 'btn-new-folder', 'btn-settings', 'breadcrumb-container', 'tree-list-container',
-            'btn-generate', 'upload-wrapper', 'msg-upload', 'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
+            'upload-wrapper', 'msg-upload', 'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
             'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', 'save-template-name', 'btn-save-to-library',
             'library-header', 'editor-header', 'btn-clear-all'
         ]
@@ -370,21 +398,11 @@ async function init() {
     uploadWrapper.addEventListener('dragover', handleDrag);
     uploadWrapper.addEventListener('drop', handleDrop);
 
-    DOMElements.btnGenerate.addEventListener('click', () => {
-        const d = {
-            to: DOMElements.resultTo.value, cc: DOMElements.resultCc.value, bcc: DOMElements.resultBcc.value,
-            subject: DOMElements.resultSubject.value, body: DOMElements.resultBody.value
-        };
-        const m = buildMailto(d);
-        if (m.length > 2000) SafeUI.showToast("Warning: Link length > 2000 chars");
-
-        DOMElements.resultMailto.value = m;
-        DOMElements.resultLink.href = m;
-        DOMElements.outputWrapper.classList.remove('hidden');
-        refreshSaveDropdown();
-        
-        const scrollTarget = document.querySelector('#editor-section .accordion-content');
-        if(scrollTarget) scrollTarget.scrollTop = scrollTarget.scrollHeight;
+    // Live Update Listeners
+    ['resultTo', 'resultCc', 'resultBcc', 'resultSubject', 'resultBody'].forEach(key => {
+        if (DOMElements[key]) {
+            DOMElements[key].addEventListener('input', updateLivePreview);
+        }
     });
 
     DOMElements.copyMailtoBtn.addEventListener('click', () => {
@@ -393,20 +411,103 @@ async function init() {
     });
 
     DOMElements.btnSaveToLibrary.addEventListener('click', () => {
-        if (!DOMElements.resultMailto.value) DOMElements.btnGenerate.click();
+        updateLivePreview(); // Ensure up to date
         
-        const name = DOMElements.saveTemplateName.value.trim() || DOMElements.resultSubject.value.trim() || "New Template";
-        const targetId = document.getElementById('save-target-folder').value || currentFolderId;
-        const f = findItemById(targetId);
+        const defaultName = DOMElements.resultSubject.value.trim() || "New Template";
+        const folderSelectId = 'modal-save-folder-select';
 
-        if(f) {
-            f.children.push({
-                id: SafeUI.generateId(), type:'item', name, 
-                mailto: DOMElements.resultMailto.value
+        const content = `
+            <div class="form-group">
+                <label>Template Name</label>
+                <input id="modal-save-name" class="form-control" value="${SafeUI.escapeHTML(defaultName)}" placeholder="Template Name">
+            </div>
+            <div class="form-group">
+                <label>Save To</label>
+                <select id="${folderSelectId}" class="form-control"></select>
+            </div>
+            <div id="modal-new-folder-group" class="form-group hidden" style="margin-left: 1rem; border-left: 2px solid var(--border-color); padding-left: 0.5rem;">
+                <label>New Folder Name</label>
+                <input id="modal-new-folder-name" class="form-control" placeholder="Folder Name">
+            </div>
+        `;
+
+        SafeUI.showModal("Save Template", content, [
+            {
+                label: 'Save',
+                class: 'btn-primary',
+                callback: () => {
+                    const name = document.getElementById('modal-save-name').value.trim();
+                    if (!name) return SafeUI.showValidationError("Invalid Name", "Template name is required", "modal-save-name");
+
+                    const folderSelect = document.getElementById(folderSelectId);
+                    let targetId = folderSelect.value;
+
+                    if (targetId === '__CREATE_NEW__') {
+                        const newFolderName = document.getElementById('modal-new-folder-name').value.trim();
+                        if (!newFolderName) return SafeUI.showValidationError("Invalid Folder", "Folder name is required", "modal-new-folder-name");
+
+                        // Create folder inside current context or root? Let's default to currentFolderId or root if context is confusing,
+                        // but the dropdown implies a global selection.
+                        // The simple logic: Create new folder in Root (safest) or inside currentFolderId?
+                        // Let's assume Root for simplicity of the dropdown interaction unless 'currentFolderId' is the parent context.
+                        // Actually, simpler: create it inside the currently viewed folder or Root.
+
+                        const parentId = currentFolderId && findItemById(currentFolderId) ? currentFolderId : 'root';
+                        const parentFolder = findItemById(parentId);
+
+                        const newFolder = {
+                            id: SafeUI.generateId(),
+                            type: 'folder',
+                            name: newFolderName,
+                            children: []
+                        };
+                        parentFolder.children.push(newFolder);
+                        targetId = newFolder.id;
+                    }
+
+                    const targetFolder = findItemById(targetId);
+                    if (targetFolder) {
+                        targetFolder.children.push({
+                            id: SafeUI.generateId(),
+                            type: 'item',
+                            name,
+                            mailto: DOMElements.resultMailto.value
+                        });
+                        saveState();
+                        renderCatalogue();
+                        SafeUI.showToast("Saved to Library");
+                        return true;
+                    } else {
+                        SafeUI.showToast("Error: Target folder not found.");
+                        return false;
+                    }
+                }
+            },
+            { label: 'Cancel' }
+        ]);
+
+        // Post-render logic for the modal
+        setTimeout(() => {
+            const sel = document.getElementById(folderSelectId);
+            populateFolderSelect(sel, null, true); // Enable 'Create New'
+
+            // Default to current folder if possible
+            if (currentFolderId && findItemById(currentFolderId)) {
+                sel.value = currentFolderId;
+            } else {
+                sel.value = 'root';
+            }
+
+            const newFolderGroup = document.getElementById('modal-new-folder-group');
+            sel.addEventListener('change', () => {
+                if (sel.value === '__CREATE_NEW__') {
+                    newFolderGroup.classList.remove('hidden');
+                    document.getElementById('modal-new-folder-name').focus();
+                } else {
+                    newFolderGroup.classList.add('hidden');
+                }
             });
-            saveState(); renderCatalogue();
-            SafeUI.showToast("Saved to Library");
-        }
+        }, 50);
     });
 
     DOMElements.treeListContainer.addEventListener('click', e => {
@@ -451,7 +552,11 @@ async function init() {
                 DOMElements.resultBcc.value = parsed.bcc || '';
                 DOMElements.resultSubject.value = parsed.subject || '';
                 DOMElements.resultBody.value = parsed.body || '';
-                DOMElements.saveTemplateName.value = item.name;
+
+                // Note: saveTemplateName is hidden/deprecated in UI but we update it in state if needed
+                if(DOMElements.saveTemplateName) DOMElements.saveTemplateName.value = item.name;
+
+                updateLivePreview(); // Trigger preview update
                 setActiveSection('editor');
                 SafeUI.showToast("Loaded");
             }

@@ -72,6 +72,12 @@ html, body {
     font-size: 14px; 
 }
 
+/* Scrollbar Styling */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background-color: rgba(156, 163, 175, 0.8); }
+
 body {
     font-family: var(--font-family); 
     background-color: var(--bg-color); 
@@ -336,11 +342,27 @@ textarea.form-control {
     display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem;
     background-color: var(--info-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius);
 }
+.shortcut-item:last-child:nth-child(odd) { grid-column: span 2; }
+
 .shortcut-item a {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; font-size: 0.9rem;
 }
 .notepad-wrapper { display: flex; flex-direction: column; flex-grow: 1; min-height: 200px; }
-.notepad-editor { flex-grow: 1; font-family: inherit; }
+.notepad-editor {
+    flex-grow: 1;
+    font-family: inherit;
+    background-color: #ffffff; /* Force white background */
+    color: #1e293b; /* Force dark text */
+    border: 1px solid #e2e8f0;
+}
+/* Ensure notepad remains light even in dark mode */
+@media (prefers-color-scheme: dark) {
+    .notepad-editor {
+        background-color: #ffffff;
+        color: #1e293b;
+        border-color: #e2e8f0;
+    }
+}
 
 /* Calculator Specifics */
 .stat-box-highlight {
@@ -379,8 +401,30 @@ textarea.form-control {
     background-color: var(--info-bg); position: relative;
     transition: border-color 0.2s;
     cursor: pointer;
+    margin-bottom: 1rem;
 }
 #upload-wrapper:hover { border-color: var(--primary-color); }
+
+/* MailTo Layout Fixes */
+.editor-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.form-group.body-group {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.body-input {
+    flex-grow: 1;
+    min-height: 100px; /* Minimum usable height */
+}
+#result-link {
+    box-sizing: border-box; /* Prevent overflow */
+    width: 100%;
+    display: block;
+}
 
 #msg-upload {
     position: absolute;
