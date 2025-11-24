@@ -219,7 +219,7 @@ textarea.form-control {
     border-color: var(--success-color); 
 }
 
-.btn-icon {
+.btn-icon, .icon-btn {
     background: none;
     border: none;
     padding: 0.4rem;
@@ -227,9 +227,12 @@ textarea.form-control {
     color: var(--subtle-text);
     cursor: pointer;
     line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
-.btn-icon:hover { background-color: var(--info-bg); color: var(--text-color); }
-.btn-icon svg { width: 16px; height: 16px; }
+.btn-icon:hover, .icon-btn:hover { background-color: var(--info-bg); color: var(--text-color); }
+.btn-icon svg, .icon-btn svg { width: 16px; height: 16px; }
 
 .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 
@@ -355,12 +358,22 @@ textarea.form-control {
     color: #1e293b; /* Force dark text */
     border: 1px solid #e2e8f0;
 }
+.notepad-editor:focus {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
 /* Ensure notepad remains light even in dark mode */
 @media (prefers-color-scheme: dark) {
-    .notepad-editor {
-        background-color: #ffffff;
-        color: #1e293b;
+    .notepad-editor, .notepad-editor:focus {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
         border-color: #e2e8f0;
+    }
+    .notepad-editor:focus {
+        border-color: var(--primary-color);
     }
 }
 
