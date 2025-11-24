@@ -378,8 +378,20 @@ textarea.form-control {
     border-radius: var(--border-radius); text-align: center;
     background-color: var(--info-bg); position: relative;
     transition: border-color 0.2s;
+    cursor: pointer;
 }
 #upload-wrapper:hover { border-color: var(--primary-color); }
+
+#msg-upload {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 10;
+}
 
 /* Lookup Specifics */
 .result-item {
