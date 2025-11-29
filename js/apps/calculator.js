@@ -259,6 +259,13 @@ function initializePage() {
                 return { totalProductiveMinutes, productiveMinutesRemaining, error: null };
             }
 
+            // --- Updated Logic: Dynamic Phone Close ---
+            function getEffectivePhoneCloseMinutes() {
+                const shiftEndMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+                // Phones close at 15:30 OR Shift End, whichever is earlier.
+                return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
+            }
+
             function updateTimeDisplays(now) {
                 DOMElements.currentTime.innerText = now.toLocaleTimeString();
             }
@@ -360,7 +367,9 @@ function initializePage() {
                 const currentHour = now.getHours();
                 const currentMinute = now.getMinutes();
                 const currentTimeMinutes = currentHour * 60 + currentMinute;
-                const phonesStillOpen = currentTimeMinutes < CONSTANTS.PHONE_CLOSE_MINUTES;
+
+                const effectivePhoneCloseMinutes = getEffectivePhoneCloseMinutes();
+                const phonesStillOpen = currentTimeMinutes < effectivePhoneCloseMinutes;
 
                 const currentGrades = calculateGradeRequirements(targetTicketGoal);
 
@@ -379,7 +388,7 @@ function initializePage() {
 
                 if (phonesStillOpen) {
                     const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
-                    const minutesUntilPhoneClose = CONSTANTS.PHONE_CLOSE_MINUTES - currentTimeMinutes;
+                    const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
 
                     const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
                     const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
@@ -387,6 +396,7 @@ function initializePage() {
                     const projectedTarget = projectedRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
 
                     const projectedGrades = calculateGradeRequirements(projectedTarget);
+                    const phoneCloseTimeStr = TimeUtil.formatMinutesToHHMM(effectivePhoneCloseMinutes);
 
                     let statusHtml = `
                         <div class="info-box">
@@ -397,7 +407,7 @@ function initializePage() {
                             </div>
 
                             <div style="font-size: 0.9em;">
-                                <strong>Projection by 3:30 PM:</strong>
+                                <strong>Projection by ${phoneCloseTimeStr}:</strong>
                                 <br>
                                 Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)}
                                 <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
@@ -487,6 +497,11 @@ function initializePage() {
 
                 const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
                 const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
+
+                // UX Improvement: Show Base Target
+                if (document.getElementById('baseTargetDisplay')) {
+                    document.getElementById('baseTargetDisplay').innerText = targetTicketGoal;
+                }
 
                 DOMElements.targetsGrid.innerHTML = '';
 

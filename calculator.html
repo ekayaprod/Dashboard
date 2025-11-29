@@ -63,7 +63,7 @@
                             <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Reset</button>
                         </div>
                         <div class="stat-item-compact" style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
-                            <span class="stat-label-compact">Total Productive Time:</span>
+                            <span class="stat-label-compact" title="Calculated after 1 hour break and ~15% leeway deduction">Total Productive Time (post-leeway):</span>
                             <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
                         </div>
                     </div>
@@ -107,6 +107,10 @@
                             <div class="stat-item-compact" style="padding: 0;">
                                 <span class="stat-label-compact">Work Time for Tickets:</span>
                                 <span id="totalWorkTimeEOD" class="stat-value-compact">00:00</span>
+                            </div>
+                            <div class="stat-item-compact" style="padding: 0; margin-top: 4px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 4px;">
+                                <span class="stat-label-compact"><strong>Calculated Base Target:</strong></span>
+                                <span id="baseTargetDisplay" class="stat-value-compact">0</span>
                             </div>
                         </div>
 
