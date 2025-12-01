@@ -11,6 +11,10 @@
     --danger-hover: #dc2626;
     --success-color: #22c55e; 
     --info-bg: #f8fafc;
+
+    --warning-bg: #fff3cd;
+    --warning-text: #856404;
+    --warning-border: #ffeeba;
     
     /* Semantic Colors */
     --input-bg: var(--info-bg);
@@ -61,6 +65,10 @@
         --menu-bg: #1f2937;
         --menu-border: #4b5563;
         --menu-item-hover: #374151;
+
+        --warning-bg: #422006;
+        --warning-text: #fde047;
+        --warning-border: #854d0e;
     }
 }
 
@@ -256,7 +264,8 @@ textarea.form-control {
 }
 .accordion:last-child { margin-bottom: 0; }
 .accordion.expanded {
-    flex-grow: 1;
+    /* Removed flex-grow: 1 to prevent forced expansion filling the screen, causing nested scrollbars */
+    /* flex-grow: 1; */
     box-shadow: var(--box-shadow-lg);
     display: flex;
 }
@@ -264,7 +273,7 @@ textarea.form-control {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.6rem 0.8rem;
+    padding: 0.4rem 0.6rem; /* Reduced padding for vertical space */
     background-color: var(--info-bg);
     cursor: pointer;
     user-select: none;
@@ -279,10 +288,11 @@ textarea.form-control {
 .accordion.expanded .accordion-icon { transform: rotate(180deg); }
 .accordion-content {
     display: none;
-    padding: var(--spacing-sm);
-    overflow-y: auto;
+    padding: 0.5rem; /* Compact padding */
+    /* Removed overflow-y: auto to let the main container scroll */
+    /* overflow-y: auto; */
 }
-.accordion.expanded .accordion-content { display: block; flex: 1; }
+.accordion.expanded .accordion-content { display: block; /* Removed flex: 1 */ }
 
 /* Navbar (Unified) */
 .navbar {
@@ -398,6 +408,15 @@ textarea.form-control {
 .target-label { font-size: 0.7rem; text-transform: uppercase; opacity: 0.9; }
 .target-value { font-size: 1.5rem; font-weight: bold; line-height: 1.2; }
 .target-desc { font-size: 0.7rem; opacity: 0.9; }
+
+.alert-warning {
+    background-color: var(--warning-bg);
+    color: var(--warning-text);
+    border: 1px solid var(--warning-border);
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
 
 /* MailTo Specifics */
 .tree-list-container { flex-grow: 1; overflow-y: auto; }
