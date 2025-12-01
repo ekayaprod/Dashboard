@@ -284,10 +284,13 @@ function initializePage() {
             }
 
             function buildTargetCardHTML(label, value, description) {
+                // Use title attribute for native tooltip as primary, custom CSS tooltip as backup
                 return `
-                    <span class="target-label">${label}</span>
-                    <span class="target-value">${value}</span>
-                    <span class="target-desc">${description}</span>
+                    <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center;" title="${description.replace(/<br>/g, '\n').replace(/<\/?[^>]+(>|$)/g, "")}">
+                        <span class="target-label">${label}</span>
+                        <span class="target-value">${value}</span>
+                        <span class="target-desc">${description}</span>
+                    </div>
                 `;
             }
 
@@ -295,7 +298,7 @@ function initializePage() {
                 if (ticketsNeeded <= 0) {
                     return {
                         boxClass: 'target-good',
-                        html: buildTargetCardHTML(boundary.name, "GOAL MET!", `Target: ${ticketsToHitGrade} tickets`)
+                        html: buildTargetCardHTML(boundary.name, "✓", `Target: ${ticketsToHitGrade} tickets - GOAL MET!`)
                     };
                 }
                 if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
