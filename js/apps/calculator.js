@@ -565,7 +565,7 @@ function initializePage() {
                                 type: 'success',
                                 icon: '📈',
                                 title: 'Shift End Optimization',
-                                text: `Only <strong>${needed}</strong> tickets needed for ${grade.name}. You have ${minutesUntilPhoneClose} mins remaining.`
+                                text: `<strong>${grade.name}</strong> is close! Need <strong>${needed}</strong> tickets in <strong>${minutesUntilPhoneClose} mins</strong>.`
                             });
                             sprintSuggested = true;
                             break;
@@ -581,7 +581,7 @@ function initializePage() {
                                     type: 'warn',
                                     icon: '📉',
                                     title: 'Feasibility Analysis',
-                                    text: `${needed} tickets needed for Satisfactory. Current trajectory indicates risk. Defer pending completions to next shift to optimize future start.`
+                                    text: `${needed} tickets needed for Satisfactory. This is unlikely. Save current tickets for tomorrow to start with a lead.`
                                 });
                                 sprintSuggested = true; // effectively handled
                             }
@@ -591,19 +591,6 @@ function initializePage() {
                     // Scenario C: OVERSHOOT (Conservation of Effort)
                     // If we have hit a grade, but the NEXT grade is too far away.
                     if (!sprintSuggested) {
-                         // Find current grade status
-                         // e.g. if we have 30 tickets, Target 24.
-                         // Satisfactory: 21 (Hit)
-                         // Excellent: 28 (Hit)
-                         // Outstanding: 31 (Need 1) -> This would be caught by SPRINT logic above (needed=1)
-
-                         // What if we have 28 tickets (Hit Excellent). Outstanding is 31 (Need 3). Sprint logic catches it.
-                         // What if we have 25 tickets (Hit Satisfactory). Excellent is 28 (Need 3). Sprint logic catches it.
-
-                         // What if we are really far?
-                         // e.g. Target 24. Satisfactory 21. We have 21. Excellent is 28 (Need 7).
-                         // 7 tickets in 45 mins is hard.
-
                         for (const grade of grades) {
                              const needed = (currentTarget + grade.offset) - currentTickets;
                              if (needed > 5) {
@@ -614,14 +601,12 @@ function initializePage() {
                                  continue;
                              }
                              // If needed <= 0, we have achieved this grade.
-                             // Since we iterate High -> Low, if we hit this, it means we have this grade,
-                             // and we already determined (via continue above) that the HIGHER grade was too far.
                              if (needed <= 0) {
                                  strategies.push({
                                     type: 'warn',
                                     icon: '✋',
                                     title: 'Resource Conservation',
-                                    text: `Target for ${grade.name} secured. Higher grades require excessive output. Hold excess completions for next shift.`
+                                    text: `<strong>${grade.name}</strong> secured. Next grade is out of reach. Save extra tickets for tomorrow.`
                                  });
                                  break;
                              }
@@ -638,7 +623,7 @@ function initializePage() {
                             type: 'danger',
                             icon: '⚠️',
                             title: 'Efficiency Threshold Alert',
-                            text: `Current rate (<strong>${ticketsPerHour.toFixed(1)}</strong> t/hr) is below efficiency threshold. Continuing to accrue productive time without completions will increase deficit. Transition to administrative tasks recommended.`
+                            text: `Current rate (<strong>${ticketsPerHour.toFixed(1)}</strong> t/hr) is low. Working longer increases your target debt. Switch to Admin Time to freeze the target.`
                         });
                     }
                 }
@@ -666,7 +651,7 @@ function initializePage() {
                             type: 'success',
                             icon: '🔒',
                             title: `Grade Validation: ${grade.name}`,
-                            text: `Allocate <strong>${Math.ceil(reductionNeeded)} min</strong> to administrative time to secure <strong>${grade.name}</strong> classification.`
+                            text: `Add <strong>${Math.ceil(reductionNeeded)} min</strong> of Admin Time to lock in <strong>${grade.name}</strong>.`
                         });
                         break; // Only suggest the best possible lock
                     }
@@ -726,7 +711,7 @@ function initializePage() {
                     const loopholeMinutes = detectRoundingOptimization(totalWorkTimeEOD);
                     if (loopholeMinutes !== null) {
                         const displayMinutes = Math.ceil(loopholeMinutes);
-                        tips.push(`<strong>Target Boundary Optimization:</strong> Projected work duration exceeds the hourly rounding threshold. Allocating <strong>${displayMinutes} min</strong> to administrative time will reduce the target by 6.`);
+                        tips.push(`<strong>Target Optimization:</strong> Work time is just over the hour mark. Adding <strong>${displayMinutes} min</strong> of Admin Time will lower your target by 6 tickets.`);
                     }
 
                     if (tips.length > 0) {
