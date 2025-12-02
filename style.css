@@ -446,8 +446,7 @@ textarea.form-control {
 
 .target-label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.9; line-height: 1; margin-bottom: 2px; }
 .target-value { font-size: 1.25rem; font-weight: bold; line-height: 1.1; }
-.target-desc { font-size: 0.65rem; opacity: 0.9; line-height: 1; margin-top: 2px; display: none; /* Hide desc in compact mode, rely on tooltip */ }
-.target-card:hover .target-desc { display: block; position: absolute; background: rgba(0,0,0,0.8); padding: 4px; border-radius: 4px; z-index: 100; pointer-events: none; }
+.target-desc { font-size: 0.7rem; opacity: 1; line-height: 1.1; margin-top: 4px; display: block; font-weight: 500; }
 
 .alert-warning {
     background-color: var(--warning-bg);
