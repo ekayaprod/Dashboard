@@ -284,9 +284,8 @@ function initializePage() {
             }
 
             function buildTargetCardHTML(label, value, description) {
-                // Use title attribute for native tooltip as primary, custom CSS tooltip as backup
                 return `
-                    <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center;" title="${description.replace(/<br>/g, '\n').replace(/<\/?[^>]+(>|$)/g, "")}">
+                    <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center;">
                         <span class="target-label">${label}</span>
                         <span class="target-value">${value}</span>
                         <span class="target-desc">${description}</span>
@@ -298,18 +297,25 @@ function initializePage() {
                 if (ticketsNeeded <= 0) {
                     return {
                         boxClass: 'target-good',
-                        html: buildTargetCardHTML(boundary.name, "✓", `Target: ${ticketsToHitGrade} tickets - GOAL MET!`)
+                        html: buildTargetCardHTML(boundary.name, "✓", `Goal: ${ticketsToHitGrade}`)
                     };
                 }
+                // Concatenate Goal info and Call Time Alternative if present
+                let desc = `Goal: ${ticketsToHitGrade}`;
+                if (callTimeHtml) {
+                    // callTimeHtml already contains "OR X more calls"
+                    desc += `<br>${callTimeHtml}`;
+                }
+
                 if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
                     return {
                         boxClass: 'target-danger',
-                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
+                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, desc)
                     };
                 }
                 return {
                     boxClass: 'target-warn',
-                    html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
+                    html: buildTargetCardHTML(boundary.name, ticketsNeeded, desc)
                 };
             }
 
@@ -407,117 +413,96 @@ function initializePage() {
                     return;
                 }
 
+                // Gather Strategies (Common for both states)
+                const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, phonesStillOpen ? minutesUntilPhoneClose : 0, phonesStillOpen, totalProductiveMinutes);
+
+                // Add Rounding Optimization to strategies if applicable
+                const optimization = detectRoundingOptimization(totalWorkTimeEOD);
+                if (optimization) {
+                    if (optimization.type === 'reactive') {
+                        const displayMinutes = Math.ceil(optimization.minutes);
+                        strategies.push({
+                             type: 'warn',
+                             title: 'Target Optimization',
+                             text: `Add <strong>${displayMinutes} min</strong> Admin Time to reach the next rounding tier (lowers target by 6).`
+                        });
+                    } else if (optimization.type === 'preventative') {
+                         strategies.push({
+                             type: 'warn',
+                             title: 'Target Optimization',
+                             text: `Approaching rounding zone. Stop working tickets soon to keep the lower target.`
+                        });
+                    }
+                }
+
+                let statusHtml = `<div class="info-box">`;
+
                 if (phonesStillOpen) {
                     const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
-
                     const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
                     const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
                     const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
                     const projectedTarget = projectedRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
-
                     const projectedGrades = calculateGradeRequirements(projectedTarget);
                     const phoneCloseTimeStr = TimeUtil.formatMinutesToHHMM(effectivePhoneCloseMinutes);
 
-                    let statusHtml = `
-                        <div class="info-box">
-                            <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
-                                <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> |
-                                ${currentTicketsSoFar} tickets |
-                                ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
-                            </div>
+                    statusHtml += `
+                        <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                            <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> |
+                            ${currentTicketsSoFar} tickets |
+                            ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
+                        </div>
 
-                            <div style="font-size: 0.9em;">
-                                <strong>Projection by ${phoneCloseTimeStr}:</strong>
-                                <br>
-                                Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)}
-                                <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
-                                <br>
-                                Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
-                                <br>
-                                Target: <strong>${projectedTarget}</strong> tickets
-                            </div>
-
-                            <div style="margin-top: 8px;">
+                        <div style="font-size: 0.9em;">
+                            <strong>Projection by ${phoneCloseTimeStr}:</strong>
+                            <br>
+                            Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)}
+                            <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
+                            <br>
+                            Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
+                            <br>
+                            Target: <strong>${projectedTarget}</strong> tickets
+                        </div>
+                        <div style="margin-top: 8px;">
                     `;
 
+                    // Only showing projected grade status, as current status is in the badges
                     for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
                         statusHtml += buildGradeStatusRow(gradeName, projectedNeeded, currentTicketsSoFar, true);
                     }
-
-                    statusHtml += `
-                            </div>
-                    `;
-
-                    // Inject Strategic Advice (Phones Open)
-                    const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, minutesUntilPhoneClose, true, totalProductiveMinutes);
-                    if (strategies.length > 0) {
-                        statusHtml += `<div class="strategy-container">`;
-                        strategies.forEach(strat => {
-                            let stratClass = 'strategy-success';
-                            if (strat.type === 'danger') stratClass = 'strategy-danger';
-                            if (strat.type === 'warn') stratClass = 'strategy-warn';
-
-                            statusHtml += `
-                                <div class="strategy-card ${stratClass}">
-                                    <div class="strategy-title">${strat.title}</div>
-                                    <div class="strategy-text">${strat.text}</div>
-                                </div>
-                            `;
-                        });
-                        statusHtml += `</div>`;
-                    }
-
-                    statusHtml += `
-                        </div>
-                    `;
-
-                    DOMElements.calcInfoContent.innerHTML = statusHtml;
+                    statusHtml += `</div>`;
 
                 } else {
-                    let statusHtml = `
-                        <div class="info-box">
-                            <strong>📞 Phones Closed</strong>
-                            <p style="margin: 8px 0 0 0;">
-                                Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong>
-                                → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
-                            </p>
-
-                            <div style="margin-top: 8px;">
-                    `;
-
-                    for (const [gradeName, needed] of Object.entries(currentGrades)) {
-                        statusHtml += buildGradeStatusRow(gradeName, needed, currentTicketsSoFar, false);
-                    }
-
+                    // Phones Closed - Just show summary, no repetitive grade list
                     statusHtml += `
-                            </div>
+                        <strong>📞 Phones Closed</strong>
+                        <p style="margin: 8px 0 0 0;">
+                            Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong>
+                            → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
+                        </p>
                     `;
-
-                    // Inject Strategic Advice (Phones Closed)
-                    const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, 0, false, totalProductiveMinutes);
-                    if (strategies.length > 0) {
-                        statusHtml += `<div class="strategy-container">`;
-                        strategies.forEach(strat => {
-                            let stratClass = 'strategy-success';
-                            if (strat.type === 'danger') stratClass = 'strategy-danger';
-                            if (strat.type === 'warn') stratClass = 'strategy-warn';
-
-                            statusHtml += `
-                                <div class="strategy-card ${stratClass}">
-                                    <div class="strategy-title">${strat.title}</div>
-                                    <div class="strategy-text">${strat.text}</div>
-                                </div>
-                            `;
-                        });
-                        statusHtml += `</div>`;
-                    }
-
-                    statusHtml += `
-                        </div>
-                    `;
-
-                    DOMElements.calcInfoContent.innerHTML = statusHtml;
                 }
+
+                // Append Strategies
+                if (strategies.length > 0) {
+                    statusHtml += `<div class="strategy-container">`;
+                    strategies.forEach(strat => {
+                        let stratClass = 'strategy-success';
+                        if (strat.type === 'danger') stratClass = 'strategy-danger';
+                        if (strat.type === 'warn') stratClass = 'strategy-warn';
+
+                        statusHtml += `
+                            <div class="strategy-card ${stratClass}">
+                                <div class="strategy-title">${strat.title}</div>
+                                <div class="strategy-text">${strat.text}</div>
+                            </div>
+                        `;
+                    });
+                    statusHtml += `</div>`;
+                }
+
+                statusHtml += `</div>`; // Close info-box
+                DOMElements.calcInfoContent.innerHTML = statusHtml;
             }
 
             function renderErrorState(errorMessage, errorData) {
@@ -702,29 +687,6 @@ function initializePage() {
                 // UX Improvement: Show Base Target
                 if (document.getElementById('baseTargetDisplay')) {
                     document.getElementById('baseTargetDisplay').innerText = targetTicketGoal;
-                }
-
-                // UX Improvement: Target Optimization + Rounding Checks
-                const optimizationTip = document.getElementById('targetOptimizationTip');
-                if (optimizationTip) {
-                    let tips = [];
-                    const optimization = detectRoundingOptimization(totalWorkTimeEOD);
-
-                    if (optimization) {
-                        if (optimization.type === 'reactive') {
-                            const displayMinutes = Math.ceil(optimization.minutes);
-                            tips.push(`<strong>Target Optimization:</strong> Add <strong>${displayMinutes} min</strong> Admin Time to reach the next rounding tier (lowers target by 6).`);
-                        } else if (optimization.type === 'preventative') {
-                            tips.push(`<strong>Target Optimization:</strong> Approaching rounding zone. Stop working tickets soon to keep the lower target.`);
-                        }
-                    }
-
-                    if (tips.length > 0) {
-                        optimizationTip.innerHTML = tips.join('<br><br>');
-                        optimizationTip.classList.remove('hidden');
-                    } else {
-                        optimizationTip.classList.add('hidden');
-                    }
                 }
 
                 DOMElements.targetsGrid.innerHTML = '';
