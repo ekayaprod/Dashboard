@@ -620,6 +620,13 @@ textarea.form-control {
     }
     .strategy-danger .strategy-title { color: #fca5a5; }
 
+    .strategy-warn {
+        background-color: rgba(234, 179, 8, 0.2);
+        border-left-color: #eab308;
+        color: #fde047;
+    }
+    .strategy-warn .strategy-title { color: #fde047; }
+
     .strategy-success {
         background-color: rgba(34, 197, 94, 0.2);
         border-left-color: #22c55e;
