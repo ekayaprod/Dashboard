@@ -449,7 +449,7 @@ function initializePage() {
                     `;
 
                     // Inject Strategic Advice (Phones Open)
-                    const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, minutesUntilPhoneClose, true, totalShiftMinutes);
+                    const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, minutesUntilPhoneClose, true, totalProductiveMinutes);
                     if (strategies.length > 0) {
                         statusHtml += `<div class="strategy-container">`;
                         strategies.forEach(strat => {
@@ -459,7 +459,7 @@ function initializePage() {
 
                             statusHtml += `
                                 <div class="strategy-card ${stratClass}">
-                                    <div class="strategy-title">${strat.icon} ${strat.title}</div>
+                                    <div class="strategy-title">${strat.title}</div>
                                     <div class="strategy-text">${strat.text}</div>
                                 </div>
                             `;
@@ -494,7 +494,7 @@ function initializePage() {
                     `;
 
                     // Inject Strategic Advice (Phones Closed)
-                    const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, 0, false, totalShiftMinutes);
+                    const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, 0, false, totalProductiveMinutes);
                     if (strategies.length > 0) {
                         statusHtml += `<div class="strategy-container">`;
                         strategies.forEach(strat => {
@@ -504,7 +504,7 @@ function initializePage() {
 
                             statusHtml += `
                                 <div class="strategy-card ${stratClass}">
-                                    <div class="strategy-title">${strat.icon} ${strat.title}</div>
+                                    <div class="strategy-title">${strat.title}</div>
                                     <div class="strategy-text">${strat.text}</div>
                                 </div>
                             `;
@@ -528,27 +528,46 @@ function initializePage() {
 
             function detectRoundingOptimization(workTimeMinutes) {
                 const minutesInHour = workTimeMinutes % 60;
-                // If we are in the "Round Up" zone (30-59 mins)
-                // We can drop a tier by getting to 29 mins.
-                // Threshold: If reduction needed is <= 15 minutes.
 
+                // Reactive: In Round Up zone (30-59). Suggest Admin Time to reach :29.
                 if (minutesInHour >= 30) {
                     const reductionNeeded = minutesInHour - 29;
-                    if (reductionNeeded <= 15) {
-                        return reductionNeeded;
+                    if (reductionNeeded <= 30) { // Allow up to 30 mins advice
+                        return { type: 'reactive', minutes: reductionNeeded };
                     }
                 }
+
+                // Preventative: Approaching rounding zone (25-29).
+                if (minutesInHour >= 25 && minutesInHour <= 29) {
+                     return { type: 'preventative', minutes: 0 };
+                }
+
                 return null;
             }
 
             // --- STRATEGIC ADVICE LOGIC ---
-            function getStrategicAdvice(currentTickets, elapsedProductiveMinutes, totalEODWorkMinutes, minutesUntilPhoneClose, phonesStillOpen, totalShiftMinutes) {
+            function getStrategicAdvice(currentTickets, elapsedProductiveMinutes, totalEODWorkMinutes, minutesUntilPhoneClose, phonesStillOpen, totalProductiveMinutes) {
                 const strategies = [];
                 const currentRoundedHours = Math.round(totalEODWorkMinutes / 60);
                 const currentTarget = currentRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
 
-                // 1. "Shift End Optimization" (45 min warning)
-                // If phones are open but closing within 45 mins
+                // 1. "Efficiency Threshold Alert" (Rate Check)
+                // Trigger after 50% of shift elapsed (productive time)
+                if (elapsedProductiveMinutes > (totalProductiveMinutes / 2)) {
+                    // Prevent division by zero
+                    const safeElapsed = elapsedProductiveMinutes || 1;
+                    const ticketsPerHour = (currentTickets / safeElapsed) * 60;
+
+                    if (ticketsPerHour < 5.0) {
+                        strategies.push({
+                            type: 'danger',
+                            title: 'Efficiency Threshold Alert',
+                            text: `Current rate (${ticketsPerHour.toFixed(1)} t/hr) is below efficiency threshold. Switch to Admin Time to freeze target debt.`
+                        });
+                    }
+                }
+
+                // 2. "End Game Sprint" (45 min warning)
                 if (phonesStillOpen && minutesUntilPhoneClose <= 45 && minutesUntilPhoneClose > 0) {
                     // Look for nearest reachable grade
                     const grades = [
@@ -566,9 +585,8 @@ function initializePage() {
                         if (needed > 0 && needed <= 5) {
                             strategies.push({
                                 type: 'success',
-                                icon: '📈',
-                                title: 'Shift End Optimization',
-                                text: `Only <strong>${needed}</strong> tickets needed for ${grade.name}. You have ${minutesUntilPhoneClose} mins remaining.`
+                                title: 'End Game Sprint',
+                                text: `Sprint to reach ${grade.name} in ${Math.ceil(minutesUntilPhoneClose)} min. Need ${needed} more tickets.`
                             });
                             sprintSuggested = true;
                             break;
@@ -576,55 +594,31 @@ function initializePage() {
 
                         // Scenario B: SATISFACTORY MISS (Impossible to fail safe)
                         if (grade.name === 'Satisfactory' && needed > 0) {
-                            // If we need > 10 tickets in < 45 mins, it's highly unlikely
-                            // Or if needed > minutes remaining / 10 (approx 10 mins per ticket)
-                            const maxPossible = Math.floor(minutesUntilPhoneClose / 8); // optimistically 8 mins per ticket
-                            if (needed > maxPossible) {
+                             // Assuming ~8-10 mins per ticket needed
+                             const maxPossible = Math.floor(minutesUntilPhoneClose / 8);
+                             if (needed > maxPossible) {
                                 strategies.push({
                                     type: 'warn',
-                                    icon: '📉',
-                                    title: 'Feasibility Analysis',
-                                    text: `${needed} tickets needed for Satisfactory. Current trajectory indicates risk. Defer pending completions to next shift to optimize future start.`
+                                    title: 'Resource Conservation',
+                                    text: `Satisfactory is unlikely. Save tickets for tomorrow.`
                                 });
-                                sprintSuggested = true; // effectively handled
-                            }
+                                sprintSuggested = true;
+                             }
                         }
                     }
 
-                    // Scenario C: OVERSHOOT (Conservation of Effort)
-                    // If we have hit a grade, but the NEXT grade is too far away.
+                    // Scenario C: OVERSHOOT (Resource Conservation)
                     if (!sprintSuggested) {
-                         // Find current grade status
-                         // e.g. if we have 30 tickets, Target 24.
-                         // Satisfactory: 21 (Hit)
-                         // Excellent: 28 (Hit)
-                         // Outstanding: 31 (Need 1) -> This would be caught by SPRINT logic above (needed=1)
-
-                         // What if we have 28 tickets (Hit Excellent). Outstanding is 31 (Need 3). Sprint logic catches it.
-                         // What if we have 25 tickets (Hit Satisfactory). Excellent is 28 (Need 3). Sprint logic catches it.
-
-                         // What if we are really far?
-                         // e.g. Target 24. Satisfactory 21. We have 21. Excellent is 28 (Need 7).
-                         // 7 tickets in 45 mins is hard.
-
                         for (const grade of grades) {
                              const needed = (currentTarget + grade.offset) - currentTickets;
-                             if (needed > 5) {
-                                 // We are NOT close to this grade.
-                                 // Have we achieved the previous one?
-                                 // grades are ordered High to Low.
-                                 // If we are checking Outstanding (need > 5), check Excellent.
-                                 continue;
-                             }
-                             // If needed <= 0, we have achieved this grade.
-                             // Since we iterate High -> Low, if we hit this, it means we have this grade,
-                             // and we already determined (via continue above) that the HIGHER grade was too far.
+                             if (needed > 5) continue; // Too far
+
+                             // If we have achieved this grade (needed <= 0), and the higher grade was too far (continue loop above).
                              if (needed <= 0) {
                                  strategies.push({
                                     type: 'warn',
-                                    icon: '✋',
                                     title: 'Resource Conservation',
-                                    text: `Target for ${grade.name} secured. Higher grades require excessive output. Hold excess completions for next shift.`
+                                    text: `Grade secured. Save extra tickets for tomorrow.`
                                  });
                                  break;
                              }
@@ -632,21 +626,8 @@ function initializePage() {
                     }
                 }
 
-                // 2. "Efficiency Threshold Alert" (Rate Check)
-                // Trigger after 50% of shift elapsed
-                if (elapsedProductiveMinutes > (totalShiftMinutes / 2)) {
-                    const ticketsPerHour = (currentTickets / elapsedProductiveMinutes) * 60;
-                    if (ticketsPerHour < 5.0) {
-                        strategies.push({
-                            type: 'danger',
-                            icon: '⚠️',
-                            title: 'Efficiency Threshold Alert',
-                            text: `Current rate (<strong>${ticketsPerHour.toFixed(1)}</strong> t/hr) is below efficiency threshold. Continuing to accrue productive time without completions will increase deficit. Transition to administrative tasks recommended.`
-                        });
-                    }
-                }
-
-                // 3. "Grade Validation" (Reverse Engineering)
+                // 3. "Grade Lock" (Reverse Engineering)
+                // Look for opportunities where adding <= 30 mins Admin Time lowers target to hit a higher grade.
                 const grades = [
                     { name: 'Outstanding', offset: 7 },
                     { name: 'Excellent', offset: 4 },
@@ -657,21 +638,24 @@ function initializePage() {
                     const currentRequirement = currentTarget + grade.offset;
                     if (currentTickets >= currentRequirement) continue; // Already have it
 
-                    const maxH = Math.floor((currentTickets - grade.offset) / 6);
-                    if (maxH < 0) continue;
+                    // Calculate max work hours allowed to have a target that we satisfy with currentTickets
+                    // tickets = hours * 6 + offset
+                    // hours = (tickets - offset) / 6
+                    const maxH = Math.floor((currentTickets - grade.offset) / CONSTANTS.TICKETS_PER_HOUR_RATE);
 
-                    const maxWorkMinutes = (maxH * 60) + 29; // Round down boundary
+                    // We need work hours to be maxH.
+                    // To get maxH, work minutes must be <= (maxH * 60) + 29
+                    const maxWorkMinutes = (maxH * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
                     const reductionNeeded = totalEODWorkMinutes - maxWorkMinutes;
 
-                    // Feasibility check: positive reduction, max 30 mins
+                    // Feasibility: positive reduction, max 30 mins
                     if (reductionNeeded > 0 && reductionNeeded <= 30) {
                         strategies.push({
                             type: 'success',
-                            icon: '🔒',
-                            title: `Grade Validation: ${grade.name}`,
-                            text: `Allocate <strong>${Math.ceil(reductionNeeded)} min</strong> to administrative time to secure <strong>${grade.name}</strong> classification.`
+                            title: `Grade Lock: ${grade.name}`,
+                            text: `Add <strong>${Math.ceil(reductionNeeded)} min</strong> of Admin Time to lock in ${grade.name}.`
                         });
-                        break; // Only suggest the best possible lock
+                        break;
                     }
                 }
 
@@ -720,16 +704,19 @@ function initializePage() {
                     document.getElementById('baseTargetDisplay').innerText = targetTicketGoal;
                 }
 
-                // UX Improvement: Loophole + Break Optimization
+                // UX Improvement: Target Optimization + Rounding Checks
                 const optimizationTip = document.getElementById('targetOptimizationTip');
                 if (optimizationTip) {
                     let tips = [];
+                    const optimization = detectRoundingOptimization(totalWorkTimeEOD);
 
-                    // 1. Rounding Optimization
-                    const loopholeMinutes = detectRoundingOptimization(totalWorkTimeEOD);
-                    if (loopholeMinutes !== null) {
-                        const displayMinutes = Math.ceil(loopholeMinutes);
-                        tips.push(`<strong>Target Boundary Optimization:</strong> Projected work duration exceeds the hourly rounding threshold. Allocating <strong>${displayMinutes} min</strong> to administrative time will reduce the target by 6.`);
+                    if (optimization) {
+                        if (optimization.type === 'reactive') {
+                            const displayMinutes = Math.ceil(optimization.minutes);
+                            tips.push(`<strong>Target Optimization:</strong> Add <strong>${displayMinutes} min</strong> Admin Time to reach the next rounding tier (lowers target by 6).`);
+                        } else if (optimization.type === 'preventative') {
+                            tips.push(`<strong>Target Optimization:</strong> Approaching rounding zone. Stop working tickets soon to keep the lower target.`);
+                        }
                     }
 
                     if (tips.length > 0) {
