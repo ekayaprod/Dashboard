@@ -4,15 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EOD Targets</title>
-    <!-- 
-      File path assumption:
-      - style.css is in the root (/)
-      - bootstrap.js is in /js/
-    -->
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* All inline styles removed for tidiness */
+        /* Specific page overrides for extremely tight vertical space */
+        .app-container {
+            padding: 0;
+            gap: 0;
+        }
+        .main-content {
+            padding: 0.5rem;
+            gap: 0.4rem;
+        }
+        .accordion {
+            margin-bottom: 0.4rem;
+        }
     </style>
 </head>
 <body class="eod-targets-page">
@@ -20,44 +26,47 @@
     <!-- 
       NAVBAR CONTAINER
       Populated automatically by bootstrap.js
-      Will now include the #btnSettings button from navbar.html
     -->
     <div id="navbar-container"></div>
 
     <div class="app-container">
-        <div class="panel">
+        <!-- Removed .panel wrapper to save border/padding space if needed, but keeping for consistency with theme -->
+        <div class="panel" style="border:none; box-shadow:none; background:transparent;">
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <!-- REFACTORED SECTION 1 (Accordion) -->
+                <!-- REFACTORED SECTION 1 (Accordion): Schedule -->
                 <div class="accordion expanded">
                     <div class="accordion-header" id="schedule-header">
                         <div style="display: flex; align-items: center;">
                             <span id="schedule-collapse-icon" class="accordion-icon">▼</span>
-                            <h2>1. Schedule</h2>
+                            <h2>Schedule</h2>
                         </div>
                         <span id="currentTime" class="header-time">Loading...</span>
                     </div>
                     <div class="accordion-content" id="schedule-content">
-                        <!-- This grid layout is specific, inline style is OK here -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem 0.75rem; align-items: flex-end;">
+                        <!-- Compact Grid for Schedule -->
+                        <div class="compact-grid-2">
                             <div>
-                                <label for="shiftStart" class="sidebar-label">Shift Start</label>
+                                <label for="shiftStart" class="sidebar-label">Start</label>
                                 <select id="shiftStart" class="form-control"></select>
                             </div>
                             <div>
-                                <label for="shiftEnd" class="sidebar-label">Shift End</label>
+                                <label for="shiftEnd" class="sidebar-label">End</label>
                                 <select id="shiftEnd" class="form-control"></select>
                             </div>
                             <div>
-                                <label for="breakTime" class="sidebar-label">Break (min)</label>
+                                <label for="breakTime" class="sidebar-label">Break</label>
                                 <select id="breakTime" class="form-control">
-                                    <option value="0">0 minutes</option>
-                                    <option value="30">30 minutes</option>
-                                    <option value="45">45 minutes</option>
-                                    <option value="60" selected>60 minutes</option>
-                                    <option value="90">90 minutes</option>
-                                    <option value="120">120 minutes</option>
+                                    <option value="0">None</option>
+                                    <option value="15">15m</option>
+                                    <option value="30">30m</option>
+                                    <option value="45">45m</option>
+                                    <option value="60" selected>1h</option>
+                                    <option value="75">1h 15m</option>
+                                    <option value="90">1h 30m</option>
+                                    <option value="105">1h 45m</option>
+                                    <option value="120">2h</option>
                                 </select>
                             </div>
                             <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Reset</button>
@@ -69,37 +78,41 @@
                     </div>
                 </div>
                 
-                <!-- REFACTORED SECTION 2 (Progress) -->
+                <!-- REFACTORED SECTION 2 (Accordion): Progress -->
                 <div class="accordion expanded">
                     <div class="accordion-header">
-                        <h2>2. Progress</h2>
+                        <h2>Progress</h2>
                     </div>
-                    <!-- This grid layout is specific, inline style is OK here -->
-                    <div class="accordion-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.75rem; align-items: flex-end;">
-                        <div>
-                            <label for="currentCallTime" class="sidebar-label">Call Time (HH:MM)</label>
-                            <input type="text" id="currentCallTime" class="form-control" placeholder="e.g., 2:37" value="0">
-                        </div>
-                        <div>
-                            <label for="currentTickets" class="sidebar-label">Tickets Closed</label>
-                            <input type="number" id="currentTickets" class="form-control" value="0">
-                        </div>
-                        
-                        <div>
-                            <label for="addCallTime" class="sidebar-label">Add Call (min)</label>
-                            <input type="number" id="addCallTime" class="form-control" placeholder="e.g., 13">
-                        </div>
-                        <div> 
-                            <button id="btnAddCallTime" class="btn btn-primary" style="width: 100%;">Add</button>
-                        </div>
+                    <div class="accordion-content">
+                         <div class="compact-grid-2">
+                             <div>
+                                 <label for="currentCallTime" class="sidebar-label" title="Total Call Time (HH:MM)">Call Time</label>
+                                 <input type="text" id="currentCallTime" class="form-control" placeholder="0:00" value="0">
+                             </div>
+                             <div>
+                                 <label for="currentTickets" class="sidebar-label">Tickets</label>
+                                 <input type="number" id="currentTickets" class="form-control" value="0">
+                             </div>
+                         </div>
+
+                         <!-- Add Call Row -->
+                         <div class="compact-grid-row" style="margin-top: 0.5rem;">
+                             <div>
+                                 <label for="addCallTime" class="sidebar-label">Add Call (min)</label>
+                                 <input type="number" id="addCallTime" class="form-control" placeholder="mins">
+                             </div>
+                             <div>
+                                 <button id="btnAddCallTime" class="btn btn-primary" style="height: 32px; width: 32px; padding: 0;">+</button>
+                             </div>
+                         </div>
                     </div>
                 </div>
                 
 
-                <!-- REFACTORED SECTION 3 (Targets) -->
+                <!-- REFACTORED SECTION 3 (Accordion): Targets & Report -->
                 <div class="accordion expanded">
                     <div class="accordion-header">
-                        <h2>3. EOD Targets</h2>
+                        <h2>Targets & Report</h2>
                     </div>
                     <div id="targets-section-content" class="accordion-content">
                         
@@ -114,19 +127,15 @@
                             </div>
                         </div>
 
-                        <div id="targets-grid" class="targets-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                        <!-- Targets Grid -->
+                        <div id="targets-grid" class="targets-grid" style="margin-bottom: 0.5rem;">
                             <!-- Target cards injected here -->
                         </div>
-                    </div>
-                </div>
-                
-                <!-- REFACTORED SECTION 4 (Pacing Report) -->
-                <div class="accordion expanded">
-                    <div class="accordion-header">
-                        <h2>4. Pacing Report</h2>
-                    </div>
-                    <div id="calc-info-content" class="accordion-content">
-                        <!-- Info box and pacing rows injected here -->
+
+                        <!-- Pacing Report (Now integrated here) -->
+                        <div id="calc-info-content">
+                            <!-- Info box and pacing rows injected here -->
+                        </div>
                     </div>
                 </div>
         
@@ -134,17 +143,12 @@
         </div>
     </div>
 
-    <!-- Standard App Modal Containers (Required by AppLifecycle) -->
+    <!-- Standard App Modal Containers -->
     <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content" class="modal-content"></div>
     </div>
     <div id="toast" class="toast"></div>
 
-    <!-- 
-      CRITICAL: Bootstrap script must be at the END of the body.
-      It loads the Navbar HTML and all JS dependencies.
-      File path assumption: bootstrap.js is in /js/
-    -->
     <script src="js/bootstrap.js"></script>
 </body>
 </html>

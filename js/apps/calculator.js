@@ -7,7 +7,7 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '2.0.6',
+        VERSION: '2.0.7',
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -96,7 +96,7 @@ function initializePage() {
                 LEEWAY_RATIO: 1 / 7,
                 TICKETS_PER_HOUR_RATE: 6,
                 ROUNDING_BOUNDARY_MAX: 29,
-                PHONE_CLOSE_MINUTES: 15 * 60 + 30,
+                PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 15:30
                 REACHABLE_TICKET_THRESHOLD: 10
             };
 
@@ -107,7 +107,6 @@ function initializePage() {
             };
 
             // Use shared DateUtils from app-core.js
-            // Extend with page-specific helper if needed
             const TimeUtil = {
                 ...DateUtils,
                 parseShiftTimeToMinutes(timeStr) {
@@ -116,7 +115,7 @@ function initializePage() {
                 }
             };
 
-            function getCallTimeAlternative(boundary, currentTicketsSoFar, totalProductiveMinutes, currentCallTimeSoFar, productiveMinutesRemaining) {
+            function getCallTimeAlternative(boundary, currentTicketsSoFar, totalProductiveMinutes, currentCallTimeSoFar, productiveMinutesRemaining, ticketsNeeded) {
                 const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min;
                 const maxRoundedHours = Math.floor(maxAllowableTargetCalc / CONSTANTS.TICKETS_PER_HOUR_RATE);
                 const maxWorkTimeMinutes = (maxRoundedHours * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
@@ -126,10 +125,17 @@ function initializePage() {
                 if (additionalCallMinutes > 0) {
                     const flooredMinutes = Math.floor(additionalCallMinutes);
                     const displayTime = TimeUtil.formatMinutesToHHMMShort(flooredMinutes);
+
+                    // Enhancement: Is this easier?
+                    // Cost of 1 ticket ~ 10 mins (60/6).
+                    const workTimeCost = ticketsNeeded * 10;
+                    const isEasier = flooredMinutes < workTimeCost;
+                    const easierBadge = isEasier ? ' <span style="background:#28a745; color:white; padding:1px 4px; border-radius:3px; font-size:0.8em;">⚡ EASIER</span>' : '';
+
                     if (additionalCallMinutes <= productiveMinutesRemaining) {
                         return {
                             additionalCallMinutes: flooredMinutes,
-                            callTimeHtml: `<strong>OR</strong> ${displayTime} more calls`
+                            callTimeHtml: `<strong>OR</strong> ${displayTime} more calls${easierBadge}`
                         };
                     } else {
                         return {
@@ -253,10 +259,24 @@ function initializePage() {
                 if (totalShiftMinutes > 0) {
                     productiveMinutesPassed = (workdayMinutesPassed / totalShiftMinutes) * totalProductiveMinutes;
                 }
-                if (productiveMinutesPassed > totalProductiveMinutes) productiveMinutesPassed = totalProductiveMinutes;
-                const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
 
-                return { totalProductiveMinutes, productiveMinutesRemaining, error: null };
+                const productiveMinutesPassedSafe = Math.min(productiveMinutesPassed, totalProductiveMinutes);
+                const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassedSafe;
+
+                return {
+                    totalProductiveMinutes,
+                    productiveMinutesRemaining,
+                    productiveMinutesPassed: productiveMinutesPassedSafe,
+                    error: null,
+                    totalShiftMinutes
+                };
+            }
+
+            // --- Updated Logic: Dynamic Phone Close ---
+            function getEffectivePhoneCloseMinutes() {
+                const shiftEndMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+                // Phones close at 15:30 OR Shift End, whichever is earlier.
+                return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
             }
 
             // --- Updated Logic: Dynamic Phone Close ---
@@ -272,9 +292,11 @@ function initializePage() {
 
             function buildTargetCardHTML(label, value, description) {
                 return `
-                    <span class="target-label">${label}</span>
-                    <span class="target-value">${value}</span>
-                    <span class="target-desc">${description}</span>
+                    <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center;">
+                        <span class="target-label">${label}</span>
+                        <span class="target-value">${value}</span>
+                        <span class="target-desc">${description}</span>
+                    </div>
                 `;
             }
 
@@ -282,18 +304,32 @@ function initializePage() {
                 if (ticketsNeeded <= 0) {
                     return {
                         boxClass: 'target-good',
-                        html: buildTargetCardHTML(boundary.name, "GOAL MET!", `Target: ${ticketsToHitGrade} tickets`)
+                        html: buildTargetCardHTML(boundary.name, "✓", `Goal: ${ticketsToHitGrade}`)
                     };
                 }
+                // Concatenate Goal info and Call Time Alternative if present
+                let desc = `Goal: ${ticketsToHitGrade}`;
+
+                // UX Feature: "Total minutes for the goal"
+                if (ticketsNeeded > 0) {
+                    const minutesForGoal = ticketsNeeded * 10;
+                    desc += ` (${TimeUtil.formatMinutesToHHMMShort(minutesForGoal)})`;
+                }
+
+                if (callTimeHtml) {
+                    // callTimeHtml already contains "OR X more calls"
+                    desc += `<br>${callTimeHtml}`;
+                }
+
                 if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
                     return {
                         boxClass: 'target-danger',
-                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets short (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
+                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, desc)
                     };
                 }
                 return {
                     boxClass: 'target-warn',
-                    html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Tickets remaining (Goal: ${ticketsToHitGrade})${callTimeHtml ? '<br>' + callTimeHtml : ''}`)
+                    html: buildTargetCardHTML(boundary.name, ticketsNeeded, desc)
                 };
             }
 
@@ -361,7 +397,9 @@ function initializePage() {
                     roundedWorkHours,
                     targetTicketGoal,
                     totalProductiveMinutes,
-                    currentCallTimeSoFar
+                    currentCallTimeSoFar,
+                    productiveMinutesPassed, // Used for strategy advice
+                    totalShiftMinutes // passed from calculateDailyRatings->getScheduleInfo
                 } = scheduleData;
 
                 const currentHour = now.getHours();
@@ -386,6 +424,30 @@ function initializePage() {
                     return;
                 }
 
+                // Gather Strategies (Common for both states)
+                const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, phonesStillOpen ? minutesUntilPhoneClose : 0, phonesStillOpen, totalProductiveMinutes);
+
+                // Add Rounding Optimization to strategies if applicable
+                const optimization = detectRoundingOptimization(totalWorkTimeEOD);
+                if (optimization) {
+                    if (optimization.type === 'reactive') {
+                        const displayMinutes = Math.ceil(optimization.minutes);
+                        strategies.push({
+                             type: 'warn',
+                             title: 'Target Optimization',
+                             text: `Add <strong>${displayMinutes} min</strong> Call Time to reach the next rounding tier (lowers target by 6).`
+                        });
+                    } else if (optimization.type === 'preventative') {
+                         strategies.push({
+                             type: 'warn',
+                             title: 'Target Optimization',
+                             text: `Approaching rounding zone. Stop working tickets soon to keep the lower target.`
+                        });
+                    }
+                }
+
+                let statusHtml = `<div class="info-box">`;
+
                 if (phonesStillOpen) {
                     const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
                     const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
@@ -394,7 +456,6 @@ function initializePage() {
                     const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
                     const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
                     const projectedTarget = projectedRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
-
                     const projectedGrades = calculateGradeRequirements(projectedTarget);
                     const phoneCloseTimeStr = TimeUtil.formatMinutesToHHMM(effectivePhoneCloseMinutes);
 
@@ -420,40 +481,78 @@ function initializePage() {
                             <div style="margin-top: 8px;">
                     `;
 
-                    for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
-                        statusHtml += buildGradeStatusRow(gradeName, projectedNeeded, currentTicketsSoFar, true);
+                    // Ticket Projection Logic
+                    const ticketRatePerMinute = (minutesIntoShift > 0) ? currentTicketsSoFar / minutesIntoShift : 0;
+                    const projectedAdditionalTickets = ticketRatePerMinute * minutesUntilPhoneClose;
+                    const projectedTotalTickets = Math.floor(currentTicketsSoFar + projectedAdditionalTickets);
+
+                    // Determine Projected Grade
+                    let projectedGradeName = 'Below Expectations';
+                    let projectedGradeClass = 'pacing-fail';
+
+                    if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Outstanding.min) {
+                        projectedGradeName = 'Outstanding';
+                        projectedGradeClass = 'pacing-good';
+                    } else if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Excellent.min) {
+                         projectedGradeName = 'Excellent';
+                         projectedGradeClass = 'pacing-good';
+                    } else if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Satisfactory.min) {
+                         projectedGradeName = 'Satisfactory';
+                         projectedGradeClass = 'pacing-warn';
                     }
 
                     statusHtml += `
+                        <div class="stat-box-highlight" style="text-align:left; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+                            <div>
+                                <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Forecast</div>
+                                <div style="font-size:1.1rem; font-weight:bold;">~${projectedTotalTickets} <span style="font-size:0.8rem; font-weight:normal;">Tickets</span></div>
+                                <div class="${projectedGradeClass}" style="font-weight:600; font-size:0.85rem;">${projectedGradeName}</div>
+                            </div>
+                            <div style="border-left:1px solid var(--border-color); padding-left:8px;">
+                                <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Projected Goal</div>
+                                <div style="font-size:1.1rem; font-weight:bold;">${projectedTarget} <span style="font-size:0.8rem; font-weight:normal;">Tickets</span></div>
+                                <div style="font-size:0.75rem; opacity:0.8;">via ${projectedRoundedHours}h Work</div>
                             </div>
                         </div>
-                    `;
 
-                    DOMElements.calcInfoContent.innerHTML = statusHtml;
+                        <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 8px;">
+                            Projection based on current pace (${Math.floor(callRatePerHour)} min calls/hr).
+                            <br>
+                            <strong>Info:</strong> 10 mins Call Time ≈ -1 Ticket Target.
+                        </div>
+                    `;
 
                 } else {
-                    let statusHtml = `
-                        <div class="info-box">
-                            <strong>📞 Phones Closed</strong>
-                            <p style="margin: 8px 0 0 0;">
-                                Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong>
-                                → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
-                            </p>
-
-                            <div style="margin-top: 8px;">
-                    `;
-
-                    for (const [gradeName, needed] of Object.entries(currentGrades)) {
-                        statusHtml += buildGradeStatusRow(gradeName, needed, currentTicketsSoFar, false);
-                    }
-
+                    // Phones Closed - Just show summary, no repetitive grade list
                     statusHtml += `
-                            </div>
-                        </div>
+                        <strong>📞 Phones Closed</strong>
+                        <p style="margin: 8px 0 0 0;">
+                            Final work time: <strong>${TimeUtil.formatMinutesToHHMM(totalWorkTimeEOD)}</strong>
+                            → ${roundedWorkHours} hrs → Target: ${targetTicketGoal}
+                        </p>
                     `;
-
-                    DOMElements.calcInfoContent.innerHTML = statusHtml;
                 }
+
+                // Append Strategies
+                if (strategies.length > 0) {
+                    statusHtml += `<div class="strategy-container">`;
+                    strategies.forEach(strat => {
+                        let stratClass = 'strategy-success';
+                        if (strat.type === 'danger') stratClass = 'strategy-danger';
+                        if (strat.type === 'warn') stratClass = 'strategy-warn';
+
+                        statusHtml += `
+                            <div class="strategy-card ${stratClass}">
+                                <div class="strategy-title">${strat.title}</div>
+                                <div class="strategy-text">${strat.text}</div>
+                            </div>
+                        `;
+                    });
+                    statusHtml += `</div>`;
+                }
+
+                statusHtml += `</div>`; // Close info-box
+                DOMElements.calcInfoContent.innerHTML = statusHtml;
             }
 
             function renderErrorState(errorMessage, errorData) {
@@ -462,10 +561,146 @@ function initializePage() {
                 renderCalculationInfo(errorData, new Date());
             }
 
-            function calculateDailyRatings() {
-                const now = new Date();
+            function detectRoundingOptimization(workTimeMinutes) {
+                const minutesInHour = workTimeMinutes % 60;
 
-                const { totalProductiveMinutes, productiveMinutesRemaining, error: scheduleError } = getScheduleInfo(now);
+                // Reactive: In Round Up zone (30-59). Suggest Call Time to reach :29.
+                if (minutesInHour >= 30) {
+                    const reductionNeeded = minutesInHour - 29;
+                    if (reductionNeeded <= 30) { // Allow up to 30 mins advice
+                        return { type: 'reactive', minutes: reductionNeeded };
+                    }
+                }
+
+                // Preventative: Approaching rounding zone (25-29).
+                if (minutesInHour >= 25 && minutesInHour <= 29) {
+                     return { type: 'preventative', minutes: 0 };
+                }
+
+                return null;
+            }
+
+            // --- STRATEGIC ADVICE LOGIC ---
+            function getStrategicAdvice(currentTickets, elapsedProductiveMinutes, totalEODWorkMinutes, minutesUntilPhoneClose, phonesStillOpen, totalProductiveMinutes) {
+                const strategies = [];
+                const currentRoundedHours = Math.round(totalEODWorkMinutes / 60);
+                const currentTarget = currentRoundedHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
+
+                // 1. "Efficiency Threshold Alert" (Rate Check)
+                // Trigger after 50% of shift elapsed (productive time)
+                if (elapsedProductiveMinutes > (totalProductiveMinutes / 2)) {
+                    // Prevent division by zero
+                    const safeElapsed = elapsedProductiveMinutes || 1;
+                    const ticketsPerHour = (currentTickets / safeElapsed) * 60;
+
+                    if (ticketsPerHour < 5.0) {
+                        strategies.push({
+                            type: 'danger',
+                            title: 'Efficiency Threshold Alert',
+                            text: `Current rate (${ticketsPerHour.toFixed(1)} t/hr) is below efficiency threshold. Switch to Call Time to freeze target debt.`
+                        });
+                    }
+                }
+
+                // 2. "End Game Sprint" (45 min warning)
+                if (phonesStillOpen && minutesUntilPhoneClose <= 45 && minutesUntilPhoneClose > 0) {
+                    // Look for nearest reachable grade
+                    const grades = [
+                        { name: 'Outstanding', offset: 7 },
+                        { name: 'Excellent', offset: 4 },
+                        { name: 'Satisfactory', offset: -3 }
+                    ];
+
+                    let sprintSuggested = false;
+
+                    for (const grade of grades) {
+                        const needed = (currentTarget + grade.offset) - currentTickets;
+
+                        // Scenario A: SPRINT (Close enough to reach)
+                        if (needed > 0 && needed <= 5) {
+                            strategies.push({
+                                type: 'success',
+                                title: 'End Game Sprint',
+                                text: `Sprint to reach ${grade.name} in ${Math.ceil(minutesUntilPhoneClose)} min. Need ${needed} more tickets.`
+                            });
+                            sprintSuggested = true;
+                            break;
+                        }
+
+                        // Scenario B: SATISFACTORY MISS (Impossible to fail safe)
+                        if (grade.name === 'Satisfactory' && needed > 0) {
+                             // Assuming ~8-10 mins per ticket needed
+                             const maxPossible = Math.floor(minutesUntilPhoneClose / 8);
+                             if (needed > maxPossible) {
+                                strategies.push({
+                                    type: 'warn',
+                                    title: 'Resource Conservation',
+                                    text: `Satisfactory is unlikely. Save tickets for tomorrow.`
+                                });
+                                sprintSuggested = true;
+                             }
+                        }
+                    }
+
+                    // Scenario C: OVERSHOOT (Resource Conservation)
+                    if (!sprintSuggested) {
+                        for (const grade of grades) {
+                             const needed = (currentTarget + grade.offset) - currentTickets;
+                             if (needed > 5) continue; // Too far
+
+                             // If we have achieved this grade (needed <= 0), and the higher grade was too far (continue loop above).
+                             if (needed <= 0) {
+                                 strategies.push({
+                                    type: 'warn',
+                                    title: 'Resource Conservation',
+                                    text: `Grade secured. Save extra tickets for tomorrow.`
+                                 });
+                                 break;
+                             }
+                        }
+                    }
+                }
+
+                // 3. "Grade Lock" (Reverse Engineering)
+                // Look for opportunities where adding <= 30 mins Call Time lowers target to hit a higher grade.
+                const grades = [
+                    { name: 'Outstanding', offset: 7 },
+                    { name: 'Excellent', offset: 4 },
+                    { name: 'Satisfactory', offset: -3 }
+                ];
+
+                for (const grade of grades) {
+                    const currentRequirement = currentTarget + grade.offset;
+                    if (currentTickets >= currentRequirement) continue; // Already have it
+
+                    // Calculate max work hours allowed to have a target that we satisfy with currentTickets
+                    // tickets = hours * 6 + offset
+                    // hours = (tickets - offset) / 6
+                    const maxH = Math.floor((currentTickets - grade.offset) / CONSTANTS.TICKETS_PER_HOUR_RATE);
+
+                    // We need work hours to be maxH.
+                    // To get maxH, work minutes must be <= (maxH * 60) + 29
+                    const maxWorkMinutes = (maxH * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
+                    const reductionNeeded = totalEODWorkMinutes - maxWorkMinutes;
+
+                    // Feasibility: positive reduction, max 30 mins
+                    if (reductionNeeded > 0 && reductionNeeded <= 30) {
+                        strategies.push({
+                            type: 'success',
+                            title: `Grade Lock: ${grade.name}`,
+                            text: `Add <strong>${Math.ceil(reductionNeeded)} min</strong> of Admin Time to lock in ${grade.name}.`
+                        });
+                        break;
+                    }
+                }
+
+                return strategies;
+            }
+
+            function calculateDailyRatings() {
+                const now = (window.APP_TIME_TRAVEL_DATE) ? new Date(window.APP_TIME_TRAVEL_DATE) : new Date();
+
+                const { totalProductiveMinutes, productiveMinutesRemaining, productiveMinutesPassed, error: scheduleError, totalShiftMinutes } = getScheduleInfo(now);
 
                 DOMElements.totalProductiveTime.innerText = TimeUtil.formatMinutesToHHMM(totalProductiveMinutes);
 
@@ -476,7 +711,8 @@ function initializePage() {
                     roundedWorkHours: 0,
                     targetTicketGoal: 0,
                     totalProductiveMinutes: 0,
-                    currentCallTimeSoFar: 0
+                    currentCallTimeSoFar: 0,
+                    productiveMinutesPassed: 0
                 };
 
                 if (scheduleError) {
@@ -519,7 +755,8 @@ function initializePage() {
                             currentTicketsSoFar,
                             totalProductiveMinutes,
                             currentCallTimeSoFar,
-                            productiveMinutesRemaining
+                            productiveMinutesRemaining,
+                            ticketsNeeded
                         );
                         if (callAlternative) {
                             callTimeHtml = callAlternative.callTimeHtml;
@@ -547,7 +784,9 @@ function initializePage() {
                     roundedWorkHours,
                     targetTicketGoal,
                     totalProductiveMinutes,
-                    currentCallTimeSoFar
+                    currentCallTimeSoFar,
+                    productiveMinutesPassed, // Pass this for strategy advice
+                    totalShiftMinutes
                 }, now);
             }
 
@@ -586,7 +825,14 @@ function initializePage() {
             });
 
             DOMElements.btnResetData.addEventListener('click', () => {
-                UIPatterns.confirmDelete('Reset Data?', 'Are you sure you want to reset all data to defaults? This cannot be undone.', handleResetData);
+                SafeUI.showModal(
+                    'Reset Data',
+                    '<p>Are you sure you want to reset all data to defaults? This cannot be undone.</p>',
+                    [
+                        { label: 'Cancel' },
+                        { label: 'Reset', class: 'button-danger', callback: handleResetData }
+                    ]
+                );
             });
 
             DOMElements.addCallTime.addEventListener('keydown', (e) => {
