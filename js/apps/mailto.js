@@ -360,9 +360,14 @@ async function init() {
 
     DOMElements.btnClearAll.addEventListener('click', (e) => {
         e.stopPropagation();
-        UIPatterns.confirmDelete('Form Data', 'Current Content', () => {
-             clearEditorFields();
-        });
+        UIPatterns.confirmAction(
+            'Clear Form',
+            '<p>Are you sure you want to clear the Subject and Body?</p>',
+            'Clear',
+            () => {
+                 clearEditorFields();
+            }
+        );
     });
 
     DOMElements.btnClearAll.addEventListener('mousedown', (e) => e.stopPropagation());
