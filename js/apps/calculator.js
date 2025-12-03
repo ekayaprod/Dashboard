@@ -7,7 +7,7 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '2.0.8', // Bumped version to indicate fix
+        VERSION: '2.1.0', // Major bump for new card logic
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -115,36 +115,52 @@ function initializePage() {
                 }
             };
 
-            function getCallTimeAlternative(boundary, currentTicketsSoFar, totalProductiveMinutes, currentCallTimeSoFar, productiveMinutesRemaining, ticketsNeeded) {
-                const maxAllowableTargetCalc = currentTicketsSoFar - boundary.min;
-                const maxRoundedHours = Math.floor(maxAllowableTargetCalc / CONSTANTS.TICKETS_PER_HOUR_RATE);
-                const maxWorkTimeMinutes = (maxRoundedHours * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
-                const maxCallTimeAllowed = totalProductiveMinutes - maxWorkTimeMinutes;
-                const additionalCallMinutes = maxCallTimeAllowed - currentCallTimeSoFar;
+            // --- Updated Card Building Logic ---
+            function buildTargetCardHTML(label, value, description, extraInfo = '') {
+                return `
+                    <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap: 2px;">
+                        <span class="target-label">${label}</span>
+                        <span class="target-value">${value}</span>
+                        <span class="target-desc">${description}</span>
+                        ${extraInfo ? `<span class="target-opt">${extraInfo}</span>` : ''}
+                    </div>
+                `;
+            }
 
-                if (additionalCallMinutes > 0) {
-                    const flooredMinutes = Math.floor(additionalCallMinutes);
-                    const displayTime = TimeUtil.formatMinutesToHHMMShort(flooredMinutes);
-
-                    // Enhancement: Is this easier?
-                    // Cost of 1 ticket ~ 10 mins (60/6).
-                    const workTimeCost = ticketsNeeded * 10;
-                    const isEasier = flooredMinutes < workTimeCost;
-                    const easierBadge = isEasier ? ' <span style="background:#28a745; color:white; padding:1px 4px; border-radius:3px; font-size:0.8em;">⚡ EASIER</span>' : '';
-
-                    if (additionalCallMinutes <= productiveMinutesRemaining) {
-                        return {
-                            additionalCallMinutes: flooredMinutes,
-                            callTimeHtml: `<strong>OR</strong> ${displayTime} more calls${easierBadge}`
-                        };
-                    } else {
-                        return {
-                            additionalCallMinutes: flooredMinutes,
-                            callTimeHtml: `<strong>OR</strong> ${displayTime} (exceeds shift)`
-                        };
-                    }
+            function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, optimizationData }) {
+                if (ticketsNeeded <= 0) {
+                    return {
+                        boxClass: 'target-good',
+                        html: buildTargetCardHTML(boundary.name, "✓", `Goal: ${ticketsToHitGrade}`)
+                    };
                 }
-                return null;
+
+                // 1. Calculate Work Time needed (Estimate)
+                const workMinutesNeeded = ticketsNeeded * 10; 
+                const workTimeStr = TimeUtil.formatMinutesToHHMMShort(workMinutesNeeded);
+                
+                let desc = `Est. Work: ${workTimeStr}`;
+                
+                // 2. Add Optimization (Drop Target) if relevant
+                // We only show this if the time to drop the target is significantly less than the work time to hit the current target
+                let extraInfo = '';
+                
+                if (optimizationData && optimizationData.type === 'reactive') {
+                    const dropMinutes = Math.ceil(optimizationData.minutes);
+                    // Only suggest if dropping the target (cost: dropMinutes) is cheaper than working the extra tickets (cost: 6 tickets * 10 mins = 60 mins)
+                    // It almost always is, but let's visually highlight it.
+                    extraInfo = `Add ${dropMinutes}m Calls to drop goal`;
+                }
+
+                let boxClass = 'target-warn';
+                if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
+                    boxClass = 'target-danger';
+                }
+
+                return {
+                    boxClass: boxClass,
+                    html: buildTargetCardHTML(boundary.name, ticketsNeeded, desc, extraInfo)
+                };
             }
 
             function populateTimeOptions(select, startHour, endHour, defaultVal) {
@@ -283,49 +299,6 @@ function initializePage() {
                 DOMElements.currentTime.innerText = now.toLocaleTimeString();
             }
 
-            function buildTargetCardHTML(label, value, description) {
-                return `
-                    <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center;">
-                        <span class="target-label">${label}</span>
-                        <span class="target-value">${value}</span>
-                        <span class="target-desc">${description}</span>
-                    </div>
-                `;
-            }
-
-            function getTargetCardState({ boundary, totalWorkTimeEOD, ticketsNeeded, ticketsToHitGrade, productiveMinutesRemaining, callTimeHtml }) {
-                if (ticketsNeeded <= 0) {
-                    return {
-                        boxClass: 'target-good',
-                        html: buildTargetCardHTML(boundary.name, "✓", `Goal: ${ticketsToHitGrade}`)
-                    };
-                }
-                // Concatenate Goal info and Call Time Alternative if present
-                let desc = `Goal: ${ticketsToHitGrade}`;
-
-                // UX Feature: "Total minutes for the goal"
-                if (ticketsNeeded > 0) {
-                    const minutesForGoal = ticketsNeeded * 10;
-                    desc += ` (${TimeUtil.formatMinutesToHHMMShort(minutesForGoal)})`;
-                }
-
-                if (callTimeHtml) {
-                    // callTimeHtml already contains "OR X more calls"
-                    desc += `<br>${callTimeHtml}`;
-                }
-
-                if (productiveMinutesRemaining <= 0 && ticketsNeeded > 0) {
-                    return {
-                        boxClass: 'target-danger',
-                        html: buildTargetCardHTML(boundary.name, ticketsNeeded, desc)
-                    };
-                }
-                return {
-                    boxClass: 'target-warn',
-                    html: buildTargetCardHTML(boundary.name, ticketsNeeded, desc)
-                };
-            }
-
             function calculateGradeRequirements(baseTarget) {
                 return {
                     'Satisfactory': baseTarget + gradeBoundaries.Satisfactory.min,
@@ -381,7 +354,6 @@ function initializePage() {
                 `;
             }
 
-
             function renderCalculationInfo(scheduleData, now) {
                 const {
                     totalWorkTimeEOD,
@@ -426,22 +398,8 @@ function initializePage() {
 
                 // Add Rounding Optimization to strategies if applicable
                 const optimization = detectRoundingOptimization(totalWorkTimeEOD);
-                if (optimization) {
-                    if (optimization.type === 'reactive') {
-                        const displayMinutes = Math.ceil(optimization.minutes);
-                        strategies.push({
-                             type: 'warn',
-                             title: 'Target Optimization',
-                             text: `Add <strong>${displayMinutes} min</strong> Call Time to reach the next rounding tier (lowers target by 6).`
-                        });
-                    } else if (optimization.type === 'preventative') {
-                         strategies.push({
-                             type: 'warn',
-                             title: 'Target Optimization',
-                             text: `Approaching rounding zone. Stop working tickets soon to keep the lower target.`
-                        });
-                    }
-                }
+                
+                // Note: We removed the explicit "Rounding Optimization" strategy card because it is now INTEGRATED into the Target Cards
 
                 let statusHtml = `<div class="info-box">`;
 
@@ -510,12 +468,6 @@ function initializePage() {
                                 <div style="font-size:0.75rem; opacity:0.8;">via ${projectedRoundedHours}h Work</div>
                             </div>
                         </div>
-
-                        <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 8px;">
-                            Projection based on current pace (${Math.floor(callRatePerHour)} min calls/hr).
-                            <br>
-                            <strong>Info:</strong> 10 mins Call Time ≈ -1 Ticket Target.
-                        </div>
                     `;
 
                 } else {
@@ -563,16 +515,10 @@ function initializePage() {
                 // Reactive: In Round Up zone (30-59). Suggest Call Time to reach :29.
                 if (minutesInHour >= 30) {
                     const reductionNeeded = minutesInHour - 29;
-                    if (reductionNeeded <= 30) { // Allow up to 30 mins advice
+                    if (reductionNeeded <= 45) { // Expanded window: suggest it even if large, user can decide
                         return { type: 'reactive', minutes: reductionNeeded };
                     }
                 }
-
-                // Preventative: Approaching rounding zone (25-29).
-                if (minutesInHour >= 25 && minutesInHour <= 29) {
-                     return { type: 'preventative', minutes: 0 };
-                }
-
                 return null;
             }
 
@@ -595,98 +541,6 @@ function initializePage() {
                             title: 'Efficiency Threshold Alert',
                             text: `Current rate (${ticketsPerHour.toFixed(1)} t/hr) is below efficiency threshold. Switch to Call Time to freeze target debt.`
                         });
-                    }
-                }
-
-                // 2. "End Game Sprint" (45 min warning)
-                if (phonesStillOpen && minutesUntilPhoneClose <= 45 && minutesUntilPhoneClose > 0) {
-                    // Look for nearest reachable grade
-                    const grades = [
-                        { name: 'Outstanding', offset: 7 },
-                        { name: 'Excellent', offset: 4 },
-                        { name: 'Satisfactory', offset: -3 }
-                    ];
-
-                    let sprintSuggested = false;
-
-                    for (const grade of grades) {
-                        const needed = (currentTarget + grade.offset) - currentTickets;
-
-                        // Scenario A: SPRINT (Close enough to reach)
-                        if (needed > 0 && needed <= 5) {
-                            strategies.push({
-                                type: 'success',
-                                title: 'End Game Sprint',
-                                text: `Sprint to reach ${grade.name} in ${Math.ceil(minutesUntilPhoneClose)} min. Need ${needed} more tickets.`
-                            });
-                            sprintSuggested = true;
-                            break;
-                        }
-
-                        // Scenario B: SATISFACTORY MISS (Impossible to fail safe)
-                        if (grade.name === 'Satisfactory' && needed > 0) {
-                             // Assuming ~8-10 mins per ticket needed
-                             const maxPossible = Math.floor(minutesUntilPhoneClose / 8);
-                             if (needed > maxPossible) {
-                                strategies.push({
-                                    type: 'warn',
-                                    title: 'Resource Conservation',
-                                    text: `Satisfactory is unlikely. Save tickets for tomorrow.`
-                                });
-                                sprintSuggested = true;
-                             }
-                        }
-                    }
-
-                    // Scenario C: OVERSHOOT (Resource Conservation)
-                    if (!sprintSuggested) {
-                        for (const grade of grades) {
-                             const needed = (currentTarget + grade.offset) - currentTickets;
-                             if (needed > 5) continue; // Too far
-
-                             // If we have achieved this grade (needed <= 0), and the higher grade was too far (continue loop above).
-                             if (needed <= 0) {
-                                 strategies.push({
-                                    type: 'warn',
-                                    title: 'Resource Conservation',
-                                    text: `Grade secured. Save extra tickets for tomorrow.`
-                                 });
-                                 break;
-                             }
-                        }
-                    }
-                }
-
-                // 3. "Grade Lock" (Reverse Engineering)
-                // Look for opportunities where adding <= 30 mins Call Time lowers target to hit a higher grade.
-                const grades = [
-                    { name: 'Outstanding', offset: 7 },
-                    { name: 'Excellent', offset: 4 },
-                    { name: 'Satisfactory', offset: -3 }
-                ];
-
-                for (const grade of grades) {
-                    const currentRequirement = currentTarget + grade.offset;
-                    if (currentTickets >= currentRequirement) continue; // Already have it
-
-                    // Calculate max work hours allowed to have a target that we satisfy with currentTickets
-                    // tickets = hours * 6 + offset
-                    // hours = (tickets - offset) / 6
-                    const maxH = Math.floor((currentTickets - grade.offset) / CONSTANTS.TICKETS_PER_HOUR_RATE);
-
-                    // We need work hours to be maxH.
-                    // To get maxH, work minutes must be <= (maxH * 60) + 29
-                    const maxWorkMinutes = (maxH * 60) + CONSTANTS.ROUNDING_BOUNDARY_MAX;
-                    const reductionNeeded = totalEODWorkMinutes - maxWorkMinutes;
-
-                    // Feasibility: positive reduction, max 30 mins
-                    if (reductionNeeded > 0 && reductionNeeded <= 30) {
-                        strategies.push({
-                            type: 'success',
-                            title: `Grade Lock: ${grade.name}`,
-                            text: `Add <strong>${Math.ceil(reductionNeeded)} min</strong> of Admin Time to lock in ${grade.name}.`
-                        });
-                        break;
                     }
                 }
 
@@ -735,6 +589,13 @@ function initializePage() {
                     document.getElementById('baseTargetDisplay').innerText = targetTicketGoal;
                 }
 
+                // Optimization Data
+                const optimizationData = detectRoundingOptimization(totalWorkTimeEOD);
+                if (document.getElementById('targetOptimizationTip')) {
+                     // Hide generic tip since we use card-specific tips now
+                     document.getElementById('targetOptimizationTip').classList.add('hidden');
+                }
+
                 DOMElements.targetsGrid.innerHTML = '';
 
                 for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
@@ -744,28 +605,13 @@ function initializePage() {
                     const ticketsToHitGrade = targetTicketGoal + boundary.min;
                     const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
 
-                    let callTimeHtml = '';
-                    if (ticketsNeeded > 0 && totalWorkTimeEOD >= 0) {
-                        const callAlternative = getCallTimeAlternative(
-                            boundary,
-                            currentTicketsSoFar,
-                            totalProductiveMinutes,
-                            currentCallTimeSoFar,
-                            productiveMinutesRemaining,
-                            ticketsNeeded
-                        );
-                        if (callAlternative) {
-                            callTimeHtml = callAlternative.callTimeHtml;
-                        }
-                    }
-
                     const { boxClass, html } = getTargetCardState({
                         boundary,
                         totalWorkTimeEOD,
                         ticketsNeeded,
                         ticketsToHitGrade,
                         productiveMinutesRemaining,
-                        callTimeHtml
+                        optimizationData // Pass the optimization data here
                     });
 
                     targetBox.className = `target-card ${boxClass}`;
