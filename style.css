@@ -1,8 +1,3 @@
-/**
- * style.css
- * Main stylesheet for the application.
- */
-
 :root {
     /* Colors */
     --bg-color: #f4f7fa; 
@@ -57,7 +52,7 @@
         --primary-color: #60a5fa;
         --primary-hover: #3b82f6;
 
-        --info-bg: #1f2937; /* Darker background for inputs/panels */
+        --info-bg: #1f2937; 
         
         --input-bg: #374151;
         --input-border: #4b5563;
@@ -81,7 +76,7 @@
 html, body { 
     height: 100%; 
     margin: 0; 
-    overflow: hidden; /* App-like feel */
+    overflow: hidden; 
     font-size: 14px; 
 }
 
@@ -101,9 +96,9 @@ body {
 
 /* Layout Containers */
 .app-container { 
-    flex: 1; /* Fill remaining space below navbar */
-    height: 100%; /* Fallback */
-    min-height: 0; /* Allow shrinking for flexbox scrolling */
+    flex: 1; 
+    height: 100%;
+    min-height: 0; 
     display: flex; 
     flex-direction: column;
     padding: var(--spacing-xs);
@@ -129,7 +124,7 @@ body {
     flex-grow: 1;
     display: flex; 
     flex-direction: column;
-    gap: 0.5rem; /* Reduced gap */
+    gap: 0.5rem;
 }
 
 /* Typography */
@@ -441,9 +436,10 @@ textarea.form-control {
 }
 
 .target-card {
-    padding: 0.4rem; border-radius: var(--border-radius);
+    padding: 0.5rem; border-radius: var(--border-radius);
     text-align: center; display: flex; flex-direction: column;
-    justify-content: center; height: 60px; /* Reduced height */
+    justify-content: center; height: auto; min-height: 65px; /* Adaptive height */
+    box-sizing: border-box;
 }
 .target-good { background-color: var(--success-color); color: white; }
 .target-warn { background-color: #f59e0b; color: white; }
@@ -451,7 +447,16 @@ textarea.form-control {
 
 .target-label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.9; line-height: 1; margin-bottom: 2px; }
 .target-value { font-size: 1.25rem; font-weight: bold; line-height: 1.1; }
-.target-desc { font-size: 0.7rem; opacity: 1; line-height: 1.1; margin-top: 4px; display: block; font-weight: 500; }
+.target-desc { font-size: 0.7rem; opacity: 1; line-height: 1.1; margin-top: 2px; display: block; font-weight: 500; }
+.target-opt {
+    display: block;
+    font-size: 0.7rem;
+    margin-top: 4px;
+    background-color: rgba(0,0,0,0.2);
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1.2;
+}
 
 .alert-warning {
     background-color: var(--warning-bg);
