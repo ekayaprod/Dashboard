@@ -4,8 +4,6 @@
  * Depends on: app-core.js
  */
 
-const UI_VERSION = '2.6.0';
-
 const UIPatterns = (() => {
     return {
         confirmDelete: (itemType, itemName, onConfirm) => {
@@ -512,4 +510,3 @@ window.SearchHelper = SearchHelper;
 window.NotepadManager = NotepadManager;
 window.QuickListManager = QuickListManager;
 window.SharedSettingsModal = SharedSettingsModal;
-window.APP_UI_VERSION = UI_VERSION;

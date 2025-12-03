@@ -3,8 +3,6 @@
  * Core application initialization, SafeUI wrapper, and DOM utilities.
  */
 
-const CORE_VERSION = '2.7.1';
-
 // ============================================================================
 // MODULE: SVGIcons
 // ============================================================================
