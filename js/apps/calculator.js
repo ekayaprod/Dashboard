@@ -7,7 +7,7 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '2.0.7',
+        VERSION: '2.0.8', // Bumped version to indicate fix
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -279,13 +279,6 @@ function initializePage() {
                 return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
             }
 
-            // --- Updated Logic: Dynamic Phone Close ---
-            function getEffectivePhoneCloseMinutes() {
-                const shiftEndMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
-                // Phones close at 15:30 OR Shift End, whichever is earlier.
-                return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
-            }
-
             function updateTimeDisplays(now) {
                 DOMElements.currentTime.innerText = now.toLocaleTimeString();
             }
@@ -414,6 +407,9 @@ function initializePage() {
                 const shiftStartMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
                 const minutesIntoShift = currentTimeMinutes - shiftStartMinutes;
 
+                // FIX: Calculate this HERE, so it is available for getStrategicAdvice below
+                const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
+
                 if (phonesStillOpen && minutesIntoShift <= 0) {
                     DOMElements.calcInfoContent.innerHTML = `
                         <div class="info-box">
@@ -425,6 +421,7 @@ function initializePage() {
                 }
 
                 // Gather Strategies (Common for both states)
+                // Fix: Ensure minutesUntilPhoneClose is defined before use
                 const strategies = getStrategicAdvice(currentTicketsSoFar, productiveMinutesPassed, totalWorkTimeEOD, phonesStillOpen ? minutesUntilPhoneClose : 0, phonesStillOpen, totalProductiveMinutes);
 
                 // Add Rounding Optimization to strategies if applicable
@@ -450,8 +447,7 @@ function initializePage() {
 
                 if (phonesStillOpen) {
                     const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
-                    const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
-
+                    
                     const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
                     const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
                     const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
@@ -459,7 +455,7 @@ function initializePage() {
                     const projectedGrades = calculateGradeRequirements(projectedTarget);
                     const phoneCloseTimeStr = TimeUtil.formatMinutesToHHMM(effectivePhoneCloseMinutes);
 
-                    let statusHtml = `
+                    statusHtml += `
                         <div class="info-box">
                             <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
                                 <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> |
@@ -479,41 +475,6 @@ function initializePage() {
                             </div>
 
                             <div style="margin-top: 8px;">
-                    `;
-
-                    // Ticket Projection Logic
-                    const ticketRatePerMinute = (minutesIntoShift > 0) ? currentTicketsSoFar / minutesIntoShift : 0;
-                    const projectedAdditionalTickets = ticketRatePerMinute * minutesUntilPhoneClose;
-                    const projectedTotalTickets = Math.floor(currentTicketsSoFar + projectedAdditionalTickets);
-
-                    // Determine Projected Grade
-                    let projectedGradeName = 'Below Expectations';
-                    let projectedGradeClass = 'pacing-fail';
-
-                    if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Outstanding.min) {
-                        projectedGradeName = 'Outstanding';
-                        projectedGradeClass = 'pacing-good';
-                    } else if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Excellent.min) {
-                         projectedGradeName = 'Excellent';
-                         projectedGradeClass = 'pacing-good';
-                    } else if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Satisfactory.min) {
-                         projectedGradeName = 'Satisfactory';
-                         projectedGradeClass = 'pacing-warn';
-                    }
-
-                    statusHtml += `
-                        <div class="stat-box-highlight" style="text-align:left; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
-                            <div>
-                                <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Forecast</div>
-                                <div style="font-size:1.1rem; font-weight:bold;">~${projectedTotalTickets} <span style="font-size:0.8rem; font-weight:normal;">Tickets</span></div>
-                                <div class="${projectedGradeClass}" style="font-weight:600; font-size:0.85rem;">${projectedGradeName}</div>
-                            </div>
-                            <div style="border-left:1px solid var(--border-color); padding-left:8px;">
-                                <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Projected Goal</div>
-                                <div style="font-size:1.1rem; font-weight:bold;">${projectedTarget} <span style="font-size:0.8rem; font-weight:normal;">Tickets</span></div>
-                                <div style="font-size:0.75rem; opacity:0.8;">via ${projectedRoundedHours}h Work</div>
-                            </div>
-                        </div>
                     `;
 
                     // Ticket Projection Logic
