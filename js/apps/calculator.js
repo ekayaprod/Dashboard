@@ -279,6 +279,13 @@ function initializePage() {
                 return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
             }
 
+            // --- Updated Logic: Dynamic Phone Close ---
+            function getEffectivePhoneCloseMinutes() {
+                const shiftEndMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+                // Phones close at 15:30 OR Shift End, whichever is earlier.
+                return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
+            }
+
             function updateTimeDisplays(now) {
                 DOMElements.currentTime.innerText = now.toLocaleTimeString();
             }
@@ -302,6 +309,13 @@ function initializePage() {
                 }
                 // Concatenate Goal info and Call Time Alternative if present
                 let desc = `Goal: ${ticketsToHitGrade}`;
+
+                // UX Feature: "Total minutes for the goal"
+                if (ticketsNeeded > 0) {
+                    const minutesForGoal = ticketsNeeded * 10;
+                    desc += ` (${TimeUtil.formatMinutesToHHMMShort(minutesForGoal)})`;
+                }
+
                 if (callTimeHtml) {
                     // callTimeHtml already contains "OR X more calls"
                     desc += `<br>${callTimeHtml}`;
@@ -395,9 +409,6 @@ function initializePage() {
                 const effectivePhoneCloseMinutes = getEffectivePhoneCloseMinutes();
                 const phonesStillOpen = currentTimeMinutes < effectivePhoneCloseMinutes;
 
-                // For End Game strategy
-                const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
-
                 const currentGrades = calculateGradeRequirements(targetTicketGoal);
 
                 const shiftStartMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
@@ -424,7 +435,7 @@ function initializePage() {
                         strategies.push({
                              type: 'warn',
                              title: 'Target Optimization',
-                             text: `Add <strong>${displayMinutes} min</strong> Admin Time to reach the next rounding tier (lowers target by 6).`
+                             text: `Add <strong>${displayMinutes} min</strong> Call Time to reach the next rounding tier (lowers target by 6).`
                         });
                     } else if (optimization.type === 'preventative') {
                          strategies.push({
@@ -439,6 +450,8 @@ function initializePage() {
 
                 if (phonesStillOpen) {
                     const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
+                    const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
+
                     const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
                     const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
                     const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
@@ -446,12 +459,26 @@ function initializePage() {
                     const projectedGrades = calculateGradeRequirements(projectedTarget);
                     const phoneCloseTimeStr = TimeUtil.formatMinutesToHHMM(effectivePhoneCloseMinutes);
 
-                    statusHtml += `
-                        <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
-                            <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> |
-                            ${currentTicketsSoFar} tickets |
-                            ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
-                        </div>
+                    let statusHtml = `
+                        <div class="info-box">
+                            <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                                <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> |
+                                ${currentTicketsSoFar} tickets |
+                                ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
+                            </div>
+
+                            <div style="font-size: 0.9em;">
+                                <strong>Projection by ${phoneCloseTimeStr}:</strong>
+                                <br>
+                                Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)}
+                                <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
+                                <br>
+                                Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
+                                <br>
+                                Target: <strong>${projectedTarget}</strong> tickets
+                            </div>
+
+                            <div style="margin-top: 8px;">
                     `;
 
                     // Ticket Projection Logic
@@ -490,6 +517,8 @@ function initializePage() {
 
                         <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 8px;">
                             Projection based on current pace (${Math.floor(callRatePerHour)} min calls/hr).
+                            <br>
+                            <strong>Info:</strong> 10 mins Call Time ≈ -1 Ticket Target.
                         </div>
                     `;
 
@@ -535,7 +564,7 @@ function initializePage() {
             function detectRoundingOptimization(workTimeMinutes) {
                 const minutesInHour = workTimeMinutes % 60;
 
-                // Reactive: In Round Up zone (30-59). Suggest Admin Time to reach :29.
+                // Reactive: In Round Up zone (30-59). Suggest Call Time to reach :29.
                 if (minutesInHour >= 30) {
                     const reductionNeeded = minutesInHour - 29;
                     if (reductionNeeded <= 30) { // Allow up to 30 mins advice
@@ -568,7 +597,7 @@ function initializePage() {
                         strategies.push({
                             type: 'danger',
                             title: 'Efficiency Threshold Alert',
-                            text: `Current rate (${ticketsPerHour.toFixed(1)} t/hr) is below efficiency threshold. Switch to Admin Time to freeze target debt.`
+                            text: `Current rate (${ticketsPerHour.toFixed(1)} t/hr) is below efficiency threshold. Switch to Call Time to freeze target debt.`
                         });
                     }
                 }
@@ -633,7 +662,7 @@ function initializePage() {
                 }
 
                 // 3. "Grade Lock" (Reverse Engineering)
-                // Look for opportunities where adding <= 30 mins Admin Time lowers target to hit a higher grade.
+                // Look for opportunities where adding <= 30 mins Call Time lowers target to hit a higher grade.
                 const grades = [
                     { name: 'Outstanding', offset: 7 },
                     { name: 'Excellent', offset: 4 },
