@@ -452,25 +452,46 @@ function initializePage() {
                             ${currentTicketsSoFar} tickets |
                             ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
                         </div>
-
-                        <div style="font-size: 0.9em;">
-                            <strong>Projection by ${phoneCloseTimeStr}:</strong>
-                            <br>
-                            Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)}
-                            <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
-                            <br>
-                            Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
-                            <br>
-                            Target: <strong>${projectedTarget}</strong> tickets
-                        </div>
-                        <div style="margin-top: 8px;">
                     `;
 
-                    // Only showing projected grade status, as current status is in the badges
-                    for (const [gradeName, projectedNeeded] of Object.entries(projectedGrades)) {
-                        statusHtml += buildGradeStatusRow(gradeName, projectedNeeded, currentTicketsSoFar, true);
+                    // Ticket Projection Logic
+                    const ticketRatePerMinute = (minutesIntoShift > 0) ? currentTicketsSoFar / minutesIntoShift : 0;
+                    const projectedAdditionalTickets = ticketRatePerMinute * minutesUntilPhoneClose;
+                    const projectedTotalTickets = Math.floor(currentTicketsSoFar + projectedAdditionalTickets);
+
+                    // Determine Projected Grade
+                    let projectedGradeName = 'Below Expectations';
+                    let projectedGradeClass = 'pacing-fail';
+
+                    if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Outstanding.min) {
+                        projectedGradeName = 'Outstanding';
+                        projectedGradeClass = 'pacing-good';
+                    } else if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Excellent.min) {
+                         projectedGradeName = 'Excellent';
+                         projectedGradeClass = 'pacing-good';
+                    } else if (projectedTotalTickets >= projectedTarget + gradeBoundaries.Satisfactory.min) {
+                         projectedGradeName = 'Satisfactory';
+                         projectedGradeClass = 'pacing-warn';
                     }
-                    statusHtml += `</div>`;
+
+                    statusHtml += `
+                        <div class="stat-box-highlight" style="text-align:left; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+                            <div>
+                                <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Forecast</div>
+                                <div style="font-size:1.1rem; font-weight:bold;">~${projectedTotalTickets} <span style="font-size:0.8rem; font-weight:normal;">tix</span></div>
+                                <div class="${projectedGradeClass}" style="font-weight:600; font-size:0.85rem;">${projectedGradeName}</div>
+                            </div>
+                            <div style="border-left:1px solid var(--border-color); padding-left:8px;">
+                                <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Projected Goal</div>
+                                <div style="font-size:1.1rem; font-weight:bold;">${projectedTarget} <span style="font-size:0.8rem; font-weight:normal;">tix</span></div>
+                                <div style="font-size:0.75rem; opacity:0.8;">via ${projectedRoundedHours}h Work</div>
+                            </div>
+                        </div>
+
+                        <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 8px;">
+                            Projection based on current pace (${Math.floor(callRatePerHour)} min calls/hr).
+                        </div>
+                    `;
 
                 } else {
                     // Phones Closed - Just show summary, no repetitive grade list
