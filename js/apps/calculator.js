@@ -279,6 +279,13 @@ function initializePage() {
                 return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
             }
 
+            // --- Updated Logic: Dynamic Phone Close ---
+            function getEffectivePhoneCloseMinutes() {
+                const shiftEndMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+                // Phones close at 15:30 OR Shift End, whichever is earlier.
+                return Math.min(shiftEndMinutes, CONSTANTS.PHONE_CLOSE_MINUTES);
+            }
+
             function updateTimeDisplays(now) {
                 DOMElements.currentTime.innerText = now.toLocaleTimeString();
             }
@@ -402,9 +409,6 @@ function initializePage() {
                 const effectivePhoneCloseMinutes = getEffectivePhoneCloseMinutes();
                 const phonesStillOpen = currentTimeMinutes < effectivePhoneCloseMinutes;
 
-                // For End Game strategy
-                const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
-
                 const currentGrades = calculateGradeRequirements(targetTicketGoal);
 
                 const shiftStartMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
@@ -446,6 +450,8 @@ function initializePage() {
 
                 if (phonesStillOpen) {
                     const callRatePerHour = (minutesIntoShift > 0) ? (currentCallTimeSoFar / minutesIntoShift) * 60 : 0;
+                    const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
+
                     const projectedCallsByPhoneClose = currentCallTimeSoFar + (callRatePerHour * (minutesUntilPhoneClose / 60));
                     const projectedFinalWorkTime = totalProductiveMinutes - projectedCallsByPhoneClose;
                     const projectedRoundedHours = Math.round(projectedFinalWorkTime / 60);
@@ -453,12 +459,26 @@ function initializePage() {
                     const projectedGrades = calculateGradeRequirements(projectedTarget);
                     const phoneCloseTimeStr = TimeUtil.formatMinutesToHHMM(effectivePhoneCloseMinutes);
 
-                    statusHtml += `
-                        <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
-                            <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> |
-                            ${currentTicketsSoFar} tickets |
-                            ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
-                        </div>
+                    let statusHtml = `
+                        <div class="info-box">
+                            <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                                <strong>${TimeUtil.formatTimeAMPM(currentHour, currentMinute)}</strong> |
+                                ${currentTicketsSoFar} tickets |
+                                ${TimeUtil.formatMinutesToHHMM(currentCallTimeSoFar)} calls
+                            </div>
+
+                            <div style="font-size: 0.9em;">
+                                <strong>Projection by ${phoneCloseTimeStr}:</strong>
+                                <br>
+                                Calls: ~${TimeUtil.formatMinutesToHHMM(projectedCallsByPhoneClose)}
+                                <span style="opacity: 0.7;">(${Math.floor(callRatePerHour)} min/hr)</span>
+                                <br>
+                                Work time: ~${TimeUtil.formatMinutesToHHMM(projectedFinalWorkTime)} → ${projectedRoundedHours} hrs
+                                <br>
+                                Target: <strong>${projectedTarget}</strong> tickets
+                            </div>
+
+                            <div style="margin-top: 8px;">
                     `;
 
                     // Ticket Projection Logic

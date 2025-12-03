@@ -69,13 +69,11 @@
                                     <option value="120">2h</option>
                                 </select>
                             </div>
-                            <div style="display: flex; align-items: flex-end; justify-content: space-between;">
-                                <div style="flex-grow:1; margin-right: 4px;">
-                                     <label class="sidebar-label" title="Productive Time">Prod. Time</label>
-                                     <div id="totalProductiveTime" class="form-control" style="background:transparent; border:none; padding:0.3rem 0; font-weight:600;">00:00</div>
-                                </div>
-                                <button id="btnResetData" class="btn" title="Reset Data" style="padding: 0.3rem 0.5rem;">↺</button>
-                            </div>
+                            <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Reset</button>
+                        </div>
+                        <div class="stat-item-compact" style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+                            <span class="stat-label-compact" title="Calculated after 1 hour break and ~15% leeway deduction">Total Productive Time (post-leeway):</span>
+                            <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
                         </div>
                     </div>
                 </div>
@@ -118,10 +116,15 @@
                     </div>
                     <div id="targets-section-content" class="accordion-content">
                         
-                        <!-- High Level Stats -->
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; padding: 0 0.2rem;">
-                            <span title="Total calculated work time available for tickets">Work Time: <strong id="totalWorkTimeEOD">00:00</strong></span>
-                            <span title="Calculated Base Target based on rounding">Base Target: <strong id="baseTargetDisplay">0</strong></span>
+                        <div class="stat-box-highlight" style="margin-bottom: 0.5rem;">
+                            <div class="stat-item-compact" style="padding: 0;">
+                                <span class="stat-label-compact">Work Time for Tickets:</span>
+                                <span id="totalWorkTimeEOD" class="stat-value-compact">00:00</span>
+                            </div>
+                            <div class="stat-item-compact" style="padding: 0; margin-top: 4px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 4px;">
+                                <span class="stat-label-compact"><strong>Calculated Base Target:</strong></span>
+                                <span id="baseTargetDisplay" class="stat-value-compact">0</span>
+                            </div>
                         </div>
 
                         <!-- Targets Grid -->
