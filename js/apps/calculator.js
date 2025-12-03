@@ -302,6 +302,13 @@ function initializePage() {
                 }
                 // Concatenate Goal info and Call Time Alternative if present
                 let desc = `Goal: ${ticketsToHitGrade}`;
+
+                // UX Feature: "Total minutes for the goal"
+                if (ticketsNeeded > 0) {
+                    const minutesForGoal = ticketsNeeded * 10;
+                    desc += ` (${TimeUtil.formatMinutesToHHMMShort(minutesForGoal)})`;
+                }
+
                 if (callTimeHtml) {
                     // callTimeHtml already contains "OR X more calls"
                     desc += `<br>${callTimeHtml}`;
@@ -424,7 +431,7 @@ function initializePage() {
                         strategies.push({
                              type: 'warn',
                              title: 'Target Optimization',
-                             text: `Add <strong>${displayMinutes} min</strong> Admin Time to reach the next rounding tier (lowers target by 6).`
+                             text: `Add <strong>${displayMinutes} min</strong> Call Time to reach the next rounding tier (lowers target by 6).`
                         });
                     } else if (optimization.type === 'preventative') {
                          strategies.push({
@@ -478,18 +485,20 @@ function initializePage() {
                         <div class="stat-box-highlight" style="text-align:left; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
                             <div>
                                 <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Forecast</div>
-                                <div style="font-size:1.1rem; font-weight:bold;">~${projectedTotalTickets} <span style="font-size:0.8rem; font-weight:normal;">tix</span></div>
+                                <div style="font-size:1.1rem; font-weight:bold;">~${projectedTotalTickets} <span style="font-size:0.8rem; font-weight:normal;">Tickets</span></div>
                                 <div class="${projectedGradeClass}" style="font-weight:600; font-size:0.85rem;">${projectedGradeName}</div>
                             </div>
                             <div style="border-left:1px solid var(--border-color); padding-left:8px;">
                                 <div style="font-size:0.7rem; color:var(--subtle-text); text-transform:uppercase;">Projected Goal</div>
-                                <div style="font-size:1.1rem; font-weight:bold;">${projectedTarget} <span style="font-size:0.8rem; font-weight:normal;">tix</span></div>
+                                <div style="font-size:1.1rem; font-weight:bold;">${projectedTarget} <span style="font-size:0.8rem; font-weight:normal;">Tickets</span></div>
                                 <div style="font-size:0.75rem; opacity:0.8;">via ${projectedRoundedHours}h Work</div>
                             </div>
                         </div>
 
                         <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 8px;">
                             Projection based on current pace (${Math.floor(callRatePerHour)} min calls/hr).
+                            <br>
+                            <strong>Info:</strong> 10 mins Call Time ≈ -1 Ticket Target.
                         </div>
                     `;
 
@@ -535,7 +544,7 @@ function initializePage() {
             function detectRoundingOptimization(workTimeMinutes) {
                 const minutesInHour = workTimeMinutes % 60;
 
-                // Reactive: In Round Up zone (30-59). Suggest Admin Time to reach :29.
+                // Reactive: In Round Up zone (30-59). Suggest Call Time to reach :29.
                 if (minutesInHour >= 30) {
                     const reductionNeeded = minutesInHour - 29;
                     if (reductionNeeded <= 30) { // Allow up to 30 mins advice
@@ -568,7 +577,7 @@ function initializePage() {
                         strategies.push({
                             type: 'danger',
                             title: 'Efficiency Threshold Alert',
-                            text: `Current rate (${ticketsPerHour.toFixed(1)} t/hr) is below efficiency threshold. Switch to Admin Time to freeze target debt.`
+                            text: `Current rate (${ticketsPerHour.toFixed(1)} t/hr) is below efficiency threshold. Switch to Call Time to freeze target debt.`
                         });
                     }
                 }
@@ -633,7 +642,7 @@ function initializePage() {
                 }
 
                 // 3. "Grade Lock" (Reverse Engineering)
-                // Look for opportunities where adding <= 30 mins Admin Time lowers target to hit a higher grade.
+                // Look for opportunities where adding <= 30 mins Call Time lowers target to hit a higher grade.
                 const grades = [
                     { name: 'Outstanding', offset: 7 },
                     { name: 'Excellent', offset: 4 },
@@ -796,7 +805,14 @@ function initializePage() {
             });
 
             DOMElements.btnResetData.addEventListener('click', () => {
-                UIPatterns.confirmDelete('Reset Data?', 'Are you sure you want to reset all data to defaults? This cannot be undone.', handleResetData);
+                SafeUI.showModal(
+                    'Reset Data',
+                    '<p>Are you sure you want to reset all data to defaults? This cannot be undone.</p>',
+                    [
+                        { label: 'Cancel' },
+                        { label: 'Reset', class: 'button-danger', callback: handleResetData }
+                    ]
+                );
             });
 
             DOMElements.addCallTime.addEventListener('keydown', (e) => {

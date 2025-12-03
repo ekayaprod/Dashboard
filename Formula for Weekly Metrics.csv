@@ -1,0 +1,10 @@
+PTO,
+Daily Task,Phones
+Tickets Closed,12
+Calls,36
+Total Call Time,03:33:00
+Average,=IF(B5="OoO","OoO",IF(B4>0,B5/B4,0))
+NEDSS,0
+Total Work Time,=IF(B1="*half day",TIME(3,0,0)-B5,IF(B2="OoO","OoO",TIME(6,0,0)-B5))
+Daily Call Rating,=IF(MINUTE(B6)*60+SECOND(B6)<=300,"Outstanding",IF(MINUTE(B6)*60+SECOND(B6)<=330,"Excellent",IF(MINUTE(B6)*60+SECOND(B6)<=360,"Satisfactory",IF(MINUTE(B6)*60+SECOND(B6)<=420,"Needs Improvement","Unsatisfactory"))))
+Daily Work Rating,=IF(B3+B7>=HOUR(MROUND(B8,"1:00"))*IF(ISNUMBER(SEARCH("On/Off",B2)),20,6)+7,"Outstanding",IF(AND(HOUR(MROUND(B8,"1:00"))*IF(ISNUMBER(SEARCH("On/Off",B2)),20,6)+6>=B3+B7,B3+B7>=HOUR(MROUND(B8,"1:00"))*IF(ISNUMBER(SEARCH("On/Off",B2)),20,6)+4),"Excellent",IF(AND(HOUR(MROUND(B8,"1:00"))*IF(ISNUMBER(SEARCH("On/Off",B2)),20,6)+3>=B3+B7,B3+B7>=HOUR(MROUND(B8,"1:00"))*IF(ISNUMBER(SEARCH("On/Off",B2)),20,6)-3),"Satisfactory",IF(AND(HOUR(MROUND(B8,"1:00"))*IF(ISNUMBER(SEARCH("On/Off",B2)),20,6)-4>=B3+B7,B3+B7>=HOUR(MROUND(B8,"1:00"))*IF(ISNUMBER(SEARCH("On/Off",B2)),20,6)-6),"Needs Improvement","Unsatisfactory"))))

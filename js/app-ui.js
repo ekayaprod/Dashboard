@@ -19,6 +19,17 @@ const UIPatterns = (() => {
             );
         },
 
+        confirmAction: (title, message, actionLabel, onConfirm) => {
+            SafeUI.showModal(
+                title,
+                message,
+                [
+                    { label: 'Cancel' },
+                    { label: actionLabel, class: 'button-danger', callback: onConfirm }
+                ]
+            );
+        },
+
         confirmUnsavedChanges: (onDiscard) => {
             SafeUI.showModal(
                 'Unsaved Changes',
@@ -438,11 +449,16 @@ const SharedSettingsModal = (() => {
                     appName: config.appName,
                     itemValidators: config.itemValidators,
                     onRestore: (dataToRestore) => {
-                        UIPatterns.confirmDelete("Restore", "This will overwrite all data for this app. This cannot be undone.", () => {
-                            config.onRestoreCallback(dataToRestore);
-                            SafeUI.showToast('Data restored successfully.');
-                            SafeUI.hideModal();
-                        });
+                        UIPatterns.confirmAction(
+                            "Restore Data",
+                            "<p>This will overwrite all data for this app. This cannot be undone.</p>",
+                            "Restore",
+                            () => {
+                                config.onRestoreCallback(dataToRestore);
+                                SafeUI.showToast('Data restored successfully.');
+                                SafeUI.hideModal();
+                            }
+                        );
                     }
                 });
             });
