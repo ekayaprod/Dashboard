@@ -22,13 +22,13 @@
         },
         { 
             url: 'js/app-ui.js', 
-            exports: ['UIPatterns', 'ListRenderer', 'SearchHelper', 'NotepadManager', 'QuickListManager', 'SharedSettingsModal', 'APP_UI_VERSION'],
+            exports: ['UIPatterns', 'ListRenderer', 'SearchHelper', 'NotepadManager', 'QuickListManager', 'SharedSettingsModal'],
             required: true,
             dependsOn: ['SafeUI']
         },
         { 
             url: 'js/app-data.js', 
-            exports: ['BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'APP_DATA_VERSION'],
+            exports: ['BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'],
             required: true,
             dependsOn: ['SafeUI']
         }

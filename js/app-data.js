@@ -4,8 +4,6 @@
  * Depends on: app-core.js
  */
 
-const DATA_VERSION = '2.6.0';
-
 const BackupRestore = (() => {
     return {
         createBackup: (state, appName = 'app') => {
@@ -422,4 +420,3 @@ window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
 window.CsvManager = CsvManager;
-window.APP_DATA_VERSION = DATA_VERSION;

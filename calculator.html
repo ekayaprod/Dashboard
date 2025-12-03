@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Specific page overrides for extremely tight vertical space */
         .app-container {
             padding: 0;
             gap: 0;
@@ -23,19 +22,13 @@
 </head>
 <body class="eod-targets-page">
 
-    <!-- 
-      NAVBAR CONTAINER
-      Populated automatically by bootstrap.js
-    -->
     <div id="navbar-container"></div>
 
     <div class="app-container">
-        <!-- Removed .panel wrapper to save border/padding space if needed, but keeping for consistency with theme -->
         <div class="panel" style="border:none; box-shadow:none; background:transparent;">
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <!-- REFACTORED SECTION 1 (Accordion): Schedule -->
                 <div class="accordion expanded">
                     <div class="accordion-header" id="schedule-header">
                         <div style="display: flex; align-items: center;">
@@ -45,7 +38,6 @@
                         <span id="currentTime" class="header-time">Loading...</span>
                     </div>
                     <div class="accordion-content" id="schedule-content">
-                        <!-- Compact Grid for Schedule -->
                         <div class="compact-grid-2">
                             <div>
                                 <label for="shiftStart" class="sidebar-label">Start</label>
@@ -78,7 +70,6 @@
                     </div>
                 </div>
                 
-                <!-- REFACTORED SECTION 2 (Accordion): Progress -->
                 <div class="accordion expanded">
                     <div class="accordion-header">
                         <h2>Progress</h2>
@@ -95,7 +86,6 @@
                              </div>
                          </div>
 
-                         <!-- Add Call Row -->
                          <div class="compact-grid-row" style="margin-top: 0.5rem;">
                              <div>
                                  <label for="addCallTime" class="sidebar-label">Add Call (min)</label>
@@ -108,8 +98,6 @@
                     </div>
                 </div>
                 
-
-                <!-- REFACTORED SECTION 3 (Accordion): Targets & Report -->
                 <div class="accordion expanded">
                     <div class="accordion-header">
                         <h2>Targets & Report</h2>
@@ -127,18 +115,11 @@
                             </div>
                         </div>
 
-                        <!-- Optimization Tip (Restored) -->
                         <div id="targetOptimizationTip" class="optimization-tip alert-warning hidden" style="margin-bottom: 0.5rem;"></div>
 
-                        <!-- Targets Grid -->
-                        <div id="targets-grid" class="targets-grid" style="margin-bottom: 0.5rem;">
-                            <!-- Target cards injected here -->
-                        </div>
+                        <div id="targets-grid" class="targets-grid" style="margin-bottom: 0.5rem;"></div>
 
-                        <!-- Pacing Report (Now integrated here) -->
-                        <div id="calc-info-content">
-                            <!-- Info box and pacing rows injected here -->
-                        </div>
+                        <div id="calc-info-content"></div>
                     </div>
                 </div>
         
