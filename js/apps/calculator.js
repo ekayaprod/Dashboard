@@ -7,10 +7,45 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '3.1.0', // Professional Strategy Edition
+        VERSION: '3.3.1', // Doc Update: Added Spreadsheet Formulas
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
+
+    /**
+     * ============================================================================
+     * ORIGINAL SPREADSHEET FORMULAS (SOURCE OF TRUTH)
+     * ============================================================================
+     *
+     * CONTEXT:
+     * - B1: PTO (*half day)
+     * - B2: Daily Task (Phones vs On/Off)
+     * - B3: Tickets Closed
+     * - B5: Total Call Time (Duration)
+     * - B7: NEDSS (Extra credit tasks, assumed 0 in this app)
+     * - B8: Total Work Time (Calculated)
+     *
+     * 1. TOTAL WORK TIME (The Base):
+     * Formula: =IF(B1="*half day", TIME(3,0,0)-B5, IF(B2="OoO","OoO", TIME(6,0,0)-B5))
+     * JS Logic: Calculated dynamically.
+     * (Shift Duration - Break) * (6/7) - Call Time.
+     * This effectively reverses the implicit 7h->6h leeway seen in the static "TIME(6,0,0)" constant.
+     *
+     * 2. DAILY WORK RATING (The Target):
+     * Formula: =IF(B3+B7 >= HOUR(MROUND(B8,"1:00")) * 6 + 7, "Outstanding", ...)
+     *
+     * Breakdown:
+     * - Metric: B3 + B7 (Tickets + NEDSS)
+     * - Base:   HOUR(MROUND(B8, "1:00")) -> Rounds Net Work Time to nearest Hour.
+     * - Mult:   * 6 (Standard Phones multiplier).
+     * - Graded:
+     * - Outstanding:       >= (Base * 6) + 7
+     * - Excellent:         >= (Base * 6) + 4
+     * - Satisfactory:      >= (Base * 6) - 3
+     * - Needs Improvement: >= (Base * 6) - 6
+     *
+     * ============================================================================
+     */
 
     (async () => {
         // --- Dependency Check ---
@@ -54,13 +89,14 @@ function initializePage() {
 
         // --- CONSTANTS ---
         const CONSTANTS = {
-            TICKETS_PER_HOUR_RATE: 6,
-            ROUNDING_BOUNDARY_MAX: 29, // Minutes :29 rounds down
+            TICKETS_PER_HOUR_RATE: 6, // Matches "Daily Work Rating" * 6 multiplier
+            ROUNDING_BOUNDARY_MAX: 29, // Matches MROUND("1:00") logic (0-29 rounds down, 30-59 rounds up)
             PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 15:30
-            LEEWAY_RATIO: 1 / 7
+            LEEWAY_RATIO: 1 / 7 // Aligns with the 6h base from 7h work time
         };
 
         const gradeBoundaries = {
+            // Matches spreadsheet offsets: Target + 7, + 4, - 3
             'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
             'Excellent': { name: 'Excellent', min: 4, max: 6 },
             'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
@@ -74,13 +110,13 @@ function initializePage() {
             }
         };
 
-        // --- 1. TARGET CARDS (The Status Board) ---
-        function buildTargetCardHTML(label, value, description) {
+        // --- 1. DASHBOARD BADGES ---
+        function buildTargetCardHTML(label, valueHtml, subtext) {
             return `
                 <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap: 2px;">
                     <span class="target-label">${label}</span>
-                    <span class="target-value">${value}</span>
-                    <span class="target-desc">${description}</span>
+                    <span class="target-value" style="line-height:1.1;">${valueHtml}</span>
+                    <span class="target-desc" style="font-size:0.75rem; opacity:0.9;">${subtext}</span>
                 </div>
             `;
         }
@@ -90,107 +126,110 @@ function initializePage() {
             if (ticketsNeeded <= 0) {
                 return {
                     boxClass: 'target-good',
-                    html: buildTargetCardHTML(boundary.name, "Met", "Target Achieved")
+                    html: buildTargetCardHTML(boundary.name, "✓", "Met")
                 };
             }
 
-            // Scenario: Shift Ended / Time Up
+            // Scenario: Time Up
             if (productiveMinutesRemaining <= 0) {
                  return {
                     boxClass: 'target-danger',
-                    html: buildTargetCardHTML(boundary.name, `-${ticketsNeeded}`, `Missed`)
+                    html: buildTargetCardHTML(boundary.name, `${ticketsNeeded} Short`, "Time Up")
                 };
             }
 
             // Scenario: In Progress
+            // We use 10 mins per ticket simply as an effort estimator (60 mins / 6 tickets)
+            const estMinutes = ticketsNeeded * 10;
+            
             return {
                 boxClass: 'target-warn',
-                html: buildTargetCardHTML(boundary.name, ticketsNeeded, `Remaining`)
+                html: buildTargetCardHTML(
+                    boundary.name, 
+                    `${ticketsNeeded} <span style="font-size:0.7em; font-weight:normal;">Tickets</span>`, 
+                    `Est. Effort: ${estMinutes}m`
+                )
             };
         }
 
-        // --- 2. STRATEGY ENGINE (Analysis & Recommendations) ---
+        // --- 2. STRATEGY ENGINE ---
         
         function getStrategicAnalysis(data) {
-            // Extract Data
             const { 
-                workTimeMinutes, // Total minutes allocated to tickets
-                ticketsDone, 
-                ticketsPerMinRate, // Current speed
-                minutesRemaining, // Until phone close
-                nextGrade, // Object {name, val}
-                isRoundedUp // Boolean: Is the target currently inflated?
+                workTimeMinutes, ticketsDone, ticketsPerMinRate, 
+                minutesRemaining, nextGrade, isRoundedUp, 
+                targetTicketGoal 
             } = data;
 
             // STRATEGY 1: ROUNDING OPTIMIZATION
-            // If the target is rounded up (XX:30+), we check if adding Admin/Call time lowers it.
+            // Logic: MROUND rounds to nearest hour.
+            // If minutes >= 30, it rounds UP (Target + 6).
+            // If minutes < 30, it rounds DOWN (Target baseline).
             if (isRoundedUp) {
-                const minutesOver30 = workTimeMinutes % 60; 
-                // Target is :29. Calculate difference.
-                const adminNeeded = minutesOver30 - 29;
+                const minutesInHour = workTimeMinutes % 60; 
+                // To round down, we need to be at :29.
+                // We reduce "Work Time" by adding "Call Time".
+                const adminNeeded = minutesInHour - 29;
                 
-                // If the adjustment is reasonable (e.g., < 45 mins)
+                // Only suggest if feasible (under 45 mins)
                 if (adminNeeded <= 45) {
                     return {
                         type: 'optimization',
-                        title: '📉 Efficiency Optimization',
-                        text: `Allocating <strong>${Math.ceil(adminNeeded)} min</strong> to Admin/Call Time will reduce the target tier by 6 tickets.`
+                        title: '📉 Reduce Goal',
+                        text: `Your Net Work Time rounds <strong>UP</strong>. Add <strong>${Math.ceil(adminNeeded)} min</strong> to Call Time to drop the target by 6 tickets.`,
+                        sub: `Current Goal: ${targetTicketGoal} → New Goal: ${targetTicketGoal - 6}`
                     };
                 }
             }
 
-            // STRATEGY 2: OPPORTUNITY ANALYSIS (End of Shift)
-            // If < 90 mins left, check feasibility of next grade.
+            // STRATEGY 2: OPPORTUNITY ANALYSIS
             if (minutesRemaining > 0 && minutesRemaining < 90 && nextGrade) {
                 const ticketsNeeded = nextGrade.val - ticketsDone;
                 
-                // FEASIBLE: Close to target
+                // Feasible
                 if (ticketsNeeded <= 5 && ticketsNeeded > 0) {
                     return {
                         type: 'opportunity',
-                        title: `🎯 Goal Within Reach: ${nextGrade.name}`,
-                        text: `<strong>${ticketsNeeded} tickets</strong> needed in ${minutesRemaining} mins to reach the next tier.`
+                        title: `🎯 ${nextGrade.name} is Reachable`,
+                        text: `<strong>${ticketsNeeded} tickets</strong> needed in ${minutesRemaining} mins.`
                     };
                 }
                 
-                // STRATEGY 3: CONSERVATION (Not Feasible)
-                // Threshold: If we need more than 1 ticket every 8 mins (High intensity)
+                // Not Feasible (Conserve)
                 const minsPerTicketNeeded = minutesRemaining / ticketsNeeded;
                 if (minsPerTicketNeeded < 8) {
                     return {
                         type: 'conservation',
-                        title: '🛡️ Status: Secured',
-                        text: `${nextGrade.name} tier is statistically unlikely. Recommendation: Maintain current status and prioritize quality or admin tasks.`
+                        title: '🛡️ Status Secured',
+                        text: `Reaching ${nextGrade.name} is unlikely given the time remaining. Recommendation: Save completed tickets for tomorrow.`
                     };
                 }
             }
 
-            // STRATEGY 4: PACE ANALYSIS (Mid Shift)
-            // If early in shift (>= 90 mins left), check if pace matches growth.
+            // STRATEGY 3: PACE ANALYSIS (Rate Check)
             if (minutesRemaining >= 90) {
-                 // Target growth rate is 6/hr = 0.1/min.
-                 // If current rate is < 0.08 (4.8/hr)
+                 // 6 tickets/hr = 0.1 tickets/min
+                 // Alert if below 4.8 tickets/hr (0.08)
                  if (ticketsPerMinRate > 0 && ticketsPerMinRate < 0.08) {
                      return {
                          type: 'warn',
                          title: '⚠️ Pace Alert',
-                         text: `Current output (${(ticketsPerMinRate*60).toFixed(1)}/hr) is below target accumulation rate.`
+                         text: `Current pace is below the 6 tickets/hr requirement. Target is increasing faster than completions.`
                      };
                  }
             }
 
-            // Default: Standard Progress
             if (nextGrade) {
                 return {
                     type: 'info',
-                    title: `Next Objective: ${nextGrade.name}`,
-                    text: `Gap: <strong>${nextGrade.val - ticketsDone} tickets</strong>.`
+                    title: `Next Tier: ${nextGrade.name}`,
+                    text: `Gap: <strong>${nextGrade.val - ticketsDone} tickets</strong>`
                 };
             }
 
             return {
                 type: 'success',
-                title: '🏆 Targets Maximized',
+                title: '🏆 Max Rank',
                 text: 'Highest tier achieved.'
             };
         }
@@ -209,11 +248,10 @@ function initializePage() {
             const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
             const minutesWorked = Math.max(1, currentTimeMinutes - shiftStartMinutes);
 
-            // 1. Analyze Rounding State
+            // Analysis Data
             const minutesInHour = totalWorkTimeEOD % 60;
-            const isRoundedUp = minutesInHour >= 30; // 30-59 mins rounds up to next hour
+            const isRoundedUp = minutesInHour >= 30;
 
-            // 2. Identify Next Grade
             const grades = [
                 { name: 'Satisfactory', val: targetTicketGoal + gradeBoundaries.Satisfactory.min },
                 { name: 'Excellent', val: targetTicketGoal + gradeBoundaries.Excellent.min },
@@ -221,49 +259,38 @@ function initializePage() {
             ].sort((a,b) => a.val - b.val);
             const nextGrade = grades.find(g => g.val > currentTicketsSoFar);
 
-            // 3. Get Professional Strategy
             const analysis = getStrategicAnalysis({
                 workTimeMinutes: totalWorkTimeEOD,
                 ticketsDone: currentTicketsSoFar,
                 ticketsPerMinRate: currentTicketsSoFar / minutesWorked,
                 minutesRemaining: minutesUntilPhoneClose,
                 nextGrade: nextGrade,
-                isRoundedUp: isRoundedUp
+                isRoundedUp: isRoundedUp,
+                targetTicketGoal: targetTicketGoal
             });
 
-            // 4. Render HTML
+            // Render
             let html = `<div style="display:flex; flex-direction:column; gap:8px;">`;
-
-            // Style map matches existing CSS classes
+            
             const styleMap = {
-                'optimization': 'strategy-success', // Green 
-                'opportunity': 'strategy-warn',     // Yellow 
-                'conservation': 'strategy-danger',  // Red/Pink 
-                'warn': 'strategy-danger',          // Red
-                'info': 'strategy-normal',          // Grey (Using default)
-                'success': 'strategy-success'       // Green
+                'optimization': 'strategy-success',
+                'opportunity': 'strategy-warn', 
+                'conservation': 'strategy-danger', 
+                'warn': 'strategy-danger',
+                'info': 'strategy-normal',
+                'success': 'strategy-success'
             };
             
             const cardClass = styleMap[analysis.type] || '';
-            
-            // Standardizing card look
             const borderStyle = cardClass ? '' : 'border-left: 3px solid var(--border-color);';
 
             html += `
                 <div class="strategy-card ${cardClass}" style="margin:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); ${borderStyle}">
                     <div class="strategy-title">${analysis.title}</div>
                     <div class="strategy-text">${analysis.text}</div>
+                    ${analysis.sub ? `<div style="font-size:0.75rem; margin-top:4px; opacity:0.8; border-top:1px solid rgba(0,0,0,0.1); padding-top:2px;">${analysis.sub}</div>` : ''}
                 </div>
             `;
-
-            // Secondary Info for Context
-            if (analysis.type === 'optimization' && nextGrade) {
-                 html += `
-                    <div style="font-size:0.8rem; color:var(--subtle-text); padding:0 4px;">
-                        Next Objective: <strong>${nextGrade.name}</strong> (${nextGrade.val - currentTicketsSoFar} tickets remaining)
-                    </div>
-                `;
-            }
 
             html += `</div>`;
             DOMElements.calcInfoContent.innerHTML = html;
@@ -276,7 +303,6 @@ function initializePage() {
             const endMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
             const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10) || 0;
             
-            // Validation
             if (endMinutes <= startMinutes) return { error: "Check Shift Times" };
 
             const totalShiftMinutes = endMinutes - startMinutes;
@@ -284,11 +310,9 @@ function initializePage() {
             const leeway = postBreak * CONSTANTS.LEEWAY_RATIO;
             const totalProductiveMinutes = postBreak - leeway;
 
-            // Progress
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const minutesPassed = Math.max(0, Math.min(totalShiftMinutes, currentMinutes - startMinutes));
             
-            // Ratio of productive time passed
             const ratio = totalShiftMinutes > 0 ? minutesPassed / totalShiftMinutes : 0;
             const productiveMinutesPassed = totalProductiveMinutes * ratio;
             const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
@@ -309,22 +333,21 @@ function initializePage() {
                  return;
             }
 
-            // Inputs
             const currentCallTimeSoFar = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
             const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
 
-            // Core Logic: Work Time = Available - Admin
+            // This matches the spreadsheet's "Total Work Time"
             const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
             
-            // Core Logic: Rounding
+            // This matches the spreadsheet's "MROUND(..., '1:00')" logic
             const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
+            
+            // This matches the spreadsheet's "* 6" logic
             const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
 
-            // Update Footer Stats
             DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
             if (DOMElements.baseTargetDisplay) DOMElements.baseTargetDisplay.innerText = targetTicketGoal;
 
-            // Render Grid
             DOMElements.targetsGrid.innerHTML = '';
             for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
                 const targetBox = document.createElement('div');
@@ -342,7 +365,6 @@ function initializePage() {
                 DOMElements.targetsGrid.appendChild(targetBox);
             }
 
-            // Render Strategy
             renderCalculationInfo({
                 totalWorkTimeEOD,
                 currentTicketsSoFar,
@@ -419,6 +441,30 @@ function initializePage() {
             updateInputsFromState();
             calculateDailyRatings();
             saveState();
+        }
+
+        const allHeaders = document.querySelectorAll('.accordion-header');
+        allHeaders.forEach(header => {
+            header.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const accordion = header.closest('.accordion');
+                if (accordion) {
+                    accordion.classList.toggle('expanded');
+                    if (header.id === 'schedule-header') {
+                         state.ui.isScheduleCollapsed = !accordion.classList.contains('expanded');
+                         saveState();
+                    }
+                }
+            });
+        });
+
+        const scheduleAccordion = document.getElementById('schedule-header')?.closest('.accordion');
+        if (scheduleAccordion) {
+            if (state.ui.isScheduleCollapsed) {
+                scheduleAccordion.classList.remove('expanded');
+            } else {
+                scheduleAccordion.classList.add('expanded');
+            }
         }
 
         setInterval(() => { if (document.visibilityState === 'visible') calculateDailyRatings(); }, 30000);
