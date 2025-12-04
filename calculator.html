@@ -7,45 +7,62 @@
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Specific page overrides for extremely tight vertical space */
         .app-container {
             padding: 0;
             gap: 0;
         }
         .main-content {
             padding: 0.5rem;
-            gap: 0.4rem;
+            gap: 0.5rem;
         }
         .accordion {
             margin-bottom: 0.4rem;
+        }
+        /* Results Section - Status & Analysis */
+        .results-section {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .results-header {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+            display: flex;
+            justify-content: space-between;
+        }
+        .subtle-footer-stats {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--subtle-text);
         }
     </style>
 </head>
 <body class="eod-targets-page">
 
-    <!-- 
-      NAVBAR CONTAINER
-      Populated automatically by bootstrap.js
-    -->
     <div id="navbar-container"></div>
 
     <div class="app-container">
-        <!-- Removed .panel wrapper to save border/padding space if needed, but keeping for consistency with theme -->
         <div class="panel" style="border:none; box-shadow:none; background:transparent;">
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
-                <!-- REFACTORED SECTION 1 (Accordion): Schedule -->
+                <!-- SECTION 1: Schedule -->
                 <div class="accordion expanded">
                     <div class="accordion-header" id="schedule-header">
                         <div style="display: flex; align-items: center;">
                             <span id="schedule-collapse-icon" class="accordion-icon">▼</span>
-                            <h2>Schedule</h2>
+                            <h2>1. Schedule</h2>
                         </div>
-                        <span id="currentTime" class="header-time">Loading...</span>
                     </div>
                     <div class="accordion-content" id="schedule-content">
-                        <!-- Compact Grid for Schedule -->
                         <div class="compact-grid-2">
                             <div>
                                 <label for="shiftStart" class="sidebar-label">Start</label>
@@ -71,30 +88,25 @@
                             </div>
                             <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Reset</button>
                         </div>
-                        <div class="stat-item-compact" style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
-                            <span class="stat-label-compact" title="Calculated after 1 hour break and ~15% leeway deduction">Total Productive Time (post-leeway):</span>
-                            <span id="totalProductiveTime" class="stat-value-compact">00:00</span>
-                        </div>
                     </div>
                 </div>
                 
-                <!-- REFACTORED SECTION 2 (Accordion): Progress -->
+                <!-- SECTION 2: Progress -->
                 <div class="accordion expanded">
                     <div class="accordion-header">
-                        <h2>Progress</h2>
+                        <h2>2. Progress</h2>
                     </div>
                     <div class="accordion-content">
                          <div class="compact-grid-2">
                              <div>
-                                 <label for="currentCallTime" class="sidebar-label" title="Total Call Time (HH:MM)">Call Time</label>
+                                 <label for="currentCallTime" class="sidebar-label" title="Time spent in Meetings/Admin">Call/Admin Time</label>
                                  <input type="text" id="currentCallTime" class="form-control" placeholder="0:00" value="0">
                              </div>
                              <div>
-                                 <label for="currentTickets" class="sidebar-label">Tickets</label>
+                                 <label for="currentTickets" class="sidebar-label">Tickets Completed</label>
                                  <input type="number" id="currentTickets" class="form-control" value="0">
                              </div>
                          </div>
-
                          <!-- Add Call Row -->
                          <div class="compact-grid-row" style="margin-top: 0.5rem;">
                              <div>
@@ -109,36 +121,22 @@
                 </div>
                 
 
-                <!-- REFACTORED SECTION 3 (Accordion): Targets & Report -->
-                <div class="accordion expanded">
-                    <div class="accordion-header">
-                        <h2>Targets & Report</h2>
+                <!-- SECTION 3: Targets & Analysis -->
+                <div class="results-section">
+                    <div class="results-header">
+                        <span>3. Target Status</span>
                     </div>
-                    <div id="targets-section-content" class="accordion-content">
-                        
-                        <div class="stat-box-highlight" style="margin-bottom: 0.5rem;">
-                            <div class="stat-item-compact" style="padding: 0;">
-                                <span class="stat-label-compact">Work Time for Tickets:</span>
-                                <span id="totalWorkTimeEOD" class="stat-value-compact">00:00</span>
-                            </div>
-                            <div class="stat-item-compact" style="padding: 0; margin-top: 4px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 4px;">
-                                <span class="stat-label-compact"><strong>Calculated Base Target:</strong></span>
-                                <span id="baseTargetDisplay" class="stat-value-compact">0</span>
-                            </div>
-                        </div>
+                    
+                    <!-- Main Badges -->
+                    <div id="targets-grid" class="targets-grid" style="margin-bottom: 0.5rem;"></div>
 
-                        <!-- Optimization Tip (Restored) -->
-                        <div id="targetOptimizationTip" class="optimization-tip alert-warning hidden" style="margin-bottom: 0.5rem;"></div>
+                    <!-- STRATEGY CONSOLE -->
+                    <div id="calc-info-content"></div>
 
-                        <!-- Targets Grid -->
-                        <div id="targets-grid" class="targets-grid" style="margin-bottom: 0.5rem;">
-                            <!-- Target cards injected here -->
-                        </div>
-
-                        <!-- Pacing Report (Now integrated here) -->
-                        <div id="calc-info-content">
-                            <!-- Info box and pacing rows injected here -->
-                        </div>
+                    <!-- Subtle Footer for technical stats -->
+                    <div class="subtle-footer-stats">
+                        <span title="Total Shift minus Break minus Call Time">Available Ticket Time: <strong id="totalWorkTimeEOD">00:00</strong></span>
+                        <span title="The target calculated from your available time">Base Goal: <strong id="baseTargetDisplay">0</strong></span>
                     </div>
                 </div>
         
