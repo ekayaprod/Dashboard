@@ -575,7 +575,6 @@ const AppLifecycle = (() => {
                 return null;
             }
 
-            // Using new AppStore via SafeUI wrapper
             const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
             if (!stateManager) {
                 _showErrorBanner("Application Failed to Start", "StateManager failed to initialize.");
