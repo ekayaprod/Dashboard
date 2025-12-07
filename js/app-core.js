@@ -6,6 +6,17 @@
 // ============================================================================
 // MODULE: SVGIcons
 // ============================================================================
+/**
+ * @typedef {Object} SVGIcons
+ * @property {string} plus
+ * @property {string} pencil
+ * @property {string} trash
+ * @property {string} settings
+ * @property {string} copy
+ * @property {string} folder
+ * @property {string} template
+ * @property {string} move
+ */
 const SVGIcons = Object.freeze({
     plus: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>',
@@ -169,62 +180,6 @@ const UIUtils = (() => {
         }, onError);
     };
 
-    const createStateManager = (key, defaults, version, onCorruption) => {
-        if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
-            console.error("State Manager initialization error: Invalid parameters provided.");
-            return null;
-        }
-
-        const load = () => {
-            let data;
-            const rawData = localStorage.getItem(key);
-
-            if (rawData) {
-                parseJSON(rawData, 
-                    (parsed) => {
-                        data = parsed;
-                        if (data.version !== version) {
-                            console.warn(`State version mismatch. Loading state anyway.`);
-                        }
-                    },
-                    (err) => {
-                        if (onCorruption) {
-                            try { onCorruption(); } catch (e) {}
-                        }
-                        localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
-                        _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
-                        data = { ...defaults };
-                    }
-                );
-            } else {
-                data = { ...defaults };
-            }
-            
-            if (data && !data.version) data.version = version;
-            return data || { ...defaults, version };
-        };
-
-        const save = (state) => {
-            let serialized;
-            try {
-                state.version = version;
-                serialized = JSON.stringify(state);
-                localStorage.setItem(key, serialized);
-                
-                // Verify save
-                const verification = localStorage.getItem(key);
-                if (!verification || verification.length !== serialized.length) {
-                    throw new Error('Save verification failed - data mismatch');
-                }
-            } catch (err) {
-                console.error("Failed to save state:", err);
-                _showModal("Save Error", `<p>Failed to save data: ${escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
-            }
-        };
-
-        return { load, save };
-    };
-
     const _hideModal = () => {
         const modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) modalOverlay.style.display = 'none';
@@ -290,7 +245,6 @@ const UIUtils = (() => {
         readJSONFile,
         readTextFile,
         parseJSON,
-        createStateManager,
         hideModal: _hideModal,
         showModal: _showModal,
         showValidationError,
@@ -299,12 +253,131 @@ const UIUtils = (() => {
 })();
 
 // ============================================================================
+// MODULE: AppStore
+// ============================================================================
+/**
+ * Unified State Management Logic.
+ * Replaces the legacy createStateManager.
+ */
+class AppStore {
+    /**
+     * @param {string} key - LocalStorage key
+     * @param {Object} defaultState - Default state object
+     * @param {string} version - Current version string
+     * @param {Function} [onCorruption] - Optional callback for corruption handling
+     */
+    constructor(key, defaultState, version, onCorruption) {
+        if (!key || typeof key !== 'string' || !defaultState || typeof defaultState !== 'object' || !version) {
+            // Check for valid inputs, but allow loose usage if needed, mostly for safety
+            if (!key) console.error("AppStore: Missing key");
+        }
+        this.key = key;
+        this.defaultState = defaultState;
+        this.version = version;
+        this.onCorruption = onCorruption;
+        this.state = null;
+    }
+
+    /**
+     * Loads state from localStorage.
+     * @returns {Object} The loaded state or default state.
+     */
+    load() {
+        let data;
+        const rawData = localStorage.getItem(this.key);
+
+        if (rawData) {
+            UIUtils.parseJSON(rawData,
+                (parsed) => {
+                    data = parsed;
+                    if (data.version !== this.version) {
+                        console.warn(`[AppStore] Version mismatch for ${this.key}. Expected ${this.version}, got ${data.version}. Loading anyway.`);
+                    }
+                },
+                (err) => {
+                    console.error(`[AppStore] Corruption detected for ${this.key}:`, err);
+                    if (this.onCorruption) {
+                        try { this.onCorruption(); } catch (e) {}
+                    }
+                    // Backup corrupted data
+                    localStorage.setItem(`${this.key}_corrupted_${Date.now()}`, rawData);
+                    UIUtils.showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
+                    data = JSON.parse(JSON.stringify(this.defaultState));
+                }
+            );
+        } else {
+            data = JSON.parse(JSON.stringify(this.defaultState));
+        }
+
+        // Ensure version is set
+        if (data && !data.version) data.version = this.version;
+
+        this.state = data;
+        return this.state;
+    }
+
+    /**
+     * Saves the current state to localStorage.
+     * @param {Object} [newState] - Optional new state to replace current state.
+     */
+    save(newState) {
+        if (newState) this.state = newState;
+        if (!this.state) return;
+
+        let serialized;
+        try {
+            this.state.version = this.version;
+            serialized = JSON.stringify(this.state);
+            localStorage.setItem(this.key, serialized);
+
+            // Verification check
+            const verification = localStorage.getItem(this.key);
+            if (!verification || verification.length !== serialized.length) {
+                throw new Error('Save verification failed - data mismatch');
+            }
+        } catch (err) {
+            console.error("Failed to save state:", err);
+            UIUtils.showModal("Save Error", `<p>Failed to save data: ${UIUtils.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+        }
+    }
+
+    /**
+     * Resets state to defaults.
+     */
+    reset() {
+        this.state = JSON.parse(JSON.stringify(this.defaultState));
+        this.save();
+        return this.state;
+    }
+}
+
+// ============================================================================
 // MODULE: SafeUI (Proxy layer)
 // ============================================================================
+/**
+ * @typedef {Object} SafeUI
+ * @property {boolean} isReady
+ * @property {SVGIcons} SVGIcons
+ * @property {function(string, string, Array<Object>): void} showModal
+ * @property {function(string, string, string): void} showValidationError
+ * @property {function(): void} hideModal
+ * @property {function(string): void} showToast
+ * @property {function(string): string} escapeHTML
+ * @property {function(): string} generateId
+ * @property {function(Function, number): Function} debounce
+ * @property {function(string): Promise<boolean>} copyToClipboard
+ * @property {function(string, string, string): boolean} downloadJSON
+ * @property {function(Function, string): void} openFilePicker
+ * @property {function(File, Function, Function): void} readJSONFile
+ * @property {function(File, Function, Function): void} readTextFile
+ * @property {function(string, Function, Function): void} parseJSON
+ * @property {function(string, Object, string, Function): AppStore} createStateManager
+ * @property {CoreValidators} validators
+ */
 const SafeUI = (() => {
     const getSVGIcons = () => {
         if (UIUtils.SVGIcons) return UIUtils.SVGIcons;
-        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋' };
+        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋', folder: '📁', template: '📄', move: '➡️' };
     };
 
     return {
@@ -323,7 +396,15 @@ const SafeUI = (() => {
         readJSONFile: (file, onSuccess, onError) => UIUtils.readJSONFile(file, onSuccess, onError),
         readTextFile: (file, onSuccess, onError) => UIUtils.readTextFile(file, onSuccess, onError),
         parseJSON: (str, success, error) => UIUtils.parseJSON(str, success, error),
-        createStateManager: (key, defaults, version, onCorruption) => UIUtils.createStateManager(key, defaults, version, onCorruption),
+        // Legacy support wrapper, but utilizing the new class structure could be better if refactored fully.
+        // For now, we return a compatible interface.
+        createStateManager: (key, defaults, version, onCorruption) => {
+             const store = new AppStore(key, defaults, version, onCorruption);
+             return {
+                 load: () => store.load(),
+                 save: (s) => store.save(s)
+             };
+        },
         validators: UIUtils.validators
     };
 })();
@@ -494,6 +575,7 @@ const AppLifecycle = (() => {
                 return null;
             }
 
+            // Using new AppStore via SafeUI wrapper
             const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
             if (!stateManager) {
                 _showErrorBanner("Application Failed to Start", "StateManager failed to initialize.");
@@ -555,3 +637,4 @@ window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
 window.DataHelpers = DataHelpers;
 window.DateUtils = DateUtils;
+window.AppStore = AppStore; // Export AppStore

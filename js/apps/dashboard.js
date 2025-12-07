@@ -3,6 +3,44 @@
 // Handles Applications, Shortcuts, and local settings
 // ============================================================================
 
+/**
+ * @typedef {Object} AppItem
+ * @property {string} id
+ * @property {string} name
+ * @property {string} urls
+ * @property {string} escalation
+ */
+
+/**
+ * @typedef {Object} ShortcutItem
+ * @property {string} id
+ * @property {string} name
+ * @property {string} url
+ */
+
+/**
+ * @typedef {Object} NoteItem
+ * @property {string} id
+ * @property {string} title
+ * @property {string} content
+ */
+
+/**
+ * @typedef {Object} DashboardUIState
+ * @property {string|null} selectedAppId
+ * @property {string|null} activeNoteId
+ * @property {number} [notepadScrollTop]
+ */
+
+/**
+ * @typedef {Object} DashboardState
+ * @property {AppItem[]} apps
+ * @property {ShortcutItem[]} shortcuts
+ * @property {NoteItem[]} notes
+ * @property {DashboardUIState} ui
+ * @property {string} [version]
+ */
+
 AppLifecycle.onBootstrap(initializePage);
 
 function initializePage() {
@@ -455,6 +493,7 @@ function initializePage() {
                 }
             };
 
+            // Note: initPage uses the wrapped AppStore via SafeUI.createStateManager internally for now
             const ctx = await AppLifecycle.initPage({
                 storageKey: LOCAL_STORAGE_KEY,
                 defaultState,

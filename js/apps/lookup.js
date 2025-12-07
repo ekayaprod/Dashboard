@@ -2,6 +2,42 @@
 // PAGE-SPECIFIC LOGIC: Lookup (lookup.html)
 // ============================================================================
 
+/**
+ * @typedef {Object} LookupItem
+ * @property {string} id
+ * @property {string} keyword
+ * @property {string} assignmentGroup
+ * @property {string} notes
+ * @property {string} phoneLogPath
+ */
+
+/**
+ * @typedef {Object} CustomSearch
+ * @property {string} id
+ * @property {string} name
+ * @property {string} urlTemplate
+ */
+
+/**
+ * @typedef {Object} LookupSettings
+ * @property {CustomSearch[]} customSearches
+ */
+
+/**
+ * @typedef {Object} LookupUIState
+ * @property {string} searchTerm
+ * @property {number} scrollTop
+ * @property {boolean} isEditMode
+ */
+
+/**
+ * @typedef {Object} LookupState
+ * @property {LookupItem[]} items
+ * @property {LookupSettings} settings
+ * @property {LookupUIState} ui
+ * @property {string} [version]
+ */
+
 AppLifecycle.onBootstrap(initializePage);
 
 function initializePage() {

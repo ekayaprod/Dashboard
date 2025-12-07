@@ -5,6 +5,32 @@
 
 import { MsgReader } from '../msgreader.js';
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+/**
+ * @typedef {Object} MailtoItem
+ * @property {string} id
+ * @property {string} name
+ * @property {string} type - 'folder' or 'item'
+ * @property {string} [mailto] - Required if type is 'item'
+ * @property {MailtoItem[]} [children] - Required if type is 'folder'
+ */
+
+/**
+ * @typedef {Object} MailtoUIState
+ * @property {string} currentFolderId
+ * @property {'library'|'editor'} activeSection
+ */
+
+/**
+ * @typedef {Object} MailtoState
+ * @property {MailtoItem[]} library
+ * @property {MailtoUIState} ui
+ * @property {string} [version]
+ */
+
 const APP_CONFIG = {
     NAME: 'mailto_library',
     VERSION: '2.3.3',

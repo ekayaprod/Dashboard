@@ -6,6 +6,11 @@
 
 const BackupRestore = (() => {
     return {
+        /**
+         * Creates and downloads a backup of the current state.
+         * @param {Object} state - The application state.
+         * @param {string} [appName='app'] - The name of the application.
+         */
         createBackup: (state, appName = 'app') => {
             try {
                 const backupData = {
@@ -134,6 +139,14 @@ const BackupRestore = (() => {
     };
 })();
 
+// ============================================================================
+// MODULE: DataValidator
+// ============================================================================
+/**
+ * @typedef {Object} ValidationResult
+ * @property {boolean} valid
+ * @property {string[]} errors
+ */
 const DataValidator = (() => {
     return {
         hasDuplicate: (items, field, value, excludeId = null) => {
@@ -187,6 +200,9 @@ const DataValidator = (() => {
     };
 })();
 
+// ============================================================================
+// MODULE: DataConverter
+// ============================================================================
 const DataConverter = (() => {
     const _parseCsvLine = (line) => {
         const values = [];
@@ -416,8 +432,25 @@ const CsvManager = (() => {
     };
 })();
 
+// ============================================================================
+// MODULE: TreeUtils
+// ============================================================================
+/**
+ * @typedef {Object} TreeItem
+ * @property {string} id
+ * @property {string} name
+ * @property {string} type
+ * @property {TreeItem[]} [children]
+ */
 const TreeUtils = (() => {
     return {
+        /**
+         * Recursively searches for an item in a tree structure.
+         * @param {TreeItem[]} items - Array of tree items.
+         * @param {function(TreeItem): boolean} predicate - Search condition.
+         * @param {TreeItem|null} parent - Parent item (internal recursion).
+         * @returns {{item: TreeItem, parent: TreeItem|null}|null}
+         */
         findInTree: (items, predicate, parent = null) => {
             if (!Array.isArray(items)) return null;
             for (const item of items) {

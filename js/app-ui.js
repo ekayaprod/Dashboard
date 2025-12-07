@@ -4,6 +4,13 @@
  * Depends on: app-core.js
  */
 
+/**
+ * @typedef {Object} UIAction
+ * @property {string} label
+ * @property {string} [class]
+ * @property {function(): (boolean|void)} [callback]
+ */
+
 const UIPatterns = (() => {
     return {
         confirmDelete: (itemType, itemName, onConfirm) => {

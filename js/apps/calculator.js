@@ -2,6 +2,22 @@
 // PAGE-SPECIFIC LOGIC: Calculator (calculator.html)
 // ============================================================================
 
+/**
+ * @typedef {Object} CalculatorUIState
+ * @property {string} shiftStart
+ * @property {string} shiftEnd
+ * @property {number} breakTime
+ * @property {string} currentCallTime
+ * @property {number} currentTickets
+ * @property {boolean} isScheduleCollapsed
+ */
+
+/**
+ * @typedef {Object} CalculatorState
+ * @property {CalculatorUIState} ui
+ * @property {string} [version]
+ */
+
 AppLifecycle.onBootstrap(initializePage);
 
 function initializePage() {
