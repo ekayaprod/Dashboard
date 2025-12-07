@@ -102,14 +102,6 @@ function initializePage() {
             'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
         };
 
-        const TimeUtil = {
-            ...DateUtils,
-            parseShiftTimeToMinutes(timeStr) {
-                const parts = timeStr.split(':').map(Number);
-                return (parts[0] * 60) + parts[1];
-            }
-        };
-
         // --- 1. DASHBOARD BADGES ---
         function buildTargetCardHTML(label, valueHtml, subtext) {
             return `
@@ -241,7 +233,7 @@ function initializePage() {
             const currentMinute = now.getMinutes();
             const currentTimeMinutes = currentHour * 60 + currentMinute;
             const effectivePhoneCloseMinutes = Math.min(
-                TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value),
+                DateUtils.parseTimeToMinutes(DOMElements.shiftEnd.value),
                 CONSTANTS.PHONE_CLOSE_MINUTES
             );
             
@@ -299,8 +291,8 @@ function initializePage() {
         // --- STANDARD CALCULATIONS ---
 
         function getScheduleInfo(now) {
-            const startMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
-            const endMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+            const startMinutes = DateUtils.parseTimeToMinutes(DOMElements.shiftStart.value);
+            const endMinutes = DateUtils.parseTimeToMinutes(DOMElements.shiftEnd.value);
             const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10) || 0;
             
             if (endMinutes <= startMinutes) return { error: "Check Shift Times" };
@@ -333,7 +325,7 @@ function initializePage() {
                  return;
             }
 
-            const currentCallTimeSoFar = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+            const currentCallTimeSoFar = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
             const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
 
             // This matches the spreadsheet's "Total Work Time"
@@ -345,7 +337,7 @@ function initializePage() {
             // This matches the spreadsheet's "* 6" logic
             const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
 
-            DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
+            DOMElements.totalWorkTimeEOD.innerText = DateUtils.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
             if (DOMElements.baseTargetDisplay) DOMElements.baseTargetDisplay.innerText = targetTicketGoal;
 
             DOMElements.targetsGrid.innerHTML = '';
@@ -415,10 +407,10 @@ function initializePage() {
         DOMElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
         
         DOMElements.btnAddCallTime.addEventListener('click', () => {
-            const current = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+            const current = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
             const add = parseInt(DOMElements.addCallTime.value, 10) || 0;
             if (add === 0) return;
-            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(current + add);
+            DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(current + add);
             DOMElements.addCallTime.value = '';
             debouncedCalculateAndSave();
         });
@@ -428,8 +420,8 @@ function initializePage() {
         });
 
         DOMElements.currentCallTime.addEventListener('blur', () => {
-            const m = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(m);
+            const m = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
+            DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(m);
         });
         
         DOMElements.btnResetData.addEventListener('click', () => {
@@ -477,8 +469,8 @@ function initializePage() {
             try {
                 const mins = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
                 if (mins > 0) {
-                    const cur = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(cur + mins);
+                    const cur = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                    DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(cur + mins);
                     localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
                     debouncedCalculateAndSave();
                     SafeUI.showToast(`Imported ${mins} mins`);

@@ -416,7 +416,72 @@ const CsvManager = (() => {
     };
 })();
 
+const TreeUtils = (() => {
+    return {
+        findInTree: (items, predicate, parent = null) => {
+            if (!Array.isArray(items)) return null;
+            for (const item of items) {
+                if (predicate(item)) return { item, parent };
+                if (item.type === 'folder' && item.children) {
+                    const result = TreeUtils.findInTree(item.children, predicate, item);
+                    if (result) return result;
+                }
+            }
+            return null;
+        },
+
+        findItemById: (rootItems, id) => {
+            if (id === 'root') return { id: 'root', name: 'Root', children: rootItems, type: 'folder' };
+            const result = TreeUtils.findInTree(rootItems, i => i.id === id);
+            return result ? result.item : null;
+        },
+
+        findParentOfItem: (rootItems, childId) => {
+            if (childId === 'root') return null;
+            const result = TreeUtils.findInTree(rootItems, i => i.id === childId);
+            return result ? (result.parent || { id: 'root', children: rootItems }) : null;
+        },
+
+        getAllFolders: (items, level = 0) => {
+            let folders = [];
+            if (level === 0) folders.push({ id: 'root', name: 'Root', level: 0 });
+
+            if (!Array.isArray(items)) return folders;
+
+            items.forEach(item => {
+                if (item.type === 'folder') {
+                    folders.push({ id: item.id, name: item.name, level: level + 1 });
+                    if (item.children) {
+                        folders = folders.concat(TreeUtils.getAllFolders(item.children, level + 1));
+                    }
+                }
+            });
+            return folders;
+        },
+
+        getBreadcrumbPath: (rootItems, folderId) => {
+            if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
+            const path = [];
+            const visitedIds = new Set();
+            const stack = rootItems.map(item => [item, []]);
+            while (stack.length > 0) {
+                const [curr, pPath] = stack.pop();
+                if (visitedIds.has(curr.id)) continue;
+                visitedIds.add(curr.id);
+                const cPath = [...pPath, { id: curr.id, name: curr.name }];
+                if (curr.id === folderId) { path.push(...cPath); break; }
+                if (curr.type === 'folder' && curr.children) {
+                    for (let i = curr.children.length - 1; i >= 0; i--) stack.push([curr.children[i], cPath]);
+                }
+            }
+            path.unshift({ id: 'root', name: 'Root' });
+            return path;
+        }
+    };
+})();
+
 window.BackupRestore = BackupRestore;
 window.DataValidator = DataValidator;
 window.DataConverter = DataConverter;
 window.CsvManager = CsvManager;
+window.TreeUtils = TreeUtils;
