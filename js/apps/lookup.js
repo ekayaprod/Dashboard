@@ -19,16 +19,6 @@ function initializePage() {
     // ============================================================================
     (async () => {
         try {
-            if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
-                const banner = document.getElementById('app-startup-error');
-                if (banner) {
-                    banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies (SafeUI, DOMHelpers) missing.</p>`;
-                    banner.classList.remove('hidden');
-                }
-                console.error("Critical dependencies missing (SafeUI, DOMHelpers).");
-                return;
-            }
-
             console.log(`[Lookup] Bypassing AppLifecycle.run, initializing v${APP_CONFIG.VERSION}`);
 
             const defaultState = {

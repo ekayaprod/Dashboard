@@ -301,32 +301,10 @@ const UIUtils = (() => {
 // ============================================================================
 // MODULE: SafeUI (Proxy layer)
 // ============================================================================
-const SafeUI = (() => {
-    const getSVGIcons = () => {
-        if (UIUtils.SVGIcons) return UIUtils.SVGIcons;
-        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋' };
-    };
-
-    return {
-        isReady: true,
-        SVGIcons: getSVGIcons(),
-        showModal: (title, content, actions) => UIUtils.showModal(title, content, actions),
-        showValidationError: (title, msg, elId) => UIUtils.showValidationError(title, msg, elId),
-        hideModal: () => UIUtils.hideModal(),
-        showToast: (msg) => UIUtils.showToast(msg),
-        escapeHTML: (str) => UIUtils.escapeHTML(str),
-        generateId: () => UIUtils.generateId(),
-        debounce: (func, delay) => UIUtils.debounce(func, delay),
-        copyToClipboard: (text) => UIUtils.copyToClipboard(text),
-        downloadJSON: (data, filename, mimeType) => UIUtils.downloadJSON(data, filename, mimeType),
-        openFilePicker: (cb, accept) => UIUtils.openFilePicker(cb, accept),
-        readJSONFile: (file, onSuccess, onError) => UIUtils.readJSONFile(file, onSuccess, onError),
-        readTextFile: (file, onSuccess, onError) => UIUtils.readTextFile(file, onSuccess, onError),
-        parseJSON: (str, success, error) => UIUtils.parseJSON(str, success, error),
-        createStateManager: (key, defaults, version, onCorruption) => UIUtils.createStateManager(key, defaults, version, onCorruption),
-        validators: UIUtils.validators
-    };
-})();
+const SafeUI = Object.freeze({
+    ...UIUtils,
+    isReady: true
+});
 
 // ============================================================================
 // MODULE: DOMHelpers

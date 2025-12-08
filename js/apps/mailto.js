@@ -252,8 +252,6 @@ function openMoveModal(itemId) {
 
 async function init() {
     console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
-    
-    if (typeof SafeUI === 'undefined') { return; }
 
     const ctx = await AppLifecycle.initPage({
         storageKey: APP_CONFIG.DATA_KEY,
