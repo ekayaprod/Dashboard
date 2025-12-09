@@ -110,10 +110,12 @@ function initializePage() {
         };
 
         const initAccordion = () => {
-            let expanded = false;
+            let expanded = true;
             try {
                 const savedState = localStorage.getItem(ACCORDION_STATE_KEY);
-                expanded = savedState === 'true';
+                if (savedState !== null) {
+                    expanded = savedState === 'true';
+                }
             } catch (err) {
                 console.warn("Could not read accordion state from localStorage.", err);
             }
@@ -550,6 +552,7 @@ li.className = 'result-item';
                 onItemClick: async (item) => {
                     if (item.type === 'preset') {
                         setConfigToUI(item.config);
+                        await analyzeWordBank();
                         const content = DOMElements.customGeneratorConfig;
                         if (content && content.classList.contains('collapsed')) {
                             toggleAccordion(null);
@@ -765,7 +768,7 @@ li.className = 'result-item';
                     config: {
                         passNumWords: 1, passSeparator: "", passNumDigits: 1,
                         passNumSymbols: 0, minLength: 12, maxLength: 16,
-                        padToMin: true, seasonalBank: "none"
+                        padToMin: true, seasonalBank: "none", passNumPlacement: 'end'
                     }
                 });
             });

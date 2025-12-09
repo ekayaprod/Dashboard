@@ -22,7 +22,18 @@
         "Cocoa",
         "Heater",
         "Slush",
-        "Sleet"
+        "Sleet",
+        "Cabin",
+        "Log",
+        "Comet",
+        "Star",
+        "Ember",
+        "Jacket",
+        "Parka",
+        "Wool",
+        "Flannel",
+        "Cider",
+        "Cookie"
     ],
     "Adjective": [
         "Barren",
@@ -90,7 +101,15 @@
         "Lodge",
         "Blanket",
         "Lantern",
-        "Candle"
+        "Candle",
+        "Wreath",
+        "Bells",
+        "Ribbon",
+        "Present",
+        "Gift",
+        "Card",
+        "Mug",
+        "Kettle"
     ],
     "Color": [
         "White",
