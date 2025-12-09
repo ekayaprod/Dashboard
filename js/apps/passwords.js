@@ -54,7 +54,7 @@ function initializePage() {
                 'btn-quick-generate-temp',
                 'tab-content-passphrase',
                 'passNumWords', 'passSeparator', 'seasonal-bank-select',
-                'passNumDigits', 'passNumSymbols',
+                'passNumDigits', 'passNumSymbols', 'passNumPlacement', 'passSymPlacement',
                 'passMinLength', 'passMaxLength', 'passPadToMin',
                 'btn-generate',
                 'results-list',
@@ -204,6 +204,9 @@ function initializePage() {
             if (C.passNumWords > 1) minEstimate += (C.passNumWords - 1) * C.passSeparator.length;
             if (minEstimate > C.maxLength) return "[Settings exceed Max Length]";
 
+            // Normalize placement configs if undefined (backward compatibility)
+            C.passNumPlacement = C.passNumPlacement || 'random';
+            C.passSymPlacement = C.passSymPlacement || 'any';
 
             while (retries < MAX_RETRIES) {
                 retries++;
@@ -266,6 +269,19 @@ function initializePage() {
                     let availableTypes = ['end', 'junction'];
                     if (numberBlock.length > 0) { availableTypes.push('beforeNum', 'afterNum'); }
 
+                    // Apply Symbol Placement filter
+                    if (C.passSymPlacement === 'aroundNum') {
+                        // Only allow beforeNum/afterNum if numbers exist
+                        if (numberBlock.length > 0) {
+                            availableTypes = ['beforeNum', 'afterNum'];
+                        }
+                        // If no numbers, we fall back to random logic or could default to 'end'.
+                        // Defaulting to keeping 'end', 'junction' effectively ignores the 'aroundNum' constraint if no nums, which is reasonable.
+                        // But let's try to honor it strictly if possible, or just fallback to all if nums missing.
+                    } else if (C.passSymPlacement === 'suffix') {
+                        availableTypes = ['end'];
+                    }
+
                     for (let k = availableTypes.length - 1; k > 0; k--) {
                         const l = getRand(k + 1);
                         [availableTypes[k], availableTypes[l]] = [availableTypes[l], availableTypes[k]];
@@ -287,7 +303,16 @@ function initializePage() {
                 if (wordStr.length === 0) {
                     finalPass = numberPart + symbolsToUse.end;
                 } else {
-                    finalPass = (getRand(2) === 0 && numberPart.length > 0)
+                    let placeAtStart = false;
+                    if (C.passNumPlacement === 'start') {
+                        placeAtStart = true;
+                    } else if (C.passNumPlacement === 'end') {
+                        placeAtStart = false;
+                    } else {
+                        placeAtStart = (getRand(2) === 0);
+                    }
+
+                    finalPass = (placeAtStart && numberPart.length > 0)
                         ? (numberPart + symbolsToUse.junction + wordStr)
                         : (wordStr + symbolsToUse.junction + numberPart);
                     finalPass += symbolsToUse.end;
@@ -437,7 +462,8 @@ li.className = 'result-item';
             const controlsToDisable = [
                 'btnAddQuickCopy', 'btnAddPreset', 'btnQuickGenerateTemp',
                 'passNumWords', 'passSeparator', 'seasonalBankSelect',
-                'passNumDigits', 'passNumSymbols', 'passMinLength', 'passMaxLength', 'passPadToMin',
+                'passNumDigits', 'passNumSymbols', 'passNumPlacement', 'passSymPlacement',
+                'passMinLength', 'passMaxLength', 'passPadToMin',
                 'btnGenerate',
             ];
 
@@ -465,6 +491,8 @@ li.className = 'result-item';
                 passSeparator: DOMElements.passSeparator.value,
                 passNumDigits: parseInt(DOMElements.passNumDigits.value, 10),
                 passNumSymbols: parseInt(DOMElements.passNumSymbols.value, 10),
+                passNumPlacement: DOMElements.passNumPlacement.value,
+                passSymPlacement: DOMElements.passSymPlacement.value,
                 minLength: parseInt(DOMElements.passMinLength.value, 10),
                 maxLength: parseInt(DOMElements.passMaxLength.value, 10),
                 padToMin: DOMElements.passPadToMin.checked,
@@ -479,6 +507,8 @@ li.className = 'result-item';
             DOMElements.passSeparator.value = C.passSeparator;
             DOMElements.passNumDigits.value = C.passNumDigits;
             DOMElements.passNumSymbols.value = C.passNumSymbols;
+            if (C.passNumPlacement) DOMElements.passNumPlacement.value = C.passNumPlacement;
+            if (C.passSymPlacement) DOMElements.passSymPlacement.value = C.passSymPlacement;
             DOMElements.passMinLength.value = C.minLength;
             DOMElements.passMaxLength.value = C.maxLength;
             DOMElements.passPadToMin.checked = C.padToMin;
