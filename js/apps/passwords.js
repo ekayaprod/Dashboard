@@ -342,6 +342,10 @@ function initializePage() {
                 return true;
             }
 
+            if (!window.fetch) {
+                throw new Error("Browser does not support fetch API");
+            }
+
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);

@@ -467,18 +467,25 @@ const AppLifecycle = (() => {
 
     return {
         onBootstrap: (initFn) => {
+            if (window.__BOOTSTRAP_READY) {
+                initFn();
+                return;
+            }
+
             let bootstrapReady = false;
             document.addEventListener('bootstrap:ready', () => {
                 bootstrapReady = true;
                 initFn();
             });
             setTimeout(() => {
-                if (!bootstrapReady) {
+                if (!bootstrapReady && !window.__BOOTSTRAP_READY) {
                     console.error('Bootstrap did not complete within 5 seconds');
                     _showErrorBanner("Application Startup Timeout", "The application failed to load within 5 seconds. Check the browser console for errors.");
                 }
             }, 5000);
         },
+
+        isReady: () => window.__BOOTSTRAP_READY === true,
 
         initPage: async (config) => {
             const { storageKey, defaultState, requiredElements, onCorruption, version } = config;

@@ -24,6 +24,11 @@
 
     // Initialize Shell
     function init() {
+        // Defensive check for SafeUI (Mode A)
+        if (typeof SafeUI === 'undefined' || !SafeUI.isReady) {
+            console.warn('[Shell] SafeUI not ready, proceeding with caution.');
+        }
+
         setupNavigation();
         loadInitialRoute();
         setupKeyboardShortcuts();
@@ -163,11 +168,15 @@
         });
     }
 
-    // Start
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+    // Start via AppLifecycle if available, else standard load
+    if (typeof AppLifecycle !== 'undefined' && AppLifecycle.onBootstrap) {
+        AppLifecycle.onBootstrap(init);
     } else {
-        init();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     }
 
 })();

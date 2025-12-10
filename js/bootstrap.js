@@ -32,7 +32,7 @@
     
     const PAGE_SCRIPTS = {
         'dashboard.html': [{ url: 'js/apps/dashboard.js', required: true }],
-        'index.html': [], // Shell loads its own scripts manually
+        'index.html': [{ url: 'js/shell.js', required: true }], // Shell now uses bootstrap
         'calculator.html': [{ url: 'js/apps/calculator.js', required: true }],
         'lookup.html': [{ url: 'js/apps/lookup.js', required: true }],
         'passwords.html': [{ url: 'js/apps/passwords.js', required: true }],
@@ -42,6 +42,9 @@
     let loadedScripts = new Set();
     let failedScripts = new Set();
     
+    // Global flag for synchronous ready check (Mode A fix)
+    window.__BOOTSTRAP_READY = false;
+
     function escapeHTML(str) {
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
@@ -142,6 +145,7 @@
             
             console.log('[Bootstrap] ✓ System Ready');
             
+            window.__BOOTSTRAP_READY = true;
             document.dispatchEvent(new CustomEvent('bootstrap:ready'));
 
             // Shell Integration: Notify parent if running inside iframe
@@ -160,8 +164,6 @@
 
                 notifyShell();
                 window.addEventListener('load', notifyShell);
-                // Also notify on resize to help with potential dynamic layout adjustments if needed later
-                // window.addEventListener('resize', () => setTimeout(notifyShell, 100));
             }
             
         } catch (error) {

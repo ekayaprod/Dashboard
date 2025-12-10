@@ -60,17 +60,21 @@ function initializePage() {
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
 
-            if (state.settings.kbBaseUrl) {
-                console.warn("Migrating old kbBaseUrl to new customSearches format...");
-                if (state.settings.kbBaseUrl.includes('{query}')) {
-                    state.settings.customSearches = [{
-                        id: SafeUI.generateId(),
-                        name: 'KB Search',
-                        urlTemplate: state.settings.kbBaseUrl
-                    }];
+            try {
+                if (state.settings.kbBaseUrl) {
+                    console.warn("Migrating old kbBaseUrl to new customSearches format...");
+                    if (state.settings.kbBaseUrl.includes('{query}')) {
+                        state.settings.customSearches = [{
+                            id: SafeUI.generateId(),
+                            name: 'KB Search',
+                            urlTemplate: state.settings.kbBaseUrl
+                        }];
+                    }
+                    delete state.settings.kbBaseUrl;
+                    originalSaveState();
                 }
-                delete state.settings.kbBaseUrl;
-                originalSaveState();
+            } catch (err) {
+                console.error("Migration failed:", err);
             }
 
             const saveState = () => {
