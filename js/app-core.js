@@ -176,42 +176,39 @@ const UIUtils = (() => {
         }
 
         const load = () => {
-            let data;
             const rawData = localStorage.getItem(key);
-
-            if (rawData) {
-                parseJSON(rawData, 
-                    (parsed) => {
-                        data = parsed;
-                        if (data.version !== version) {
-                            console.warn(`State version mismatch. Loading state anyway.`);
-                        }
-                    },
-                    (err) => {
-                        if (onCorruption) {
-                            try { onCorruption(); } catch (e) {}
-                        }
-                        localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
-                        _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
-                        data = { ...defaults };
-                    }
-                );
-            } else {
-                data = { ...defaults };
+            if (!rawData) {
+                return { ...defaults, version };
             }
+
+            let data;
+            parseJSON(rawData,
+                (parsed) => {
+                    data = parsed;
+                    if (data.version !== version) {
+                        console.warn(`State version mismatch. Loading state anyway.`);
+                    }
+                },
+                (err) => {
+                    if (onCorruption) {
+                        try { onCorruption(); } catch (e) {}
+                    }
+                    localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
+                    _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
+                    data = { ...defaults };
+                }
+            );
             
             if (data && !data.version) data.version = version;
             return data || { ...defaults, version };
         };
 
         const save = (state) => {
-            let serialized;
             try {
                 state.version = version;
-                serialized = JSON.stringify(state);
+                const serialized = JSON.stringify(state);
                 localStorage.setItem(key, serialized);
                 
-                // Verify save
                 const verification = localStorage.getItem(key);
                 if (!verification || verification.length !== serialized.length) {
                     throw new Error('Save verification failed - data mismatch');
