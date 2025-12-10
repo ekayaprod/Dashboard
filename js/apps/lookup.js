@@ -677,8 +677,10 @@ function initializePage() {
                     }
                 }, 300);
 
+                const debouncedRender = SafeUI.debounce(renderAll, 150);
+
                 DOMElements.searchInput.addEventListener('input', () => {
-                    renderAll();
+                    debouncedRender();
                     debouncedSearchSave();
                 });
 

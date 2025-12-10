@@ -345,9 +345,13 @@ const DOMHelpers = (() => {
         },
         setupTextareaAutoResize: (textarea, maxHeight = 300) => {
             if (!textarea) return;
+            let rafId;
             const resize = () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(() => {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+                });
             };
             textarea.addEventListener('input', resize);
             textarea._autoResize = resize;
