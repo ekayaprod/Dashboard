@@ -229,7 +229,13 @@ function openMoveModal(itemId) {
                 const targetId = document.getElementById('move-target-select').value;
                 if(targetId && targetId !== itemId) {
                     const oldParent = TreeUtils.findParentOfItem(state.library, itemId);
-                    if (oldParent) oldParent.children = oldParent.children.filter(c => c.id !== itemId);
+                    if (oldParent) {
+                        if (oldParent.id === 'root') {
+                            state.library = state.library.filter(c => c.id !== itemId);
+                        } else {
+                            oldParent.children = oldParent.children.filter(c => c.id !== itemId);
+                        }
+                    }
                     
                     const newParent = TreeUtils.findItemById(state.library, targetId);
                     if (newParent && newParent.children) {
@@ -468,8 +474,12 @@ async function init() {
         if(e.target.closest('.delete-btn')) {
             UIPatterns.confirmDelete(item.type, item.name, () => {
                 const p = TreeUtils.findParentOfItem(state.library, id);
-                if(p) { 
-                    p.children = p.children.filter(c => c.id !== id); 
+                if(p) {
+                    if (p.id === 'root') {
+                        state.library = state.library.filter(c => c.id !== id);
+                    } else {
+                        p.children = p.children.filter(c => c.id !== id);
+                    }
                     if (currentFolderId === id) currentFolderId = 'root';
                     saveState(); renderCatalogue(); refreshSaveDropdown();
                 }
