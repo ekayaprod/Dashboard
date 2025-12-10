@@ -50,9 +50,15 @@
     // Navigate the iframe and update UI/URL
     function navigateTo(pageUrl, updateHistory = true) {
         // Prevent redundant navigation
-        if (elements.appFrame.contentWindow &&
-            elements.appFrame.contentWindow.location.pathname.endsWith(pageUrl)) {
-            return;
+        try {
+            if (elements.appFrame.contentWindow &&
+                elements.appFrame.contentWindow.location.pathname.endsWith(pageUrl)) {
+                // Focus iframe anyway for accessibility
+                elements.appFrame.focus();
+                return;
+            }
+        } catch (e) {
+            // Ignore access errors
         }
 
         elements.appFrame.src = pageUrl;
@@ -65,6 +71,9 @@
                 history.pushState({ page: pageUrl }, '', newUrl);
             }
         }
+
+        // Transfer focus to iframe for accessibility
+        elements.appFrame.focus();
     }
 
     // Update the active state of navbar links
@@ -76,10 +85,6 @@
                 link.classList.add('active');
             }
         });
-
-        // Update document title based on active app (optional)
-        // const activeLink = document.querySelector(`.nav-link[data-href="${pageUrl}"]`);
-        // if (activeLink) document.title = `${activeLink.textContent} - Tool Suite`;
     }
 
     // Setup click listeners for navbar
@@ -99,7 +104,7 @@
             if (event.state && event.state.page) {
                 navigateTo(event.state.page, false);
             } else {
-                loadInitialRoute(); // Fallback
+                loadInitialRoute();
             }
         });
     }
@@ -125,26 +130,36 @@
         });
     }
 
-    // Listen for events from the iframe (optional, for title updates or deep linking)
+    // Listen for events from the iframe
     function setupFrameListeners() {
-        elements.appFrame.addEventListener('load', () => {
-            try {
-                const frameLocation = elements.appFrame.contentWindow.location.pathname;
-                const pageName = frameLocation.split('/').pop();
-                updateActiveLink(pageName);
+        // Handle postMessages from iframe (Title updates, etc.)
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'app_ready') {
+                const { title, path } = event.data;
 
-                // Sync URL if the iframe navigated itself (e.g. internal link)
-                const key = Object.keys(PAGE_MAP).find(k => PAGE_MAP[k] === pageName);
-                if (key) {
-                     const currentParams = new URLSearchParams(window.location.search);
-                     if (currentParams.get('page') !== key) {
-                         history.replaceState({ page: pageName }, '', `${window.location.pathname}?page=${key}`);
-                     }
+                // Update document title
+                if (title) {
+                    document.title = `${title} - Tool Suite`;
                 }
-            } catch (e) {
-                // Cross-origin restrictions might apply if not strictly local
-                console.warn('Cannot access iframe location:', e);
+
+                // Sync URL if needed (e.g., if app redirected itself)
+                if (path) {
+                    const pageName = path.split('/').pop();
+                    const key = Object.keys(PAGE_MAP).find(k => PAGE_MAP[k] === pageName);
+                    if (key) {
+                         const currentParams = new URLSearchParams(window.location.search);
+                         if (currentParams.get('page') !== key) {
+                             history.replaceState({ page: pageName }, '', `${window.location.pathname}?page=${key}`);
+                             updateActiveLink(pageName);
+                         }
+                    }
+                }
             }
+        });
+
+        // Fallback load listener (restricted access in some cases)
+        elements.appFrame.addEventListener('load', () => {
+             elements.appFrame.focus();
         });
     }
 

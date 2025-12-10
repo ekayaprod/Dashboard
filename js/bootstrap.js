@@ -143,6 +143,19 @@
             console.log('[Bootstrap] ✓ System Ready');
             
             document.dispatchEvent(new CustomEvent('bootstrap:ready'));
+
+            // Shell Integration: Notify parent if running inside iframe
+            if (window.parent && window.parent !== window) {
+                try {
+                    window.parent.postMessage({
+                        type: 'app_ready',
+                        title: document.title,
+                        path: window.location.pathname
+                    }, '*');
+                } catch (e) {
+                    console.warn('[Bootstrap] Failed to notify shell:', e);
+                }
+            }
             
         } catch (error) {
             console.error('[Bootstrap] ✗ Dependency loading failed:', error);
