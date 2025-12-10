@@ -44,6 +44,12 @@ const UIPatterns = (() => {
             const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
             return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
+        },
+
+        copyToClipboard: async (text, successMessage = 'Copied to clipboard!') => {
+            const success = await SafeUI.copyToClipboard(text);
+            SafeUI.showToast(success ? successMessage : 'Failed to copy.');
+            return success;
         }
     };
 })();

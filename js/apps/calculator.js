@@ -48,16 +48,6 @@ function initializePage() {
      */
 
     (async () => {
-        // --- Dependency Check ---
-        if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined' || typeof UIPatterns === 'undefined' || typeof SharedSettingsModal === 'undefined' || typeof BackupRestore === 'undefined') {
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies missing.</p>`;
-                banner.classList.remove('hidden');
-            }
-            return;
-        }
-
         const defaultState = {
             ui: {
                 shiftStart: '08:00',
@@ -154,16 +144,10 @@ function initializePage() {
             } = data;
 
             // STRATEGY 1: ROUNDING OPTIMIZATION
-            // Logic: MROUND rounds to nearest hour.
-            // If minutes >= 30, it rounds UP (Target + 6).
-            // If minutes < 30, it rounds DOWN (Target baseline).
             if (isRoundedUp) {
                 const minutesInHour = workTimeMinutes % 60; 
-                // To round down, we need to be at :29.
-                // We reduce "Work Time" by adding "Call Time".
                 const adminNeeded = minutesInHour - 29;
                 
-                // Only suggest if feasible (under 45 mins)
                 if (adminNeeded <= 45) {
                     return {
                         type: 'optimization',
@@ -178,7 +162,6 @@ function initializePage() {
             if (minutesRemaining > 0 && minutesRemaining < 90 && nextGrade) {
                 const ticketsNeeded = nextGrade.val - ticketsDone;
                 
-                // Feasible
                 if (ticketsNeeded <= 5 && ticketsNeeded > 0) {
                     return {
                         type: 'opportunity',
@@ -187,7 +170,6 @@ function initializePage() {
                     };
                 }
                 
-                // Not Feasible (Conserve)
                 const minsPerTicketNeeded = minutesRemaining / ticketsNeeded;
                 if (minsPerTicketNeeded < 8) {
                     return {
@@ -199,16 +181,12 @@ function initializePage() {
             }
 
             // STRATEGY 3: PACE ANALYSIS (Rate Check)
-            if (minutesRemaining >= 90) {
-                 // 6 tickets/hr = 0.1 tickets/min
-                 // Alert if below 4.8 tickets/hr (0.08)
-                 if (ticketsPerMinRate > 0 && ticketsPerMinRate < 0.08) {
-                     return {
-                         type: 'warn',
-                         title: '⚠️ Pace Alert',
-                         text: `Current pace is below the 6 tickets/hr requirement. Target is increasing faster than completions.`
-                     };
-                 }
+            if (minutesRemaining >= 90 && ticketsPerMinRate > 0 && ticketsPerMinRate < 0.08) {
+                 return {
+                     type: 'warn',
+                     title: '⚠️ Pace Alert',
+                     text: `Current pace is below the 6 tickets/hr requirement. Target is increasing faster than completions.`
+                 };
             }
 
             if (nextGrade) {

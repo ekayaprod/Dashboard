@@ -229,7 +229,13 @@ function openMoveModal(itemId) {
                 const targetId = document.getElementById('move-target-select').value;
                 if(targetId && targetId !== itemId) {
                     const oldParent = TreeUtils.findParentOfItem(state.library, itemId);
-                    if (oldParent) oldParent.children = oldParent.children.filter(c => c.id !== itemId);
+                    if (oldParent) {
+                        if (oldParent.id === 'root') {
+                            state.library = state.library.filter(c => c.id !== itemId);
+                        } else {
+                            oldParent.children = oldParent.children.filter(c => c.id !== itemId);
+                        }
+                    }
                     
                     const newParent = TreeUtils.findItemById(state.library, targetId);
                     if (newParent && newParent.children) {
@@ -346,8 +352,7 @@ async function init() {
     });
 
     DOMElements.copyMailtoBtn.addEventListener('click', () => {
-        SafeUI.copyToClipboard(DOMElements.resultMailto.value);
-        SafeUI.showToast("Copied");
+        UIPatterns.copyToClipboard(DOMElements.resultMailto.value, "Copied");
     });
 
     DOMElements.btnSaveToLibrary.addEventListener('click', () => {
@@ -462,16 +467,19 @@ async function init() {
         }
         
         if(e.target.closest('.copy-btn')) {
-            SafeUI.copyToClipboard(item.mailto);
-            SafeUI.showToast("Copied command");
+            UIPatterns.copyToClipboard(item.mailto, "Copied command");
             return;
         }
 
         if(e.target.closest('.delete-btn')) {
             UIPatterns.confirmDelete(item.type, item.name, () => {
                 const p = TreeUtils.findParentOfItem(state.library, id);
-                if(p) { 
-                    p.children = p.children.filter(c => c.id !== id); 
+                if(p) {
+                    if (p.id === 'root') {
+                        state.library = state.library.filter(c => c.id !== id);
+                    } else {
+                        p.children = p.children.filter(c => c.id !== id);
+                    }
                     if (currentFolderId === id) currentFolderId = 'root';
                     saveState(); renderCatalogue(); refreshSaveDropdown();
                 }
@@ -538,20 +546,24 @@ if (typeof AppLifecycle !== 'undefined') {
     AppLifecycle.onBootstrap(init);
 } else {
     // Fallback if AppLifecycle isn't loaded yet (rare race condition in modules)
-    let bootstrapReady = false;
-    document.addEventListener('bootstrap:ready', () => {
-        bootstrapReady = true;
+    if (window.__BOOTSTRAP_READY) {
         init();
-    });
+    } else {
+        let bootstrapReady = false;
+        document.addEventListener('bootstrap:ready', () => {
+            bootstrapReady = true;
+            init();
+        });
 
-    setTimeout(() => {
-        if (!bootstrapReady) {
-            console.error('Bootstrap did not complete within 5 seconds');
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Startup Timeout</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">The application failed to load within 5 seconds. Check the browser console for errors.</p>`;
-                banner.classList.remove('hidden');
+        setTimeout(() => {
+            if (!bootstrapReady && !window.__BOOTSTRAP_READY) {
+                console.error('Bootstrap did not complete within 5 seconds');
+                const banner = document.getElementById('app-startup-error');
+                if (banner) {
+                    banner.innerHTML = `<strong>Application Startup Timeout</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">The application failed to load within 5 seconds. Check the browser console for errors.</p>`;
+                    banner.classList.remove('hidden');
+                }
             }
-        }
-    }, 5000);
+        }, 5000);
+    }
 }

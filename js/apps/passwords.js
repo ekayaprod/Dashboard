@@ -35,12 +35,15 @@ function initializePage() {
     const defaultSymbolRules = {"beforeNum":["$","#","*"],"afterNum":["%","+"],"junction":["=","@",".","-"],"end":["!","?"]};
 
     const defaultState = {
-        wordBank: null,
         phraseStructures: defaultPhraseStructures,
         symbolRules: defaultSymbolRules,
         quickCopyItems: [],
         generatorPresets: [],
-        settings: {}
+        customWordBanks: [],
+        settings: {},
+        ui: {
+            selectedBaseBank: 'default'
+        }
     };
 
     (async () => {
@@ -61,15 +64,25 @@ function initializePage() {
                 'btn-settings',
                 'toast', 'modal-overlay', 'modal-content',
                 'custom-gen-header', 'accordion-toggle', 'custom-generator-config',
-                'seasonal-info-btn'
+                'seasonal-info-btn',
+                'base-bank-select', 'active-season-display'
             ]
         });
 
         if (!ctx) return;
 
         let { elements: DOMElements, state, saveState } = ctx;
+
+        // --- Migration: Remove stale wordBank from storage ---
+        if (state.wordBank) {
+            console.log('[Passwords] Removing stale persistent wordBank to ensure freshness.');
+            delete state.wordBank;
+            saveState();
+        }
+
         let generatedPasswords = [];
 
+        let memoryWordBank = null; // Fresh non-persistent cache
         let activeWordBank = {};
         let availableStructures = {};
 
@@ -338,8 +351,27 @@ function initializePage() {
         // ====================================================================
 
         const loadWordBank = async () => {
-            if (state.wordBank && state.wordBank.Adjective) {
+            const selection = DOMElements.baseBankSelect.value || 'default';
+
+            // Check if selection changed or not loaded
+            if (memoryWordBank && memoryWordBank._sourceId === selection) {
                 return true;
+            }
+
+            // Load from Custom Wordbanks if selected
+            if (selection !== 'default') {
+                const customBank = state.customWordBanks.find(b => b.id === selection);
+                if (customBank) {
+                    memoryWordBank = JSON.parse(JSON.stringify(customBank.data));
+                    memoryWordBank._sourceId = selection;
+                    return true;
+                }
+                // Fallback to default if not found
+                console.warn(`Wordbank '${selection}' not found, falling back to default.`);
+            }
+
+            if (!window.fetch) {
+                throw new Error("Browser does not support fetch API");
             }
 
             try {
@@ -357,9 +389,8 @@ function initializePage() {
                     throw new Error("Invalid base wordbank file structure.");
                 }
 
-                state.wordBank = data.wordBank;
-
-                saveState();
+                memoryWordBank = data.wordBank;
+                memoryWordBank._sourceId = 'default';
                 return true;
             } catch (err) {
                 console.error("Failed to load wordbank:", err);
@@ -368,21 +399,42 @@ function initializePage() {
             }
         };
 
+        const updateSeasonDisplay = () => {
+            const selected = DOMElements.seasonalBankSelect.value;
+            const displayEl = document.getElementById('active-season-display');
+            if (!displayEl) return;
+
+            if (selected === 'auto') {
+                const currentSeason = DateUtils.getSeason(new Date());
+                const capitalSeason = currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1);
+                displayEl.textContent = `(Now: ${capitalSeason})`;
+            } else {
+                displayEl.textContent = '';
+            }
+        };
+
         const analyzeWordBank = async () => {
             const selectedSeason = DOMElements.seasonalBankSelect.value;
+            updateSeasonDisplay();
 
-            if (!state.wordBank) {
-                const loaded = await loadWordBank();
-                if (!loaded) return;
+            // Always reload if needed (loadWordBank handles caching logic based on selection)
+            const loaded = await loadWordBank();
+            if (!loaded) return;
+
+            activeWordBank = JSON.parse(JSON.stringify(memoryWordBank));
+            // Remove internal metadata
+            delete activeWordBank._sourceId;
+
+            let seasonToLoad = selectedSeason;
+            if (seasonToLoad === 'auto') {
+                seasonToLoad = DateUtils.getSeason(new Date());
             }
 
-            activeWordBank = JSON.parse(JSON.stringify(state.wordBank));
-
-            if (selectedSeason !== 'none' && selectedSeason !== 'auto') {
+            if (seasonToLoad !== 'none' && seasonToLoad !== 'auto') {
                 try {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 3000);
-                    const response = await fetch(`wordbanks/wordbank-${selectedSeason}.json`, { signal: controller.signal });
+                    const response = await fetch(`wordbanks/wordbank-${seasonToLoad}.json`, { signal: controller.signal });
                     clearTimeout(timeoutId);
 
                     if (!response.ok) throw new Error(`File not found or failed to load (Status: ${response.status})`);
@@ -397,7 +449,7 @@ function initializePage() {
                     }
                 } catch (err) {
                     console.error(err);
-                    SafeUI.showToast(`Error loading ${selectedSeason} wordbank. Using base words only.`);
+                    SafeUI.showToast(`Error loading ${seasonToLoad} wordbank. Using base words only.`);
                 }
             }
 
@@ -448,8 +500,7 @@ li.className = 'result-item';
                     copyBtn.innerHTML = SafeUI.SVGIcons.copy;
                     copyBtn.disabled = isError;
                     copyBtn.onclick = async () => {
-                        const success = await SafeUI.copyToClipboard(pass);
-                        SafeUI.showToast(success ? "Copied!" : "Failed to copy.");
+                        await UIPatterns.copyToClipboard(pass, "Copied!");
                     };
 
                     li.appendChild(text);
@@ -497,7 +548,8 @@ li.className = 'result-item';
                 minLength: parseInt(DOMElements.passMinLength.value, 10),
                 maxLength: parseInt(DOMElements.passMaxLength.value, 10),
                 padToMin: DOMElements.passPadToMin.checked,
-                seasonalBank: DOMElements.seasonalBankSelect.value
+                seasonalBank: DOMElements.seasonalBankSelect.value,
+                baseBank: DOMElements.baseBankSelect.value // Save choice in preset
             };
             return { type: 'passphrase', config: config };
         };
@@ -514,6 +566,11 @@ li.className = 'result-item';
             DOMElements.passMaxLength.value = C.maxLength;
             DOMElements.passPadToMin.checked = C.padToMin;
             DOMElements.seasonalBankSelect.value = C.seasonalBank;
+            if (C.baseBank && DOMElements.baseBankSelect.querySelector(`option[value="${C.baseBank}"]`)) {
+                DOMElements.baseBankSelect.value = C.baseBank;
+            } else {
+                DOMElements.baseBankSelect.value = 'default';
+            }
         };
 
         const handleGenerate = async (configObj) => {
@@ -559,8 +616,7 @@ li.className = 'result-item';
                         handleGenerate({ type: 'passphrase', config: item.config });
                         SafeUI.showToast(`Generated using preset: ${item.name}`);
                     } else if (item.type === 'quickcopy') {
-                        const success = await SafeUI.copyToClipboard(item.value);
-                        SafeUI.showToast(success ? `Copied: ${item.name}` : "Failed to copy.");
+                        await UIPatterns.copyToClipboard(item.value, `Copied: ${item.name}`);
                     }
                 },
 
@@ -663,18 +719,6 @@ li.className = 'result-item';
             ]);
         };
 
-        const handleExportWordbank = () => {
-            try {
-                const data = {
-                    wordBank: state.wordBank
-                }
-                const dataStr = JSON.stringify(data, null, 2);
-                SafeUI.downloadJSON(dataStr, 'password-wordbank-export.json', 'application/json');
-            } catch (err) {
-                showError("Export Error", err);
-            }
-        };
-
         const handleImportWordbank = () => {
             SafeUI.openFilePicker(async (file) => {
                 SafeUI.readJSONFile(file, async (importedData) => {
@@ -683,18 +727,36 @@ li.className = 'result-item';
                             throw new Error("Invalid wordbank file. Must contain a 'wordBank' object.");
                         }
 
-                        SafeUI.showModal("Confirm Wordbank Import",
-                            `<p>This will overwrite your <strong>base wordbank</strong> with the contents of this file. This cannot be undone.</p>`,
+                        // Ask for name
+                        SafeUI.showModal("Import Dictionary",
+                            `<p>Give a name to this custom dictionary:</p>
+                             <input id="new-bank-name" class="form-control" placeholder="My Custom Words">`,
                             [
                                 { label: 'Cancel' },
                                 {
-                                    label: 'Overwrite',
-                                    class: 'btn-danger',
+                                    label: 'Import',
+                                    class: 'btn-primary',
                                     callback: async () => {
-                                        state.wordBank = importedData.wordBank;
+                                        const name = document.getElementById('new-bank-name').value.trim();
+                                        if (!name) return SafeUI.showValidationError("Invalid Name", "Name required", "new-bank-name");
+
+                                        const newBank = {
+                                            id: SafeUI.generateId(),
+                                            name: name,
+                                            data: importedData.wordBank
+                                        };
+
+                                        state.customWordBanks.push(newBank);
                                         saveState();
+
+                                        // Update UI
+                                        updateBaseBankSelect();
+                                        DOMElements.baseBankSelect.value = newBank.id;
                                         await analyzeWordBank();
-                                        SafeUI.showToast("Wordbank updated successfully.");
+
+                                        SafeUI.showToast("Dictionary imported.");
+                                        SafeUI.hideModal(); // Close import modal
+                                        // Note: Settings modal is closed by this action, which is fine.
                                     }
                                 }
                             ]
@@ -708,19 +770,56 @@ li.className = 'result-item';
             }, '.json');
         };
 
+        const renderManageBanks = () => {
+            const list = document.getElementById('manage-banks-list');
+            if (!list) return;
+
+            list.innerHTML = '';
+            if (state.customWordBanks.length === 0) {
+                list.innerHTML = '<p class="form-help">No custom dictionaries imported.</p>';
+                return;
+            }
+
+            state.customWordBanks.forEach(bank => {
+                const div = document.createElement('div');
+                div.className = 'shortcut-item';
+                div.style.marginBottom = '4px';
+                div.innerHTML = `
+                    <span style="flex-grow:1; overflow:hidden; text-overflow:ellipsis;">${SafeUI.escapeHTML(bank.name)}</span>
+                    <button class="icon-btn delete-bank-btn" data-id="${bank.id}" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                `;
+                div.querySelector('.delete-bank-btn').onclick = (e) => {
+                    e.stopPropagation();
+                    UIPatterns.confirmDelete("Dictionary", bank.name, () => {
+                        state.customWordBanks = state.customWordBanks.filter(b => b.id !== bank.id);
+                        if (state.ui.selectedBaseBank === bank.id) {
+                            state.ui.selectedBaseBank = 'default';
+                        }
+                        saveState();
+                        renderManageBanks();
+                        updateBaseBankSelect();
+                    });
+                };
+                list.appendChild(div);
+            });
+        };
+
         function setupSettingsModal() {
-            const pageDataHtml = `
-                <button id="modal-export-wordbank-btn" class="btn">Export Wordbank (JSON)</button>
-                <button id="modal-import-wordbank-btn" class="btn">Import Wordbank (JSON)</button>
+            const customSettingsHtml = `
+                <div class="form-group">
+                    <label>Manage Dictionaries</label>
+                    <div id="manage-banks-list" style="margin-bottom: 0.5rem; max-height: 150px; overflow-y: auto;"></div>
+                    <button id="modal-import-wordbank-btn" class="btn">Import New Dictionary (JSON)</button>
+                </div>
             `;
 
             const onModalOpen = () => {
-                document.getElementById('modal-export-wordbank-btn').addEventListener('click', handleExportWordbank);
                 document.getElementById('modal-import-wordbank-btn').addEventListener('click', handleImportWordbank);
+                renderManageBanks();
             };
 
             const onRestore = (dataToRestore) => {
-                state.wordBank = dataToRestore.wordBank || null;
+                // Wordbank is no longer restored from persistence as it is not saved.
                 state.phraseStructures = dataToRestore.phraseStructures || defaultPhraseStructures;
                 state.symbolRules = dataToRestore.symbolRules || defaultSymbolRules;
                 state.quickCopyItems = dataToRestore.quickCopyItems || [];
@@ -728,34 +827,51 @@ li.className = 'result-item';
 
                 saveState();
 
-                if (!state.wordBank) {
-                    loadWordBank().then(() => {
-                        analyzeWordBank();
-                        initQuickActions();
-                    });
-                } else {
-                    analyzeWordBank();
-                    initQuickActions();
-                }
+                // Re-init actions (wordbank load is separate)
+                analyzeWordBank();
+                initQuickActions();
             };
 
             window.SharedSettingsModal.init({
                 buttonId: 'btn-settings',
                 appName: APP_CONFIG.NAME,
                 state: state,
-                pageSpecificDataHtml: pageDataHtml,
+                customSettingsHtml: customSettingsHtml,
                 onModalOpen: onModalOpen,
                 onRestoreCallback: onRestore,
                 itemValidators: {
-                    wordBank: [],
+                    // Removed wordBank validator
                     phraseStructures: [],
                     symbolRules: [],
                     quickCopyItems: ['id', 'name', 'value'],
-                    generatorPresets: ['id', 'name', 'config']
+                    generatorPresets: ['id', 'name', 'config'],
+                    customWordBanks: ['id', 'name', 'data']
                 }
             });
         }
 
+        function updateBaseBankSelect() {
+            const select = DOMElements.baseBankSelect;
+            if (!select) return;
+
+            const currentVal = select.value;
+            select.innerHTML = '<option value="default">Default (Repository)</option>';
+
+            if (state.customWordBanks) {
+                state.customWordBanks.forEach(bank => {
+                    const opt = document.createElement('option');
+                    opt.value = bank.id;
+                    opt.textContent = bank.name;
+                    select.appendChild(opt);
+                });
+            }
+
+            if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+                select.value = currentVal;
+            } else {
+                select.value = 'default';
+            }
+        }
 
         function attachEventListeners() {
             DOMElements.btnAddQuickCopy.addEventListener('click', handleAddQuickCopy);
@@ -767,7 +883,7 @@ li.className = 'result-item';
                     config: {
                         passNumWords: 1, passSeparator: "", passNumDigits: 1,
                         passNumSymbols: 0, minLength: 12, maxLength: 16,
-                        padToMin: true, seasonalBank: "none", passNumPlacement: 'end'
+                        padToMin: true, seasonalBank: "none", passNumPlacement: 'end', baseBank: 'default'
                     }
                 });
             });
@@ -775,8 +891,13 @@ li.className = 'result-item';
             DOMElements.btnGenerate.addEventListener('click', () => handleGenerate(null));
 
             setupSettingsModal();
+            updateBaseBankSelect();
 
             DOMElements.seasonalBankSelect.addEventListener('change', async () => {
+                await analyzeWordBank();
+            });
+
+            DOMElements.baseBankSelect.addEventListener('change', async () => {
                 await analyzeWordBank();
             });
 
