@@ -146,15 +146,22 @@
 
             // Shell Integration: Notify parent if running inside iframe
             if (window.parent && window.parent !== window) {
-                try {
-                    window.parent.postMessage({
-                        type: 'app_ready',
-                        title: document.title,
-                        path: window.location.pathname
-                    }, '*');
-                } catch (e) {
-                    console.warn('[Bootstrap] Failed to notify shell:', e);
-                }
+                const notifyShell = () => {
+                    try {
+                        window.parent.postMessage({
+                            type: 'app_ready',
+                            title: document.title,
+                            path: window.location.pathname
+                        }, '*');
+                    } catch (e) {
+                        console.warn('[Bootstrap] Failed to notify shell:', e);
+                    }
+                };
+
+                notifyShell();
+                window.addEventListener('load', notifyShell);
+                // Also notify on resize to help with potential dynamic layout adjustments if needed later
+                // window.addEventListener('resize', () => setTimeout(notifyShell, 100));
             }
             
         } catch (error) {

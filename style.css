@@ -643,3 +643,44 @@ textarea.form-control {
     }
     .strategy-success .strategy-title { color: #86efac; }
 }
+
+/* Sidebar Specific Overrides */
+@media (max-width: 480px) {
+    body { font-size: 13px; }
+    .navbar { padding: 0.25rem 0.5rem; }
+    .navbar-brand { font-size: 0.9rem; }
+    .nav-link { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+
+    .panel { border-radius: 0; border: none; box-shadow: none; }
+    .app-container { padding: 0; }
+
+    /* Ensure no horizontal scroll */
+    .main-content, .panel, .app-container {
+        width: 100%;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    /* Text wrapping */
+    p, span, div, h1, h2, h3, h4, h5, h6, li, td, th {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* Modals for sidebar */
+    .modal-overlay { align-items: flex-start; padding-top: 1rem; }
+    .modal-content {
+        width: calc(100% - 1rem);
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+        margin: 0 0.5rem;
+    }
+
+    /* Stack grids earlier */
+    .grid-2, .grid-3, .compact-grid-2 {
+        grid-template-columns: 1fr;
+    }
+    .compact-grid-row {
+        grid-template-columns: 1fr auto; /* Keep row structure for inputs with buttons */
+    }
+}
