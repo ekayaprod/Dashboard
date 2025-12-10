@@ -318,6 +318,11 @@ textarea.form-control {
 }
 .accordion.expanded .accordion-content { display: block; }
 
+#custom-generator-config {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
 /* Navbar (Unified) */
 .navbar {
     display: flex;
@@ -679,7 +684,7 @@ textarea.form-control {
     }
 
     /* Stack grids earlier */
-    .grid-2, .grid-3, .compact-grid-2 {
+    .grid-3 {
         grid-template-columns: 1fr;
     }
     .compact-grid-row {
