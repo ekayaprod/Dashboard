@@ -51,7 +51,7 @@ function initializePage() {
                     'search-input', 'local-results',
                     'btn-add-new-entry', 'btn-settings', 'btn-edit-mode',
                     'toast', 'modal-overlay', 'modal-content',
-                    'navbar-container', 'custom-search-section', 'custom-search-buttons',
+                        'custom-search-section', 'custom-search-buttons',
                     'btn-clear-search'
                 ]
             });

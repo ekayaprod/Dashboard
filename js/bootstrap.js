@@ -1,18 +1,14 @@
 /**
  * bootstrap.js - Centralized dependency loader
- * Loads both JavaScript modules AND shared HTML components (Navbar).
+ * Loads JavaScript modules for the specific page.
  */
 
 (function() {
     'use strict';
 
-    const HTML_FRAGMENTS = [
-        { 
-            url: 'navbar.html', 
-            targetId: 'navbar-container', 
-            required: false
-        }
-    ];
+    // HTML Fragments injection is removed as per new Shell architecture.
+    // Navbar is now handled by the Shell (index.html).
+    const HTML_FRAGMENTS = [];
 
     const CORE_SCRIPTS = [
         { 
@@ -35,8 +31,8 @@
     ];
     
     const PAGE_SCRIPTS = {
-        'index.html': [{ url: 'js/apps/dashboard.js', required: true }],
-        '': [{ url: 'js/apps/dashboard.js', required: true }],
+        'dashboard.html': [{ url: 'js/apps/dashboard.js', required: true }],
+        'index.html': [], // Shell loads its own scripts manually
         'calculator.html': [{ url: 'js/apps/calculator.js', required: true }],
         'lookup.html': [{ url: 'js/apps/lookup.js', required: true }],
         'passwords.html': [{ url: 'js/apps/passwords.js', required: true }],
@@ -68,25 +64,9 @@
         }
     }
 
+    // Deprecated: HTML loading removed
     async function loadHtmlFragment(config) {
-        const container = document.getElementById(config.targetId);
-        if (!container) return;
-
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-            const response = await fetch(config.url, { signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const html = await response.text();
-            container.innerHTML = html;
-            console.log(`[Bootstrap] ✓ HTML Loaded: ${config.url}`);
-        } catch (error) {
-            console.error(`[Bootstrap] ✗ Failed to load HTML ${config.url}:`, error);
-            container.innerHTML = `<div style="color:red; padding:10px; border:1px solid red; background:#fff;">Failed to load ${config.url}</div>`;
-        }
+        return Promise.resolve();
     }
 
     function loadScript(config) {
@@ -127,8 +107,6 @@
         console.log('[Bootstrap] Starting dependency loader...');
         
         try {
-            const htmlLoaders = HTML_FRAGMENTS.map(loadHtmlFragment);
-
             // Load app-core first as it is a dependency for others
             const coreScript = CORE_SCRIPTS.find(c => c.url.includes('app-core.js'));
             if (coreScript) {
@@ -162,11 +140,29 @@
                 }
             }
             
-            await Promise.all(htmlLoaders);
-
             console.log('[Bootstrap] ✓ System Ready');
             
             document.dispatchEvent(new CustomEvent('bootstrap:ready'));
+
+            // Shell Integration: Notify parent if running inside iframe
+            if (window.parent && window.parent !== window) {
+                const notifyShell = () => {
+                    try {
+                        window.parent.postMessage({
+                            type: 'app_ready',
+                            title: document.title,
+                            path: window.location.pathname
+                        }, '*');
+                    } catch (e) {
+                        console.warn('[Bootstrap] Failed to notify shell:', e);
+                    }
+                };
+
+                notifyShell();
+                window.addEventListener('load', notifyShell);
+                // Also notify on resize to help with potential dynamic layout adjustments if needed later
+                // window.addEventListener('resize', () => setTimeout(notifyShell, 100));
+            }
             
         } catch (error) {
             console.error('[Bootstrap] ✗ Dependency loading failed:', error);

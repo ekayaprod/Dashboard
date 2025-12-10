@@ -60,7 +60,6 @@ function initializePage() {
                 'results-list',
                 'btn-settings',
                 'toast', 'modal-overlay', 'modal-content',
-                'navbar-container',
                 'custom-gen-header', 'accordion-toggle', 'custom-generator-config',
                 'seasonal-info-btn'
             ]
