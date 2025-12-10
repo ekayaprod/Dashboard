@@ -35,7 +35,6 @@ function initializePage() {
     const defaultSymbolRules = {"beforeNum":["$","#","*"],"afterNum":["%","+"],"junction":["=","@",".","-"],"end":["!","?"]};
 
     const defaultState = {
-        wordBank: null,
         phraseStructures: defaultPhraseStructures,
         symbolRules: defaultSymbolRules,
         quickCopyItems: [],
@@ -68,8 +67,17 @@ function initializePage() {
         if (!ctx) return;
 
         let { elements: DOMElements, state, saveState } = ctx;
+
+        // --- Migration: Remove stale wordBank from storage ---
+        if (state.wordBank) {
+            console.log('[Passwords] Removing stale persistent wordBank to ensure freshness.');
+            delete state.wordBank;
+            saveState();
+        }
+
         let generatedPasswords = [];
 
+        let memoryWordBank = null; // Fresh non-persistent cache
         let activeWordBank = {};
         let availableStructures = {};
 
@@ -338,7 +346,7 @@ function initializePage() {
         // ====================================================================
 
         const loadWordBank = async () => {
-            if (state.wordBank && state.wordBank.Adjective) {
+            if (memoryWordBank && memoryWordBank.Adjective) {
                 return true;
             }
 
@@ -349,6 +357,11 @@ function initializePage() {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
+                // Ensure fresh fetch by appending timestamp or relying on aggressive ETag if server supports it.
+                // Since this is likely a static file server, a query param busts cache if needed,
+                // but standard fetch respects browser cache headers.
+                // "Only does temporary caching" -> Browser cache is fine for the session,
+                // but we want to avoid the persistent localStorage copy.
                 const response = await fetch('wordbanks/wordbank-base.json', { signal: controller.signal });
                 clearTimeout(timeoutId);
 
@@ -361,9 +374,7 @@ function initializePage() {
                     throw new Error("Invalid base wordbank file structure.");
                 }
 
-                state.wordBank = data.wordBank;
-
-                saveState();
+                memoryWordBank = data.wordBank;
                 return true;
             } catch (err) {
                 console.error("Failed to load wordbank:", err);
@@ -375,12 +386,12 @@ function initializePage() {
         const analyzeWordBank = async () => {
             const selectedSeason = DOMElements.seasonalBankSelect.value;
 
-            if (!state.wordBank) {
+            if (!memoryWordBank) {
                 const loaded = await loadWordBank();
                 if (!loaded) return;
             }
 
-            activeWordBank = JSON.parse(JSON.stringify(state.wordBank));
+            activeWordBank = JSON.parse(JSON.stringify(memoryWordBank));
 
             if (selectedSeason !== 'none' && selectedSeason !== 'auto') {
                 try {
@@ -669,8 +680,11 @@ li.className = 'result-item';
 
         const handleExportWordbank = () => {
             try {
+                if (!memoryWordBank) {
+                    throw new Error("No wordbank loaded to export.");
+                }
                 const data = {
-                    wordBank: state.wordBank
+                    wordBank: memoryWordBank
                 }
                 const dataStr = JSON.stringify(data, null, 2);
                 SafeUI.downloadJSON(dataStr, 'password-wordbank-export.json', 'application/json');
@@ -688,17 +702,16 @@ li.className = 'result-item';
                         }
 
                         SafeUI.showModal("Confirm Wordbank Import",
-                            `<p>This will overwrite your <strong>base wordbank</strong> with the contents of this file. This cannot be undone.</p>`,
+                            `<p>This will temporarily overwrite the <strong>active wordbank</strong> for this session. It will revert to the server version on reload.</p>`,
                             [
                                 { label: 'Cancel' },
                                 {
-                                    label: 'Overwrite',
-                                    class: 'btn-danger',
+                                    label: 'Use for Session',
+                                    class: 'btn-primary',
                                     callback: async () => {
-                                        state.wordBank = importedData.wordBank;
-                                        saveState();
+                                        memoryWordBank = importedData.wordBank;
                                         await analyzeWordBank();
-                                        SafeUI.showToast("Wordbank updated successfully.");
+                                        SafeUI.showToast("Wordbank updated for this session.");
                                     }
                                 }
                             ]
@@ -714,8 +727,8 @@ li.className = 'result-item';
 
         function setupSettingsModal() {
             const pageDataHtml = `
-                <button id="modal-export-wordbank-btn" class="btn">Export Wordbank (JSON)</button>
-                <button id="modal-import-wordbank-btn" class="btn">Import Wordbank (JSON)</button>
+                <button id="modal-export-wordbank-btn" class="btn">Export Active Wordbank (JSON)</button>
+                <button id="modal-import-wordbank-btn" class="btn">Import Temporary Wordbank (JSON)</button>
             `;
 
             const onModalOpen = () => {
@@ -724,7 +737,7 @@ li.className = 'result-item';
             };
 
             const onRestore = (dataToRestore) => {
-                state.wordBank = dataToRestore.wordBank || null;
+                // Wordbank is no longer restored from persistence as it is not saved.
                 state.phraseStructures = dataToRestore.phraseStructures || defaultPhraseStructures;
                 state.symbolRules = dataToRestore.symbolRules || defaultSymbolRules;
                 state.quickCopyItems = dataToRestore.quickCopyItems || [];
@@ -732,15 +745,9 @@ li.className = 'result-item';
 
                 saveState();
 
-                if (!state.wordBank) {
-                    loadWordBank().then(() => {
-                        analyzeWordBank();
-                        initQuickActions();
-                    });
-                } else {
-                    analyzeWordBank();
-                    initQuickActions();
-                }
+                // Re-init actions (wordbank load is separate)
+                analyzeWordBank();
+                initQuickActions();
             };
 
             window.SharedSettingsModal.init({
@@ -751,7 +758,7 @@ li.className = 'result-item';
                 onModalOpen: onModalOpen,
                 onRestoreCallback: onRestore,
                 itemValidators: {
-                    wordBank: [],
+                    // Removed wordBank validator
                     phraseStructures: [],
                     symbolRules: [],
                     quickCopyItems: ['id', 'name', 'value'],
