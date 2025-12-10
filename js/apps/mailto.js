@@ -346,8 +346,7 @@ async function init() {
     });
 
     DOMElements.copyMailtoBtn.addEventListener('click', () => {
-        SafeUI.copyToClipboard(DOMElements.resultMailto.value);
-        SafeUI.showToast("Copied");
+        UIPatterns.copyToClipboard(DOMElements.resultMailto.value, "Copied");
     });
 
     DOMElements.btnSaveToLibrary.addEventListener('click', () => {
@@ -462,8 +461,7 @@ async function init() {
         }
         
         if(e.target.closest('.copy-btn')) {
-            SafeUI.copyToClipboard(item.mailto);
-            SafeUI.showToast("Copied command");
+            UIPatterns.copyToClipboard(item.mailto, "Copied command");
             return;
         }
 

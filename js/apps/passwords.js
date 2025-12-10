@@ -500,8 +500,7 @@ li.className = 'result-item';
                     copyBtn.innerHTML = SafeUI.SVGIcons.copy;
                     copyBtn.disabled = isError;
                     copyBtn.onclick = async () => {
-                        const success = await SafeUI.copyToClipboard(pass);
-                        SafeUI.showToast(success ? "Copied!" : "Failed to copy.");
+                        await UIPatterns.copyToClipboard(pass, "Copied!");
                     };
 
                     li.appendChild(text);
@@ -617,8 +616,7 @@ li.className = 'result-item';
                         handleGenerate({ type: 'passphrase', config: item.config });
                         SafeUI.showToast(`Generated using preset: ${item.name}`);
                     } else if (item.type === 'quickcopy') {
-                        const success = await SafeUI.copyToClipboard(item.value);
-                        SafeUI.showToast(success ? `Copied: ${item.name}` : "Failed to copy.");
+                        await UIPatterns.copyToClipboard(item.value, `Copied: ${item.name}`);
                     }
                 },
 

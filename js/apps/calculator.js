@@ -48,16 +48,6 @@ function initializePage() {
      */
 
     (async () => {
-        // --- Dependency Check ---
-        if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined' || typeof UIPatterns === 'undefined' || typeof SharedSettingsModal === 'undefined' || typeof BackupRestore === 'undefined') {
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies missing.</p>`;
-                banner.classList.remove('hidden');
-            }
-            return;
-        }
-
         const defaultState = {
             ui: {
                 shiftStart: '08:00',
