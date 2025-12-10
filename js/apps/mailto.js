@@ -260,7 +260,7 @@ async function init() {
         defaultState: defaultState,
         version: APP_CONFIG.VERSION,
         requiredElements: [
-            'navbar-container', 'btn-new-folder', 'btn-settings', 'breadcrumb-container', 'tree-list-container',
+            'btn-new-folder', 'btn-settings', 'breadcrumb-container', 'tree-list-container',
             'upload-wrapper', 'msg-upload', 'result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body',
             'output-wrapper', 'result-link', 'result-mailto', 'copy-mailto-btn', 'save-template-name', 'btn-save-to-library',
             'library-header', 'editor-header', 'btn-clear-all'

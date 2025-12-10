@@ -467,8 +467,7 @@ function initializePage() {
                     'add-new-app-btn-menu',
                     'btn-settings',
                     'notepad-header',
-                    'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
-                    'navbar-container'
+                    'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn'
                 ]
             });
 

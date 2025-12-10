@@ -74,7 +74,7 @@ function initializePage() {
             defaultState: defaultState,
             version: APP_CONFIG.VERSION,
             requiredElements: [
-                'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                'toast', 'modal-overlay', 'modal-content',
                 'shiftStart', 'shiftEnd', 'breakTime',
                 'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
                 'totalWorkTimeEOD', 'baseTargetDisplay',
