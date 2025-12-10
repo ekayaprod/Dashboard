@@ -25,7 +25,7 @@ function initializePage() {
             "4": [["Adjective","Animal","Color","Verb"]]
         },
         "seasonal": {
-            "1": [["Noun"]],
+            "1": [["LongWord"]],
             "2": [["Adjective","Noun"]],
             "3": [["Adjective","Verb","Object"]],
             "4": [["Adjective","Verb","Color","Noun"]]
@@ -78,6 +78,11 @@ function initializePage() {
             console.log('[Passwords] Removing stale persistent wordBank to ensure freshness.');
             delete state.wordBank;
             saveState();
+        }
+
+        // FIX: Enforce LongWord for 1-word seasonal structure
+        if (state.phraseStructures && state.phraseStructures.seasonal) {
+            state.phraseStructures.seasonal["1"] = [["LongWord"]];
         }
 
         let generatedPasswords = [];
