@@ -17,6 +17,22 @@ function initializePage() {
     // DEFAULT STATE & LOGIC
     // ====================================================================
 
+    // Configurable seasonal date ranges (Months are 0-11, where 0=Jan)
+    const SEASON_DEFINITIONS = {
+        winter: [11, 0, 1], // Dec, Jan, Feb
+        spring: [2, 3, 4],  // Mar, Apr, May
+        summer: [5, 6, 7],  // Jun, Jul, Aug
+        autumn: [8, 9, 10]  // Sep, Oct, Nov
+    };
+
+    const getCurrentSeason = () => {
+        const month = new Date().getMonth();
+        for (const [season, months] of Object.entries(SEASON_DEFINITIONS)) {
+            if (months.includes(month)) return season;
+        }
+        return 'none';
+    };
+
     const defaultPhraseStructures = {
         "standard": {
             "1": [["LongWord"]],
@@ -216,7 +232,7 @@ function initializePage() {
 
             let resolvedSeason = C.seasonalBank;
             if (C.seasonalBank === 'auto') {
-                resolvedSeason = DateUtils.getSeason(new Date());
+                resolvedSeason = getCurrentSeason();
             }
 
             let minEstimate = C.passNumDigits + C.passNumSymbols + (C.passNumWords * 4);
@@ -410,7 +426,7 @@ function initializePage() {
             if (!displayEl) return;
 
             if (selected === 'auto') {
-                const currentSeason = DateUtils.getSeason(new Date());
+                const currentSeason = getCurrentSeason();
                 const capitalSeason = currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1);
                 displayEl.textContent = `(Now: ${capitalSeason})`;
             } else {
@@ -432,7 +448,7 @@ function initializePage() {
 
             let seasonToLoad = selectedSeason;
             if (seasonToLoad === 'auto') {
-                seasonToLoad = DateUtils.getSeason(new Date());
+                seasonToLoad = getCurrentSeason();
             }
 
             if (seasonToLoad !== 'none' && seasonToLoad !== 'auto') {
@@ -907,13 +923,18 @@ li.className = 'result-item';
             });
 
             DOMElements.seasonalInfoBtn.addEventListener('click', () => {
+                const getMonthNames = (indices) => indices.map(i => new Date(2000, i, 1).toLocaleString('default', { month: 'short' })).join(', ');
+                const ranges = Object.entries(SEASON_DEFINITIONS).map(([season, months]) => {
+                    const monthNums = months.map(m => m + 1).join(', '); // 1-based for display
+                    const monthNames = getMonthNames(months);
+                    const capitalSeason = season.charAt(0).toUpperCase() + season.slice(1);
+                    return `<li style="margin-bottom: 0.5rem;"><strong>${capitalSeason}:</strong> Months ${monthNums} (${monthNames})</li>`;
+                }).join('');
+
                 const infoHtml = `
                     <ul style="list-style-type: none; padding-left: 0; margin: 0; font-size: 0.9rem; text-align: left;">
                         <li style="margin-bottom: 0.5rem;"><strong>Auto:</strong> Automatically selects the current season.</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Winter:</strong> Months 12, 1, 2 (Dec-Feb)</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Spring:</strong> Months 3, 4, 5 (Mar-May)</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Summer:</strong> Months 6, 7, 8 (Jun-Aug)</li>
-                        <li><strong>Autumn:</strong> Months 9, 10, 11 (Sep-Nov)</li>
+                        ${ranges}
                     </ul>
                 `;
                 SafeUI.showModal('Seasonal Date Ranges', infoHtml, [{ label: 'OK' }]);
