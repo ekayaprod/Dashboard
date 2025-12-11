@@ -17,6 +17,94 @@ function initializePage() {
     // DEFAULT STATE & LOGIC
     // ====================================================================
 
+    // Configurable seasonal date ranges
+    // Based on North American Cultural Dates (Solstices/Equinoxes approx 21st)
+    // Rules:
+    // 1. Starts 'startOffset' days BEFORE the start date.
+    // 2. Ends 'endCutoff' days BEFORE the end date.
+    const SEASON_CONFIG = {
+        rules: {
+            startOffset: 12, // days before start
+            endCutoff: 60    // days before end
+        },
+        seasons: {
+            spring: { start: { m: 2, d: 20 }, end: { m: 5, d: 21 } }, // Mar 20 - Jun 21
+            summer: { start: { m: 5, d: 21 }, end: { m: 8, d: 22 } }, // Jun 21 - Sep 22
+            autumn: { start: { m: 8, d: 22 }, end: { m: 11, d: 21 } },// Sep 22 - Dec 21
+            winter: { start: { m: 11, d: 21 }, end: { m: 2, d: 20 } } // Dec 21 - Mar 20
+        }
+    };
+
+    const getCurrentSeason = () => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+
+        // Helper to create date object for current year logic
+        const makeDate = (m, d, year = currentYear) => new Date(year, m, d);
+
+        // Helper to check if date is in window
+        const isDateInWindow = (date, start, end) => {
+             // Handle wrapping (e.g. Dec to Mar)
+             if (end < start) {
+                 return date >= start || date < end;
+             }
+             return date >= start && date < end;
+        };
+
+        for (const [season, range] of Object.entries(SEASON_CONFIG.seasons)) {
+            // Calculate Window Start (Start Date - Offset)
+            let windowStart = makeDate(range.start.m, range.start.d);
+            windowStart.setDate(windowStart.getDate() - SEASON_CONFIG.rules.startOffset);
+
+            // Calculate Window End (End Date - Cutoff)
+            let windowEnd = makeDate(range.end.m, range.end.d);
+            // If the season wraps year end (Winter), we need to be careful about which 'end' year we mean relative to 'start'.
+            // For Winter (Dec 21 - Mar 20):
+            // If we are in Dec, end is next year Mar.
+            // If we are in Jan/Feb, start was last year Dec.
+
+            // To simplify year wrapping logic:
+            // We can normalize everything to an arbitrary year (e.g. 2000) for comparison,
+            // but the window might wrap 2000->2001.
+
+            // Let's rely on calculating the specific window relevant to "now".
+            // Actually, we can just check if "now" falls into the window defined by the rules.
+
+            // Re-eval approach:
+            // A season is active if:
+            // (SeasonStart - Offset) <= Now < (SeasonEnd - Cutoff)
+            // But we have to handle the year boundary for Winter.
+
+            // Let's assume standard year dates and handle winter specifically or robustly.
+
+            let sDate = makeDate(range.start.m, range.start.d);
+            let eDate = makeDate(range.end.m, range.end.d);
+
+            // Adjust for winter wrapping
+            if (range.start.m > range.end.m) {
+                 // Winter case: Start in Year X, End in Year X+1
+                 // If Now is Jan/Feb/Mar (before end), we compare against Start(Year-1) and End(Year)
+                 // If Now is Dec (after start), we compare against Start(Year) and End(Year+1)
+
+                 if (now.getMonth() < range.start.m) {
+                     sDate.setFullYear(currentYear - 1);
+                 } else {
+                     eDate.setFullYear(currentYear + 1);
+                 }
+            }
+
+            // Apply offsets
+            sDate.setDate(sDate.getDate() - SEASON_CONFIG.rules.startOffset);
+            eDate.setDate(eDate.getDate() - SEASON_CONFIG.rules.endCutoff);
+
+            if (now >= sDate && now < eDate) {
+                return season;
+            }
+        }
+
+        return 'none';
+    };
+
     const defaultPhraseStructures = {
         "standard": {
             "1": [["LongWord"]],
@@ -25,7 +113,7 @@ function initializePage() {
             "4": [["Adjective","Animal","Color","Verb"]]
         },
         "seasonal": {
-            "1": [["Noun"]],
+            "1": [["LongWord"]],
             "2": [["Adjective","Noun"]],
             "3": [["Adjective","Verb","Object"]],
             "4": [["Adjective","Verb","Color","Noun"]]
@@ -78,6 +166,11 @@ function initializePage() {
             console.log('[Passwords] Removing stale persistent wordBank to ensure freshness.');
             delete state.wordBank;
             saveState();
+        }
+
+        // FIX: Enforce LongWord for 1-word seasonal structure
+        if (state.phraseStructures && state.phraseStructures.seasonal) {
+            state.phraseStructures.seasonal["1"] = [["LongWord"]];
         }
 
         let generatedPasswords = [];
@@ -211,7 +304,7 @@ function initializePage() {
 
             let resolvedSeason = C.seasonalBank;
             if (C.seasonalBank === 'auto') {
-                resolvedSeason = DateUtils.getSeason(new Date());
+                resolvedSeason = getCurrentSeason();
             }
 
             let minEstimate = C.passNumDigits + C.passNumSymbols + (C.passNumWords * 4);
@@ -405,9 +498,13 @@ function initializePage() {
             if (!displayEl) return;
 
             if (selected === 'auto') {
-                const currentSeason = DateUtils.getSeason(new Date());
-                const capitalSeason = currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1);
-                displayEl.textContent = `(Now: ${capitalSeason})`;
+                const currentSeason = getCurrentSeason();
+                if (currentSeason === 'none') {
+                    displayEl.textContent = '(Now: Standard)';
+                } else {
+                    const capitalSeason = currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1);
+                    displayEl.textContent = `(Now: ${capitalSeason})`;
+                }
             } else {
                 displayEl.textContent = '';
             }
@@ -427,7 +524,7 @@ function initializePage() {
 
             let seasonToLoad = selectedSeason;
             if (seasonToLoad === 'auto') {
-                seasonToLoad = DateUtils.getSeason(new Date());
+                seasonToLoad = getCurrentSeason();
             }
 
             if (seasonToLoad !== 'none' && seasonToLoad !== 'auto') {
@@ -902,13 +999,32 @@ li.className = 'result-item';
             });
 
             DOMElements.seasonalInfoBtn.addEventListener('click', () => {
+                const formatDate = (m, d) => new Date(2000, m, d).toLocaleString('default', { month: 'short', day: 'numeric' });
+
+                const ranges = Object.entries(SEASON_CONFIG.seasons).map(([season, range]) => {
+                    // Start: range.start - offset
+                    const sDate = new Date(2000, range.start.m, range.start.d);
+                    sDate.setDate(sDate.getDate() - SEASON_CONFIG.rules.startOffset);
+
+                    // End: range.end - cutoff
+                    const eDate = new Date(2000, range.end.m, range.end.d);
+                    eDate.setDate(eDate.getDate() - SEASON_CONFIG.rules.endCutoff);
+
+                    // Handle winter wrap for display
+                    if (range.start.m > range.end.m) {
+                        eDate.setFullYear(2001);
+                    }
+
+                    const dateStr = `${formatDate(sDate.getMonth(), sDate.getDate())} - ${formatDate(eDate.getMonth(), eDate.getDate())}`;
+                    const capitalSeason = season.charAt(0).toUpperCase() + season.slice(1);
+                    return `<li style="margin-bottom: 0.5rem;"><strong>${capitalSeason}:</strong> ${dateStr}</li>`;
+                }).join('');
+
                 const infoHtml = `
                     <ul style="list-style-type: none; padding-left: 0; margin: 0; font-size: 0.9rem; text-align: left;">
-                        <li style="margin-bottom: 0.5rem;"><strong>Auto:</strong> Automatically selects the current season.</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Winter:</strong> Months 12, 1, 2 (Dec-Feb)</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Spring:</strong> Months 3, 4, 5 (Mar-May)</li>
-                        <li style="margin-bottom: 0.5rem;"><strong>Summer:</strong> Months 6, 7, 8 (Jun-Aug)</li>
-                        <li><strong>Autumn:</strong> Months 9, 10, 11 (Sep-Nov)</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Auto:</strong> Automatically selects the current season based on rules:</li>
+                        <li style="margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--subtle-text);">Active from ${SEASON_CONFIG.rules.startOffset} days before start until ${SEASON_CONFIG.rules.endCutoff} days before end.</li>
+                        ${ranges}
                     </ul>
                 `;
                 SafeUI.showModal('Seasonal Date Ranges', infoHtml, [{ label: 'OK' }]);
