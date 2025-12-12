@@ -7,7 +7,7 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '3.3.1', // Doc Update: Added Spreadsheet Formulas
+        VERSION: '3.4.0', // Doc Update: Stats Bar & Call Time Badges
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -69,7 +69,8 @@ function initializePage() {
                 'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
                 'totalWorkTimeEOD', 'baseTargetDisplay',
                 'targets-grid', 'btnResetData', 'calc-info-content',
-                'schedule-header', 'schedule-content', 'schedule-collapse-icon'
+                'schedule-header', 'schedule-content', 'schedule-collapse-icon',
+                'target-stats-bar'
             ]
         });
 
@@ -80,7 +81,6 @@ function initializePage() {
         // --- CONSTANTS ---
         const CONSTANTS = {
             TICKETS_PER_HOUR_RATE: 6, // Matches "Daily Work Rating" * 6 multiplier
-            ROUNDING_BOUNDARY_MAX: 29, // Matches MROUND("1:00") logic (0-29 rounds down, 30-59 rounds up)
             PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 15:30
             LEEWAY_RATIO: 1 / 7 // Aligns with the 6h base from 7h work time
         };
@@ -90,6 +90,19 @@ function initializePage() {
             'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
             'Excellent': { name: 'Excellent', min: 4, max: 6 },
             'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
+        };
+
+        const TimeUtil = {
+            ...DateUtils,
+            parseShiftTimeToMinutes(timeStr) {
+                const parts = timeStr.split(':').map(Number);
+                return (parts[0] * 60) + parts[1];
+            },
+            formatMinutesToHM(totalMinutes) {
+                const h = Math.floor(totalMinutes / 60);
+                const m = Math.round(totalMinutes % 60);
+                return `${h}:${String(m).padStart(2, '0')}`;
+            }
         };
 
         // --- 1. DASHBOARD BADGES ---
@@ -122,6 +135,7 @@ function initializePage() {
 
             // Scenario: In Progress
             // We use 10 mins per ticket simply as an effort estimator (60 mins / 6 tickets)
+            // This is also the amount of "Call Time" needed to reduce the target by that many tickets.
             const estMinutes = ticketsNeeded * 10;
             
             return {
@@ -129,20 +143,54 @@ function initializePage() {
                 html: buildTargetCardHTML(
                     boundary.name, 
                     `${ticketsNeeded} <span style="font-size:0.7em; font-weight:normal;">Tickets</span>`, 
-                    `Est. Effort: ${estMinutes}m`
+                    `Call Time: ${TimeUtil.formatMinutesToHM(estMinutes)}`
                 )
             };
         }
 
-        // --- 2. STRATEGY ENGINE ---
-        
+        // --- 2. STATS BAR ---
+        function renderTargetStats(data) {
+            const { totalWorkTimeEOD } = data;
+            const minutesInHour = totalWorkTimeEOD % 60;
+            // Math.round(29.5) = 30 (Round Up). Math.round(29.49) = 29 (Round Down).
+            // So cutoff is 29.5.
+            const isRoundedUp = minutesInHour >= 29.5;
+            let html = '';
+
+            if (isRoundedUp) {
+                // Round Up (Target High) -> Suggest Adding Call Time (Admin) to reduce Work Time.
+                // Target: Reach < 29.5.
+                // Minutes to add = Current - 29.
+                const adminNeeded = Math.ceil(minutesInHour - 29);
+                html = `
+                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                        <span style="color: var(--warning-text); font-weight: bold;">Reduce Goal:</span>
+                        Add <strong>${adminNeeded} min</strong> Call Time
+                    </div>
+                `;
+            } else {
+                // Round Down (Target Low) -> Show Buffer (How much Work Time can be added / Call Time removed).
+                // Target: Stay < 29.5.
+                // Buffer = 29.5 - Current.
+                const buffer = Math.floor(29.5 - minutesInHour);
+                html = `
+                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                        <span style="color: var(--success-text); font-weight: bold;">Buffer:</span>
+                        ${buffer} min
+                    </div>
+                `;
+            }
+            if (DOMElements.targetStatsBar) DOMElements.targetStatsBar.innerHTML = html;
+        }
+
+        // --- 3. STRATEGY ENGINE ---
         function getStrategicAnalysis(data) {
             const { 
-                workTimeMinutes, ticketsDone, ticketsPerMinRate, 
-                minutesRemaining, nextGrade, isRoundedUp, 
-                targetTicketGoal 
+                ticketsDone, ticketsPerMinRate,
+                minutesRemaining, nextGrade
             } = data;
 
+            // REMOVED STRATEGY 1: ROUNDING OPTIMIZATION (Moved to Stats Bar)
             // STRATEGY 1: ROUNDING OPTIMIZATION
             if (isRoundedUp) {
                 const minutesInHour = workTimeMinutes % 60; 
@@ -189,19 +237,10 @@ function initializePage() {
                  };
             }
 
-            if (nextGrade) {
-                return {
-                    type: 'info',
-                    title: `Next Tier: ${nextGrade.name}`,
-                    text: `Gap: <strong>${nextGrade.val - ticketsDone} tickets</strong>`
-                };
-            }
+            // REMOVED INFO STRATEGY: Next Tier Gap (User request: Unnecessary)
 
-            return {
-                type: 'success',
-                title: '🏆 Max Rank',
-                text: 'Highest tier achieved.'
-            };
+            // Default fallback if no specific strategy
+            return null;
         }
 
         function renderCalculationInfo(scheduleData, now) {
@@ -218,10 +257,6 @@ function initializePage() {
             const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
             const minutesWorked = Math.max(1, currentTimeMinutes - shiftStartMinutes);
 
-            // Analysis Data
-            const minutesInHour = totalWorkTimeEOD % 60;
-            const isRoundedUp = minutesInHour >= 30;
-
             const grades = [
                 { name: 'Satisfactory', val: targetTicketGoal + gradeBoundaries.Satisfactory.min },
                 { name: 'Excellent', val: targetTicketGoal + gradeBoundaries.Excellent.min },
@@ -230,40 +265,36 @@ function initializePage() {
             const nextGrade = grades.find(g => g.val > currentTicketsSoFar);
 
             const analysis = getStrategicAnalysis({
-                workTimeMinutes: totalWorkTimeEOD,
                 ticketsDone: currentTicketsSoFar,
                 ticketsPerMinRate: currentTicketsSoFar / minutesWorked,
                 minutesRemaining: minutesUntilPhoneClose,
-                nextGrade: nextGrade,
-                isRoundedUp: isRoundedUp,
-                targetTicketGoal: targetTicketGoal
+                nextGrade: nextGrade
             });
 
-            // Render
-            let html = `<div style="display:flex; flex-direction:column; gap:8px;">`;
-            
-            const styleMap = {
-                'optimization': 'strategy-success',
-                'opportunity': 'strategy-warn', 
-                'conservation': 'strategy-danger', 
-                'warn': 'strategy-danger',
-                'info': 'strategy-normal',
-                'success': 'strategy-success'
-            };
-            
-            const cardClass = styleMap[analysis.type] || '';
-            const borderStyle = cardClass ? '' : 'border-left: 3px solid var(--border-color);';
+            // Render Strategy Card if exists
+            if (analysis) {
+                const styleMap = {
+                    'opportunity': 'strategy-warn',
+                    'conservation': 'strategy-danger',
+                    'warn': 'strategy-danger',
+                    'info': 'strategy-normal',
+                    'success': 'strategy-success'
+                };
 
-            html += `
-                <div class="strategy-card ${cardClass}" style="margin:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); ${borderStyle}">
-                    <div class="strategy-title">${analysis.title}</div>
-                    <div class="strategy-text">${analysis.text}</div>
-                    ${analysis.sub ? `<div style="font-size:0.75rem; margin-top:4px; opacity:0.8; border-top:1px solid rgba(0,0,0,0.1); padding-top:2px;">${analysis.sub}</div>` : ''}
-                </div>
-            `;
+                const cardClass = styleMap[analysis.type] || '';
+                const borderStyle = cardClass ? '' : 'border-left: 3px solid var(--border-color);';
 
-            html += `</div>`;
-            DOMElements.calcInfoContent.innerHTML = html;
+                const html = `
+                    <div class="strategy-card ${cardClass}" style="margin:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); ${borderStyle}">
+                        <div class="strategy-title">${analysis.title}</div>
+                        <div class="strategy-text">${analysis.text}</div>
+                        ${analysis.sub ? `<div style="font-size:0.75rem; margin-top:4px; opacity:0.8; border-top:1px solid rgba(0,0,0,0.1); padding-top:2px;">${analysis.sub}</div>` : ''}
+                    </div>
+                `;
+                DOMElements.calcInfoContent.innerHTML = html;
+            } else {
+                DOMElements.calcInfoContent.innerHTML = '';
+            }
         }
 
         // --- STANDARD CALCULATIONS ---
@@ -334,6 +365,8 @@ function initializePage() {
                 targetBox.innerHTML = html;
                 DOMElements.targetsGrid.appendChild(targetBox);
             }
+
+            renderTargetStats({ totalWorkTimeEOD });
 
             renderCalculationInfo({
                 totalWorkTimeEOD,
