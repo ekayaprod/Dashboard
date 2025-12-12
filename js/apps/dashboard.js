@@ -427,16 +427,6 @@ function initializePage() {
 
     (async () => {
         try {
-            if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
-                const banner = document.getElementById('app-startup-error');
-                if (banner) {
-                    banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies (SafeUI, DOMHelpers) missing.</p>`;
-                    banner.classList.remove('hidden');
-                }
-                console.error("Critical dependencies missing (SafeUI, DOMHelpers).");
-                return;
-            }
-
             const APP_VERSION = '6.3.1';
             console.log(`[Dashboard] Initializing v${APP_VERSION}`);
 
@@ -467,8 +457,7 @@ function initializePage() {
                     'add-new-app-btn-menu',
                     'btn-settings',
                     'notepad-header',
-                    'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn',
-                    'navbar-container'
+                    'note-select', 'notepad-editor', 'toast', 'new-note-btn', 'rename-note-btn', 'delete-note-btn'
                 ]
             });
 

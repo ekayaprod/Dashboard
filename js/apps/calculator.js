@@ -48,16 +48,6 @@ function initializePage() {
      */
 
     (async () => {
-        // --- Dependency Check ---
-        if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined' || typeof UIPatterns === 'undefined' || typeof SharedSettingsModal === 'undefined' || typeof BackupRestore === 'undefined') {
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies missing.</p>`;
-                banner.classList.remove('hidden');
-            }
-            return;
-        }
-
         const defaultState = {
             ui: {
                 shiftStart: '08:00',
@@ -74,7 +64,7 @@ function initializePage() {
             defaultState: defaultState,
             version: APP_CONFIG.VERSION,
             requiredElements: [
-                'navbar-container', 'toast', 'modal-overlay', 'modal-content',
+                'toast', 'modal-overlay', 'modal-content',
                 'shiftStart', 'shiftEnd', 'breakTime',
                 'currentCallTime', 'currentTickets', 'addCallTime', 'btnAddCallTime',
                 'totalWorkTimeEOD', 'baseTargetDisplay',
@@ -201,12 +191,25 @@ function initializePage() {
             } = data;
 
             // REMOVED STRATEGY 1: ROUNDING OPTIMIZATION (Moved to Stats Bar)
+            // STRATEGY 1: ROUNDING OPTIMIZATION
+            if (isRoundedUp) {
+                const minutesInHour = workTimeMinutes % 60; 
+                const adminNeeded = minutesInHour - 29;
+                
+                if (adminNeeded <= 45) {
+                    return {
+                        type: 'optimization',
+                        title: '📉 Reduce Goal',
+                        text: `Your Net Work Time rounds <strong>UP</strong>. Add <strong>${Math.ceil(adminNeeded)} min</strong> to Call Time to drop the target by 6 tickets.`,
+                        sub: `Current Goal: ${targetTicketGoal} → New Goal: ${targetTicketGoal - 6}`
+                    };
+                }
+            }
 
             // STRATEGY 2: OPPORTUNITY ANALYSIS
             if (minutesRemaining > 0 && minutesRemaining < 90 && nextGrade) {
                 const ticketsNeeded = nextGrade.val - ticketsDone;
                 
-                // Feasible
                 if (ticketsNeeded <= 5 && ticketsNeeded > 0) {
                     return {
                         type: 'opportunity',
@@ -215,7 +218,6 @@ function initializePage() {
                     };
                 }
                 
-                // Not Feasible (Conserve)
                 const minsPerTicketNeeded = minutesRemaining / ticketsNeeded;
                 if (minsPerTicketNeeded < 8) {
                     return {
@@ -227,16 +229,12 @@ function initializePage() {
             }
 
             // STRATEGY 3: PACE ANALYSIS (Rate Check)
-            if (minutesRemaining >= 90) {
-                 // 6 tickets/hr = 0.1 tickets/min
-                 // Alert if below 4.8 tickets/hr (0.08)
-                 if (ticketsPerMinRate > 0 && ticketsPerMinRate < 0.08) {
-                     return {
-                         type: 'warn',
-                         title: '⚠️ Pace Alert',
-                         text: `Current pace is below the 6 tickets/hr requirement. Target is increasing faster than completions.`
-                     };
-                 }
+            if (minutesRemaining >= 90 && ticketsPerMinRate > 0 && ticketsPerMinRate < 0.08) {
+                 return {
+                     type: 'warn',
+                     title: '⚠️ Pace Alert',
+                     text: `Current pace is below the 6 tickets/hr requirement. Target is increasing faster than completions.`
+                 };
             }
 
             // REMOVED INFO STRATEGY: Next Tier Gap (User request: Unnecessary)
@@ -252,7 +250,7 @@ function initializePage() {
             const currentMinute = now.getMinutes();
             const currentTimeMinutes = currentHour * 60 + currentMinute;
             const effectivePhoneCloseMinutes = Math.min(
-                TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value),
+                DateUtils.parseTimeToMinutes(DOMElements.shiftEnd.value),
                 CONSTANTS.PHONE_CLOSE_MINUTES
             );
             
@@ -302,8 +300,8 @@ function initializePage() {
         // --- STANDARD CALCULATIONS ---
 
         function getScheduleInfo(now) {
-            const startMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftStart.value);
-            const endMinutes = TimeUtil.parseShiftTimeToMinutes(DOMElements.shiftEnd.value);
+            const startMinutes = DateUtils.parseTimeToMinutes(DOMElements.shiftStart.value);
+            const endMinutes = DateUtils.parseTimeToMinutes(DOMElements.shiftEnd.value);
             const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10) || 0;
             
             if (endMinutes <= startMinutes) return { error: "Check Shift Times" };
@@ -336,7 +334,7 @@ function initializePage() {
                  return;
             }
 
-            const currentCallTimeSoFar = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+            const currentCallTimeSoFar = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
             const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
 
             // This matches the spreadsheet's "Total Work Time"
@@ -348,7 +346,7 @@ function initializePage() {
             // This matches the spreadsheet's "* 6" logic
             const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
 
-            DOMElements.totalWorkTimeEOD.innerText = TimeUtil.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
+            DOMElements.totalWorkTimeEOD.innerText = DateUtils.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
             if (DOMElements.baseTargetDisplay) DOMElements.baseTargetDisplay.innerText = targetTicketGoal;
 
             DOMElements.targetsGrid.innerHTML = '';
@@ -420,10 +418,10 @@ function initializePage() {
         DOMElements.currentTickets.addEventListener('input', debouncedCalculateAndSave);
         
         DOMElements.btnAddCallTime.addEventListener('click', () => {
-            const current = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
+            const current = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
             const add = parseInt(DOMElements.addCallTime.value, 10) || 0;
             if (add === 0) return;
-            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(current + add);
+            DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(current + add);
             DOMElements.addCallTime.value = '';
             debouncedCalculateAndSave();
         });
@@ -433,8 +431,8 @@ function initializePage() {
         });
 
         DOMElements.currentCallTime.addEventListener('blur', () => {
-            const m = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-            DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(m);
+            const m = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
+            DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(m);
         });
         
         DOMElements.btnResetData.addEventListener('click', () => {
@@ -482,8 +480,8 @@ function initializePage() {
             try {
                 const mins = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
                 if (mins > 0) {
-                    const cur = TimeUtil.parseTimeToMinutes(DOMElements.currentCallTime.value);
-                    DOMElements.currentCallTime.value = TimeUtil.formatMinutesToHHMM(cur + mins);
+                    const cur = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
+                    DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(cur + mins);
                     localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
                     debouncedCalculateAndSave();
                     SafeUI.showToast(`Imported ${mins} mins`);

@@ -11,7 +11,10 @@ const SVGIcons = Object.freeze({
     pencil: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>',
     trash: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>',
     settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>',
-    copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>'
+    copy: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>',
+    folder: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.54 3.87.5 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v.07L6.2 7H1.12zM0 4.25a.5.5 0 0 1 .5-.5h6.19l.74 1.85a.5.5 0 0 1 .44.25h4.13a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.5.5H.5a.5.5 0 0 1-.5-.5zM.5 7a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5z"/></svg>',
+    template: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/></svg>',
+    move: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2zM0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm5.854 8.854a.5.5 0 1 0-.708-.708L4 11.293V1.5a.5.5 0 0 0-1 0v9.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2z"/></svg>'
 });
 
 // ============================================================================
@@ -173,42 +176,39 @@ const UIUtils = (() => {
         }
 
         const load = () => {
-            let data;
             const rawData = localStorage.getItem(key);
-
-            if (rawData) {
-                parseJSON(rawData, 
-                    (parsed) => {
-                        data = parsed;
-                        if (data.version !== version) {
-                            console.warn(`State version mismatch. Loading state anyway.`);
-                        }
-                    },
-                    (err) => {
-                        if (onCorruption) {
-                            try { onCorruption(); } catch (e) {}
-                        }
-                        localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
-                        _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
-                        data = { ...defaults };
-                    }
-                );
-            } else {
-                data = { ...defaults };
+            if (!rawData) {
+                return { ...defaults, version };
             }
+
+            let data;
+            parseJSON(rawData,
+                (parsed) => {
+                    data = parsed;
+                    if (data.version !== version) {
+                        console.warn(`State version mismatch. Loading state anyway.`);
+                    }
+                },
+                (err) => {
+                    if (onCorruption) {
+                        try { onCorruption(); } catch (e) {}
+                    }
+                    localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
+                    _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
+                    data = { ...defaults };
+                }
+            );
             
             if (data && !data.version) data.version = version;
             return data || { ...defaults, version };
         };
 
         const save = (state) => {
-            let serialized;
             try {
                 state.version = version;
-                serialized = JSON.stringify(state);
+                const serialized = JSON.stringify(state);
                 localStorage.setItem(key, serialized);
                 
-                // Verify save
                 const verification = localStorage.getItem(key);
                 if (!verification || verification.length !== serialized.length) {
                     throw new Error('Save verification failed - data mismatch');
@@ -345,9 +345,13 @@ const DOMHelpers = (() => {
         },
         setupTextareaAutoResize: (textarea, maxHeight = 300) => {
             if (!textarea) return;
+            let rafId;
             const resize = () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(() => {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+                });
             };
             textarea.addEventListener('input', resize);
             textarea._autoResize = resize;
@@ -464,18 +468,25 @@ const AppLifecycle = (() => {
 
     return {
         onBootstrap: (initFn) => {
+            if (window.__BOOTSTRAP_READY) {
+                initFn();
+                return;
+            }
+
             let bootstrapReady = false;
             document.addEventListener('bootstrap:ready', () => {
                 bootstrapReady = true;
                 initFn();
             });
             setTimeout(() => {
-                if (!bootstrapReady) {
+                if (!bootstrapReady && !window.__BOOTSTRAP_READY) {
                     console.error('Bootstrap did not complete within 5 seconds');
                     _showErrorBanner("Application Startup Timeout", "The application failed to load within 5 seconds. Check the browser console for errors.");
                 }
             }, 5000);
         },
+
+        isReady: () => window.__BOOTSTRAP_READY === true,
 
         initPage: async (config) => {
             const { storageKey, defaultState, requiredElements, onCorruption, version } = config;

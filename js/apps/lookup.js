@@ -19,16 +19,6 @@ function initializePage() {
     // ============================================================================
     (async () => {
         try {
-            if (typeof SafeUI === 'undefined' || !SafeUI.isReady || typeof DOMHelpers === 'undefined') {
-                const banner = document.getElementById('app-startup-error');
-                if (banner) {
-                    banner.innerHTML = `<strong>Application Failed to Load</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Critical dependencies (SafeUI, DOMHelpers) missing.</p>`;
-                    banner.classList.remove('hidden');
-                }
-                console.error("Critical dependencies missing (SafeUI, DOMHelpers).");
-                return;
-            }
-
             console.log(`[Lookup] Bypassing AppLifecycle.run, initializing v${APP_CONFIG.VERSION}`);
 
             const defaultState = {
@@ -51,7 +41,7 @@ function initializePage() {
                     'search-input', 'local-results',
                     'btn-add-new-entry', 'btn-settings', 'btn-edit-mode',
                     'toast', 'modal-overlay', 'modal-content',
-                    'navbar-container', 'custom-search-section', 'custom-search-buttons',
+                        'custom-search-section', 'custom-search-buttons',
                     'btn-clear-search'
                 ]
             });
@@ -60,17 +50,21 @@ function initializePage() {
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
 
-            if (state.settings.kbBaseUrl) {
-                console.warn("Migrating old kbBaseUrl to new customSearches format...");
-                if (state.settings.kbBaseUrl.includes('{query}')) {
-                    state.settings.customSearches = [{
-                        id: SafeUI.generateId(),
-                        name: 'KB Search',
-                        urlTemplate: state.settings.kbBaseUrl
-                    }];
+            try {
+                if (state.settings.kbBaseUrl) {
+                    console.warn("Migrating old kbBaseUrl to new customSearches format...");
+                    if (state.settings.kbBaseUrl.includes('{query}')) {
+                        state.settings.customSearches = [{
+                            id: SafeUI.generateId(),
+                            name: 'KB Search',
+                            urlTemplate: state.settings.kbBaseUrl
+                        }];
+                    }
+                    delete state.settings.kbBaseUrl;
+                    originalSaveState();
                 }
-                delete state.settings.kbBaseUrl;
-                originalSaveState();
+            } catch (err) {
+                console.error("Migration failed:", err);
             }
 
             const saveState = () => {
@@ -683,8 +677,10 @@ function initializePage() {
                     }
                 }, 300);
 
+                const debouncedRender = SafeUI.debounce(renderAll, 150);
+
                 DOMElements.searchInput.addEventListener('input', () => {
-                    renderAll();
+                    debouncedRender();
                     debouncedSearchSave();
                 });
 
@@ -728,8 +724,7 @@ function initializePage() {
                     }
                     const copyBtn = e.target.closest('.btn-copy');
                     if (copyBtn) {
-                        const success = await SafeUI.copyToClipboard(copyBtn.dataset.copy);
-                        SafeUI.showToast(success ? "Copied to clipboard!" : "Failed to copy.");
+                        await UIPatterns.copyToClipboard(copyBtn.dataset.copy);
                         return;
                     }
                 });

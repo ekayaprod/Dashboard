@@ -12,15 +12,23 @@ The project consists of a central dashboard and four specialized utilities:
 
 ## 2. System Architecture
 
-### 2.1. Bootstrapping & Dependency Management
-The application employs a custom dependency loader (`js/bootstrap.js`) to manage execution order and resource loading. This replaces standard `<script>` tags to ensure architectural consistency across all pages.
+### 2.1. Shell Architecture
+The application employs a "Shell" architecture to manage navigation and provide a consistent user experience.
 
-*   **Parallel Loading**: HTML fragments (e.g., `navbar.html`) and JavaScript resources are fetched concurrently.
+*   **Shell (`index.html`)**: The main entry point. It contains the persistent navigation bar and loads the active application into an `iframe`. It handles deep linking via query parameters (e.g., `index.html?page=calculator`) and synchronizes the browser history with the iframe state.
+*   **Sub-Pages**: Individual tools (e.g., `calculator.html`, `dashboard.html`) are standalone pages. When loaded directly (not via the shell), they render without the global navbar, allowing for focused, isolated usage.
+*   **Communication**: Sub-pages communicate with the Shell via `postMessage` to update the document title and synchronize the URL path.
+*   **Security**: The application frame uses `sandbox` attributes (`allow-scripts`, `allow-same-origin`, `allow-forms`, etc.) to secure the execution environment while maintaining necessary functionality.
+
+### 2.2. Bootstrapping & Dependency Management
+The application employs a custom dependency loader (`js/bootstrap.js`) to manage execution order and resource loading.
+
 *   **Sequential Execution**: Core libraries (`app-core.js`, `app-ui.js`, `app-data.js`) are executed in strict order to satisfy dependency chains.
 *   **Page-Specific Loading**: The bootstrapper identifies the current page context and dynamically loads the corresponding application logic (e.g., `js/apps/dashboard.js`).
-*   **Event-Driven Ready State**: The system dispatches a custom `bootstrap:ready` event when all dependencies are initialized, preventing race conditions.
+*   **Event-Driven Ready State**: The system dispatches a custom `bootstrap:ready` event when all dependencies are initialized.
+*   **Shell Integration**: Upon initialization, `bootstrap.js` automatically detects if the app is running within an iframe and sends an `app_ready` message to the parent shell.
 
-### 2.2. Core Library Layers
+### 2.3. Core Library Layers
 Shared functionality is distributed across three primary modules, implemented using the Module Pattern to expose public APIs while encapsulating internal logic.
 
 #### Core Layer (`js/app-core.js`)
@@ -47,8 +55,8 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
 
 ## 4. Application Modules
 
-### 4.1. Dashboard (`index.html`)
-*   **Function**: Acts as the central hub.
+### 4.1. Dashboard (`dashboard.html`)
+*   **Function**: Acts as the launcher and primary workspace.
 *   **Key Features**:
     *   Dynamic application registry.
     *   "Quick Actions" shortcut system.
