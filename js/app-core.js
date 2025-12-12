@@ -41,13 +41,24 @@ const CoreValidators = Object.freeze({
                 return str.length > 0;
             case 'maxLength':
                 return str.length <= (options.max || Infinity);
+            case 'urlTemplate':
+                if (!str) return false;
+                if (!/\{query\}/i.test(str)) return false;
+                try {
+                    const testUrl = str.replace(/\{query\}/ig, 'test');
+                    const urlObj = new URL(testUrl);
+                    return (urlObj.protocol === 'http:' || urlObj.protocol === 'https:');
+                } catch (e) {
+                    return false;
+                }
             default:
                 return false;
         }
     },
     url: function(value) { return this._validate(value, 'url'); },
     notEmpty: function(value) { return this._validate(value, 'notEmpty'); },
-    maxLength: function(value, max) { return this._validate(value, 'maxLength', { max }); }
+    maxLength: function(value, max) { return this._validate(value, 'maxLength', { max }); },
+    urlTemplate: function(value) { return this._validate(value, 'urlTemplate'); }
 });
 
 // ============================================================================
@@ -87,6 +98,19 @@ const UIUtils = (() => {
             console.warn('crypto.randomUUID not available, falling back to Date.now()');
         }
         return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    };
+
+    const getRandomInt = (max) => {
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            try {
+                const r = new Uint32Array(1);
+                crypto.getRandomValues(r);
+                return r[0] % max;
+            } catch (e) {
+                console.error("Crypto API failed, falling back to Math.random().", e);
+            }
+        }
+        return Math.floor(Math.random() * max);
     };
 
     const debounce = (func, delay) => {
@@ -283,6 +307,7 @@ const UIUtils = (() => {
         validators: CoreValidators,
         escapeHTML,
         generateId,
+        getRandomInt,
         debounce,
         copyToClipboard,
         downloadJSON,
@@ -316,6 +341,7 @@ const SafeUI = (() => {
         showToast: (msg) => UIUtils.showToast(msg),
         escapeHTML: (str) => UIUtils.escapeHTML(str),
         generateId: () => UIUtils.generateId(),
+        getRandomInt: (max) => UIUtils.getRandomInt(max),
         debounce: (func, delay) => UIUtils.debounce(func, delay),
         copyToClipboard: (text) => UIUtils.copyToClipboard(text),
         downloadJSON: (data, filename, mimeType) => UIUtils.downloadJSON(data, filename, mimeType),

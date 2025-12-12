@@ -435,29 +435,25 @@ function initializePage() {
             saveState();
         }
 
-        const allHeaders = document.querySelectorAll('.accordion-header');
-        allHeaders.forEach(header => {
-            header.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const accordion = header.closest('.accordion');
-                if (accordion) {
-                    accordion.classList.toggle('expanded');
-                    if (header.id === 'schedule-header') {
-                         state.ui.isScheduleCollapsed = !accordion.classList.contains('expanded');
-                         saveState();
-                    }
-                }
-            });
-        });
+        const allAccordions = document.querySelectorAll('.accordion');
+        allAccordions.forEach(acc => {
+            const header = acc.querySelector('.accordion-header');
+            if (header && header.id === 'schedule-header') {
+                UIPatterns.setupAccordion(acc, (isExpanded) => {
+                    state.ui.isScheduleCollapsed = !isExpanded;
+                    saveState();
+                });
 
-        const scheduleAccordion = document.getElementById('schedule-header')?.closest('.accordion');
-        if (scheduleAccordion) {
-            if (state.ui.isScheduleCollapsed) {
-                scheduleAccordion.classList.remove('expanded');
+                // Restore state
+                if (state.ui.isScheduleCollapsed) {
+                    acc.classList.remove('expanded');
+                } else {
+                    acc.classList.add('expanded');
+                }
             } else {
-                scheduleAccordion.classList.add('expanded');
+                UIPatterns.setupAccordion(acc);
             }
-        }
+        });
 
         setInterval(() => { if (document.visibilityState === 'visible') calculateDailyRatings(); }, 30000);
 

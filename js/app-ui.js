@@ -44,6 +44,30 @@ const UIPatterns = (() => {
             const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
             return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
+        },
+
+        setupAccordion: (container, onToggle) => {
+            if (!container) return;
+            const header = container.querySelector('.accordion-header');
+            if (!header) return;
+
+            header.addEventListener('click', (e) => {
+                const target = e.target;
+                const isToggleBtn = target.id === 'accordion-toggle' || target.closest('#accordion-toggle') || target.classList.contains('accordion-toggle') || target.closest('.accordion-toggle');
+
+                // If click is on an interactive element that IS NOT the toggle button, ignore it.
+                if (!isToggleBtn && (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.closest('button'))) {
+                   return;
+                }
+
+                e.stopPropagation();
+                container.classList.toggle('expanded');
+                const isExpanded = container.classList.contains('expanded');
+
+                if (typeof onToggle === 'function') {
+                    onToggle(isExpanded);
+                }
+            });
         }
     };
 })();

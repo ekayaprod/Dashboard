@@ -85,92 +85,43 @@ function initializePage() {
 
         const ACCORDION_STATE_KEY = 'password_generator_accordion_expanded';
 
-        const toggleAccordion = (e) => {
-            if (e) {
-                if (e.target.closest('button') && e.currentTarget.id === 'custom-gen-header' && e.target.id !== 'accordion-toggle') {
-                    e.stopPropagation();
-                    return;
-                }
-            }
-
-            const header = document.getElementById('custom-gen-header');
-            const accordion = header ? header.closest('.accordion') : null;
-
-            if (!accordion) return;
-
-            const isExpanded = accordion.classList.toggle('expanded');
-
-            if (header) header.setAttribute('aria-expanded', isExpanded);
-
-            try {
-                localStorage.setItem(ACCORDION_STATE_KEY, isExpanded);
-            } catch (err) {
-                console.warn("Could not save accordion state to localStorage.", err);
-            }
-        };
-
         const initAccordion = () => {
-            let expanded = false;
-            try {
-                const savedState = localStorage.getItem(ACCORDION_STATE_KEY);
-                expanded = savedState === 'true';
-            } catch (err) {
-                console.warn("Could not read accordion state from localStorage.", err);
-            }
+             const accordion = document.getElementById('custom-gen-header')?.closest('.accordion');
+             if (accordion) {
+                 UIPatterns.setupAccordion(accordion, (isExpanded) => {
+                      const header = accordion.querySelector('.accordion-header');
+                      if (header) header.setAttribute('aria-expanded', isExpanded);
+                      try {
+                        localStorage.setItem(ACCORDION_STATE_KEY, isExpanded);
+                    } catch (err) {
+                        console.warn("Could not save accordion state to localStorage.", err);
+                    }
+                 });
 
-            const accordion = DOMElements.customGenHeader.closest('.accordion');
-            if (accordion) {
+                // Restore state
+                let expanded = false;
+                try {
+                    const savedState = localStorage.getItem(ACCORDION_STATE_KEY);
+                    expanded = savedState === 'true';
+                } catch (err) {
+                    console.warn("Could not read accordion state from localStorage.", err);
+                }
+
                 if (expanded) {
                     accordion.classList.add('expanded');
-                    DOMElements.customGenHeader.setAttribute('aria-expanded', 'true');
+                    accordion.querySelector('.accordion-header')?.setAttribute('aria-expanded', 'true');
                 } else {
                     accordion.classList.remove('expanded');
-                    DOMElements.customGenHeader.setAttribute('aria-expanded', 'false');
+                    accordion.querySelector('.accordion-header')?.setAttribute('aria-expanded', 'false');
                 }
-            }
-
-            if (DOMElements.accordionToggle) {
-                DOMElements.accordionToggle.onclick = (e) => {
-                    e.stopPropagation();
-                    toggleAccordion(null);
-                };
-            }
-
-            if (DOMElements.customGenHeader) {
-                DOMElements.customGenHeader.onclick = (e) => {
-                    if (!e.target.closest('#accordion-toggle')) {
-                        toggleAccordion(e);
-                    }
-                };
-            }
+             }
         };
 
         // ====================================================================
         // GENERATION LOGIC
         // ====================================================================
 
-        const getRand = (() => {
-            let cryptoAvailable = window.crypto && window.crypto.getRandomValues;
-            if (!cryptoAvailable) {
-                console.warn("Crypto API not available. Falling back to Math.random(). This is not secure for password generation.");
-            }
-
-            return (m) => {
-                if (cryptoAvailable) {
-                    try {
-                        const r = new Uint32Array(1);
-                        window.crypto.getRandomValues(r);
-                        return r[0] % m;
-                    } catch (e) {
-                        console.error("Crypto API failed, falling back to Math.random() for this call.", e);
-                        cryptoAvailable = false;
-                    }
-                }
-                return Math.floor(Math.random() * m);
-            };
-        })();
-
-        const R = (a) => a[getRand(a.length)];
+        const R = (a) => a[SafeUI.getRandomInt(a.length)];
         const Cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
         const generatePassphrase = (config) => {
@@ -245,14 +196,14 @@ function initializePage() {
                 }
 
                 let numberBlock = [];
-                for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(getRand(10)); }
+                for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
 
                 let preliminaryLength = wordStr.length + numberBlock.length + C.passNumSymbols;
 
                 if (C.padToMin && preliminaryLength < C.minLength) {
                     const paddingNeeded = C.minLength - preliminaryLength;
                     for (let j = 0; j < paddingNeeded; j++) {
-                        numberBlock.push(getRand(10));
+                        numberBlock.push(SafeUI.getRandomInt(10));
                     }
                     preliminaryLength += paddingNeeded;
                 }
@@ -267,7 +218,7 @@ function initializePage() {
                     if (numberBlock.length > 0) { availableTypes.push('beforeNum', 'afterNum'); }
 
                     for (let k = availableTypes.length - 1; k > 0; k--) {
-                        const l = getRand(k + 1);
+                        const l = SafeUI.getRandomInt(k + 1);
                         [availableTypes[k], availableTypes[l]] = [availableTypes[l], availableTypes[k]];
                     }
                     for (let j = 0; j < C.passNumSymbols; j++) {
@@ -287,7 +238,7 @@ function initializePage() {
                 if (wordStr.length === 0) {
                     finalPass = numberPart + symbolsToUse.end;
                 } else {
-                    finalPass = (getRand(2) === 0 && numberPart.length > 0)
+                    finalPass = (SafeUI.getRandomInt(2) === 0 && numberPart.length > 0)
                         ? (numberPart + symbolsToUse.junction + wordStr)
                         : (wordStr + symbolsToUse.junction + numberPart);
                     finalPass += symbolsToUse.end;
@@ -495,9 +446,22 @@ li.className = 'result-item';
 
             renderResults();
 
+            // Auto-collapse logic when generating
             const accordion = DOMElements.customGenHeader.closest('.accordion');
             if (accordion && accordion.classList.contains('expanded')) {
-                toggleAccordion(null);
+                // Manually trigger the toggle via helper or direct class modification?
+                // The new helper logic triggers on click. Here we just want to close it.
+                // We can use the helper's pattern, or just close it directly since we know the element.
+                // But let's check if we can simulate a click on the header which now has the listener.
+                // Or better, just modify the class and save state, similar to how the helper does but programmatically.
+                // However, `UIPatterns.setupAccordion` attaches a listener. It doesn't expose a 'toggle' method externally unless we refactor.
+                // But `setupAccordion` expects user interaction.
+                // Let's just manually close it and save state, consistent with `initAccordion`.
+                accordion.classList.remove('expanded');
+                accordion.querySelector('.accordion-header')?.setAttribute('aria-expanded', 'false');
+                 try {
+                    localStorage.setItem(ACCORDION_STATE_KEY, false);
+                } catch (err) {}
             }
         };
 
@@ -522,7 +486,14 @@ li.className = 'result-item';
                         setConfigToUI(item.config);
                         const content = DOMElements.customGeneratorConfig;
                         if (content && content.classList.contains('collapsed')) {
-                            toggleAccordion(null);
+                             // We don't have a 'collapsed' class logic anymore, we use 'expanded' on parent.
+                             // If it's NOT expanded, expand it.
+                             const accordion = DOMElements.customGenHeader.closest('.accordion');
+                             if (accordion && !accordion.classList.contains('expanded')) {
+                                 accordion.classList.add('expanded');
+                                 accordion.querySelector('.accordion-header')?.setAttribute('aria-expanded', 'true');
+                                 try { localStorage.setItem(ACCORDION_STATE_KEY, true); } catch (e) {}
+                             }
                         }
                         handleGenerate({ type: 'passphrase', config: item.config });
                         SafeUI.showToast(`Generated using preset: ${item.name}`);
@@ -766,7 +737,9 @@ li.className = 'result-item';
                 input.addEventListener('focus', () => {
                     const accordion = DOMElements.customGenHeader.closest('.accordion');
                     if (accordion && !accordion.classList.contains('expanded')) {
-                        toggleAccordion(null);
+                        accordion.classList.add('expanded');
+                        accordion.querySelector('.accordion-header')?.setAttribute('aria-expanded', 'true');
+                        try { localStorage.setItem(ACCORDION_STATE_KEY, true); } catch (e) {}
                     }
                 });
             });

@@ -136,17 +136,10 @@ function initializePage() {
 
             const validateSearchUrl = (url) => {
                 if (!url) return { valid: false, message: 'URL Template cannot be empty.' };
-                if (!/\{query\}/i.test(url)) return { valid: false, message: 'The URL must contain the {query} placeholder.' };
-                try {
-                    const testUrl = url.replace(/\{query\}/ig, 'test');
-                    const urlObj = new URL(testUrl);
-                    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                        return { valid: false, message: 'URL must use http:// or https:// protocol.' };
-                    }
-                } catch (e) {
-                    return { valid: false, message: 'The URL format is invalid.' };
+                if (SafeUI.validators.urlTemplate(url)) {
+                     return { valid: true, message: '' };
                 }
-                return { valid: true, message: '' };
+                return { valid: false, message: 'Invalid URL Template. Must be a valid URL starting with http/https and contain {query}.' };
             };
 
             const getEmptyMessage = (lowerTerm) => {

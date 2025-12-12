@@ -534,24 +534,4 @@ async function init() {
 
 // MailTo uses ES modules so we need to be careful about scope,
 // but AppLifecycle should be available globally via bootstrap.
-if (typeof AppLifecycle !== 'undefined') {
-    AppLifecycle.onBootstrap(init);
-} else {
-    // Fallback if AppLifecycle isn't loaded yet (rare race condition in modules)
-    let bootstrapReady = false;
-    document.addEventListener('bootstrap:ready', () => {
-        bootstrapReady = true;
-        init();
-    });
-
-    setTimeout(() => {
-        if (!bootstrapReady) {
-            console.error('Bootstrap did not complete within 5 seconds');
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Startup Timeout</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">The application failed to load within 5 seconds. Check the browser console for errors.</p>`;
-                banner.classList.remove('hidden');
-            }
-        }
-    }, 5000);
-}
+AppLifecycle.onBootstrap(init);
