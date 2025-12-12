@@ -219,23 +219,8 @@ function initializePage() {
         // GENERATION LOGIC
         // ====================================================================
 
-        const getRand = (() => {
-            let cryptoAvailable = window.crypto && window.crypto.getRandomValues;
-            if (!cryptoAvailable) console.warn("Crypto API not available.");
-            return (m) => {
-                if (cryptoAvailable) {
-                    try {
-                        const r = new Uint32Array(1);
-                        window.crypto.getRandomValues(r);
-                        return r[0] % m;
-                    } catch (e) { cryptoAvailable = false; }
-                }
-                return Math.floor(Math.random() * m);
-            };
-        })();
-
-        const R = (a) => a[getRand(a.length)];
-        const Cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+        const R = (a) => a[SafeUI.getRandomInt(a.length)];
+        const Cap = (s) => SafeUI.capitalize(s);
 
         const generatePassphrase = (config) => {
             const C = { ...config };
@@ -314,12 +299,12 @@ function initializePage() {
                 }
 
                 let numberBlock = [];
-                for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(getRand(10)); }
+                for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
 
                 let preliminaryLength = wordStr.length + numberBlock.length + C.passNumSymbols;
                 if (C.padToMin && preliminaryLength < C.minLength) {
                     const paddingNeeded = C.minLength - preliminaryLength;
-                    for (let j = 0; j < paddingNeeded; j++) { numberBlock.push(getRand(10)); }
+                    for (let j = 0; j < paddingNeeded; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
                     preliminaryLength += paddingNeeded;
                 }
 
@@ -339,7 +324,7 @@ function initializePage() {
                     }
 
                     for (let k = availableTypes.length - 1; k > 0; k--) {
-                        const l = getRand(k + 1);
+                        const l = SafeUI.getRandomInt(k + 1);
                         [availableTypes[k], availableTypes[l]] = [availableTypes[l], availableTypes[k]];
                     }
                     for (let j = 0; j < C.passNumSymbols; j++) {
@@ -361,7 +346,7 @@ function initializePage() {
                     let placeAtStart = false;
                     if (C.passNumPlacement === 'start') placeAtStart = true;
                     else if (C.passNumPlacement === 'end') placeAtStart = false;
-                    else placeAtStart = (getRand(2) === 0);
+                    else placeAtStart = (SafeUI.getRandomInt(2) === 0);
 
                     finalPass = (placeAtStart && numberPart.length > 0)
                         ? (numberPart + symbolsToUse.junction + wordStr)
