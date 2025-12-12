@@ -92,19 +92,6 @@ function initializePage() {
             'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
         };
 
-        const TimeUtil = {
-            ...DateUtils,
-            parseShiftTimeToMinutes(timeStr) {
-                const parts = timeStr.split(':').map(Number);
-                return (parts[0] * 60) + parts[1];
-            },
-            formatMinutesToHM(totalMinutes) {
-                const h = Math.floor(totalMinutes / 60);
-                const m = Math.round(totalMinutes % 60);
-                return `${h}:${String(m).padStart(2, '0')}`;
-            }
-        };
-
         // --- 1. DASHBOARD BADGES ---
         function buildTargetCardHTML(label, valueHtml, subtext) {
             return `
@@ -143,7 +130,7 @@ function initializePage() {
                 html: buildTargetCardHTML(
                     boundary.name, 
                     `${ticketsNeeded} <span style="font-size:0.7em; font-weight:normal;">Tickets</span>`, 
-                    `Call Time: ${TimeUtil.formatMinutesToHM(estMinutes)}`
+                    `Call Time: ${DateUtils.formatMinutesToHM(estMinutes)}`
                 )
             };
         }

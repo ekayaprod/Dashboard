@@ -97,6 +97,28 @@ const UIUtils = (() => {
         };
     };
 
+    const capitalize = (str) => {
+        if (!str) return '';
+        return String(str).charAt(0).toUpperCase() + String(str).slice(1).toLowerCase();
+    };
+
+    const getRandomInt = (max) => {
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            try {
+                if (max <= 0) return 0;
+                const array = new Uint32Array(1);
+                const limit = 0xFFFFFFFF - (0xFFFFFFFF % max);
+                let r;
+                do {
+                    crypto.getRandomValues(array);
+                    r = array[0];
+                } while (r >= limit);
+                return r % max;
+            } catch (e) {}
+        }
+        return Math.floor(Math.random() * max);
+    };
+
     const copyToClipboard = async (text) => {
         if (!navigator.clipboard) {
             console.error('Clipboard API not available');
@@ -281,6 +303,8 @@ const UIUtils = (() => {
         escapeHTML,
         generateId,
         debounce,
+        capitalize,
+        getRandomInt,
         copyToClipboard,
         downloadJSON,
         openFilePicker,
@@ -314,6 +338,8 @@ const SafeUI = (() => {
         escapeHTML: (str) => UIUtils.escapeHTML(str),
         generateId: () => UIUtils.generateId(),
         debounce: (func, delay) => UIUtils.debounce(func, delay),
+        capitalize: (str) => UIUtils.capitalize(str),
+        getRandomInt: (max) => UIUtils.getRandomInt(max),
         copyToClipboard: (text) => UIUtils.copyToClipboard(text),
         downloadJSON: (data, filename, mimeType) => UIUtils.downloadJSON(data, filename, mimeType),
         openFilePicker: (cb, accept) => UIUtils.openFilePicker(cb, accept),
@@ -388,6 +414,14 @@ const DateUtils = {
         const hours = Math.floor(totalMinutes / 60);
         const minutes = Math.floor(totalMinutes % 60);
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    },
+
+    formatMinutesToHM(totalMinutes) {
+        if (isNaN(totalMinutes) || totalMinutes < 0) return '0:00';
+        const rounded = Math.round(totalMinutes);
+        const hours = Math.floor(rounded / 60);
+        const minutes = rounded % 60;
+        return `${hours}:${String(minutes).padStart(2, '0')}`;
     },
 
     formatMinutesToHHMM_Signed(totalMinutes) {
