@@ -7,7 +7,7 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '3.4.0', // Doc Update: Stats Bar & Call Time Badges
+        VERSION: '3.5.0', // Updated: Dynamic Badges, Smart Buffer, Strategy Fixes
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -103,7 +103,7 @@ function initializePage() {
             `;
         }
 
-        function getTargetCardState({ boundary, ticketsNeeded, productiveMinutesRemaining }) {
+        function getTargetCardState({ boundary, ticketsNeeded, productiveMinutesRemaining, pace }) {
             // Scenario: Goal Met
             if (ticketsNeeded <= 0) {
                 return {
@@ -121,9 +121,16 @@ function initializePage() {
             }
 
             // Scenario: In Progress
-            // We use 10 mins per ticket simply as an effort estimator (60 mins / 6 tickets)
-            // This is also the amount of "Call Time" needed to reduce the target by that many tickets.
-            const estMinutes = ticketsNeeded * 10;
+            // User Request: Call Time should be dynamic amount of minutes left to hit target.
+            // Formula: TicketsNeeded / Pace (Tickets/Min).
+            // Fallback: 10 mins/ticket (Standard Rate) if no pace established.
+
+            let estMinutes;
+            if (pace > 0) {
+                estMinutes = ticketsNeeded / pace;
+            } else {
+                estMinutes = ticketsNeeded * 10;
+            }
             
             return {
                 boxClass: 'target-warn',
@@ -137,11 +144,9 @@ function initializePage() {
 
         // --- 2. STATS BAR ---
         function renderTargetStats(data) {
-            const { totalWorkTimeEOD } = data;
+            const { totalWorkTimeEOD, isRoundedUp } = data;
             const minutesInHour = totalWorkTimeEOD % 60;
-            // Math.round(29.5) = 30 (Round Up). Math.round(29.49) = 29 (Round Down).
-            // So cutoff is 29.5.
-            const isRoundedUp = minutesInHour >= 29.5;
+
             let html = '';
 
             if (isRoundedUp) {
@@ -160,12 +165,17 @@ function initializePage() {
                 // Target: Stay < 29.5.
                 // Buffer = 29.5 - Current.
                 const buffer = Math.floor(29.5 - minutesInHour);
-                html = `
-                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
-                        <span style="color: var(--success-text); font-weight: bold;">Buffer:</span>
-                        ${buffer} min
-                    </div>
-                `;
+
+                // USER REQUEST: Only display if "taking more calls" (approaching threshold) risks increasing count.
+                // If buffer is large (e.g. > 10 mins), we are safe, so hide it to reduce noise.
+                if (buffer <= 10) {
+                    html = `
+                        <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                            <span style="color: var(--success-text); font-weight: bold;">Buffer:</span>
+                            ${buffer} min
+                        </div>
+                    `;
+                }
             }
             if (DOMElements.targetStatsBar) DOMElements.targetStatsBar.innerHTML = html;
         }
@@ -174,13 +184,14 @@ function initializePage() {
         function getStrategicAnalysis(data) {
             const { 
                 ticketsDone, ticketsPerMinRate,
-                minutesRemaining, nextGrade
+                minutesRemaining, nextGrade,
+                isRoundedUp, totalWorkTimeEOD, targetTicketGoal
             } = data;
 
-            // REMOVED STRATEGY 1: ROUNDING OPTIMIZATION (Moved to Stats Bar)
             // STRATEGY 1: ROUNDING OPTIMIZATION
+            // Matches Stats Bar logic but provides more detail.
             if (isRoundedUp) {
-                const minutesInHour = workTimeMinutes % 60; 
+                const minutesInHour = totalWorkTimeEOD % 60;
                 const adminNeeded = minutesInHour - 29;
                 
                 if (adminNeeded <= 45) {
@@ -224,14 +235,15 @@ function initializePage() {
                  };
             }
 
-            // REMOVED INFO STRATEGY: Next Tier Gap (User request: Unnecessary)
-
             // Default fallback if no specific strategy
             return null;
         }
 
         function renderCalculationInfo(scheduleData, now) {
-            const { totalWorkTimeEOD, currentTicketsSoFar, targetTicketGoal, shiftStartMinutes } = scheduleData;
+            const {
+                totalWorkTimeEOD, currentTicketsSoFar, targetTicketGoal,
+                shiftStartMinutes, isRoundedUp
+            } = scheduleData;
             
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
@@ -255,13 +267,17 @@ function initializePage() {
                 ticketsDone: currentTicketsSoFar,
                 ticketsPerMinRate: currentTicketsSoFar / minutesWorked,
                 minutesRemaining: minutesUntilPhoneClose,
-                nextGrade: nextGrade
+                nextGrade: nextGrade,
+                isRoundedUp: isRoundedUp,
+                totalWorkTimeEOD: totalWorkTimeEOD,
+                targetTicketGoal: targetTicketGoal
             });
 
             // Render Strategy Card if exists
             if (analysis) {
                 const styleMap = {
-                    'opportunity': 'strategy-warn',
+                    'optimization': 'strategy-warn',
+                    'opportunity': 'strategy-success', // Changed to success (green) for positive opportunity
                     'conservation': 'strategy-danger',
                     'warn': 'strategy-danger',
                     'info': 'strategy-normal',
@@ -327,11 +343,27 @@ function initializePage() {
             // This matches the spreadsheet's "Total Work Time"
             const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
             
+            // Rounding Logic
+            const minutesInHour = totalWorkTimeEOD % 60;
+            // Math.round(29.5) = 30 (Round Up). Math.round(29.49) = 29 (Round Down).
+            const isRoundedUp = minutesInHour >= 29.5;
+
             // This matches the spreadsheet's "MROUND(..., '1:00')" logic
             const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
             
             // This matches the spreadsheet's "* 6" logic
             const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
+
+            // Calculate Pace for Badges
+            // Pace = Tickets / Minutes Worked (Gross)
+            // Use current time relative to shift start
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTimeMinutes = currentHour * 60 + currentMinute;
+            // Ensure at least 1 min to avoid div by zero
+            const minutesWorked = Math.max(1, currentTimeMinutes - shiftStartMinutes);
+
+            const pace = currentTicketsSoFar > 0 ? (currentTicketsSoFar / minutesWorked) : 0;
 
             DOMElements.totalWorkTimeEOD.innerText = DateUtils.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
             if (DOMElements.baseTargetDisplay) DOMElements.baseTargetDisplay.innerText = targetTicketGoal;
@@ -345,7 +377,8 @@ function initializePage() {
                 const { boxClass, html } = getTargetCardState({
                     boundary,
                     ticketsNeeded,
-                    productiveMinutesRemaining
+                    productiveMinutesRemaining,
+                    pace
                 });
                 
                 targetBox.className = `target-card ${boxClass}`;
@@ -353,13 +386,14 @@ function initializePage() {
                 DOMElements.targetsGrid.appendChild(targetBox);
             }
 
-            renderTargetStats({ totalWorkTimeEOD });
+            renderTargetStats({ totalWorkTimeEOD, isRoundedUp });
 
             renderCalculationInfo({
                 totalWorkTimeEOD,
                 currentTicketsSoFar,
                 targetTicketGoal,
-                shiftStartMinutes
+                shiftStartMinutes,
+                isRoundedUp
             }, now);
         }
 
