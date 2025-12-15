@@ -7,43 +7,23 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '3.5.0', // Updated: Dynamic Badges, Smart Buffer, Strategy Fixes
+        VERSION: '3.8.0', // Updated: Dual-Path Badges (Tickets OR Call Time)
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
 
     /**
      * ============================================================================
-     * ORIGINAL SPREADSHEET FORMULAS (SOURCE OF TRUTH)
+     * FORMULA LOGIC
      * ============================================================================
-     *
-     * CONTEXT:
-     * - B1: PTO (*half day)
-     * - B2: Daily Task (Phones vs On/Off)
-     * - B3: Tickets Closed
-     * - B5: Total Call Time (Duration)
-     * - B7: NEDSS (Extra credit tasks, assumed 0 in this app)
-     * - B8: Total Work Time (Calculated)
-     *
-     * 1. TOTAL WORK TIME (The Base):
-     * Formula: =IF(B1="*half day", TIME(3,0,0)-B5, IF(B2="OoO","OoO", TIME(6,0,0)-B5))
-     * JS Logic: Calculated dynamically.
-     * (Shift Duration - Break) * (6/7) - Call Time.
-     * This effectively reverses the implicit 7h->6h leeway seen in the static "TIME(6,0,0)" constant.
-     *
-     * 2. DAILY WORK RATING (The Target):
-     * Formula: =IF(B3+B7 >= HOUR(MROUND(B8,"1:00")) * 6 + 7, "Outstanding", ...)
-     *
-     * Breakdown:
-     * - Metric: B3 + B7 (Tickets + NEDSS)
-     * - Base:   HOUR(MROUND(B8, "1:00")) -> Rounds Net Work Time to nearest Hour.
-     * - Mult:   * 6 (Standard Phones multiplier).
-     * - Graded:
-     * - Outstanding:       >= (Base * 6) + 7
-     * - Excellent:         >= (Base * 6) + 4
-     * - Satisfactory:      >= (Base * 6) - 3
-     * - Needs Improvement: >= (Base * 6) - 6
-     *
+     * Target Formula: 
+     * NetWorkTime = TotalProductiveMinutes - CallTime
+     * RoundedHours = Round(NetWorkTime / 60)
+     * TargetTickets = RoundedHours * 6
+     * * Grade Thresholds:
+     * Outstanding: Tickets >= Target + 7
+     * Excellent:   Tickets >= Target + 4
+     * Satisfactory: Tickets >= Target - 3
      * ============================================================================
      */
 
@@ -80,218 +60,188 @@ function initializePage() {
 
         // --- CONSTANTS ---
         const CONSTANTS = {
-            TICKETS_PER_HOUR_RATE: 6, // Matches "Daily Work Rating" * 6 multiplier
+            TICKETS_PER_HOUR_RATE: 6,
             PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 15:30
-            LEEWAY_RATIO: 1 / 7 // Aligns with the 6h base from 7h work time
+            LEEWAY_RATIO: 1 / 7
         };
 
         const gradeBoundaries = {
-            // Matches spreadsheet offsets: Target + 7, + 4, - 3
             'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
             'Excellent': { name: 'Excellent', min: 4, max: 6 },
             'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
         };
 
-        // --- 1. DASHBOARD BADGES ---
-        function buildTargetCardHTML(label, valueHtml, subtext) {
+        // --- 1. CORE LOGIC: REQUIRED CALL TIME ---
+        
+        /**
+         * Calculates how much additional Call Time is needed to drop the target 
+         * such that the CURRENT ticket count satisfies the grade requirement.
+         */
+        function calculateAdditionalCallTimeNeeded(totalProductiveMinutes, currentTickets, offset, currentCallTime) {
+            // Logic:
+            // We need: CurrentTickets >= (Round((Prod - TotalCallTime)/60) * 6) + Offset
+            // (CurrentTickets - Offset) / 6 >= Round((Prod - TotalCallTime)/60)
+            
+            // Let MaxRoundedHours be the maximum rounded work hours we can afford.
+            // MaxRoundedHours = floor((CurrentTickets - Offset) / 6)
+            const maxRoundedHours = Math.floor((currentTickets - offset) / 6);
+
+            // If MaxRoundedHours < 0, it means even 0 work hours (Target 0) isn't enough.
+            // e.g. 0 Tickets, Offset 7. Need -7 tickets. Impossible.
+            if (maxRoundedHours < 0) return Infinity;
+
+            // We need: Round((Prod - TotalCallTime)/60) <= MaxRoundedHours
+            // Threshold for Round(X) <= K is X < K + 0.5
+            // (Prod - TotalCallTime)/60 < MaxRoundedHours + 0.5
+            // Prod - TotalCallTime < 60 * MaxRoundedHours + 30
+            // TotalCallTime > Prod - 60 * MaxRoundedHours - 30
+            
+            // Minimum Integer Total Call Time:
+            const requiredTotalCallTime = Math.floor(totalProductiveMinutes - (60 * maxRoundedHours) - 30) + 1;
+            
+            // Additional needed:
+            const additional = requiredTotalCallTime - currentCallTime;
+            
+            // If additional is negative, we already have enough call time.
+            return Math.max(0, additional);
+        }
+
+        // --- 2. DASHBOARD BADGES ---
+
+        function buildTargetCardHTML(label, ticketText, callTimeText, isMet) {
+            if (isMet) {
+                return `
+                <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap: 4px;">
+                    <span class="target-label" style="font-weight:700;">${label}</span>
+                    <span style="font-size:1.5rem; line-height:1;">✓</span>
+                    <span style="font-size:0.8rem; opacity:0.9;">Met</span>
+                </div>
+                `;
+            }
+
             return `
-                <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap: 2px;">
+                <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap: 1px;">
                     <span class="target-label">${label}</span>
-                    <span class="target-value" style="line-height:1.1;">${valueHtml}</span>
-                    <span class="target-desc" style="font-size:0.75rem; opacity:0.9;">${subtext}</span>
+                    
+                    <!-- Path 1: Tickets -->
+                    <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
+                        <span class="target-value" style="font-size:1.1rem;">${ticketText}</span>
+                        <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">Tickets Needed</span>
+                    </div>
+
+                    <!-- Divider -->
+                    <div style="font-size:0.6rem; opacity:0.5; text-align:center; margin:1px 0;">— OR —</div>
+
+                    <!-- Path 2: Call Time -->
+                    <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
+                         <span class="target-value" style="font-size:1.0rem; color:var(--primary-color);">${callTimeText}</span>
+                         <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">Call Time</span>
+                    </div>
                 </div>
             `;
         }
 
-        function getTargetCardState({ boundary, ticketsNeeded, productiveMinutesRemaining, pace }) {
-            // Scenario: Goal Met
+        function getTargetCardState(params) {
+            const { boundary, ticketsNeeded, totalProductiveMinutes, currentTickets, currentCallTime } = params;
+
+            // Check if goal is met by EITHER path
+            // (Actually, if ticketsNeeded <= 0, it implies the standard path is met. 
+            // The call time path essentially forces ticketsNeeded to become <= 0).
             if (ticketsNeeded <= 0) {
                 return {
                     boxClass: 'target-good',
-                    html: buildTargetCardHTML(boundary.name, "✓", "Met")
+                    html: buildTargetCardHTML(boundary.name, "", "", true)
                 };
             }
 
-            // Scenario: Time Up
-            if (productiveMinutesRemaining <= 0) {
-                 return {
-                    boxClass: 'target-danger',
-                    html: buildTargetCardHTML(boundary.name, `${ticketsNeeded} Short`, "Time Up")
-                };
-            }
+            // Calculate Alternative Path: Call Time
+            const additionalCallTime = calculateAdditionalCallTimeNeeded(
+                totalProductiveMinutes, 
+                currentTickets, 
+                boundary.min, 
+                currentCallTime
+            );
 
-            // Scenario: In Progress
-            // User Request: Call Time should be dynamic amount of minutes left to hit target.
-            // Formula: TicketsNeeded / Pace (Tickets/Min).
-            // Fallback: 10 mins/ticket (Standard Rate) if no pace established.
-
-            let estMinutes;
-            if (pace > 0) {
-                estMinutes = ticketsNeeded / pace;
+            let callTimeDisplay;
+            if (additionalCallTime === Infinity) {
+                callTimeDisplay = "N/A";
+            } else if (additionalCallTime > 480) { // More than 8 hours
+                callTimeDisplay = "> Shift";
             } else {
-                estMinutes = ticketsNeeded * 10;
+                callTimeDisplay = `Add ${additionalCallTime}m`;
             }
-            
+
             return {
                 boxClass: 'target-warn',
                 html: buildTargetCardHTML(
                     boundary.name, 
-                    `${ticketsNeeded} <span style="font-size:0.7em; font-weight:normal;">Tickets</span>`, 
-                    `Call Time: ${DateUtils.formatMinutesToHM(estMinutes)}`
+                    `${ticketsNeeded}`, 
+                    callTimeDisplay, 
+                    false
                 )
             };
         }
 
-        // --- 2. STATS BAR ---
+        // --- 3. STATS BAR (BUFFER) ---
         function renderTargetStats(data) {
-            const { totalWorkTimeEOD, isRoundedUp } = data;
-            const minutesInHour = totalWorkTimeEOD % 60;
-
+            const { isRoundedUp, minutesInHour } = data;
+            
             let html = '';
 
+            // BUFFER LOGIC:
+            // Threshold is XX:30.
+            // If minutes < 30: We are in "Low Target" mode. Buffer is time until 30.
+            // If minutes >= 30: We are in "High Target" mode. No buffer (already crossed).
+
             if (isRoundedUp) {
-                // Round Up (Target High) -> Suggest Adding Call Time (Admin) to reduce Work Time.
-                // Target: Reach < 29.5.
-                // Minutes to add = Current - 29.
-                const adminNeeded = Math.ceil(minutesInHour - 29);
+                // We are already High. Suggest reducing.
+                const reduceNeeded = Math.ceil(minutesInHour - 29);
                 html = `
-                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
-                        <span style="color: var(--warning-text); font-weight: bold;">Reduce Goal:</span>
-                        Add <strong>${adminNeeded} min</strong> Call Time
+                    <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                        <span style="color: var(--warning-text); font-weight: bold;">Target Elevated (+6 Tickets)</span><br>
+                        Add <strong>${reduceNeeded} min</strong> Call Time to drop back
                     </div>
                 `;
             } else {
-                // Round Down (Target Low) -> Show Buffer (How much Work Time can be added / Call Time removed).
-                // Target: Stay < 29.5.
-                // Buffer = 29.5 - Current.
-                const buffer = Math.floor(29.5 - minutesInHour);
+                // We are Low. Show Safe Zone.
+                const buffer = Math.floor(30 - minutesInHour);
+                let colorClass = 'var(--success-text)';
+                
+                if (buffer <= 10) colorClass = 'var(--warning-text)'; // Warning color if close
 
-                // USER REQUEST: Only display if "taking more calls" (approaching threshold) risks increasing count.
-                // If buffer is large (e.g. > 10 mins), we are safe, so hide it to reduce noise.
-                if (buffer <= 10) {
-                    html = `
-                        <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
-                            <span style="color: var(--success-text); font-weight: bold;">Buffer:</span>
-                            ${buffer} min
-                        </div>
-                    `;
-                }
+                html = `
+                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                        <span style="color: ${colorClass}; font-weight: bold;">Safe Zone:</span>
+                        <strong>${buffer} min</strong> until Target +6
+                    </div>
+                `;
             }
             if (DOMElements.targetStatsBar) DOMElements.targetStatsBar.innerHTML = html;
         }
 
-        // --- 3. STRATEGY ENGINE ---
-        function getStrategicAnalysis(data) {
-            const { 
-                ticketsDone, ticketsPerMinRate,
-                minutesRemaining, nextGrade,
-                isRoundedUp, totalWorkTimeEOD, targetTicketGoal
-            } = data;
+        // --- 4. STRATEGY ENGINE ---
+        function renderCalculationInfo(scheduleData, now) {
+            // (Simplified strategy engine focusing on the immediate buffer/opportunity)
+            const { minutesInHour, isRoundedUp } = scheduleData;
 
-            // STRATEGY 1: ROUNDING OPTIMIZATION
-            // Matches Stats Bar logic but provides more detail.
-            if (isRoundedUp) {
-                const minutesInHour = totalWorkTimeEOD % 60;
-                const adminNeeded = minutesInHour - 29;
-                
-                if (adminNeeded <= 45) {
-                    return {
-                        type: 'optimization',
-                        title: '📉 Reduce Goal',
-                        text: `Your Net Work Time rounds <strong>UP</strong>. Add <strong>${Math.ceil(adminNeeded)} min</strong> to Call Time to drop the target by 6 tickets.`,
-                        sub: `Current Goal: ${targetTicketGoal} → New Goal: ${targetTicketGoal - 6}`
-                    };
-                }
-            }
+            // Only show Strategy Card if there is a specific actionable insight beyond the stats bar
+            // e.g., "Optimization Opportunity"
+            
+            let analysis = null;
 
-            // STRATEGY 2: OPPORTUNITY ANALYSIS
-            if (minutesRemaining > 0 && minutesRemaining < 90 && nextGrade) {
-                const ticketsNeeded = nextGrade.val - ticketsDone;
-                
-                if (ticketsNeeded <= 5 && ticketsNeeded > 0) {
-                    return {
-                        type: 'opportunity',
-                        title: `🎯 ${nextGrade.name} is Reachable`,
-                        text: `<strong>${ticketsNeeded} tickets</strong> needed in ${minutesRemaining} mins.`
-                    };
-                }
-                
-                const minsPerTicketNeeded = minutesRemaining / ticketsNeeded;
-                if (minsPerTicketNeeded < 8) {
-                    return {
-                        type: 'conservation',
-                        title: '🛡️ Status Secured',
-                        text: `Reaching ${nextGrade.name} is unlikely given the time remaining. Recommendation: Save completed tickets for tomorrow.`
-                    };
-                }
-            }
-
-            // STRATEGY 3: PACE ANALYSIS (Rate Check)
-            if (minutesRemaining >= 90 && ticketsPerMinRate > 0 && ticketsPerMinRate < 0.08) {
-                 return {
-                     type: 'warn',
-                     title: '⚠️ Pace Alert',
-                     text: `Current pace is below the 6 tickets/hr requirement. Target is increasing faster than completions.`
+            if (isRoundedUp && (minutesInHour - 29) <= 20) {
+                 analysis = {
+                    type: 'optimization',
+                    title: '📉 Easy Win',
+                    text: `You are only <strong>${Math.ceil(minutesInHour - 29)} min</strong> over the threshold. Adding this small amount of Call Time will lower your ticket goal by 6.`
                  };
             }
 
-            // Default fallback if no specific strategy
-            return null;
-        }
-
-        function renderCalculationInfo(scheduleData, now) {
-            const {
-                totalWorkTimeEOD, currentTicketsSoFar, targetTicketGoal,
-                shiftStartMinutes, isRoundedUp
-            } = scheduleData;
-            
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
-            const currentTimeMinutes = currentHour * 60 + currentMinute;
-            const effectivePhoneCloseMinutes = Math.min(
-                DateUtils.parseTimeToMinutes(DOMElements.shiftEnd.value),
-                CONSTANTS.PHONE_CLOSE_MINUTES
-            );
-            
-            const minutesUntilPhoneClose = effectivePhoneCloseMinutes - currentTimeMinutes;
-            const minutesWorked = Math.max(1, currentTimeMinutes - shiftStartMinutes);
-
-            const grades = [
-                { name: 'Satisfactory', val: targetTicketGoal + gradeBoundaries.Satisfactory.min },
-                { name: 'Excellent', val: targetTicketGoal + gradeBoundaries.Excellent.min },
-                { name: 'Outstanding', val: targetTicketGoal + gradeBoundaries.Outstanding.min }
-            ].sort((a,b) => a.val - b.val);
-            const nextGrade = grades.find(g => g.val > currentTicketsSoFar);
-
-            const analysis = getStrategicAnalysis({
-                ticketsDone: currentTicketsSoFar,
-                ticketsPerMinRate: currentTicketsSoFar / minutesWorked,
-                minutesRemaining: minutesUntilPhoneClose,
-                nextGrade: nextGrade,
-                isRoundedUp: isRoundedUp,
-                totalWorkTimeEOD: totalWorkTimeEOD,
-                targetTicketGoal: targetTicketGoal
-            });
-
-            // Render Strategy Card if exists
             if (analysis) {
-                const styleMap = {
-                    'optimization': 'strategy-warn',
-                    'opportunity': 'strategy-success', // Changed to success (green) for positive opportunity
-                    'conservation': 'strategy-danger',
-                    'warn': 'strategy-danger',
-                    'info': 'strategy-normal',
-                    'success': 'strategy-success'
-                };
-
-                const cardClass = styleMap[analysis.type] || '';
-                const borderStyle = cardClass ? '' : 'border-left: 3px solid var(--border-color);';
-
-                const html = `
-                    <div class="strategy-card ${cardClass}" style="margin:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); ${borderStyle}">
+                 const html = `
+                    <div class="strategy-card strategy-success" style="margin:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                         <div class="strategy-title">${analysis.title}</div>
                         <div class="strategy-text">${analysis.text}</div>
-                        ${analysis.sub ? `<div style="font-size:0.75rem; margin-top:4px; opacity:0.8; border-top:1px solid rgba(0,0,0,0.1); padding-top:2px;">${analysis.sub}</div>` : ''}
                     </div>
                 `;
                 DOMElements.calcInfoContent.innerHTML = html;
@@ -314,23 +264,15 @@ function initializePage() {
             const leeway = postBreak * CONSTANTS.LEEWAY_RATIO;
             const totalProductiveMinutes = postBreak - leeway;
 
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
-            const minutesPassed = Math.max(0, Math.min(totalShiftMinutes, currentMinutes - startMinutes));
-            
-            const ratio = totalShiftMinutes > 0 ? minutesPassed / totalShiftMinutes : 0;
-            const productiveMinutesPassed = totalProductiveMinutes * ratio;
-            const productiveMinutesRemaining = totalProductiveMinutes - productiveMinutesPassed;
-
             return {
                 totalProductiveMinutes,
-                productiveMinutesRemaining,
                 shiftStartMinutes: startMinutes
             };
         }
 
         function calculateDailyRatings() {
             const now = (window.APP_TIME_TRAVEL_DATE) ? new Date(window.APP_TIME_TRAVEL_DATE) : new Date();
-            const { totalProductiveMinutes, productiveMinutesRemaining, shiftStartMinutes, error } = getScheduleInfo(now);
+            const { totalProductiveMinutes, shiftStartMinutes, error } = getScheduleInfo(now);
 
             if (error || totalProductiveMinutes <= 0) {
                  DOMElements.targetsGrid.innerHTML = `<div class="info-box info-box-danger" style="grid-column:1/-1">${error || "Invalid Config"}</div>`;
@@ -343,27 +285,13 @@ function initializePage() {
             // This matches the spreadsheet's "Total Work Time"
             const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
             
-            // Rounding Logic
+            // Rounding Logic: .5 rounds UP in spreadsheet MROUND/Round logic usually.
             const minutesInHour = totalWorkTimeEOD % 60;
-            // Math.round(29.5) = 30 (Round Up). Math.round(29.49) = 29 (Round Down).
-            const isRoundedUp = minutesInHour >= 29.5;
+            const isRoundedUp = minutesInHour >= 30; // STRICT THRESHOLD
 
-            // This matches the spreadsheet's "MROUND(..., '1:00')" logic
+            // Calculate Target
             const roundedWorkHours = Math.round(totalWorkTimeEOD / 60);
-            
-            // This matches the spreadsheet's "* 6" logic
             const targetTicketGoal = roundedWorkHours * CONSTANTS.TICKETS_PER_HOUR_RATE;
-
-            // Calculate Pace for Badges
-            // Pace = Tickets / Minutes Worked (Gross)
-            // Use current time relative to shift start
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
-            const currentTimeMinutes = currentHour * 60 + currentMinute;
-            // Ensure at least 1 min to avoid div by zero
-            const minutesWorked = Math.max(1, currentTimeMinutes - shiftStartMinutes);
-
-            const pace = currentTicketsSoFar > 0 ? (currentTicketsSoFar / minutesWorked) : 0;
 
             DOMElements.totalWorkTimeEOD.innerText = DateUtils.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
             if (DOMElements.baseTargetDisplay) DOMElements.baseTargetDisplay.innerText = targetTicketGoal;
@@ -377,8 +305,9 @@ function initializePage() {
                 const { boxClass, html } = getTargetCardState({
                     boundary,
                     ticketsNeeded,
-                    productiveMinutesRemaining,
-                    pace
+                    totalProductiveMinutes,
+                    currentTickets: currentTicketsSoFar,
+                    currentCallTime: currentCallTimeSoFar
                 });
                 
                 targetBox.className = `target-card ${boxClass}`;
@@ -386,15 +315,8 @@ function initializePage() {
                 DOMElements.targetsGrid.appendChild(targetBox);
             }
 
-            renderTargetStats({ totalWorkTimeEOD, isRoundedUp });
-
-            renderCalculationInfo({
-                totalWorkTimeEOD,
-                currentTicketsSoFar,
-                targetTicketGoal,
-                shiftStartMinutes,
-                isRoundedUp
-            }, now);
+            renderTargetStats({ totalWorkTimeEOD, isRoundedUp, minutesInHour });
+            renderCalculationInfo({ minutesInHour, isRoundedUp }, now);
         }
 
         // --- EVENT LISTENERS ---
