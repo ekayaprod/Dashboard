@@ -502,7 +502,7 @@ textarea.form-control {
 .list-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 #upload-wrapper {
-    padding: 1rem; border: 2px dashed var(--border-color);
+    padding: 0.5rem; border: 2px dashed var(--border-color);
     border-radius: var(--border-radius); text-align: center;
     background-color: var(--info-bg); position: relative;
     transition: border-color 0.2s;
@@ -690,4 +690,44 @@ textarea.form-control {
     .compact-grid-row {
         grid-template-columns: 1fr auto; /* Keep row structure for inputs with buttons */
     }
+}
+
+/* MailTo Page Layout Overrides */
+.mailto-page .app-container {
+    overflow: hidden;
+}
+.mailto-page .main-content {
+    overflow: hidden;
+}
+.mailto-page #editor-section.expanded {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.mailto-page #editor-section.expanded .accordion-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+.mailto-page .editor-container {
+    overflow-y: hidden; /* Changed to hidden so internal scroll works */
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+    padding-bottom: 0.5rem;
+}
+.mailto-page .form-group.body-group {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.mailto-page .body-input {
+    flex-grow: 1;
+    height: 100%;
+    resize: none; /* Disable manual resize as it fills space */
 }
