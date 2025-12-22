@@ -43,6 +43,23 @@
             font-size: 0.75rem;
             color: var(--subtle-text);
         }
+        
+        /* High Contrast Overrides for Target Badges */
+        .target-card.target-warn .target-alt-metric,
+        .target-card.target-danger .target-alt-metric {
+            color: #ffffff !important;
+            font-weight: 600;
+            background-color: rgba(0,0,0,0.2);
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+        
+        /* Dark Mode adjustments for the Safe Zone bar */
+        @media (prefers-color-scheme: dark) {
+            #target-stats-bar div {
+                background: rgba(255, 255, 255, 0.1) !important;
+            }
+        }
     </style>
 </head>
 <body class="eod-targets-page">
