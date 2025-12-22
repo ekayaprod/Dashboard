@@ -7,7 +7,7 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '3.8.1', // Updated: Safe Zone Logic & Contrast Fixes
+        VERSION: '3.8.2', // Updated: Safe Zone Countdown & Terminology
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -57,6 +57,10 @@ function initializePage() {
         if (!ctx) return;
 
         const { elements: DOMElements, state, saveState } = ctx;
+        
+        // Fix Label Reference (removing "Admin" from UI if present)
+        const callLabel = document.querySelector('label[for="currentCallTime"]');
+        if (callLabel) callLabel.innerText = "Call Time";
 
         // --- CONSTANTS ---
         const CONSTANTS = {
@@ -118,7 +122,7 @@ function initializePage() {
                 `;
             }
 
-            // Note: target-alt-metric class is used for high-contrast overrides in CSS
+            // Note: target-alt-metric class is used for high-contrast overrides in CSS (White Text)
             return `
                 <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap: 1px;">
                     <span class="target-label">${label}</span>
@@ -187,10 +191,11 @@ function initializePage() {
 
             // BUFFER LOGIC:
             // Threshold is XX:30.
-            // If minutes < 30: We are in "Safe Zone" (Low Target).
-            // Count down distance to 30.
+            
             if (isRoundedUp) {
-                // We are already High. Suggest reducing.
+                // Scenario: Net Work Time is XX:30 or greater.
+                // Rounding has pushed the target UP.
+                // Action: Add Call Time to reduce Net Work Time below XX:30.
                 const reduceNeeded = Math.ceil(minutesInHour - 29);
                 html = `
                     <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
@@ -199,9 +204,9 @@ function initializePage() {
                     </div>
                 `;
             } else {
-                // We are Low. Show countdown to High.
-                // 30 - 29 = 1 min left.
-                // 30 - 0 = 30 mins left.
+                // Scenario: Net Work Time is XX:00 to XX:29.
+                // Target is currently Lower.
+                // Countdown: How many minutes of WORK remaining until we hit XX:30 and target jumps?
                 const buffer = Math.floor(30 - minutesInHour);
                 
                 // Color logic: Green when plenty of time, Red when close to 0
@@ -212,7 +217,7 @@ function initializePage() {
                 html = `
                     <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 6px; background: rgba(0,0,0,0.05); border-radius: 4px;">
                         <span style="${colorStyle} font-weight: bold; font-size: 1.1rem;">${buffer} min</span><br>
-                        <span style="font-size: 0.75rem; opacity: 0.8;">until Target Increases (+6)</span>
+                        <span style="font-size: 0.75rem; opacity: 0.8;">work time until Target Increases (+6)</span>
                     </div>
                 `;
             }
