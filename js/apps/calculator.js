@@ -7,7 +7,7 @@ AppLifecycle.onBootstrap(initializePage);
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
-        VERSION: '3.8.0', // Updated: Dual-Path Badges (Tickets OR Call Time)
+        VERSION: '3.8.1', // Updated: Safe Zone Logic & Contrast Fixes
         DATA_KEY: 'eod_targets_state_v1',
         IMPORT_KEY: 'eod_targets_import_minutes'
     };
@@ -87,7 +87,6 @@ function initializePage() {
             const maxRoundedHours = Math.floor((currentTickets - offset) / 6);
 
             // If MaxRoundedHours < 0, it means even 0 work hours (Target 0) isn't enough.
-            // e.g. 0 Tickets, Offset 7. Need -7 tickets. Impossible.
             if (maxRoundedHours < 0) return Infinity;
 
             // We need: Round((Prod - TotalCallTime)/60) <= MaxRoundedHours
@@ -119,6 +118,7 @@ function initializePage() {
                 `;
             }
 
+            // Note: target-alt-metric class is used for high-contrast overrides in CSS
             return `
                 <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap: 1px;">
                     <span class="target-label">${label}</span>
@@ -134,7 +134,7 @@ function initializePage() {
 
                     <!-- Path 2: Call Time -->
                     <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
-                         <span class="target-value" style="font-size:1.0rem; color:var(--primary-color);">${callTimeText}</span>
+                         <span class="target-value target-alt-metric" style="font-size:1.0rem;">${callTimeText}</span>
                          <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">Call Time</span>
                     </div>
                 </div>
@@ -144,9 +144,6 @@ function initializePage() {
         function getTargetCardState(params) {
             const { boundary, ticketsNeeded, totalProductiveMinutes, currentTickets, currentCallTime } = params;
 
-            // Check if goal is met by EITHER path
-            // (Actually, if ticketsNeeded <= 0, it implies the standard path is met. 
-            // The call time path essentially forces ticketsNeeded to become <= 0).
             if (ticketsNeeded <= 0) {
                 return {
                     boxClass: 'target-good',
@@ -165,7 +162,7 @@ function initializePage() {
             let callTimeDisplay;
             if (additionalCallTime === Infinity) {
                 callTimeDisplay = "N/A";
-            } else if (additionalCallTime > 480) { // More than 8 hours
+            } else if (additionalCallTime > 480) {
                 callTimeDisplay = "> Shift";
             } else {
                 callTimeDisplay = `Add ${additionalCallTime}m`;
@@ -190,9 +187,8 @@ function initializePage() {
 
             // BUFFER LOGIC:
             // Threshold is XX:30.
-            // If minutes < 30: We are in "Low Target" mode. Buffer is time until 30.
-            // If minutes >= 30: We are in "High Target" mode. No buffer (already crossed).
-
+            // If minutes < 30: We are in "Safe Zone" (Low Target).
+            // Count down distance to 30.
             if (isRoundedUp) {
                 // We are already High. Suggest reducing.
                 const reduceNeeded = Math.ceil(minutesInHour - 29);
@@ -203,16 +199,20 @@ function initializePage() {
                     </div>
                 `;
             } else {
-                // We are Low. Show Safe Zone.
+                // We are Low. Show countdown to High.
+                // 30 - 29 = 1 min left.
+                // 30 - 0 = 30 mins left.
                 const buffer = Math.floor(30 - minutesInHour);
-                let colorClass = 'var(--success-text)';
                 
-                if (buffer <= 10) colorClass = 'var(--warning-text)'; // Warning color if close
+                // Color logic: Green when plenty of time, Red when close to 0
+                let colorStyle = 'color: var(--success-text);';
+                if (buffer <= 5) colorStyle = 'color: var(--danger-color);'; 
+                else if (buffer <= 10) colorStyle = 'color: var(--warning-text);';
 
                 html = `
-                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
-                        <span style="color: ${colorClass}; font-weight: bold;">Safe Zone:</span>
-                        <strong>${buffer} min</strong> until Target +6
+                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 6px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                        <span style="${colorStyle} font-weight: bold; font-size: 1.1rem;">${buffer} min</span><br>
+                        <span style="font-size: 0.75rem; opacity: 0.8;">until Target Increases (+6)</span>
                     </div>
                 `;
             }
@@ -221,11 +221,7 @@ function initializePage() {
 
         // --- 4. STRATEGY ENGINE ---
         function renderCalculationInfo(scheduleData, now) {
-            // (Simplified strategy engine focusing on the immediate buffer/opportunity)
             const { minutesInHour, isRoundedUp } = scheduleData;
-
-            // Only show Strategy Card if there is a specific actionable insight beyond the stats bar
-            // e.g., "Optimization Opportunity"
             
             let analysis = null;
 
@@ -285,7 +281,7 @@ function initializePage() {
             // This matches the spreadsheet's "Total Work Time"
             const totalWorkTimeEOD = totalProductiveMinutes - currentCallTimeSoFar;
             
-            // Rounding Logic: .5 rounds UP in spreadsheet MROUND/Round logic usually.
+            // Rounding Logic: .5 rounds UP
             const minutesInHour = totalWorkTimeEOD % 60;
             const isRoundedUp = minutesInHour >= 30; // STRICT THRESHOLD
 
