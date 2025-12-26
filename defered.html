@@ -2,187 +2,241 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Delayed Clicker v2 (Optimized)</title>
+    <title>Delayed Clicker V3 (Safe Mode)</title>
     <style>
-        body { font-family: system-ui, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .card { background: #222; border: 1px solid #333; padding: 2rem; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         h1 { margin: 0 0 1rem; color: #fff; }
-        .bookmarklet { display: inline-block; background: #0078d4; color: white; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 6px; cursor: grab; border: 2px solid #4db0f7; }
+        .bookmarklet { display: inline-block; background: #2ea44f; color: white; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 6px; cursor: grab; border: 1px solid #3f3f3f; transition: transform 0.1s; }
+        .bookmarklet:hover { background: #2c974b; transform: scale(1.05); }
         .bookmarklet:active { cursor: grabbing; }
-        .note { margin-top: 1.5rem; color: #888; font-size: 0.9rem; }
-        code { color: #f7b731; }
+        .note { margin-top: 1.5rem; color: #aaa; font-size: 0.85rem; line-height: 1.5; }
+        code { color: #f7b731; background: #333; padding: 2px 4px; border-radius: 3px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1>⏱️ Delayed Clicker v2</h1>
-    <p>Drag the button below to your Edge Favorites bar.</p>
+    <h1>✅ Delayed Clicker V3</h1>
+    <p>Fixed syntax error by preserving code structure.</p>
     
     <div style="margin: 2rem 0;">
-        <a id="bkmk" href="#" class="bookmarklet">⏳ Timer Click</a>
+        <a id="bkmk" href="#" class="bookmarklet">⏱️ Timer Click (Safe)</a>
     </div>
 
     <div class="note">
-        <strong>Stats:</strong> Payload condensed to <span id="size">...</span> bytes.<br>
-        Safe for sync and legacy limits.
+        <strong>Instructions:</strong><br>
+        1. Drag the green button to your Favorites Bar.<br>
+        2. Go to your target website.<br>
+        3. Click the bookmarklet to run.
     </div>
 </div>
 
 <script>
-    // This is the "True Minified" source. 
-    // I have manually renamed variables and stripped logic to the bare metal 
-    // while keeping the Shadow DOM and React-compatible event firing.
+    /* V3 UPDATE: 
+       Removed aggressive whitespace stripping. 
+       We now encode the string exactly as is to prevent syntax errors.
+    */
     
-    const code = `
-    (function(){
-        /* Idempotency check */
-        if(window._dc) return window._dc();
-        
-        let w=window, d=document, root, shadow, tEl, tVal, timer;
-        
-        /* Helper: Create Element */
-        const c=(t,p,i,k)=>{
-            let e=d.createElement(t);
-            if(i)e.id=i;
-            if(k)e.className=k;
-            if(p)p.appendChild(e);
-            return e;
-        };
-        
-        /* Helper: Dispatch Events (React/Angular friendly) */
-        const fire=(e,type)=>{
-            if(type==='s'){
-                e.value=tVal;
-                e.dispatchEvent(new Event('input',{bubbles:1}));
-                e.dispatchEvent(new Event('change',{bubbles:1}));
-            }else{
-                ['mousedown','mouseup','click'].forEach(evt=>{
-                    e.dispatchEvent(new MouseEvent(evt,{view:w,bubbles:1,cancelable:1}));
-                });
-            }
-        };
+    const source = `(function(){
+    /* Singleton Check */
+    if(window.dc_instance) { 
+        window.dc_instance.toggle(); 
+        return; 
+    }
 
-        /* Main Logic */
-        window._dc = function() {
-            if(d.getElementById('dc-r')){
-                let r=d.getElementById('dc-r');
-                r.style.display = r.style.display==='none'?'block':'none';
-                return;
-            }
-
-            /* UI Injection */
-            root = c('div',d.body,'dc-r');
-            root.style.cssText='position:fixed;top:10px;right:10px;z-index:9999999';
-            shadow = root.attachShadow({mode:'open'});
-            
-            shadow.innerHTML = \`
-            <style>
-                div{box-sizing:border-box;font-family:sans-serif}
-                .b{background:#222;color:#fff;padding:12px;width:260px;border-radius:6px;box-shadow:0 4px 12px #000;border:1px solid #444;font-size:13px}
-                button{width:100%;padding:6px;margin-top:6px;cursor:pointer;background:#0078d4;color:#fff;border:none;border-radius:3px}
-                input{width:100%;padding:5px;background:#333;color:#fff;border:1px solid #555;margin-top:4px}
-                .h{display:none} .r{display:flex;justify-content:space-between;margin-bottom:8px}
-            </style>
-            <div class="b">
-                <div class="r"><b>DelayClick</b><span id="x" style="cursor:pointer">✕</span></div>
-                <div id="p1">
-                    <button id="pk">🎯 Pick Target</button>
-                    <div id="so" class="h"><select id="sd" style="width:100%;margin-top:5px;background:#333;color:#fff"></select></div>
-                    <div style="margin-top:8px">Mins: <input type="number" id="mn" value="30"></div>
-                    <button id="go" disabled>Start</button>
-                </div>
-                <div id="p2" class="h">
-                    <div id="tm" style="font-size:20px;text-align:center;color:#4af;margin:10px 0"></div>
-                    <button id="cn" style="background:#d33">Cancel</button>
-                </div>
-            </div>\`;
-
-            const q=s=>shadow.querySelector(s);
-            
-            /* Bind UI */
-            q('#x').onclick=()=>root.remove();
-            
-            /* Picker */
-            q('#pk').onclick=()=>{
-                root.style.display='none';
-                let ov=c('div',d.body), hl=c('div',d.body);
-                ov.style.cssText='position:fixed;inset:0;z-index:9999990;cursor:crosshair';
-                hl.style.cssText='position:absolute;border:2px solid #00f;background:#00f2;pointer-events:none;z-index:9999991';
-                
-                const mm=e=>{
-                    let r=e.target.getBoundingClientRect();
-                    hl.style.top=(r.top+w.scrollY)+'px';
-                    hl.style.left=(r.left+w.scrollX)+'px';
-                    hl.style.width=r.width+'px';
-                    hl.style.height=r.height+'px';
-                };
-                
-                const cl=e=>{
-                    e.preventDefault();e.stopPropagation();
-                    tEl=e.target;
-                    ov.remove();hl.remove();
-                    d.removeEventListener('mousemove',mm);
-                    d.removeEventListener('click',cl,true);
-                    root.style.display='block';
-                    
-                    q('#go').disabled=0;
-                    q('#pk').innerText = "Target: "+tEl.tagName;
-                    
-                    if(tEl.tagName==='SELECT'){
-                        q('#so').className='';
-                        let s=q('#sd');
-                        s.innerHTML='';
-                        [...tEl.options].forEach(o=>s.add(new Option(o.text,o.value)));
-                        s.value=tEl.value; tVal=tEl.value;
-                        s.onchange=()=>tVal=s.value;
-                    } else {
-                        q('#so').className='h';
-                    }
-                };
-                d.addEventListener('mousemove',mm);
-                d.addEventListener('click',cl,true);
-            };
-            
-            /* Timer */
-            q('#go').onclick=()=>{
-                let m=parseFloat(q('#mn').value)||0;
-                let end = Date.now() + m*60000;
-                
-                q('#p1').className='h';
-                q('#p2').className='';
-                
-                timer = setInterval(()=>{
-                    let r = end - Date.now();
-                    if(r<=0){
-                        clearInterval(timer);
-                        fire(tEl, tEl.tagName==='SELECT'?'s':'c');
-                        q('#tm').innerText='DONE';
-                        setTimeout(()=>root.remove(),2000);
-                        return;
-                    }
-                    let s=Math.floor((r/1000)%60).toString().padStart(2,'0');
-                    let mn=Math.floor((r/60000)).toString().padStart(2,'0');
-                    q('#tm').innerText = mn+':'+s;
-                },1000);
-            };
-            
-            q('#cn').onclick=()=>{
-                clearInterval(timer);
-                q('#p1').className='';
-                q('#p2').className='h';
-            };
+    class DC {
+        constructor() {
+            this.rootId = 'dc-ui-' + Math.random().toString(36).substr(2,5);
+            this.tEl = null; 
+            this.tVal = null; 
+            this.timer = null;
+            this.init();
         }
-        window._dc();
-    })();
-    `;
 
-    // URI Encode and clean
-    const clean = code.replace(/\s+/g,' ').trim();
-    const href = "javascript:" + encodeURIComponent(clean);
-    
-    document.getElementById('bkmk').href = href;
-    document.getElementById('size').innerText = href.length; // Shows actual byte count of URL
+        init() {
+            this.host = document.createElement('div');
+            this.host.id = this.rootId;
+            this.host.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;display:block;';
+            this.shadow = this.host.attachShadow({mode:'open'});
+            
+            this.shadow.innerHTML = \`
+            <style>
+                :host { font-family: sans-serif; box-sizing: border-box; }
+                .box { background:#222; color:#fff; padding:15px; width:280px; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.6); border:1px solid #444; font-size:13px; }
+                button { width:100%; padding:8px; margin-top:8px; cursor:pointer; background:#0078d4; color:#fff; border:none; border-radius:4px; font-weight:600; }
+                button:disabled { background:#555; color:#888; cursor:not-allowed; }
+                button.red { background:#d13438; }
+                input, select { width:100%; padding:6px; background:#333; color:#fff; border:1px solid #555; border-radius:3px; box-sizing:border-box; margin-top:5px; }
+                .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+                .hidden { display:none !important; }
+                .timer { font-size:26px; text-align:center; color:#4facfe; margin:15px 0; font-family:monospace; }
+            </style>
+            <div class="box">
+                <div class="row">
+                    <strong>⏳ Delayed Click</strong>
+                    <span id="x" style="cursor:pointer;padding:0 5px;">✕</span>
+                </div>
+                
+                <div id="p1">
+                    <button id="pk">🎯 Select Target</button>
+                    
+                    <div id="selOpt" class="hidden" style="margin-top:10px; border-left:2px solid #0078d4; padding-left:8px;">
+                        <label>Select Option:</label>
+                        <select id="sd"></select>
+                    </div>
+
+                    <div style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
+                        <label>Delay (Minutes):</label>
+                        <input type="number" id="mn" value="30" min="0.1" step="0.1">
+                    </div>
+                    
+                    <button id="go" disabled>Start Timer</button>
+                </div>
+
+                <div id="p2" class="hidden">
+                    <div class="timer" id="tm">00:00:00</div>
+                    <div style="text-align:center;color:#aaa;margin-bottom:5px;">Scheduled Execution</div>
+                    <button id="cn" class="red">Cancel</button>
+                </div>
+            </div>
+            \`;
+
+            document.body.appendChild(this.host);
+            this.bind();
+        }
+
+        bind() {
+            const q = s => this.shadow.querySelector(s);
+            q('#x').onclick = () => this.host.remove();
+            q('#pk').onclick = () => this.pick();
+            q('#go').onclick = () => this.start();
+            q('#cn').onclick = () => this.reset();
+        }
+
+        pick() {
+            this.host.style.display = 'none';
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483640;cursor:crosshair;';
+            const hl = document.createElement('div');
+            hl.style.cssText = 'position:absolute;border:2px solid #0078d4;background:rgba(0,120,212,0.2);pointer-events:none;z-index:2147483641;transition:all 0.1s;';
+            
+            document.body.appendChild(ov);
+            document.body.appendChild(hl);
+
+            const move = (e) => {
+                const r = e.target.getBoundingClientRect();
+                hl.style.top = (r.top + window.scrollY) + 'px';
+                hl.style.left = (r.left + window.scrollX) + 'px';
+                hl.style.width = r.width + 'px';
+                hl.style.height = r.height + 'px';
+            };
+
+            const click = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                this.tEl = e.target;
+                
+                ov.remove(); hl.remove();
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('click', click, true);
+                
+                this.host.style.display = 'block';
+                this.analyze();
+            };
+
+            document.addEventListener('mousemove', move);
+            document.addEventListener('click', click, true);
+        }
+
+        analyze() {
+            const q = s => this.shadow.querySelector(s);
+            const tag = this.tEl.tagName;
+            q('#pk').innerText = 'Target: ' + tag;
+            q('#pk').style.background = '#2ea44f';
+            q('#go').disabled = false;
+
+            if (tag === 'SELECT') {
+                q('#selOpt').classList.remove('hidden');
+                const sd = q('#sd');
+                sd.innerHTML = '';
+                Array.from(this.tEl.options).forEach(o => {
+                    sd.add(new Option(o.text, o.value));
+                });
+                sd.value = this.tEl.value;
+                this.tVal = this.tEl.value;
+                sd.onchange = (e) => this.tVal = e.target.value;
+            } else {
+                q('#selOpt').classList.add('hidden');
+            }
+        }
+
+        start() {
+            const min = parseFloat(this.shadow.querySelector('#mn').value) || 0;
+            const end = Date.now() + (min * 60000);
+            
+            this.shadow.querySelector('#p1').classList.add('hidden');
+            this.shadow.querySelector('#p2').classList.remove('hidden');
+
+            this.timer = setInterval(() => {
+                const r = end - Date.now();
+                if (r <= 0) {
+                    this.exec();
+                    return;
+                }
+                const m = Math.floor(r / 60000).toString().padStart(2, '0');
+                const s = Math.floor((r % 60000) / 1000).toString().padStart(2, '0');
+                this.shadow.querySelector('#tm').innerText = m + ':' + s;
+            }, 1000);
+        }
+
+        reset() {
+            clearInterval(this.timer);
+            this.shadow.querySelector('#p1').classList.remove('hidden');
+            this.shadow.querySelector('#p2').classList.add('hidden');
+            this.shadow.querySelector('#tm').innerText = "00:00:00";
+        }
+
+        exec() {
+            clearInterval(this.timer);
+            const tm = this.shadow.querySelector('#tm');
+            tm.innerText = 'DONE';
+            tm.style.color = '#2ea44f';
+            
+            try {
+                if (this.tEl.tagName === 'SELECT') {
+                    this.tEl.value = this.tVal;
+                    this.tEl.dispatchEvent(new Event('input', {bubbles:true}));
+                    this.tEl.dispatchEvent(new Event('change', {bubbles:true}));
+                } else {
+                    ['mousedown', 'mouseup', 'click'].forEach(evt => {
+                        this.tEl.dispatchEvent(new MouseEvent(evt, {
+                            view: window,
+                            bubbles: true,
+                            cancelable: true
+                        }));
+                    });
+                }
+            } catch(e) {
+                console.error(e);
+                alert('Action failed: ' + e.message);
+            }
+
+            setTimeout(() => this.host.remove(), 2500);
+        }
+
+        toggle() {
+            this.host.style.display = this.host.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    window.dc_instance = new DC();
+
+    })();`;
+
+    // Encode safely, preserving newlines to avoid semicolon issues
+    const href = "javascript:" + encodeURIComponent(source);
+    document.getElementById('bkmk').setAttribute('href', href);
+
 </script>
 
 </body>
