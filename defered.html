@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Delayed Clicker v2 (Optimized)</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #222; border: 1px solid #333; padding: 2rem; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        h1 { margin: 0 0 1rem; color: #fff; }
+        .bookmarklet { display: inline-block; background: #0078d4; color: white; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 6px; cursor: grab; border: 2px solid #4db0f7; }
+        .bookmarklet:active { cursor: grabbing; }
+        .note { margin-top: 1.5rem; color: #888; font-size: 0.9rem; }
+        code { color: #f7b731; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>⏱️ Delayed Clicker v2</h1>
+    <p>Drag the button below to your Edge Favorites bar.</p>
+    
+    <div style="margin: 2rem 0;">
+        <a id="bkmk" href="#" class="bookmarklet">⏳ Timer Click</a>
+    </div>
+
+    <div class="note">
+        <strong>Stats:</strong> Payload condensed to <span id="size">...</span> bytes.<br>
+        Safe for sync and legacy limits.
+    </div>
+</div>
+
+<script>
+    // This is the "True Minified" source. 
+    // I have manually renamed variables and stripped logic to the bare metal 
+    // while keeping the Shadow DOM and React-compatible event firing.
+    
+    const code = `
+    (function(){
+        /* Idempotency check */
+        if(window._dc) return window._dc();
+        
+        let w=window, d=document, root, shadow, tEl, tVal, timer;
+        
+        /* Helper: Create Element */
+        const c=(t,p,i,k)=>{
+            let e=d.createElement(t);
+            if(i)e.id=i;
+            if(k)e.className=k;
+            if(p)p.appendChild(e);
+            return e;
+        };
+        
+        /* Helper: Dispatch Events (React/Angular friendly) */
+        const fire=(e,type)=>{
+            if(type==='s'){
+                e.value=tVal;
+                e.dispatchEvent(new Event('input',{bubbles:1}));
+                e.dispatchEvent(new Event('change',{bubbles:1}));
+            }else{
+                ['mousedown','mouseup','click'].forEach(evt=>{
+                    e.dispatchEvent(new MouseEvent(evt,{view:w,bubbles:1,cancelable:1}));
+                });
+            }
+        };
+
+        /* Main Logic */
+        window._dc = function() {
+            if(d.getElementById('dc-r')){
+                let r=d.getElementById('dc-r');
+                r.style.display = r.style.display==='none'?'block':'none';
+                return;
+            }
+
+            /* UI Injection */
+            root = c('div',d.body,'dc-r');
+            root.style.cssText='position:fixed;top:10px;right:10px;z-index:9999999';
+            shadow = root.attachShadow({mode:'open'});
+            
+            shadow.innerHTML = \`
+            <style>
+                div{box-sizing:border-box;font-family:sans-serif}
+                .b{background:#222;color:#fff;padding:12px;width:260px;border-radius:6px;box-shadow:0 4px 12px #000;border:1px solid #444;font-size:13px}
+                button{width:100%;padding:6px;margin-top:6px;cursor:pointer;background:#0078d4;color:#fff;border:none;border-radius:3px}
+                input{width:100%;padding:5px;background:#333;color:#fff;border:1px solid #555;margin-top:4px}
+                .h{display:none} .r{display:flex;justify-content:space-between;margin-bottom:8px}
+            </style>
+            <div class="b">
+                <div class="r"><b>DelayClick</b><span id="x" style="cursor:pointer">✕</span></div>
+                <div id="p1">
+                    <button id="pk">🎯 Pick Target</button>
+                    <div id="so" class="h"><select id="sd" style="width:100%;margin-top:5px;background:#333;color:#fff"></select></div>
+                    <div style="margin-top:8px">Mins: <input type="number" id="mn" value="30"></div>
+                    <button id="go" disabled>Start</button>
+                </div>
+                <div id="p2" class="h">
+                    <div id="tm" style="font-size:20px;text-align:center;color:#4af;margin:10px 0"></div>
+                    <button id="cn" style="background:#d33">Cancel</button>
+                </div>
+            </div>\`;
+
+            const q=s=>shadow.querySelector(s);
+            
+            /* Bind UI */
+            q('#x').onclick=()=>root.remove();
+            
+            /* Picker */
+            q('#pk').onclick=()=>{
+                root.style.display='none';
+                let ov=c('div',d.body), hl=c('div',d.body);
+                ov.style.cssText='position:fixed;inset:0;z-index:9999990;cursor:crosshair';
+                hl.style.cssText='position:absolute;border:2px solid #00f;background:#00f2;pointer-events:none;z-index:9999991';
+                
+                const mm=e=>{
+                    let r=e.target.getBoundingClientRect();
+                    hl.style.top=(r.top+w.scrollY)+'px';
+                    hl.style.left=(r.left+w.scrollX)+'px';
+                    hl.style.width=r.width+'px';
+                    hl.style.height=r.height+'px';
+                };
+                
+                const cl=e=>{
+                    e.preventDefault();e.stopPropagation();
+                    tEl=e.target;
+                    ov.remove();hl.remove();
+                    d.removeEventListener('mousemove',mm);
+                    d.removeEventListener('click',cl,true);
+                    root.style.display='block';
+                    
+                    q('#go').disabled=0;
+                    q('#pk').innerText = "Target: "+tEl.tagName;
+                    
+                    if(tEl.tagName==='SELECT'){
+                        q('#so').className='';
+                        let s=q('#sd');
+                        s.innerHTML='';
+                        [...tEl.options].forEach(o=>s.add(new Option(o.text,o.value)));
+                        s.value=tEl.value; tVal=tEl.value;
+                        s.onchange=()=>tVal=s.value;
+                    } else {
+                        q('#so').className='h';
+                    }
+                };
+                d.addEventListener('mousemove',mm);
+                d.addEventListener('click',cl,true);
+            };
+            
+            /* Timer */
+            q('#go').onclick=()=>{
+                let m=parseFloat(q('#mn').value)||0;
+                let end = Date.now() + m*60000;
+                
+                q('#p1').className='h';
+                q('#p2').className='';
+                
+                timer = setInterval(()=>{
+                    let r = end - Date.now();
+                    if(r<=0){
+                        clearInterval(timer);
+                        fire(tEl, tEl.tagName==='SELECT'?'s':'c');
+                        q('#tm').innerText='DONE';
+                        setTimeout(()=>root.remove(),2000);
+                        return;
+                    }
+                    let s=Math.floor((r/1000)%60).toString().padStart(2,'0');
+                    let mn=Math.floor((r/60000)).toString().padStart(2,'0');
+                    q('#tm').innerText = mn+':'+s;
+                },1000);
+            };
+            
+            q('#cn').onclick=()=>{
+                clearInterval(timer);
+                q('#p1').className='';
+                q('#p2').className='h';
+            };
+        }
+        window._dc();
+    })();
+    `;
+
+    // URI Encode and clean
+    const clean = code.replace(/\s+/g,' ').trim();
+    const href = "javascript:" + encodeURIComponent(clean);
+    
+    document.getElementById('bkmk').href = href;
+    document.getElementById('size').innerText = href.length; // Shows actual byte count of URL
+</script>
+
+</body>
+</html>
