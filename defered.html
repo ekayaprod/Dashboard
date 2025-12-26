@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Delayed Clicker V3 (Safe Mode)</title>
+    <title>Delayed Clicker V4 (Precision Fix)</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .card { background: #222; border: 1px solid #333; padding: 2rem; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         h1 { margin: 0 0 1rem; color: #fff; }
-        .bookmarklet { display: inline-block; background: #2ea44f; color: white; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 6px; cursor: grab; border: 1px solid #3f3f3f; transition: transform 0.1s; }
-        .bookmarklet:hover { background: #2c974b; transform: scale(1.05); }
+        .bookmarklet { display: inline-block; background: #d83b01; color: white; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 6px; cursor: grab; border: 1px solid #a80000; transition: transform 0.1s; }
+        .bookmarklet:hover { background: #ea4a1f; transform: scale(1.05); }
         .bookmarklet:active { cursor: grabbing; }
         .note { margin-top: 1.5rem; color: #aaa; font-size: 0.85rem; line-height: 1.5; }
         code { color: #f7b731; background: #333; padding: 2px 4px; border-radius: 3px; }
@@ -17,37 +17,28 @@
 <body>
 
 <div class="card">
-    <h1>✅ Delayed Clicker V3</h1>
-    <p>Fixed syntax error by preserving code structure.</p>
+    <h1>🎯 Precision Clicker V4</h1>
+    <p>Fixed the "Selects Whole Page" bug.<br>Now clicks <u>through</u> the highlighter.</p>
     
     <div style="margin: 2rem 0;">
-        <a id="bkmk" href="#" class="bookmarklet">⏱️ Timer Click (Safe)</a>
+        <a id="bkmk" href="#" class="bookmarklet">⏳ Timer Click V4</a>
     </div>
 
     <div class="note">
         <strong>Instructions:</strong><br>
-        1. Drag the green button to your Favorites Bar.<br>
-        2. Go to your target website.<br>
-        3. Click the bookmarklet to run.
+        1. Drag the orange button to your Favorites Bar.<br>
+        2. Delete the old bookmarklet.<br>
+        3. Test it: The blue box should now perfectly hug buttons.
     </div>
 </div>
 
 <script>
-    /* V3 UPDATE: 
-       Removed aggressive whitespace stripping. 
-       We now encode the string exactly as is to prevent syntax errors.
-    */
-    
     const source = `(function(){
-    /* Singleton Check */
-    if(window.dc_instance) { 
-        window.dc_instance.toggle(); 
-        return; 
-    }
+    if(window.dc_instance) { window.dc_instance.toggle(); return; }
 
     class DC {
         constructor() {
-            this.rootId = 'dc-ui-' + Math.random().toString(36).substr(2,5);
+            this.rootId = 'dc-v4-' + Math.random().toString(36).substr(2,5);
             this.tEl = null; 
             this.tVal = null; 
             this.timer = null;
@@ -57,37 +48,37 @@
         init() {
             this.host = document.createElement('div');
             this.host.id = this.rootId;
-            this.host.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;display:block;';
+            // High Z-index to float above everything
+            this.host.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;display:block;font-family:sans-serif;';
             this.shadow = this.host.attachShadow({mode:'open'});
             
             this.shadow.innerHTML = \`
             <style>
-                :host { font-family: sans-serif; box-sizing: border-box; }
-                .box { background:#222; color:#fff; padding:15px; width:280px; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.6); border:1px solid #444; font-size:13px; }
-                button { width:100%; padding:8px; margin-top:8px; cursor:pointer; background:#0078d4; color:#fff; border:none; border-radius:4px; font-weight:600; }
-                button:disabled { background:#555; color:#888; cursor:not-allowed; }
-                button.red { background:#d13438; }
+                :host { font-family: -apple-system, sans-serif; box-sizing: border-box; }
+                .box { background:#222; color:#fff; padding:15px; width:260px; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.6); border:1px solid #444; font-size:13px; }
+                button { width:100%; padding:8px; margin-top:8px; cursor:pointer; background:#d83b01; color:#fff; border:none; border-radius:4px; font-weight:600; }
+                button:disabled { background:#444; color:#888; cursor:not-allowed; }
+                button.red { background:#a80000; }
                 input, select { width:100%; padding:6px; background:#333; color:#fff; border:1px solid #555; border-radius:3px; box-sizing:border-box; margin-top:5px; }
-                .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
                 .hidden { display:none !important; }
-                .timer { font-size:26px; text-align:center; color:#4facfe; margin:15px 0; font-family:monospace; }
+                .timer { font-size:28px; text-align:center; color:#ff8c00; margin:15px 0; font-family:monospace; }
             </style>
             <div class="box">
-                <div class="row">
-                    <strong>⏳ Delayed Click</strong>
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+                    <strong>⏳ Precision Clicker</strong>
                     <span id="x" style="cursor:pointer;padding:0 5px;">✕</span>
                 </div>
                 
                 <div id="p1">
-                    <button id="pk">🎯 Select Target</button>
+                    <button id="pk">🎯 Pick Element</button>
                     
-                    <div id="selOpt" class="hidden" style="margin-top:10px; border-left:2px solid #0078d4; padding-left:8px;">
+                    <div id="selOpt" class="hidden" style="margin-top:10px; border-left:2px solid #d83b01; padding-left:8px;">
                         <label>Select Option:</label>
                         <select id="sd"></select>
                     </div>
 
                     <div style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
-                        <label>Delay (Minutes):</label>
+                        <label>Start in (Minutes):</label>
                         <input type="number" id="mn" value="30" min="0.1" step="0.1">
                     </div>
                     
@@ -96,7 +87,6 @@
 
                 <div id="p2" class="hidden">
                     <div class="timer" id="tm">00:00:00</div>
-                    <div style="text-align:center;color:#aaa;margin-bottom:5px;">Scheduled Execution</div>
                     <button id="cn" class="red">Cancel</button>
                 </div>
             </div>
@@ -116,12 +106,11 @@
 
         pick() {
             this.host.style.display = 'none';
-            const ov = document.createElement('div');
-            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483640;cursor:crosshair;';
-            const hl = document.createElement('div');
-            hl.style.cssText = 'position:absolute;border:2px solid #0078d4;background:rgba(0,120,212,0.2);pointer-events:none;z-index:2147483641;transition:all 0.1s;';
             
-            document.body.appendChild(ov);
+            // Create Highlighter
+            const hl = document.createElement('div');
+            // KEY FIX: pointer-events: none ensures we click THROUGH the box to the button
+            hl.style.cssText = 'position:absolute; border:2px solid #d83b01; background:rgba(216,59,1,0.2); pointer-events:none; z-index:2147483646; transition:all 0.05s;';
             document.body.appendChild(hl);
 
             const move = (e) => {
@@ -133,26 +122,40 @@
             };
 
             const click = (e) => {
-                e.preventDefault(); e.stopPropagation();
+                // Stop the click from actually triggering the button on the site
+                e.preventDefault(); 
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
                 this.tEl = e.target;
                 
-                ov.remove(); hl.remove();
+                // Cleanup
+                hl.remove();
                 document.removeEventListener('mousemove', move);
                 document.removeEventListener('click', click, true);
                 
                 this.host.style.display = 'block';
                 this.analyze();
+                return false;
             };
 
             document.addEventListener('mousemove', move);
+            // 'true' uses Capture Phase to intercept click before page sees it
             document.addEventListener('click', click, true);
         }
 
         analyze() {
             const q = s => this.shadow.querySelector(s);
             const tag = this.tEl.tagName;
-            q('#pk').innerText = 'Target: ' + tag;
-            q('#pk').style.background = '#2ea44f';
+            const btn = q('#pk');
+            
+            // Try to find a nice name
+            let name = tag;
+            if(this.tEl.id) name += '#' + this.tEl.id;
+            else if(this.tEl.innerText) name += ': ' + this.tEl.innerText.substring(0,10);
+            
+            btn.innerText = 'Target: ' + name;
+            btn.style.background = '#2ea44f'; // Green
             q('#go').disabled = false;
 
             if (tag === 'SELECT') {
@@ -200,7 +203,6 @@
             clearInterval(this.timer);
             const tm = this.shadow.querySelector('#tm');
             tm.innerText = 'DONE';
-            tm.style.color = '#2ea44f';
             
             try {
                 if (this.tEl.tagName === 'SELECT') {
@@ -220,10 +222,9 @@
                 console.error(e);
                 alert('Action failed: ' + e.message);
             }
-
             setTimeout(() => this.host.remove(), 2500);
         }
-
+        
         toggle() {
             this.host.style.display = this.host.style.display === 'none' ? 'block' : 'none';
         }
@@ -233,7 +234,7 @@
 
     })();`;
 
-    // Encode safely, preserving newlines to avoid semicolon issues
+    // Encode safely
     const href = "javascript:" + encodeURIComponent(source);
     document.getElementById('bkmk').setAttribute('href', href);
 
