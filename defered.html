@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V9.0</title>
+<title>Automation Hub V10.0</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,12 +37,12 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V9.0 Tree Actions.</div>
+    <div class="subtitle">V10.0 State-Aware Logic.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V16</h2>
-            <p>Single-target automation. Optimized for reliability.</p>
+            <h2>Quick Clicker V17</h2>
+            <p>Single-target automation. Reliable and safe.</p>
             <div class="features">
                 <div>Draggable Window</div>
                 <div>Sync Picker Engine</div>
@@ -53,12 +53,12 @@
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V8</h2>
-            <p>Generates <strong>Tree-Based Macros</strong>. Pick multiple clicks (Profile > Break > HHS_AA) as a single sequence with one shared timer.</p>
+            <h2>Macro Builder V9</h2>
+            <p>Generates <strong>State-Aware Macros</strong>. Checks if the menu is already open before clicking to prevent accidental closing.</p>
             <div class="features">
-                <div>Multi-Click Sequences</div>
+                <div>Smart "Aria-Expanded" Check</div>
+                <div>Stabilized Click Sequence</div>
                 <div>Unified Timers</div>
-                <div>Smart Context Reset</div>
                 <div>Visual Status Updates</div>
             </div>
             <a id="lnk_macro" href="#" class="btn btn-macro">🎛️ Macro Builder</a>
@@ -100,7 +100,7 @@ function QuickClickerLogic() {
                 '.toast{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:#059669;color:white;padding:5px 10px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;transition:opacity 0.5s}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V16</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V17</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -299,7 +299,7 @@ function QuickClickerLogic() {
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v8){window.__mb_v8.destroy();return}
+    if(window.__mb_v9){window.__mb_v9.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
@@ -349,7 +349,7 @@ function MacroBuilderLogic() {
                 '.action-item{border-left:2px solid #334155;padding-left:8px;margin-bottom:2px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V8</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V9</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -445,7 +445,6 @@ function MacroBuilderLogic() {
             return path;
         }
 
-        /* --- TREE SEQUENCE LOGIC --- */
         startSequence() {
             this.currentSequence = [];
             if(!confirm('Starting new sequence. Pick elements one by one. Click "Cancel" on the prompt when done picking.')) return;
@@ -524,7 +523,6 @@ function MacroBuilderLogic() {
                 const d = document.createElement('div');
                 d.className = 'step';
                 
-                /* Build Sub-Action List */
                 let actionHtml = '';
                 s.actions.forEach((act, ai) => {
                     let desc = act.val ? 'Type "'+act.val+'"' : (act.txt ? 'Click "'+act.txt+'"' : 'Click');
@@ -617,9 +615,11 @@ function MacroBuilderLogic() {
                         const openMenu = async () => {
                             if(!config.openSel) return;
                             const menuBtn = document.querySelector(config.openSel);
-                            this.q('#st').innerText = 'Opening Menu...';
-                            if(menuBtn) menuBtn.click();
-                            await wait(800);
+                            if(menuBtn && menuBtn.getAttribute('aria-expanded') !== 'true') {
+                                this.q('#st').innerText = 'Opening Menu...';
+                                menuBtn.click();
+                                await wait(1000);
+                            }
                         };
 
                         const find = async (sel, txt) => {
@@ -640,17 +640,16 @@ function MacroBuilderLogic() {
                             return null;
                         };
                         
-                        /* TREE EXECUTION */
                         for(let i=0; i<steps.length; i++){
                             const group = steps[i];
                             this.q('#st').innerText = 'Sequence '+(i+1)+'/'+steps.length;
                             
-                            /* Wait Delay */
-                            let rem = group.delay * 1000;
-                            if(rem > 0) {
-                                /* Reset BEFORE waiting? No, Reset AFTER waiting, before action. */
+                            if(group.delay > 0 || i === 0) {
+                                await resetMenu();
+                                await openMenu();
                             }
 
+                            let rem = group.delay * 1000;
                             while(rem > 0) {
                                 if(!document.body.contains(this.h)) return; 
                                 const sec = Math.ceil(rem/1000);
@@ -661,12 +660,7 @@ function MacroBuilderLogic() {
                                 rem -= 1000;
                             }
                             
-                            /* Prep Menu */
-                            await resetMenu();
-                            await openMenu();
-                            
-                            /* Run sub-actions */
-                            this.q('#tm').innerText = 'Running...';
+                            this.q('#tm').innerText = 'Action...';
                             for(let j=0; j<group.actions.length; j++) {
                                 const action = group.actions[j];
                                 const el = await find(action.sel, action.txt);
@@ -686,7 +680,7 @@ function MacroBuilderLogic() {
                                 ['mousedown','mouseup','click'].forEach(evt => {
                                     el.dispatchEvent(new MouseEvent(evt, {bubbles:true,cancelable:true,view:window}));
                                 });
-                                await wait(800); /* Wait between tree clicks */
+                                await wait(1000);
                             }
                         }
                         this.q('#tm').innerText = 'DONE';
