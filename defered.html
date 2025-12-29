@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V10.0</title>
+<title>Automation Hub V11.0</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,24 +37,24 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V10.0 State-Aware Logic.</div>
+    <div class="subtitle">V11.0 Time-Enabled.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V17</h2>
-            <p>Single-target automation. Reliable and safe.</p>
+            <h2>Quick Clicker V18</h2>
+            <p>Single-target automation. Now supports specific clock times (e.g., 3:30 PM).</p>
             <div class="features">
+                <div>Delay OR Clock Time</div>
                 <div>Draggable Window</div>
                 <div>Sync Picker Engine</div>
                 <div>Text Input Support</div>
-                <div>Hidden Element Warnings</div>
             </div>
             <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
         <div class="card c-macro">
             <h2>Macro Builder V9</h2>
-            <p>Generates <strong>State-Aware Macros</strong>. Checks if the menu is already open before clicking to prevent accidental closing.</p>
+            <p>Generates <strong>State-Aware Macros</strong>. Checks if the menu is already open before clicking.</p>
             <div class="features">
                 <div>Smart "Aria-Expanded" Check</div>
                 <div>Stabilized Click Sequence</div>
@@ -102,7 +102,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V17</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V18</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
