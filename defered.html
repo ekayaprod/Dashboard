@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub (Final)</title>
+<title>Automation Hub V3.1</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,12 +37,12 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">Final V3.0. Optimized & Throttled.</div>
+    <div class="subtitle">Fixed V3.1. Drag buttons to Favorites Bar.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V9.0</h2>
-            <p>High-performance single-target automation. Optimized rendering and event handling.</p>
+            <h2>Quick Clicker V9.1</h2>
+            <p>Single-target automation. High-performance, low-lag, leak-free.</p>
             <div class="features">
                 <div>Throttled Mouse Tracking</div>
                 <div>Cached DOM Queries</div>
@@ -53,8 +53,8 @@
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V2.0</h2>
-            <p>Generates high-fidelity macros with modernized event simulation and polling.</p>
+            <h2>Macro Builder V2.1</h2>
+            <p>Record complex sequences. Includes compiler fixes for stable bookmarklet generation.</p>
             <div class="features">
                 <div>Fluid Picker UI</div>
                 <div>Smart "Wait For Element"</div>
@@ -79,7 +79,7 @@ const COMMON_CSS =
     'input:focus{border-color:#3b82f6}' +
     '.hidden{display:none!important}';
 
-/** TOOL 1: QUICK CLICKER V9.0 **/
+/** TOOL 1: QUICK CLICKER V9.1 **/
 const quickSource = `(function(){
     if(window.__dc_v9){window.__dc_v9.destroy();return}
     if(!document.body) return alert('Page has no body.');
@@ -105,14 +105,14 @@ const quickSource = `(function(){
 
             this.s.innerHTML = '<style>' + '${COMMON_CSS}' + specificCSS + '</style>' +
             '<div class="box">' +
-                '<div class="row"><b>QUICK CLICKER V9.0</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row"><b>QUICK CLICKER V9.1</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
                     '<div id="inp" class="hidden">' +
                         '<div style="font-size:11px;color:#94a3b8;margin-top:8px">Input Text</div>' +
                         '<input type="text" id="val">' +
-                        '<div style="margin-top:5px"><input type="checkbox" id="ent"> Press Enter</div>' +
+                        '<div style="margin-top:5px"><input type="checkbox" id="ent" style="width:auto;margin-right:5px"> Press Enter</div>' +
                     '</div>' +
                     '<div style="font-size:11px;color:#94a3b8;margin-top:10px">Minutes Delay</div>' +
                     '<input type="number" id="mn" value="30">' +
@@ -170,7 +170,7 @@ const quickSource = `(function(){
             s.id='dc-cur'; s.innerHTML='*{cursor:crosshair!important}';
             document.head.appendChild(s);
 
-            // OPTIMIZATION: Throttled Mousemove
+            // Throttled Mousemove
             let rAf = null, lastE = null;
             const mv=e=>{
                 if(e.shiftKey){ hl.style.display='none'; return; }
@@ -232,7 +232,6 @@ const quickSource = `(function(){
             this.q('#v1').classList.add('hidden');
             this.q('#v2').classList.remove('hidden');
             
-            // OPTIMIZATION: Cache DOM query
             const elTm = this.q('#tm');
 
             this.iv = setInterval(()=>{
@@ -259,7 +258,6 @@ const quickSource = `(function(){
                 el.dispatchEvent(new Event('input',{bubbles:true}));
                 el.dispatchEvent(new Event('change',{bubbles:true}));
                 if(this.state.pressEnter){
-                    // OPTIMIZATION: Modern Event Properties
                     const k={key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true};
                     el.dispatchEvent(new KeyboardEvent('keydown',k));
                     el.dispatchEvent(new KeyboardEvent('keyup',k));
@@ -284,7 +282,7 @@ const quickSource = `(function(){
 })();`;
 
 
-/** TOOL 2: MACRO BUILDER V2.0 **/
+/** TOOL 2: MACRO BUILDER V2.1 **/
 const macroSource = `(function(){
     if(window.__mb_v1){window.__mb_v1.destroy();return}
     if(!document.body) return alert('Page has no body.');
@@ -321,7 +319,7 @@ const macroSource = `(function(){
 
             this.s.innerHTML = '<style>' + '${COMMON_CSS}' + specificCSS + '</style>' +
             '<div class="box">' +
-                '<div class="row"><h3>MACRO BUILDER V2.0</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row"><h3>MACRO BUILDER V2.1</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Step to begin.</div></div>' +
                 '<button id="add">➕ Add Step</button>' +
                 '<button id="exp" style="background:#db2777">⚡ Export Bookmarklet</button>' +
@@ -365,7 +363,7 @@ const macroSource = `(function(){
             const cur=document.createElement('style');
             cur.innerHTML='*{cursor:crosshair!important}'; document.head.appendChild(cur);
 
-            // OPTIMIZATION: Throttled Mousemove
+            // Throttled Mousemove
             let rAf = null, lastE = null;
             const mv=e=>{
                 if(e.shiftKey){ hl.style.display='none'; return; }
@@ -445,7 +443,8 @@ const macroSource = `(function(){
         compile(){
             if(this.steps.length===0) return alert('Add steps first');
             
-            const json = JSON.stringify(this.steps).replace(/\\\\/g, '\\\\\\\\').replace(/\`/g, '\\\\`').replace(/\\$/g, '\\\\$');
+            // SYNTAX FIX: Escaped backtick in regex
+            const json = JSON.stringify(this.steps).replace(/\\\\/g, '\\\\\\\\').replace(/\\`/g, '\\\\`').replace(/\\$/g, '\\\\$');
 
             const runtime = \`(async function(){
                 const steps = \${json}; 
@@ -511,9 +510,14 @@ const macroSource = `(function(){
     window.__mb_v1 = new MacroBuilder();
 })();`;
 
-// Bind sources to buttons
-document.getElementById('lnk_quick').href = "javascript:" + encodeURIComponent(quickSource);
-document.getElementById('lnk_macro').href = "javascript:" + encodeURIComponent(macroSource);
+// Bind sources to buttons with safety catch
+try {
+    document.getElementById('lnk_quick').href = "javascript:" + encodeURIComponent(quickSource);
+    document.getElementById('lnk_macro').href = "javascript:" + encodeURIComponent(macroSource);
+} catch(e) {
+    console.error("Bookmarklet generation failed:", e);
+    alert("Error generating bookmarklets. Check console.");
+}
 </script>
 
 </body>
