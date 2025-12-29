@@ -2,335 +2,520 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Clicker V5.0 Refined</title>
+<title>Automation Hub (Final)</title>
 <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .card { background: #1e293b; border: 1px solid #334155; padding: 2.5rem; border-radius: 16px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-width: 450px; }
-    h2 { margin: 0 0 0.5rem 0; color: #fff; font-weight: 700; }
-    p { color: #94a3b8; margin-bottom: 2rem; line-height: 1.6; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; background: #2563eb; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 600; transition: all 0.2s; border: 1px solid #1d4ed8; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3); }
-    .btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4); }
-    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 2rem; background: #334155; padding: 15px; border-radius: 8px; }
-    .features div::before { content: "✓"; color: #60a5fa; margin-right: 6px; font-weight: bold; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
+    .subtitle { color: #94a3b8; margin-bottom: 40px; }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 900px; width: 100%; }
+    
+    .card { background: #1e293b; border: 1px solid #334155; padding: 2rem; border-radius: 20px; text-align: center; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); display: flex; flex-direction: column; height: 100%; box-sizing: border-box; transition: transform 0.2s; }
+    .card:hover { border-color: #475569; transform: translateY(-2px); }
+    
+    .card h2 { margin: 0 0 10px 0; color: #f8fafc; }
+    .card p { color: #94a3b8; font-size: 0.9rem; line-height: 1.5; flex-grow: 1; }
+    
+    .btn { display: inline-flex; align-items: center; justify-content: center; color: #fff; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 700; transition: all 0.2s; border: 1px solid transparent; box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3); margin-top: 20px; font-size: 1.1rem; }
+    .btn:active { transform: scale(0.98); }
+
+    .c-quick { border-top: 4px solid #2563eb; }
+    .btn-quick { background: #2563eb; border-color: #1d4ed8; }
+    .btn-quick:hover { background: #1d4ed8; box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.4); }
+
+    .c-macro { border-top: 4px solid #7c3aed; }
+    .btn-macro { background: #7c3aed; border-color: #6d28d9; }
+    .btn-macro:hover { background: #6d28d9; box-shadow: 0 15px 30px -5px rgba(124, 58, 237, 0.4); }
+
+    .features { text-align: left; margin-top: 20px; background: #0f172a; padding: 15px; border-radius: 10px; font-size: 0.85rem; color: #cbd5e1; border: 1px solid #334155; }
+    .features div { margin-bottom: 6px; display: flex; align-items: center; }
+    .features div::before { content: "•"; color: #fff; margin-right: 8px; font-weight: bold; }
+
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Delayed Clicker V5.0</h2>
-        <p>Refined Edition: Clean & Precise</p>
-        
-        <div class="features">
-            <div>"Press Enter" Support</div>
-            <div>Smart Input Detection</div>
-            <div>No Jitter</div>
-            <div>React-Ready</div>
-            <div>Memory Safe</div>
-            <div>Loop Off by Default</div>
+
+    <h1>Automation Hub</h1>
+    <div class="subtitle">Final V3.0. Optimized & Throttled.</div>
+
+    <div class="grid">
+        <div class="card c-quick">
+            <h2>Quick Clicker V9.0</h2>
+            <p>High-performance single-target automation. Optimized rendering and event handling.</p>
+            <div class="features">
+                <div>Throttled Mouse Tracking</div>
+                <div>Cached DOM Queries</div>
+                <div>Stale Reference Protection</div>
+                <div>Hidden Element Warnings</div>
+            </div>
+            <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
-        <a id="lnk" href="#" class="btn">🛡️ V5 Clicker</a>
+        <div class="card c-macro">
+            <h2>Macro Builder V2.0</h2>
+            <p>Generates high-fidelity macros with modernized event simulation and polling.</p>
+            <div class="features">
+                <div>Fluid Picker UI</div>
+                <div>Smart "Wait For Element"</div>
+                <div>Robust Error Handling</div>
+                <div>Export to Standalone Bookmarklet</div>
+            </div>
+            <a id="lnk_macro" href="#" class="btn btn-macro">🎛️ Macro Builder</a>
+        </div>
     </div>
-<script>
-const code = `(function(){
-    /* --- 1. BOOTSTRAP --- */
-    if(window.__dc_v5){window.__dc_v5.destroy();return}
-    const root = document.body || document.documentElement;
-    if(!root) return alert('Page has no body.');
 
-    class DC5 {
+<script>
+/* SHARED CSS ENGINE */
+const COMMON_CSS = 
+    ':host{all:initial;font-family:system-ui,sans-serif}' +
+    '.box{background:#0f172a;color:#e2e8f0;width:280px;padding:16px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.7);border:1px solid #334155;font-size:13px;box-sizing:border-box}' +
+    '.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}' +
+    'h3,b{margin:0;color:#f8fafc;font-size:14px;font-weight:700}' +
+    'button{width:100%;background:#2563eb;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:8px;transition:0.2s}' +
+    'button:hover{background:#1d4ed8}' +
+    'button:disabled{background:#334155;color:#64748b;cursor:not-allowed}' +
+    'input{width:100%;background:#1e293b;color:#fff;border:1px solid #334155;padding:8px;border-radius:6px;box-sizing:border-box;margin-top:5px;outline:none}' +
+    'input:focus{border-color:#3b82f6}' +
+    '.hidden{display:none!important}';
+
+/** TOOL 1: QUICK CLICKER V9.0 **/
+const quickSource = `(function(){
+    if(window.__dc_v9){window.__dc_v9.destroy();return}
+    if(!document.body) return alert('Page has no body.');
+
+    class DC9 {
         constructor(){
-            this.id = 'dc5-'+Math.random().toString(36).slice(2);
-            this.state = {
-                t1: null, t2: null,
-                t1Val: null,
-                loop: false, 
-                pressEnter: false,
-                wakeLock: null
-            };
-            this.iv = null;
-            this.ui = {}; 
+            this.id = 'dc9-'+Math.random().toString(36).slice(2);
+            this.state = { t1: null, t1Val: null, loop: false, pressEnter: false, wakeLock: null };
             this.cleanupFns = [];
             this.init();
         }
 
-        /* --- 2. INITIALIZATION --- */
         init(){
             this.h = document.createElement('div');
             this.h.id = this.id;
-            this.h.style.cssText = 'position:fixed;top:15px;right:15px;z-index:2147483647;font-family:system-ui,-apple-system,sans-serif';
+            this.h.style.cssText = 'position:fixed;top:15px;right:15px;z-index:2147483647;font-family:system-ui,sans-serif';
             this.s = this.h.attachShadow({mode:'open'});
             
-            this.s.innerHTML = \`
-            <style>
-                :host{all:initial;font-family:system-ui,sans-serif}
-                .box{background:#0f172a;color:#e2e8f0;width:280px;padding:16px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.6), 0 0 0 1px #334155;font-size:13px;box-sizing:border-box}
-                .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-                .title{font-weight:700;color:#60a5fa;letter-spacing:0.5px}
-                .close{cursor:pointer;color:#64748b;padding:4px} .close:hover{color:#fff}
-                button{width:100%;background:#2563eb;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:10px;transition:all 0.2s}
-                button:hover{background:#1d4ed8}
-                button:disabled{background:#1e293b;color:#475569;cursor:not-allowed}
-                button.alt{background:#334155} button.alt:hover{background:#475569}
-                button.cancel{background:#ef4444} button.cancel:hover{background:#dc2626}
-                input[type="text"], input[type="number"], select{width:100%;background:#1e293b;color:#fff;border:1px solid #334155;padding:8px;border-radius:6px;box-sizing:border-box;margin-top:6px;outline:none}
-                input:focus{border-color:#60a5fa}
-                .lbl{font-size:11px;color:#94a3b8;margin-top:8px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
-                .hidden{display:none!important}
-                .timer{font-size:36px;text-align:center;color:#60a5fa;margin:20px 0;font-family:monospace;font-variant-numeric:tabular-nums;text-shadow:0 0 20px rgba(96,165,250,0.3)}
-                .opt-row{display:flex;gap:8px;margin-top:8px}
-                .chk-grp{display:flex;align-items:center;background:#1e293b;padding:0 8px;border-radius:6px;border:1px solid #334155;flex:1}
-                /* New Checkbox Style */
-                input[type="checkbox"] { width:auto; margin:0 6px 0 0; }
-            </style>
-            <div class="box">
-                <div class="row"><div style="display:flex;align-items:center"><span class="title">CLICKER V5.0</span></div><span id="x" class="close">✕</span></div>
-                
-                <div id="v1">
-                    <button id="pk1">🎯 Pick Primary Target</button>
-                    
-                    <div id="inp_box" class="hidden">
-                         <div class="lbl">Input Text</div>
-                         <input type="text" id="t1_val" placeholder="Text to type...">
-                         
-                         <!-- Press Enter Option -->
-                         <div class="chk-grp" style="margin-top:6px; padding:6px 8px;">
-                            <input type="checkbox" id="enter_opt">
-                            <label for="enter_opt" style="cursor:pointer;font-size:11px;color:#cbd5e1">Press Enter after typing</label>
-                         </div>
-                    </div>
-                    
-                    <button id="pk2" class="alt">➕ Add Secondary Sequence</button>
-                    
-                    <div class="lbl">Timing & Options</div>
-                    <div class="opt-row">
-                        <input type="number" id="mn" value="30" min="0.1" step="0.1" placeholder="Mins">
-                        <div class="chk-grp">
-                            <input type="checkbox" id="lp">
-                            <label for="lp" style="cursor:pointer;font-size:11px;color:#cbd5e1">Loop</label>
-                        </div>
-                    </div>
+            const specificCSS = 
+                '.timer{font-size:32px;text-align:center;color:#60a5fa;margin:15px 0;font-family:monospace}' +
+                '.warn{background:#713f12;color:#fef08a;padding:8px;border-radius:4px;margin-top:10px;font-size:11px;border:1px solid #ca8a04}' +
+                '.toast{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:#059669;color:white;padding:5px 10px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;transition:opacity 0.5s}';
 
-                    <button id="go" disabled>🚀 Start Automation</button>
-                </div>
-
-                <div id="v2" class="hidden">
-                    <div class="timer" id="tm">00:00</div>
-                    <div id="st_txt" style="text-align:center;color:#94a3b8;font-size:12px;margin-bottom:10px">Active • Anti-Sleep On</div>
-                    <button id="cn" class="cancel">Stop</button>
-                </div>
-            </div>\`;
+            this.s.innerHTML = '<style>' + '${COMMON_CSS}' + specificCSS + '</style>' +
+            '<div class="box">' +
+                '<div class="row"><b>QUICK CLICKER V9.0</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div id="v1">' +
+                    '<button id="pk">🎯 Pick Target</button>' +
+                    '<div id="warn" class="hidden warn"></div>' +
+                    '<div id="inp" class="hidden">' +
+                        '<div style="font-size:11px;color:#94a3b8;margin-top:8px">Input Text</div>' +
+                        '<input type="text" id="val">' +
+                        '<div style="margin-top:5px"><input type="checkbox" id="ent"> Press Enter</div>' +
+                    '</div>' +
+                    '<div style="font-size:11px;color:#94a3b8;margin-top:10px">Minutes Delay</div>' +
+                    '<input type="number" id="mn" value="30">' +
+                    '<button id="go" disabled>Start</button>' +
+                '</div>' +
+                '<div id="v2" class="hidden">' +
+                    '<div class="timer" id="tm">00:00</div>' +
+                    '<button id="cn" style="background:#ef4444">Stop</button>' +
+                    '<div id="toast" class="toast">Wake Lock Active 🔒</div>' +
+                '</div>' +
+            '</div>';
             
-            const q = s => this.s.querySelector(s);
-            this.ui = {
-                root: this.h,
-                x: q('#x'),
-                pk1: q('#pk1'), pk2: q('#pk2'),
-                inpBox: q('#inp_box'), inpVal: q('#t1_val'), enterOpt: q('#enter_opt'),
-                go: q('#go'), cn: q('#cn'),
-                v1: q('#v1'), v2: q('#v2'),
-                mn: q('#mn'), lp: q('#lp'),
-                tm: q('#tm')
-            };
-
+            this.q = s => this.s.querySelector(s);
             this.bind();
-            root.appendChild(this.h);
+            document.body.appendChild(this.h);
         }
 
         bind(){
-            this.ui.x.onclick = () => this.destroy();
-            this.ui.pk1.onclick = () => this.pick(1);
-            this.ui.pk2.onclick = () => this.pick(2);
-            this.ui.go.onclick = () => this.start();
-            this.ui.cn.onclick = () => this.reset();
-            this.ui.inpVal.onchange = (e) => this.state.t1Val = e.target.value;
-            this.ui.enterOpt.onchange = (e) => this.state.pressEnter = e.target.checked;
+            this.q('#x').onclick=()=>this.destroy();
+            this.q('#pk').onclick=()=>this.pick();
+            this.q('#go').onclick=()=>this.start();
+            this.q('#cn').onclick=()=>this.reset();
+            this.q('#val').onchange=e=>this.state.t1Val=e.target.value;
+            this.q('#ent').onchange=e=>this.state.pressEnter=e.target.checked;
         }
 
-        /* --- 3. PICKER ENGINE --- */
-        pick(idx){
-            this.ui.root.style.display = 'none';
-            const hl = document.createElement('div');
-            hl.style.cssText = 'position:fixed;border:2px solid #60a5fa;background:rgba(96,165,250,0.2);pointer-events:none;z-index:2147483646;border-radius:4px';
-            document.body.appendChild(hl);
+        add(t, ev, fn) { t.addEventListener(ev, fn); this.cleanupFns.push(()=>t.removeEventListener(ev, fn)); }
 
-            let rAf = null;
-            let lastE = null;
+        audit(el){
+            const style = window.getComputedStyle(el);
+            const rect = el.getBoundingClientRect();
+            let issues = [];
+            if(style.display === 'none') issues.push('Display is None');
+            if(style.visibility === 'hidden') issues.push('Visibility is Hidden');
+            if(style.opacity === '0') issues.push('Opacity is 0');
+            if(rect.width === 0 || rect.height === 0) issues.push('Size is 0px');
+            if(!el.isConnected) issues.push('Detached from DOM');
+
+            const w = this.q('#warn');
+            if(issues.length > 0) {
+                w.innerText = '⚠️ Warning: Target is hidden (' + issues[0] + '). Automation may fail.';
+                w.classList.remove('hidden');
+            } else {
+                w.classList.add('hidden');
+            }
+        }
+
+        pick(){
+            this.h.style.display='none';
+            const hl=document.createElement('div');
+            hl.style.cssText='position:fixed;border:2px solid #60a5fa;background:rgba(96,165,250,0.2);pointer-events:none;z-index:999999';
+            document.body.appendChild(hl);
             
-            const mv = e => {
+            const s=document.createElement('style');
+            s.id='dc-cur'; s.innerHTML='*{cursor:crosshair!important}';
+            document.head.appendChild(s);
+
+            // OPTIMIZATION: Throttled Mousemove
+            let rAf = null, lastE = null;
+            const mv=e=>{
+                if(e.shiftKey){ hl.style.display='none'; return; }
+                hl.style.display='block';
                 lastE = e;
                 if(rAf) return;
                 rAf = requestAnimationFrame(() => {
                     if(!lastE) return;
-                    const r = lastE.target.getBoundingClientRect();
-                    hl.style.top = r.top+'px'; hl.style.left = r.left+'px';
-                    hl.style.width = r.width+'px'; hl.style.height = r.height+'px';
+                    const r=lastE.target.getBoundingClientRect();
+                    hl.style.top=r.top+'px'; hl.style.left=r.left+'px';
+                    hl.style.width=r.width+'px'; hl.style.height=r.height+'px';
                     rAf = null;
                 });
             };
 
-            const cleanup = () => {
-                hl.remove();
-                if(rAf) cancelAnimationFrame(rAf);
-                this.removeListener(document, 'mousemove', mv);
-                this.removeListener(document, 'click', cl, true);
-                this.removeListener(document, 'keydown', kd);
-                this.ui.root.style.display = 'block';
-            };
-
-            const cl = e => {
+            const cl=e=>{
+                if(e.shiftKey) return;
                 e.preventDefault(); e.stopPropagation();
-                if(idx === 1) this.state.t1 = e.target;
-                else this.state.t2 = e.target;
+                if(e.target.tagName==='IFRAME') alert('Cannot click inside IFrame');
                 
-                cleanup();
-                this.updateUI(idx);
+                this.state.t1=e.target;
+                this.audit(e.target);
+                
+                const t=e.target.tagName;
+                const inp = this.q('#inp');
+                if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') inp.classList.remove('hidden');
+                else inp.classList.add('hidden');
+                
+                this.q('#go').disabled=false;
+                this.q('#pk').style.background='#059669';
+                this.q('#pk').innerText = 'Target: '+t;
+
+                hl.remove(); s.remove();
+                if(rAf) cancelAnimationFrame(rAf);
+                this.clearListeners();
+                this.h.style.display='block';
             };
 
-            const kd = e => {
-                if(e.key === 'Escape') cleanup();
-            };
-
-            this.addListener(document, 'mousemove', mv);
-            this.addListener(document, 'click', cl, true);
-            this.addListener(document, 'keydown', kd);
+            this.add(document, 'mousemove', mv);
+            this.add(document, 'click', cl);
         }
 
-        updateUI(idx){
-            if (idx !== 1) {
-                this.ui.pk2.innerText = 'Seq: ' + this.state.t2.tagName;
-                this.ui.pk2.style.background = '#059669';
-                return;
-            }
+        clearListeners() { this.cleanupFns.forEach(fn=>fn()); this.cleanupFns = []; }
 
-            const t = this.state.t1;
-            this.ui.pk1.innerText = 'Target: ' + t.tagName;
-            this.ui.pk1.style.background = '#059669';
-            this.ui.go.disabled = false;
-            
-            // Text/Input Detection
-            const isText = t.tagName === 'TEXTAREA' || 
-                          (t.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|image|file|hidden)$/i.test(t.type));
-            
-            if(isText || t.tagName === 'SELECT'){
-                this.ui.inpBox.classList.remove('hidden');
-            } else {
-                this.ui.inpBox.classList.add('hidden');
-            }
-        }
-
-        /* --- 4. TIMER & EXECUTION --- */
         async start(){
-            if(this.iv) clearInterval(this.iv);
-
-            const mVal = parseFloat(this.ui.mn.value) || 0;
-            if(mVal <= 0) return alert('Invalid Time');
+            const m = parseFloat(this.q('#mn').value)||0;
+            if(m<=0) return alert('Invalid Time');
             
-            try {
-                if('wakeLock' in navigator) this.state.wakeLock = await navigator.wakeLock.request('screen');
-            } catch(e){}
-
-            const end = Date.now() + (mVal * 60000);
-            this.ui.v1.classList.add('hidden');
-            this.ui.v2.classList.remove('hidden');
-
-            this.iv = setInterval(() => {
-                const r = end - Date.now();
-                if(r <= 0) {
-                    this.exec();
-                    if(this.ui.lp.checked) {
-                        this.start();
-                    } else {
-                        clearInterval(this.iv);
-                    }
-                    return;
+            try { 
+                if('wakeLock' in navigator) {
+                    this.state.wakeLock = await navigator.wakeLock.request('screen');
+                    const t = this.q('#toast');
+                    t.style.opacity = '1';
+                    setTimeout(()=>t.style.opacity='0', 3000);
                 }
-                const mm = Math.floor(r/60000).toString().padStart(2,'0');
-                const ss = Math.floor((r%60000)/1000).toString().padStart(2,'0');
-                this.ui.tm.innerText = \`\${mm}:\${ss}\`;
+            } catch(e){}
+            
+            const end = Date.now() + (m*60000);
+            this.q('#v1').classList.add('hidden');
+            this.q('#v2').classList.remove('hidden');
+            
+            // OPTIMIZATION: Cache DOM query
+            const elTm = this.q('#tm');
+
+            this.iv = setInterval(()=>{
+                const r = end - Date.now();
+                if(r<=0) { clearInterval(this.iv); this.exec(elTm); return; }
+                const mm=Math.floor(r/60000).toString().padStart(2,'0');
+                const ss=Math.floor((r%60000)/1000).toString().padStart(2,'0');
+                elTm.innerText = \`\${mm}:\${ss}\`;
                 document.title = \`⏳ \${mm}:\${ss}\`;
-            }, 1000);
+            },1000);
         }
 
-        trigger(el, val) {
-            if(!el) return;
-            if(!document.body.contains(el)) return console.warn('Target detached');
-
-            // Input Handling
-            const isInput = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
-            if(val !== null && (isInput || el.tagName === 'SELECT')) {
-                el.focus();
-                
-                const proto = Object.getPrototypeOf(el);
-                const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-                if(setter && setter !== Object.getOwnPropertyDescriptor(el, 'value')?.set) {
-                    setter.call(el, val);
-                } else {
-                    el.value = val;
-                }
-                
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                // Press Enter Logic
-                if(this.state.pressEnter) {
-                    const kOpts = {
-                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
-                        bubbles: true, cancelable: true, view: window
-                    };
-                    el.dispatchEvent(new KeyboardEvent('keydown', kOpts));
-                    el.dispatchEvent(new KeyboardEvent('keypress', kOpts));
-                    el.dispatchEvent(new KeyboardEvent('keyup', kOpts));
-                }
-                
-                el.blur();
+        exec(elTm){
+            const el = this.state.t1;
+            const display = elTm || this.q('#tm');
+            
+            if(!el || !el.isConnected) {
+                alert('FAILED: Target detached (Page refreshed?).');
+                display.innerText='FAIL'; return;
             }
 
-            // Click Sequence
-            const opts = { view: window, bubbles: true, cancelable: true };
-            ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'click'].forEach(evt => {
-                el.dispatchEvent(new MouseEvent(evt, opts));
-            });
-        }
-
-        exec(){
-            try {
-                this.trigger(this.state.t1, this.state.t1Val);
-                if(this.state.t2) setTimeout(() => this.trigger(this.state.t2, null), 600);
-            } catch(e) { console.error(e); }
+            if(this.state.t1Val && (el.matches('input,textarea,select'))){
+                el.focus(); el.value=this.state.t1Val;
+                el.dispatchEvent(new Event('input',{bubbles:true}));
+                el.dispatchEvent(new Event('change',{bubbles:true}));
+                if(this.state.pressEnter){
+                    // OPTIMIZATION: Modern Event Properties
+                    const k={key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true};
+                    el.dispatchEvent(new KeyboardEvent('keydown',k));
+                    el.dispatchEvent(new KeyboardEvent('keyup',k));
+                }
+            }
+            ['mousedown','mouseup','click'].forEach(e=>el.dispatchEvent(new MouseEvent(e,{bubbles:true})));
+            display.innerText='DONE';
         }
 
         reset(){
             clearInterval(this.iv);
             if(this.state.wakeLock) this.state.wakeLock.release();
-            document.title = "Stopped";
-            this.ui.v1.classList.remove('hidden');
-            this.ui.v2.classList.add('hidden');
+            this.clearListeners();
+            document.title = 'Stopped';
+            this.q('#v1').classList.remove('hidden');
+            this.q('#v2').classList.add('hidden');
         }
 
-        /* --- 5. UTILS & CLEANUP --- */
-        addListener(target, type, fn, opts) {
-            target.addEventListener(type, fn, opts);
-            this.cleanupFns.push(() => target.removeEventListener(type, fn, opts));
-        }
-
-        removeListener(target, type, fn, opts) {
-            target.removeEventListener(type, fn, opts);
-            this.cleanupFns = this.cleanupFns.filter(f => f.toString() !== (() => target.removeEventListener(type, fn, opts)).toString());
-        }
-
-        destroy() {
-            this.reset();
-            this.cleanupFns.forEach(fn => fn());
-            this.h.remove();
-            delete window.__dc_v5;
-        }
+        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v9; }
     }
-    window.__dc_v5 = new DC5();
+    window.__dc_v9 = new DC9();
 })();`;
 
-const href = "javascript:" + encodeURIComponent(code);
-document.getElementById('lnk').setAttribute('href', href);
+
+/** TOOL 2: MACRO BUILDER V2.0 **/
+const macroSource = `(function(){
+    if(window.__mb_v1){window.__mb_v1.destroy();return}
+    if(!document.body) return alert('Page has no body.');
+
+    class MacroBuilder {
+        constructor(){
+            this.id = 'mb-'+Math.random().toString(36).slice(2);
+            this.steps = [];
+            this.cleanupFns = [];
+            this.init();
+        }
+
+        init(){
+            this.h = document.createElement('div');
+            this.h.style.cssText = 'position:fixed;top:15px;right:15px;z-index:2147483647;font-family:system-ui,sans-serif';
+            this.s = this.h.attachShadow({mode:'open'});
+            this.render();
+            document.body.appendChild(this.h);
+        }
+
+        render(){
+            const specificCSS = 
+                '.list{max-height:300px;overflow-y:auto;margin:15px 0;background:#1e293b;border-radius:6px;padding:5px;border:1px solid #334155}' +
+                '.step{background:#0f172a;padding:8px;margin-bottom:5px;border-radius:4px;border:1px solid #334155;display:flex;align-items:center;gap:8px}' +
+                '.step-idx{background:#4f46e5;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}' +
+                '.step-info{flex-grow:1;overflow:hidden}' +
+                '.step-sel{font-family:monospace;color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+                '.step-del{cursor:pointer;color:#ef4444;font-size:14px}' +
+                '.export-area{margin-top:15px;border-top:1px solid #334155;padding-top:10px}' +
+                '.bm-btn{display:block;background:#059669;color:#fff;text-align:center;padding:10px;border-radius:6px;text-decoration:none;font-weight:bold;border:2px dashed #34d399}' +
+                '.bm-btn:hover{background:#047857}' +
+                'input.delay{width:40px;background:#0f172a;border:1px solid #334155;color:#fff;border-radius:4px;padding:2px;font-size:11px;text-align:center}' +
+                '.empty-msg{text-align:center;color:#64748b;padding:20px;font-style:italic}';
+
+            this.s.innerHTML = '<style>' + '${COMMON_CSS}' + specificCSS + '</style>' +
+            '<div class="box">' +
+                '<div class="row"><h3>MACRO BUILDER V2.0</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Step to begin.</div></div>' +
+                '<button id="add">➕ Add Step</button>' +
+                '<button id="exp" style="background:#db2777">⚡ Export Bookmarklet</button>' +
+                '<div id="out" class="export-area" style="display:none">' +
+                    '<p style="text-align:center;color:#e2e8f0;margin:0 0 10px 0">Drag button to toolbar:</p>' +
+                    '<a id="lnk" href="#" class="bm-btn">🤖 My Macro</a>' +
+                '</div>' +
+            '</div>';
+            
+            this.q = s => this.s.querySelector(s);
+            this.bind();
+        }
+
+        bind(){
+            this.q('#x').onclick=()=>this.destroy();
+            this.q('#add').onclick=()=>this.pick();
+            this.q('#exp').onclick=()=>this.compile();
+        }
+
+        add(t, ev, fn) { t.addEventListener(ev, fn); this.cleanupFns.push(()=>t.removeEventListener(ev, fn)); }
+        
+        clearListeners() { this.cleanupFns.forEach(fn=>fn()); this.cleanupFns = []; }
+
+        getSel(el){
+            if(el.id) return '#'+el.id;
+            let path = el.tagName.toLowerCase();
+            if(el.classList.length) path += '.' + [...el.classList].join('.');
+            if(document.querySelectorAll(path).length > 1 && el.parentElement){
+                 let i=1, s=el; while(s=s.previousElementSibling)i++;
+                 path += ':nth-child('+i+')';
+            }
+            return path;
+        }
+
+        pick(){
+            this.h.style.display='none';
+            const hl=document.createElement('div');
+            hl.style.cssText='position:fixed;border:2px solid #a855f7;background:rgba(168,85,247,0.2);pointer-events:none;z-index:999999';
+            document.body.appendChild(hl);
+            
+            const cur=document.createElement('style');
+            cur.innerHTML='*{cursor:crosshair!important}'; document.head.appendChild(cur);
+
+            // OPTIMIZATION: Throttled Mousemove
+            let rAf = null, lastE = null;
+            const mv=e=>{
+                if(e.shiftKey){ hl.style.display='none'; return; }
+                hl.style.display='block';
+                lastE = e;
+                if(rAf) return;
+                rAf = requestAnimationFrame(() => {
+                    if(!lastE) return;
+                    const r=lastE.target.getBoundingClientRect();
+                    hl.style.top=r.top+'px'; hl.style.left=r.left+'px';
+                    hl.style.width=r.width+'px'; hl.style.height=r.height+'px';
+                    rAf = null;
+                });
+            };
+
+            const cl=e=>{
+                if(e.shiftKey) return;
+                e.preventDefault(); e.stopPropagation();
+                
+                const sel = this.getSel(e.target);
+                const tag = e.target.tagName;
+                
+                let val = null;
+                let enter = false;
+                if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'){
+                    val = prompt('Enter text to type (leave empty to just click):');
+                    if(val) enter = confirm('Press Enter after typing?');
+                }
+
+                this.steps.push({ sel: sel, val: val, enter: enter, delay: 1 });
+
+                hl.remove(); cur.remove();
+                if(rAf) cancelAnimationFrame(rAf);
+                this.h.style.display='block';
+                this.clearListeners();
+                this.refreshList();
+            };
+
+            this.add(document, 'mousemove', mv);
+            this.add(document, 'click', cl);
+        }
+
+        refreshList(){
+            const l = this.q('#list');
+            if(this.steps.length===0) { l.innerHTML = '<div class="empty-msg">No steps yet.</div>'; return; }
+            l.innerHTML = '';
+            
+            this.steps.forEach((s, i) => {
+                const d = document.createElement('div');
+                d.className = 'step';
+                let safeVal = s.val ? s.val.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+                let desc = s.val ? 'Type "'+safeVal+'"' : 'Click';
+                d.innerHTML = \`
+                    <div class="step-idx">\${i+1}</div>
+                    <div class="step-info">
+                        <div style="font-weight:bold;font-size:11px">\${desc}</div>
+                        <div class="step-sel">\${s.sel}</div>
+                    </div>
+                    <div style="font-size:10px;color:#a5b4fc">Wait(s)</div>
+                    <input type="number" class="delay" value="\${s.delay}" data-idx="\${i}">
+                    <div class="step-del" data-idx="\${i}">✕</div>
+                \`;
+                l.appendChild(d);
+            });
+
+            l.querySelectorAll('.delay').forEach(ip => {
+                ip.onchange = (e) => this.steps[e.target.dataset.idx].delay = parseFloat(e.target.value);
+            });
+            l.querySelectorAll('.step-del').forEach(btn => {
+                btn.onclick = (e) => {
+                    this.steps.splice(e.target.dataset.idx, 1);
+                    this.refreshList();
+                };
+            });
+        }
+
+        compile(){
+            if(this.steps.length===0) return alert('Add steps first');
+            
+            const json = JSON.stringify(this.steps).replace(/\\\\/g, '\\\\\\\\').replace(/\`/g, '\\\\`').replace(/\\$/g, '\\\\$');
+
+            const runtime = \`(async function(){
+                const steps = \${json}; 
+                const wait = ms => new Promise(r => setTimeout(r, ms));
+                
+                const find = async (sel) => {
+                    const end = Date.now() + 10000;
+                    while(Date.now() < end) {
+                        const el = document.querySelector(sel);
+                        if(el && el.isConnected) return el;
+                        await wait(200);
+                    }
+                    return null;
+                };
+                
+                const toast = (msg) => {
+                    let t = document.getElementById('mb-toast');
+                    if(!t){
+                        t = document.createElement('div');
+                        t.id = 'mb-toast';
+                        t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;z-index:999999;font-family:sans-serif;box-shadow:0 10px 20px rgba(0,0,0,0.5);border:1px solid #4f46e5';
+                        document.body.appendChild(t);
+                    }
+                    t.innerText = msg;
+                    setTimeout(()=>t.remove(), 3000);
+                };
+
+                for(let i=0; i<steps.length; i++){
+                    const s = steps[i];
+                    toast('Step '+(i+1)+': Waiting for target...');
+                    
+                    if(s.delay > 0) await wait(s.delay * 1000);
+
+                    const el = await find(s.sel);
+                    if(!el) { alert('Step '+(i+1)+' Failed: Element not found or hidden ('+s.sel+')'); return; }
+
+                    if(s.val !== null){
+                        el.focus(); el.value = s.val;
+                        el.dispatchEvent(new Event('input',{bubbles:true}));
+                        el.dispatchEvent(new Event('change',{bubbles:true}));
+                        if(s.enter){
+                            const k={key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true};
+                            el.dispatchEvent(new KeyboardEvent('keydown',k));
+                            el.dispatchEvent(new KeyboardEvent('keyup',k));
+                        }
+                    }
+                    ['mousedown','mouseup','click'].forEach(evt => {
+                         el.dispatchEvent(new MouseEvent(evt, {bubbles:true,cancelable:true,view:window}));
+                    });
+                }
+                toast('Sequence Complete! ✅');
+            })();\`;
+            
+            const href = "javascript:" + encodeURIComponent(runtime.replace(/\\s+/g,' ').trim());
+            const area = this.q('#out');
+            const link = this.q('#lnk');
+            link.href = href;
+            area.style.display = 'block';
+        }
+
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v1; }
+    }
+    window.__mb_v1 = new MacroBuilder();
+})();`;
+
+// Bind sources to buttons
+document.getElementById('lnk_quick').href = "javascript:" + encodeURIComponent(quickSource);
+document.getElementById('lnk_macro').href = "javascript:" + encodeURIComponent(macroSource);
 </script>
+
 </body>
 </html>
 
