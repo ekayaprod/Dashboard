@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V3.7</title>
+<title>Automation Hub V7.0</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,29 +37,29 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">Clean V3.7. Zero Comments.</div>
+    <div class="subtitle">V7.0 Validated & Safe.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V10.2</h2>
-            <p>Single-target automation. Optimized with zero comments for clean bookmarklet generation.</p>
+            <h2>Quick Clicker V14</h2>
+            <p>Single-target automation. Safe and reliable.</p>
             <div class="features">
-                <div>V5 Picker Engine (Sync)</div>
-                <div>Text Input & Enter Support</div>
+                <div>Draggable Window</div>
+                <div>Sync Picker Engine</div>
+                <div>Text Input Support</div>
                 <div>Hidden Element Warnings</div>
-                <div>Memory Safe</div>
             </div>
             <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V2.7</h2>
-            <p>Record complex sequences. Exported macros are strictly sanitized.</p>
+            <h2>Macro Builder V6</h2>
+            <p>Menu-Aware Automation. Includes validation to ensure you configure the reset buttons.</p>
             <div class="features">
-                <div>Synchronous Picker UI</div>
-                <div>Smart "Wait For Element"</div>
-                <div>Robust Error Handling</div>
-                <div>Export to Standalone Bookmarklet</div>
+                <div>Smart Menu Recovery</div>
+                <div>Configuration Audits</div>
+                <div>Text-Match Fallback</div>
+                <div>Universal Compatibility</div>
             </div>
             <a id="lnk_macro" href="#" class="btn btn-macro">🎛️ Macro Builder</a>
         </div>
@@ -67,12 +67,12 @@
 
 <script>
 function QuickClickerLogic() {
-    if(window.__dc_v10){window.__dc_v10.destroy();return}
+    if(window.__dc_v11){window.__dc_v11.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
-    class DC10 {
+    class DC11 {
         constructor(){
-            this.id = 'dc10-'+Math.random().toString(36).slice(2);
+            this.id = 'dc11-'+Math.random().toString(36).slice(2);
             this.state = { t1: null, t1Val: null, loop: false, pressEnter: false, wakeLock: null };
             this.cleanupFns = [];
             this.init();
@@ -87,7 +87,7 @@ function QuickClickerLogic() {
             this.s.innerHTML = '<style>' +
                 ':host{all:initial;font-family:system-ui,sans-serif}' +
                 '.box{background:#0f172a;color:#e2e8f0;width:260px;padding:16px;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.6);border:1px solid #334155;font-size:13px;box-sizing:border-box}' +
-                '.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}' +
+                '.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:move;user-select:none;padding-bottom:5px;border-bottom:1px solid #334155}' +
                 'h3,b{margin:0;color:#f8fafc;font-size:14px;font-weight:700}' +
                 'button{width:100%;background:#2563eb;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:8px;transition:0.2s}' +
                 'button:hover{background:#1d4ed8}' +
@@ -100,7 +100,7 @@ function QuickClickerLogic() {
                 '.toast{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:#059669;color:white;padding:5px 10px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;transition:opacity 0.5s}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row"><b>QUICK CLICKER V10.2</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V14</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -132,6 +132,34 @@ function QuickClickerLogic() {
             this.q('#cn').onclick=()=>this.reset();
             this.q('#val').onchange=e=>this.state.t1Val=e.target.value;
             this.q('#ent').onchange=e=>this.state.pressEnter=e.target.checked;
+            this.makeDraggable(this.q('#drag'));
+        }
+
+        makeDraggable(head){
+            let pos1=0,pos2=0,pos3=0,pos4=0;
+            const dragMouseDown = e => {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            };
+            const elementDrag = e => {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                this.h.style.top = (this.h.offsetTop - pos2) + "px";
+                this.h.style.left = (this.h.offsetLeft - pos1) + "px";
+            };
+            const closeDragElement = () => {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            };
+            head.onmousedown = dragMouseDown;
         }
 
         add(t, ev, fn, opt) { t.addEventListener(ev, fn, opt); this.cleanupFns.push(()=>t.removeEventListener(ev, fn, opt)); }
@@ -265,19 +293,20 @@ function QuickClickerLogic() {
             this.q('#v2').classList.add('hidden');
         }
 
-        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v10; }
+        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v11; }
     }
-    window.__dc_v10 = new DC10();
+    window.__dc_v11 = new DC11();
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v1){window.__mb_v1.destroy();return}
+    if(window.__mb_v4){window.__mb_v4.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
         constructor(){
             this.id = 'mb-'+Math.random().toString(36).slice(2);
             this.steps = [];
+            this.config = { resetSel: null, openSel: null };
             this.cleanupFns = [];
             this.init();
         }
@@ -294,15 +323,16 @@ function MacroBuilderLogic() {
             this.s.innerHTML = '<style>' +
                 ':host{all:initial;font-family:system-ui,sans-serif}' +
                 '.box{background:#1e1b4b;color:#e2e8f0;width:320px;padding:16px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.7);border:1px solid #4338ca;font-size:13px;box-sizing:border-box}' +
-                '.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}' +
+                '.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:move;user-select:none;padding-bottom:5px;border-bottom:1px solid #334155}' +
                 'h3,b{margin:0;color:#f8fafc;font-size:14px;font-weight:700}' +
                 'button{width:100%;background:#4f46e5;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:8px;transition:0.2s}' +
                 'button:hover{background:#4338ca}' +
                 'button:disabled{background:#334155;color:#64748b;cursor:not-allowed}' +
+                'button.alt{background:#1e293b;border:1px solid #4f46e5}' +
                 'input{width:100%;background:#1e293b;color:#fff;border:1px solid #334155;padding:8px;border-radius:6px;box-sizing:border-box;margin-top:5px;outline:none}' +
                 'input:focus{border-color:#3b82f6}' +
                 '.hidden{display:none!important}' +
-                '.list{max-height:300px;overflow-y:auto;margin:15px 0;background:#1e293b;border-radius:6px;padding:5px;border:1px solid #334155}' +
+                '.list{max-height:200px;overflow-y:auto;margin:15px 0;background:#1e293b;border-radius:6px;padding:5px;border:1px solid #334155}' +
                 '.step{background:#0f172a;padding:8px;margin-bottom:5px;border-radius:4px;border:1px solid #334155;display:flex;align-items:center;gap:8px}' +
                 '.step-idx{background:#4f46e5;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}' +
                 '.step-info{flex-grow:1;overflow:hidden}' +
@@ -313,16 +343,36 @@ function MacroBuilderLogic() {
                 '.bm-btn:hover{background:#047857}' +
                 'input.delay{width:40px;background:#0f172a;border:1px solid #334155;color:#fff;border-radius:4px;padding:2px;font-size:11px;text-align:center}' +
                 '.empty-msg{text-align:center;color:#64748b;padding:20px;font-style:italic}' +
+                '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row"><h3>MACRO BUILDER V2.7</h3><span id="x" style="cursor:pointer">✕</span></div>' +
-                '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Step to begin.</div></div>' +
-                '<button id="add">➕ Add Step</button>' +
-                '<button id="exp" style="background:#db2777">⚡ Export Bookmarklet</button>' +
-                '<div id="out" class="export-area" style="display:none">' +
-                    '<p style="text-align:center;color:#e2e8f0;margin:0 0 10px 0">Drag button to toolbar:</p>' +
-                    '<a id="lnk" href="#" class="bm-btn">🤖 My Macro</a>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V6</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                
+                '<div id="view_steps">' +
+                    '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Step to begin.</div></div>' +
+                    '<button id="add">➕ Add Step</button>' +
+                    '<button id="show_cfg" class="alt">⚙️ Configure Menu</button>' +
+                    '<button id="exp" style="background:#db2777">⚡ Export Bookmarklet</button>' +
+                    '<div id="out" class="export-area" style="display:none">' +
+                        '<p style="text-align:center;color:#e2e8f0;margin:0 0 10px 0">Drag button to toolbar:</p>' +
+                        '<a id="lnk" href="#" class="bm-btn">🤖 My Macro</a>' +
+                    '</div>' +
                 '</div>' +
+
+                '<div id="view_cfg" class="hidden">' +
+                    '<div class="cfg-grp">' +
+                        '<div style="font-size:11px;color:#94a3b8;margin-bottom:5px">RESET BUTTON (Back Arrow)</div>' +
+                        '<div id="cfg_rst_val" style="font-family:monospace;font-size:10px;color:#c7d2fe;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Not Set</div>' +
+                        '<button id="set_rst" class="alt" style="margin-top:0;font-size:11px">Pick Reset Button</button>' +
+                    '</div>' +
+                    '<div class="cfg-grp">' +
+                        '<div style="font-size:11px;color:#94a3b8;margin-bottom:5px">OPEN MENU BUTTON (Profile)</div>' +
+                        '<div id="cfg_opn_val" style="font-family:monospace;font-size:10px;color:#c7d2fe;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Not Set</div>' +
+                        '<button id="set_opn" class="alt" style="margin-top:0;font-size:11px">Pick Open Button</button>' +
+                    '</div>' +
+                    '<button id="done_cfg">Done</button>' +
+                '</div>' +
+
             '</div>';
             
             this.q = s => this.s.querySelector(s);
@@ -331,8 +381,50 @@ function MacroBuilderLogic() {
 
         bind(){
             this.q('#x').onclick=()=>this.destroy();
-            this.q('#add').onclick=()=>this.pick();
+            this.q('#add').onclick=()=>this.pick('step');
+            this.q('#show_cfg').onclick=()=>this.toggleView(true);
+            this.q('#done_cfg').onclick=()=>this.toggleView(false);
+            this.q('#set_rst').onclick=()=>this.pick('reset');
+            this.q('#set_opn').onclick=()=>this.pick('open');
             this.q('#exp').onclick=()=>this.compile();
+            this.makeDraggable(this.q('#drag'));
+        }
+
+        toggleView(showCfg) {
+            if(showCfg) {
+                this.q('#view_steps').classList.add('hidden');
+                this.q('#view_cfg').classList.remove('hidden');
+            } else {
+                this.q('#view_steps').classList.remove('hidden');
+                this.q('#view_cfg').classList.add('hidden');
+            }
+        }
+
+        makeDraggable(head){
+            let pos1=0,pos2=0,pos3=0,pos4=0;
+            const dragMouseDown = e => {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            };
+            const elementDrag = e => {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                this.h.style.top = (this.h.offsetTop - pos2) + "px";
+                this.h.style.left = (this.h.offsetLeft - pos1) + "px";
+            };
+            const closeDragElement = () => {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            };
+            head.onmousedown = dragMouseDown;
         }
 
         add(t, ev, fn, opt) { t.addEventListener(ev, fn, opt); this.cleanupFns.push(()=>t.removeEventListener(ev, fn, opt)); }
@@ -340,7 +432,7 @@ function MacroBuilderLogic() {
         clearListeners() { this.cleanupFns.forEach(fn=>fn()); this.cleanupFns = []; }
 
         getSel(el){
-            if(el.id) return '#'+el.id;
+            if(el.id && !/\d/.test(el.id)) return '#'+el.id; 
             let path = el.tagName.toLowerCase();
             if(el.classList.length) path += '.' + [...el.classList].join('.');
             if(document.querySelectorAll(path).length > 1 && el.parentElement){
@@ -350,18 +442,14 @@ function MacroBuilderLogic() {
             return path;
         }
 
-        pick(){
+        pick(mode){
             this.h.style.display='none';
             const hl=document.createElement('div');
             hl.style.cssText='position:absolute;border:2px solid #a855f7;background:rgba(168,85,247,0.2);pointer-events:none;z-index:999999';
             document.body.appendChild(hl);
             
-            const s=document.createElement('style');
-            s.id='dc-cur'; s.innerHTML='*{cursor:crosshair!important}';
-            document.head.appendChild(s);
-
             const stopPicking = () => {
-                hl.remove(); s.remove();
+                hl.remove();
                 this.h.style.display='block';
                 this.clearListeners();
             };
@@ -381,19 +469,29 @@ function MacroBuilderLogic() {
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 
                 const sel = this.getSel(e.target);
-                const tag = e.target.tagName;
+                const txt = e.target.innerText ? e.target.innerText.substring(0, 20).trim() : '';
                 
-                let val = null;
-                let enter = false;
-                if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'){
-                    val = prompt('Enter text to type (leave empty to just click):');
-                    if(val) enter = confirm('Press Enter after typing?');
+                if(mode === 'reset') {
+                    this.config.resetSel = sel;
+                    this.q('#cfg_rst_val').innerText = sel;
+                    this.toggleView(true);
+                } else if(mode === 'open') {
+                    this.config.openSel = sel;
+                    this.q('#cfg_opn_val').innerText = sel;
+                    this.toggleView(true);
+                } else {
+                    let val = null;
+                    let enter = false;
+                    const tag = e.target.tagName;
+                    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'){
+                        val = prompt('Enter text to type (leave empty to just click):');
+                        if(val) enter = confirm('Press Enter after typing?');
+                    }
+                    this.steps.push({ sel: sel, txt: txt, val: val, enter: enter, delay: 1 });
+                    this.refreshList();
                 }
 
-                this.steps.push({ sel: sel, val: val, enter: enter, delay: 1 });
-
                 stopPicking();
-                this.refreshList();
                 return false;
             };
 
@@ -410,7 +508,7 @@ function MacroBuilderLogic() {
                 const d = document.createElement('div');
                 d.className = 'step';
                 let safeVal = s.val ? s.val.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
-                let desc = s.val ? 'Type "'+safeVal+'"' : 'Click';
+                let desc = s.val ? 'Type "'+safeVal+'"' : (s.txt ? 'Click "'+s.txt+'"' : 'Click');
                 d.innerHTML = `
                     <div class="step-idx">${i+1}</div>
                     <div class="step-info">
@@ -437,59 +535,124 @@ function MacroBuilderLogic() {
 
         compile(){
             if(this.steps.length===0) return alert('Add steps first');
+            if(!this.config.openSel || !this.config.resetSel) {
+               if(!confirm('Warning: You have not configured Open/Reset buttons. Dynamic menus like Genesys may fail. Continue anyway?')) return;
+            }
             
-            const json = JSON.stringify(this.steps).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+            const jsonSteps = JSON.stringify(this.steps).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+            const jsonConfig = JSON.stringify(this.config).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
 
             const runtime = `(async function(){
-                const steps = ${json}; 
-                const wait = ms => new Promise(r => setTimeout(r, ms));
+                if(window.__mb_run){window.__mb_run.destroy();return}
+                const steps = ${jsonSteps};
+                const config = ${jsonConfig};
                 
-                const find = async (sel) => {
-                    const end = Date.now() + 10000;
-                    while(Date.now() < end) {
-                        const el = document.querySelector(sel);
-                        if(el && el.isConnected) return el;
-                        await wait(200);
+                class MacroRuntime {
+                    constructor() {
+                        this.id = 'run-'+Math.random().toString(36).slice(2);
+                        this.init();
                     }
-                    return null;
-                };
-                
-                const toast = (msg) => {
-                    let t = document.getElementById('mb-toast');
-                    if(!t){
-                        t = document.createElement('div');
-                        t.id = 'mb-toast';
-                        t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;z-index:999999;font-family:sans-serif;box-shadow:0 10px 20px rgba(0,0,0,0.5);border:1px solid #4f46e5';
-                        document.body.appendChild(t);
+                    init(){
+                        this.h = document.createElement('div');
+                        this.h.id = this.id;
+                        this.h.style.cssText = 'position:fixed;top:15px;right:15px;z-index:2147483647;font-family:system-ui,sans-serif';
+                        this.s = this.h.attachShadow({mode:'open'});
+                        this.s.innerHTML = '<style>:host{all:initial;font-family:system-ui,sans-serif}.box{background:#1e1b4b;color:#e2e8f0;width:240px;padding:16px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.7);border:1px solid #4338ca;font-size:13px}.row{display:flex;justify-content:space-between;align-items:center;cursor:move;user-select:none;padding-bottom:5px;border-bottom:1px solid #334155;margin-bottom:10px}.timer{font-size:32px;text-align:center;color:#a5b4fc;margin:10px 0;font-family:monospace}button{width:100%;background:#ef4444;color:#fff;border:none;padding:8px;border-radius:6px;cursor:pointer}</style><div class="box"><div class="row" id="drag"><b>RUNNING MACRO</b><span id="x" style="cursor:pointer">✕</span></div><div style="text-align:center;color:#c7d2fe;font-size:11px" id="st">Initializing...</div><div class="timer" id="tm">00:00</div><button id="cn">Stop</button></div>';
+                        this.q = s => this.s.querySelector(s);
+                        this.q('#x').onclick = () => this.destroy();
+                        this.q('#cn').onclick = () => this.destroy();
+                        this.makeDraggable(this.q('#drag'));
+                        document.body.appendChild(this.h);
+                        this.run();
                     }
-                    t.innerText = msg;
-                    setTimeout(()=>t.remove(), 3000);
-                };
+                    makeDraggable(head){
+                        let pos1=0,pos2=0,pos3=0,pos4=0;
+                        const dragMouseDown = e => { e = e || window.event; e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY; document.onmouseup = closeDragElement; document.onmousemove = elementDrag; };
+                        const elementDrag = e => { e = e || window.event; e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY; this.h.style.top = (this.h.offsetTop - pos2) + "px"; this.h.style.left = (this.h.offsetLeft - pos1) + "px"; };
+                        const closeDragElement = () => { document.onmouseup = null; document.onmousemove = null; };
+                        head.onmousedown = dragMouseDown;
+                    }
+                    async run(){
+                        const wait = ms => new Promise(r => setTimeout(r, ms));
+                        
+                        const resetMenu = async () => {
+                            if(!config.resetSel) return;
+                            const backBtn = document.querySelector(config.resetSel);
+                            if(backBtn && backBtn.offsetParent !== null) {
+                                backBtn.click();
+                                await wait(500);
+                                return resetMenu();
+                            }
+                        };
+                        
+                        const openMenu = async () => {
+                            if(!config.openSel) return;
+                            const menuBtn = document.querySelector(config.openSel);
+                            if(menuBtn) menuBtn.click();
+                            await wait(500);
+                        };
 
-                for(let i=0; i<steps.length; i++){
-                    const s = steps[i];
-                    toast('Step '+(i+1)+': Waiting for target...');
-                    
-                    if(s.delay > 0) await wait(s.delay * 1000);
+                        const find = async (sel, txt) => {
+                            const end = Date.now() + 10000;
+                            while(Date.now() < end) {
+                                let el = document.querySelector(sel);
+                                if(!el && txt) {
+                                    const all = document.querySelectorAll('button, span, div[role="button"]');
+                                    for(let i=0; i<all.length; i++) {
+                                        if(all[i].innerText && all[i].innerText.includes(txt)) {
+                                            el = all[i]; break;
+                                        }
+                                    }
+                                }
+                                if(el && el.isConnected && el.offsetParent !== null) return el;
+                                await wait(200);
+                            }
+                            return null;
+                        };
+                        
+                        for(let i=0; i<steps.length; i++){
+                            const s = steps[i];
+                            this.q('#st').innerText = 'Step '+(i+1)+'/'+steps.length;
+                            
+                            let rem = s.delay * 1000;
+                            if(rem > 0) {
+                                await resetMenu();
+                                await openMenu();
+                            }
 
-                    const el = await find(s.sel);
-                    if(!el) { alert('Step '+(i+1)+' Failed: Element not found or hidden ('+s.sel+')'); return; }
-
-                    if(s.val !== null){
-                        el.focus(); el.value = s.val;
-                        el.dispatchEvent(new Event('input',{bubbles:true}));
-                        el.dispatchEvent(new Event('change',{bubbles:true}));
-                        if(s.enter){
-                            const k={key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true};
-                            el.dispatchEvent(new KeyboardEvent('keydown',k));
-                            el.dispatchEvent(new KeyboardEvent('keyup',k));
+                            while(rem > 0) {
+                                if(!document.body.contains(this.h)) return; 
+                                const sec = Math.ceil(rem/1000);
+                                this.q('#tm').innerText = '00:' + (sec<10?'0':'') + sec;
+                                await wait(1000);
+                                rem -= 1000;
+                            }
+                            
+                            this.q('#tm').innerText = 'Action...';
+                            const el = await find(s.sel, s.txt);
+                            if(!el) { alert('Step '+(i+1)+' Failed: Not found ('+s.sel+')'); return; }
+                            
+                            if(s.val !== null){
+                                el.focus(); el.value = s.val;
+                                el.dispatchEvent(new Event('input',{bubbles:true}));
+                                el.dispatchEvent(new Event('change',{bubbles:true}));
+                                if(s.enter){
+                                    const k={key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true};
+                                    el.dispatchEvent(new KeyboardEvent('keydown',k));
+                                    el.dispatchEvent(new KeyboardEvent('keyup',k));
+                                }
+                            }
+                            ['mousedown','mouseup','click'].forEach(evt => {
+                                el.dispatchEvent(new MouseEvent(evt, {bubbles:true,cancelable:true,view:window}));
+                            });
                         }
+                        this.q('#tm').innerText = 'DONE';
+                        this.q('#st').innerText = 'Complete';
+                        setTimeout(()=>this.destroy(), 3000);
                     }
-                    ['mousedown','mouseup','click'].forEach(evt => {
-                         el.dispatchEvent(new MouseEvent(evt, {bubbles:true,cancelable:true,view:window}));
-                    });
+                    destroy(){ this.h.remove(); delete window.__mb_run; }
                 }
-                toast('Sequence Complete! ✅');
+                window.__mb_run = new MacroRuntime();
             })();`;
             
             const href = "javascript:" + encodeURIComponent(runtime.replace(/\s+/g,' ').trim());
@@ -499,9 +662,9 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v1; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v4; }
     }
-    window.__mb_v1 = new MacroBuilder();
+    window.__mb_v4 = new MacroBuilder();
 }
 
 function generate(func) {
@@ -521,4 +684,3 @@ try {
 
 </body>
 </html>
-
