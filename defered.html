@@ -73,7 +73,7 @@ function QuickClickerLogic() {
     class DC11 {
         constructor(){
             this.id = 'dc11-'+Math.random().toString(36).slice(2);
-            this.state = { t1: null, t1Val: null, loop: false, pressEnter: false, wakeLock: null };
+            this.state = { t1: null, t1Val: null, loop: false, pressEnter: false, wakeLock: null, timeMode: 'delay' };
             this.cleanupFns = [];
             this.init();
         }
@@ -98,6 +98,8 @@ function QuickClickerLogic() {
                 '.timer{font-size:32px;text-align:center;color:#60a5fa;margin:15px 0;font-family:monospace}' +
                 '.warn{background:#713f12;color:#fef08a;padding:8px;border-radius:4px;margin-top:10px;font-size:11px;border:1px solid #ca8a04}' +
                 '.toast{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:#059669;color:white;padding:5px 10px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;transition:opacity 0.5s}' +
+                '.mode-switch{display:flex;gap:10px;margin-top:10px;font-size:11px;color:#94a3b8}' +
+                '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
                 '<div class="row" id="drag"><b>QUICK CLICKER V17</b><span id="x" style="cursor:pointer">✕</span></div>' +
@@ -109,8 +111,19 @@ function QuickClickerLogic() {
                         '<input type="text" id="val">' +
                         '<div style="margin-top:5px"><input type="checkbox" id="ent" style="width:auto;margin-right:5px"> Press Enter</div>' +
                     '</div>' +
-                    '<div style="font-size:11px;color:#94a3b8;margin-top:10px">Minutes Delay</div>' +
-                    '<input type="number" id="mn" value="30">' +
+                    
+                    '<div class="mode-switch">' +
+                        '<label class="mode-opt"><input type="radio" name="tm_mode" value="delay" checked style="width:auto"> Delay (Min)</label>' +
+                        '<label class="mode-opt"><input type="radio" name="tm_mode" value="clock" style="width:auto"> Clock Time</label>' +
+                    '</div>' +
+
+                    '<div id="box_delay">' +
+                        '<input type="number" id="mn" value="30" placeholder="Minutes">' +
+                    '</div>' +
+                    '<div id="box_clock" class="hidden">' +
+                        '<input type="time" id="clk">' +
+                    '</div>' +
+
                     '<button id="go" disabled>Start</button>' +
                 '</div>' +
                 '<div id="v2" class="hidden">' +
@@ -133,6 +146,18 @@ function QuickClickerLogic() {
             this.q('#val').onchange=e=>this.state.t1Val=e.target.value;
             this.q('#ent').onchange=e=>this.state.pressEnter=e.target.checked;
             this.makeDraggable(this.q('#drag'));
+            
+            const radios = this.s.querySelectorAll('input[name="tm_mode"]');
+            radios.forEach(r => r.onchange = (e) => {
+                this.state.timeMode = e.target.value;
+                if(e.target.value === 'delay') {
+                    this.q('#box_delay').classList.remove('hidden');
+                    this.q('#box_clock').classList.add('hidden');
+                } else {
+                    this.q('#box_delay').classList.add('hidden');
+                    this.q('#box_clock').classList.remove('hidden');
+                }
+            });
         }
 
         makeDraggable(head){
@@ -233,8 +258,23 @@ function QuickClickerLogic() {
         clearListeners() { this.cleanupFns.forEach(fn=>fn()); this.cleanupFns = []; }
 
         async start(){
-            const m = parseFloat(this.q('#mn').value)||0;
-            if(m<=0) return alert('Invalid Time');
+            let targetTime;
+            
+            if(this.state.timeMode === 'delay') {
+                const m = parseFloat(this.q('#mn').value)||0;
+                if(m<=0) return alert('Invalid Time');
+                targetTime = Date.now() + (m*60000);
+            } else {
+                const timeStr = this.q('#clk').value;
+                if(!timeStr) return alert('Please set a clock time');
+                const [h, m] = timeStr.split(':');
+                const now = new Date();
+                targetTime = new Date();
+                targetTime.setHours(parseInt(h), parseInt(m), 0, 0);
+                if(targetTime < now) {
+                    targetTime.setDate(targetTime.getDate() + 1); // Next day if time passed
+                }
+            }
             
             try { 
                 if('wakeLock' in navigator) {
@@ -245,19 +285,19 @@ function QuickClickerLogic() {
                 }
             } catch(e){}
             
-            const end = Date.now() + (m*60000);
             this.q('#v1').classList.add('hidden');
             this.q('#v2').classList.remove('hidden');
             
             const elTm = this.q('#tm');
 
             this.iv = setInterval(()=>{
-                const r = end - Date.now();
+                const r = targetTime - Date.now();
                 if(r<=0) { clearInterval(this.iv); this.exec(elTm); return; }
-                const mm=Math.floor(r/60000).toString().padStart(2,'0');
-                const ss=Math.floor((r%60000)/1000).toString().padStart(2,'0');
-                elTm.innerText = `${mm}:${ss}`;
-                document.title = `⏳ ${mm}:${ss}`;
+                const hours = Math.floor(r / 3600000);
+                const minutes = Math.floor((r % 3600000) / 60000);
+                const seconds = Math.floor((r % 60000) / 1000);
+                elTm.innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.title = `⏳ ${hours}:${minutes}:${seconds}`;
             },1000);
         }
 
@@ -345,8 +385,6 @@ function MacroBuilderLogic() {
                 'input.delay{width:40px;background:#0f172a;border:1px solid #334155;color:#fff;border-radius:4px;padding:2px;font-size:11px;text-align:center}' +
                 '.empty-msg{text-align:center;color:#64748b;padding:20px;font-style:italic}' +
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
-                '.action-list{padding-left:28px;font-size:11px;color:#c7d2fe}' +
-                '.action-item{border-left:2px solid #334155;padding-left:8px;margin-bottom:2px}' +
             '</style>' +
             '<div class="box">' +
                 '<div class="row" id="drag"><h3>MACRO BUILDER V9</h3><span id="x" style="cursor:pointer">✕</span></div>' +
