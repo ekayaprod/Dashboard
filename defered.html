@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V3.3</title>
+<title>Automation Hub V3.7</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,26 +37,26 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">Simplified V3.3. Self-Contained.</div>
+    <div class="subtitle">Clean V3.7. Zero Comments.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V9.3</h2>
-            <p>Single-target automation. Self-contained CSS and logic.</p>
+            <h2>Quick Clicker V10.2</h2>
+            <p>Single-target automation. Optimized with zero comments for clean bookmarklet generation.</p>
             <div class="features">
-                <div>Throttled Mouse Tracking</div>
-                <div>Cached DOM Queries</div>
-                <div>Stale Reference Protection</div>
+                <div>V5 Picker Engine (Sync)</div>
+                <div>Text Input & Enter Support</div>
                 <div>Hidden Element Warnings</div>
+                <div>Memory Safe</div>
             </div>
             <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V2.3</h2>
-            <p>Record complex sequences. Generates resilient macros with independent styling.</p>
+            <h2>Macro Builder V2.7</h2>
+            <p>Record complex sequences. Exported macros are strictly sanitized.</p>
             <div class="features">
-                <div>Fluid Picker UI</div>
+                <div>Synchronous Picker UI</div>
                 <div>Smart "Wait For Element"</div>
                 <div>Robust Error Handling</div>
                 <div>Export to Standalone Bookmarklet</div>
@@ -66,15 +66,13 @@
     </div>
 
 <script>
-// --- SOURCE CODE FUNCTIONS (Written as real code, converted to string later) ---
-
 function QuickClickerLogic() {
-    if(window.__dc_v9){window.__dc_v9.destroy();return}
+    if(window.__dc_v10){window.__dc_v10.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
-    class DC9 {
+    class DC10 {
         constructor(){
-            this.id = 'dc9-'+Math.random().toString(36).slice(2);
+            this.id = 'dc10-'+Math.random().toString(36).slice(2);
             this.state = { t1: null, t1Val: null, loop: false, pressEnter: false, wakeLock: null };
             this.cleanupFns = [];
             this.init();
@@ -86,10 +84,9 @@ function QuickClickerLogic() {
             this.h.style.cssText = 'position:fixed;top:15px;right:15px;z-index:2147483647;font-family:system-ui,sans-serif';
             this.s = this.h.attachShadow({mode:'open'});
             
-            // Self-contained CSS
             this.s.innerHTML = '<style>' +
                 ':host{all:initial;font-family:system-ui,sans-serif}' +
-                '.box{background:#0f172a;color:#e2e8f0;width:280px;padding:16px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.7);border:1px solid #334155;font-size:13px;box-sizing:border-box}' +
+                '.box{background:#0f172a;color:#e2e8f0;width:260px;padding:16px;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.6);border:1px solid #334155;font-size:13px;box-sizing:border-box}' +
                 '.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}' +
                 'h3,b{margin:0;color:#f8fafc;font-size:14px;font-weight:700}' +
                 'button{width:100%;background:#2563eb;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:8px;transition:0.2s}' +
@@ -103,7 +100,7 @@ function QuickClickerLogic() {
                 '.toast{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:#059669;color:white;padding:5px 10px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;transition:opacity 0.5s}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row"><b>QUICK CLICKER V9.3</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row"><b>QUICK CLICKER V10.2</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -137,7 +134,7 @@ function QuickClickerLogic() {
             this.q('#ent').onchange=e=>this.state.pressEnter=e.target.checked;
         }
 
-        add(t, ev, fn) { t.addEventListener(ev, fn); this.cleanupFns.push(()=>t.removeEventListener(ev, fn)); }
+        add(t, ev, fn, opt) { t.addEventListener(ev, fn, opt); this.cleanupFns.push(()=>t.removeEventListener(ev, fn, opt)); }
 
         audit(el){
             const style = window.getComputedStyle(el);
@@ -161,31 +158,26 @@ function QuickClickerLogic() {
         pick(){
             this.h.style.display='none';
             const hl=document.createElement('div');
-            hl.style.cssText='position:fixed;border:2px solid #60a5fa;background:rgba(96,165,250,0.2);pointer-events:none;z-index:999999';
+            hl.style.cssText='position:absolute;border:2px solid #0078d4;background:rgba(0,120,212,0.2);pointer-events:none;z-index:2147483646';
             document.body.appendChild(hl);
             
             const s=document.createElement('style');
             s.id='dc-cur'; s.innerHTML='*{cursor:crosshair!important}';
             document.head.appendChild(s);
 
-            let rAf = null, lastE = null;
             const mv=e=>{
                 if(e.shiftKey){ hl.style.display='none'; return; }
                 hl.style.display='block';
-                lastE = e;
-                if(rAf) return;
-                rAf = requestAnimationFrame(() => {
-                    if(!lastE) return;
-                    const r=lastE.target.getBoundingClientRect();
-                    hl.style.top=r.top+'px'; hl.style.left=r.left+'px';
-                    hl.style.width=r.width+'px'; hl.style.height=r.height+'px';
-                    rAf = null;
-                });
+                const r=e.target.getBoundingClientRect();
+                hl.style.top=(r.top + window.scrollY)+'px';
+                hl.style.left=(r.left + window.scrollX)+'px';
+                hl.style.width=r.width+'px';
+                hl.style.height=r.height+'px';
             };
 
             const cl=e=>{
                 if(e.shiftKey) return;
-                e.preventDefault(); e.stopPropagation();
+                e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 if(e.target.tagName==='IFRAME') alert('Cannot click inside IFrame');
                 
                 this.state.t1=e.target;
@@ -201,13 +193,13 @@ function QuickClickerLogic() {
                 this.q('#pk').innerText = 'Target: '+t;
 
                 hl.remove(); s.remove();
-                if(rAf) cancelAnimationFrame(rAf);
                 this.clearListeners();
                 this.h.style.display='block';
+                return false;
             };
 
             this.add(document, 'mousemove', mv);
-            this.add(document, 'click', cl);
+            this.add(document, 'click', cl, true);
         }
 
         clearListeners() { this.cleanupFns.forEach(fn=>fn()); this.cleanupFns = []; }
@@ -260,7 +252,7 @@ function QuickClickerLogic() {
                     el.dispatchEvent(new KeyboardEvent('keyup',k));
                 }
             }
-            ['mousedown','mouseup','click'].forEach(e=>el.dispatchEvent(new MouseEvent(e,{bubbles:true})));
+            ['mousedown','mouseup','click'].forEach(e=>el.dispatchEvent(new MouseEvent(e,{bubbles:true, cancelable:true})));
             display.innerText='DONE';
         }
 
@@ -273,9 +265,9 @@ function QuickClickerLogic() {
             this.q('#v2').classList.add('hidden');
         }
 
-        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v9; }
+        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v10; }
     }
-    window.__dc_v9 = new DC9();
+    window.__dc_v10 = new DC10();
 }
 
 function MacroBuilderLogic() {
@@ -299,7 +291,6 @@ function MacroBuilderLogic() {
         }
 
         render(){
-            // Self-contained CSS
             this.s.innerHTML = '<style>' +
                 ':host{all:initial;font-family:system-ui,sans-serif}' +
                 '.box{background:#1e1b4b;color:#e2e8f0;width:320px;padding:16px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.7);border:1px solid #4338ca;font-size:13px;box-sizing:border-box}' +
@@ -324,7 +315,7 @@ function MacroBuilderLogic() {
                 '.empty-msg{text-align:center;color:#64748b;padding:20px;font-style:italic}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row"><h3>MACRO BUILDER V2.3</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row"><h3>MACRO BUILDER V2.7</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Step to begin.</div></div>' +
                 '<button id="add">➕ Add Step</button>' +
                 '<button id="exp" style="background:#db2777">⚡ Export Bookmarklet</button>' +
@@ -344,7 +335,7 @@ function MacroBuilderLogic() {
             this.q('#exp').onclick=()=>this.compile();
         }
 
-        add(t, ev, fn) { t.addEventListener(ev, fn); this.cleanupFns.push(()=>t.removeEventListener(ev, fn)); }
+        add(t, ev, fn, opt) { t.addEventListener(ev, fn, opt); this.cleanupFns.push(()=>t.removeEventListener(ev, fn, opt)); }
         
         clearListeners() { this.cleanupFns.forEach(fn=>fn()); this.cleanupFns = []; }
 
@@ -362,30 +353,32 @@ function MacroBuilderLogic() {
         pick(){
             this.h.style.display='none';
             const hl=document.createElement('div');
-            hl.style.cssText='position:fixed;border:2px solid #a855f7;background:rgba(168,85,247,0.2);pointer-events:none;z-index:999999';
+            hl.style.cssText='position:absolute;border:2px solid #a855f7;background:rgba(168,85,247,0.2);pointer-events:none;z-index:999999';
             document.body.appendChild(hl);
             
-            const cur=document.createElement('style');
-            cur.innerHTML='*{cursor:crosshair!important}'; document.head.appendChild(cur);
+            const s=document.createElement('style');
+            s.id='dc-cur'; s.innerHTML='*{cursor:crosshair!important}';
+            document.head.appendChild(s);
 
-            let rAf = null, lastE = null;
+            const stopPicking = () => {
+                hl.remove(); s.remove();
+                this.h.style.display='block';
+                this.clearListeners();
+            };
+
             const mv=e=>{
                 if(e.shiftKey){ hl.style.display='none'; return; }
                 hl.style.display='block';
-                lastE = e;
-                if(rAf) return;
-                rAf = requestAnimationFrame(() => {
-                    if(!lastE) return;
-                    const r=lastE.target.getBoundingClientRect();
-                    hl.style.top=r.top+'px'; hl.style.left=r.left+'px';
-                    hl.style.width=r.width+'px'; hl.style.height=r.height+'px';
-                    rAf = null;
-                });
+                const r=e.target.getBoundingClientRect();
+                hl.style.top=(r.top + window.scrollY)+'px';
+                hl.style.left=(r.left + window.scrollX)+'px';
+                hl.style.width=r.width+'px';
+                hl.style.height=r.height+'px';
             };
 
             const cl=e=>{
                 if(e.shiftKey) return;
-                e.preventDefault(); e.stopPropagation();
+                e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 
                 const sel = this.getSel(e.target);
                 const tag = e.target.tagName;
@@ -399,15 +392,13 @@ function MacroBuilderLogic() {
 
                 this.steps.push({ sel: sel, val: val, enter: enter, delay: 1 });
 
-                hl.remove(); cur.remove();
-                if(rAf) cancelAnimationFrame(rAf);
-                this.h.style.display='block';
-                this.clearListeners();
+                stopPicking();
                 this.refreshList();
+                return false;
             };
 
             this.add(document, 'mousemove', mv);
-            this.add(document, 'click', cl);
+            this.add(document, 'click', cl, true);
         }
 
         refreshList(){
@@ -513,7 +504,6 @@ function MacroBuilderLogic() {
     window.__mb_v1 = new MacroBuilder();
 }
 
-// --- GENERATION ENGINE ---
 function generate(func) {
     let source = func.toString();
     source = "(" + source + ")();";
