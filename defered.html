@@ -1,207 +1,336 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Delayed Clicker V5 (Stable)</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #222; border: 1px solid #333; padding: 2rem; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-        h1 { margin: 0 0 1rem; color: #fff; }
-        .bookmarklet { display: inline-block; background: #0078d4; color: white; text-decoration: none; font-weight: 700; padding: 12px 24px; border-radius: 6px; cursor: grab; border: 1px solid #005a9e; transition: transform 0.1s; }
-        .bookmarklet:hover { background: #106ebe; transform: scale(1.05); }
-        .bookmarklet:active { cursor: grabbing; }
-        .note { margin-top: 1.5rem; color: #aaa; font-size: 0.85rem; line-height: 1.5; }
-    </style>
+<meta charset="UTF-8">
+<title>Clicker V5.0 Refined</title>
+<style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; padding: 2.5rem; border-radius: 16px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-width: 450px; }
+    h2 { margin: 0 0 0.5rem 0; color: #fff; font-weight: 700; }
+    p { color: #94a3b8; margin-bottom: 2rem; line-height: 1.6; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; background: #2563eb; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 600; transition: all 0.2s; border: 1px solid #1d4ed8; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3); }
+    .btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4); }
+    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 2rem; background: #334155; padding: 15px; border-radius: 8px; }
+    .features div::before { content: "✓"; color: #60a5fa; margin-right: 6px; font-weight: bold; }
+</style>
 </head>
 <body>
-
-<div class="card">
-    <h1>🚀 Delayed Clicker V5</h1>
-    <p>Comments removed to prevent browser syntax errors.</p>
-    
-    <div style="margin: 2rem 0;">
-        <a id="bkmk" href="#" class="bookmarklet">⏳ Timer Click V5</a>
-    </div>
-
-    <div class="note">
-        <strong>Instructions:</strong><br>
-        1. Drag the blue button to your Favorites Bar.<br>
-        2. <strong>Test it on this page first:</strong><br>
-        Click the bookmarklet, then try to select the "Delayed Clicker" title above.<br>
-        3. If it works here, it will work on your target site.
-    </div>
-</div>
-
-<script>
-    /* V5 UPDATE: 
-       - Removed all // comments (switched to strict code only).
-       - Added safety check for restricted pages (about:blank).
-    */
-
-    const source = `(function(){
-        if(window.dc_running){window.dc_running.toggle();return;}
+    <div class="card">
+        <h2>Delayed Clicker V5.0</h2>
+        <p>Refined Edition: Clean & Precise</p>
         
-        /* Check if we can run here */
-        if(window.location.protocol === 'about:' || window.location.protocol === 'chrome:'){
-            alert('Bookmarklets cannot run on this browser page. Please try on a real website.');
-            return;
+        <div class="features">
+            <div>"Press Enter" Support</div>
+            <div>Smart Input Detection</div>
+            <div>No Jitter</div>
+            <div>React-Ready</div>
+            <div>Memory Safe</div>
+            <div>Loop Off by Default</div>
+        </div>
+
+        <a id="lnk" href="#" class="btn">🛡️ V5 Clicker</a>
+    </div>
+<script>
+const code = `(function(){
+    /* --- 1. BOOTSTRAP --- */
+    if(window.__dc_v5){window.__dc_v5.destroy();return}
+    const root = document.body || document.documentElement;
+    if(!root) return alert('Page has no body.');
+
+    class DC5 {
+        constructor(){
+            this.id = 'dc5-'+Math.random().toString(36).slice(2);
+            this.state = {
+                t1: null, t2: null,
+                t1Val: null,
+                loop: false, 
+                pressEnter: false,
+                wakeLock: null
+            };
+            this.iv = null;
+            this.ui = {}; 
+            this.cleanupFns = [];
+            this.init();
         }
 
-        class DC {
-            constructor(){
-                this.id = 'dc-' + Math.random().toString(36).substr(2,5);
-                this.el = null;
-                this.val = null;
-                this.tm = null;
-                this.init();
-            }
-
-            init(){
-                this.h = document.createElement('div');
-                this.h.id = this.id;
-                this.h.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;display:block;font-family:sans-serif';
-                this.s = this.h.attachShadow({mode:'open'});
-                this.s.innerHTML = \`
-                <style>
-                    :host{all:initial;font-family:sans-serif}
-                    .b{background:#222;color:#fff;padding:15px;width:260px;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.5);border:1px solid #444;font-size:13px;box-sizing:border-box}
-                    button{width:100%;padding:8px;margin-top:8px;cursor:pointer;background:#0078d4;color:#fff;border:none;border-radius:4px;font-weight:600}
-                    button:disabled{background:#444;color:#888}
-                    button.r{background:#d13438}
-                    input,select{width:100%;padding:6px;background:#333;color:#fff;border:1px solid #555;border-radius:3px;box-sizing:border-box;margin-top:5px}
-                    .hd{display:none!important}
-                    .tm{font-size:28px;text-align:center;color:#4af;margin:15px 0;font-family:monospace}
-                </style>
-                <div class="b">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:10px">
-                        <strong>⏳ Timer Click V5</strong>
-                        <span id="x" style="cursor:pointer;padding:0 5px">✕</span>
-                    </div>
-                    <div id="p1">
-                        <button id="pk">🎯 Pick Target</button>
-                        <div id="so" class="hd" style="margin-top:10px;border-left:2px solid #0078d4;padding-left:8px">
-                            <label>Option:</label><select id="sd"></select>
-                        </div>
-                        <div style="margin-top:15px;border-top:1px solid #444;padding-top:10px">
-                            <label>Delay (Minutes):</label>
-                            <input type="number" id="mn" value="30" min="0.1" step="0.1">
-                        </div>
-                        <button id="go" disabled>Start</button>
-                    </div>
-                    <div id="p2" class="hd">
-                        <div class="tm" id="cd">00:00:00</div>
-                        <button id="cn" class="r">Cancel</button>
-                    </div>
-                </div>\`;
-                document.body.appendChild(this.h);
-                this.bind();
-            }
-
-            bind(){
-                const q=s=>this.s.querySelector(s);
-                q('#x').onclick=()=>this.h.remove();
-                q('#pk').onclick=()=>this.pick();
-                q('#go').onclick=()=>this.start();
-                q('#cn').onclick=()=>this.reset();
-            }
-
-            pick(){
-                this.h.style.display='none';
-                const hl = document.createElement('div');
-                hl.style.cssText = 'position:absolute;border:2px solid #0078d4;background:rgba(0,120,212,0.2);pointer-events:none;z-index:2147483646';
-                document.body.appendChild(hl);
-
-                const mv = e => {
-                    const r = e.target.getBoundingClientRect();
-                    hl.style.top = (r.top + window.scrollY) + 'px';
-                    hl.style.left = (r.left + window.scrollX) + 'px';
-                    hl.style.width = r.width + 'px';
-                    hl.style.height = r.height + 'px';
-                };
-
-                const cl = e => {
-                    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-                    this.el = e.target;
-                    hl.remove();
-                    document.removeEventListener('mousemove', mv);
-                    document.removeEventListener('click', cl, true);
-                    this.h.style.display='block';
-                    this.anl();
-                    return false;
-                };
-                
-                document.addEventListener('mousemove', mv);
-                document.addEventListener('click', cl, true);
-            }
-
-            anl(){
-                const q=s=>this.s.querySelector(s);
-                q('#pk').innerText = 'Target: ' + this.el.tagName;
-                q('#pk').style.background = '#2ea44f';
-                q('#go').disabled = false;
-                
-                if(this.el.tagName === 'SELECT'){
-                    q('#so').classList.remove('hd');
-                    const sd=q('#sd');
-                    sd.innerHTML='';
-                    Array.from(this.el.options).forEach(o=>sd.add(new Option(o.text,o.value)));
-                    sd.value=this.el.value;
-                    this.val=this.el.value;
-                    sd.onchange=e=>this.val=e.target.value;
-                } else {
-                    q('#so').classList.add('hd');
-                }
-            }
-
-            start(){
-                const min = parseFloat(this.s.querySelector('#mn').value)||0;
-                const end = Date.now() + (min*60000);
-                this.s.querySelector('#p1').classList.add('hd');
-                this.s.querySelector('#p2').classList.remove('hd');
-                
-                this.tm = setInterval(()=>{
-                    const r = end - Date.now();
-                    if(r<=0) { this.exec(); return; }
-                    const m = Math.floor(r/60000).toString().padStart(2,'0');
-                    const s = Math.floor((r%60000)/1000).toString().padStart(2,'0');
-                    this.s.querySelector('#cd').innerText = m+':'+s;
-                }, 1000);
-            }
-
-            reset(){
-                clearInterval(this.tm);
-                this.s.querySelector('#p1').classList.remove('hd');
-                this.s.querySelector('#p2').classList.add('hd');
-                this.s.querySelector('#cd').innerText='00:00:00';
-            }
-
-            exec(){
-                clearInterval(this.tm);
-                this.s.querySelector('#cd').innerText='DONE';
-                try {
-                    if(this.el.tagName==='SELECT'){
-                        this.el.value=this.val;
-                        this.el.dispatchEvent(new Event('input',{bubbles:true}));
-                        this.el.dispatchEvent(new Event('change',{bubbles:true}));
-                    } else {
-                        ['mousedown','mouseup','click'].forEach(ev=>{
-                            this.el.dispatchEvent(new MouseEvent(ev,{view:window,bubbles:true,cancelable:true}));
-                        });
-                    }
-                } catch(e){ console.error(e); }
-                setTimeout(()=>this.h.remove(), 2000);
-            }
+        /* --- 2. INITIALIZATION --- */
+        init(){
+            this.h = document.createElement('div');
+            this.h.id = this.id;
+            this.h.style.cssText = 'position:fixed;top:15px;right:15px;z-index:2147483647;font-family:system-ui,-apple-system,sans-serif';
+            this.s = this.h.attachShadow({mode:'open'});
             
-            toggle(){
-                this.h.style.display = this.h.style.display==='none'?'block':'none';
+            this.s.innerHTML = \`
+            <style>
+                :host{all:initial;font-family:system-ui,sans-serif}
+                .box{background:#0f172a;color:#e2e8f0;width:280px;padding:16px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.6), 0 0 0 1px #334155;font-size:13px;box-sizing:border-box}
+                .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+                .title{font-weight:700;color:#60a5fa;letter-spacing:0.5px}
+                .close{cursor:pointer;color:#64748b;padding:4px} .close:hover{color:#fff}
+                button{width:100%;background:#2563eb;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:10px;transition:all 0.2s}
+                button:hover{background:#1d4ed8}
+                button:disabled{background:#1e293b;color:#475569;cursor:not-allowed}
+                button.alt{background:#334155} button.alt:hover{background:#475569}
+                button.cancel{background:#ef4444} button.cancel:hover{background:#dc2626}
+                input[type="text"], input[type="number"], select{width:100%;background:#1e293b;color:#fff;border:1px solid #334155;padding:8px;border-radius:6px;box-sizing:border-box;margin-top:6px;outline:none}
+                input:focus{border-color:#60a5fa}
+                .lbl{font-size:11px;color:#94a3b8;margin-top:8px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+                .hidden{display:none!important}
+                .timer{font-size:36px;text-align:center;color:#60a5fa;margin:20px 0;font-family:monospace;font-variant-numeric:tabular-nums;text-shadow:0 0 20px rgba(96,165,250,0.3)}
+                .opt-row{display:flex;gap:8px;margin-top:8px}
+                .chk-grp{display:flex;align-items:center;background:#1e293b;padding:0 8px;border-radius:6px;border:1px solid #334155;flex:1}
+                /* New Checkbox Style */
+                input[type="checkbox"] { width:auto; margin:0 6px 0 0; }
+            </style>
+            <div class="box">
+                <div class="row"><div style="display:flex;align-items:center"><span class="title">CLICKER V5.0</span></div><span id="x" class="close">✕</span></div>
+                
+                <div id="v1">
+                    <button id="pk1">🎯 Pick Primary Target</button>
+                    
+                    <div id="inp_box" class="hidden">
+                         <div class="lbl">Input Text</div>
+                         <input type="text" id="t1_val" placeholder="Text to type...">
+                         
+                         <!-- Press Enter Option -->
+                         <div class="chk-grp" style="margin-top:6px; padding:6px 8px;">
+                            <input type="checkbox" id="enter_opt">
+                            <label for="enter_opt" style="cursor:pointer;font-size:11px;color:#cbd5e1">Press Enter after typing</label>
+                         </div>
+                    </div>
+                    
+                    <button id="pk2" class="alt">➕ Add Secondary Sequence</button>
+                    
+                    <div class="lbl">Timing & Options</div>
+                    <div class="opt-row">
+                        <input type="number" id="mn" value="30" min="0.1" step="0.1" placeholder="Mins">
+                        <div class="chk-grp">
+                            <input type="checkbox" id="lp">
+                            <label for="lp" style="cursor:pointer;font-size:11px;color:#cbd5e1">Loop</label>
+                        </div>
+                    </div>
+
+                    <button id="go" disabled>🚀 Start Automation</button>
+                </div>
+
+                <div id="v2" class="hidden">
+                    <div class="timer" id="tm">00:00</div>
+                    <div id="st_txt" style="text-align:center;color:#94a3b8;font-size:12px;margin-bottom:10px">Active • Anti-Sleep On</div>
+                    <button id="cn" class="cancel">Stop</button>
+                </div>
+            </div>\`;
+            
+            const q = s => this.s.querySelector(s);
+            this.ui = {
+                root: this.h,
+                x: q('#x'),
+                pk1: q('#pk1'), pk2: q('#pk2'),
+                inpBox: q('#inp_box'), inpVal: q('#t1_val'), enterOpt: q('#enter_opt'),
+                go: q('#go'), cn: q('#cn'),
+                v1: q('#v1'), v2: q('#v2'),
+                mn: q('#mn'), lp: q('#lp'),
+                tm: q('#tm')
+            };
+
+            this.bind();
+            root.appendChild(this.h);
+        }
+
+        bind(){
+            this.ui.x.onclick = () => this.destroy();
+            this.ui.pk1.onclick = () => this.pick(1);
+            this.ui.pk2.onclick = () => this.pick(2);
+            this.ui.go.onclick = () => this.start();
+            this.ui.cn.onclick = () => this.reset();
+            this.ui.inpVal.onchange = (e) => this.state.t1Val = e.target.value;
+            this.ui.enterOpt.onchange = (e) => this.state.pressEnter = e.target.checked;
+        }
+
+        /* --- 3. PICKER ENGINE --- */
+        pick(idx){
+            this.ui.root.style.display = 'none';
+            const hl = document.createElement('div');
+            hl.style.cssText = 'position:fixed;border:2px solid #60a5fa;background:rgba(96,165,250,0.2);pointer-events:none;z-index:2147483646;border-radius:4px';
+            document.body.appendChild(hl);
+
+            let rAf = null;
+            let lastE = null;
+            
+            const mv = e => {
+                lastE = e;
+                if(rAf) return;
+                rAf = requestAnimationFrame(() => {
+                    if(!lastE) return;
+                    const r = lastE.target.getBoundingClientRect();
+                    hl.style.top = r.top+'px'; hl.style.left = r.left+'px';
+                    hl.style.width = r.width+'px'; hl.style.height = r.height+'px';
+                    rAf = null;
+                });
+            };
+
+            const cleanup = () => {
+                hl.remove();
+                if(rAf) cancelAnimationFrame(rAf);
+                this.removeListener(document, 'mousemove', mv);
+                this.removeListener(document, 'click', cl, true);
+                this.removeListener(document, 'keydown', kd);
+                this.ui.root.style.display = 'block';
+            };
+
+            const cl = e => {
+                e.preventDefault(); e.stopPropagation();
+                if(idx === 1) this.state.t1 = e.target;
+                else this.state.t2 = e.target;
+                
+                cleanup();
+                this.updateUI(idx);
+            };
+
+            const kd = e => {
+                if(e.key === 'Escape') cleanup();
+            };
+
+            this.addListener(document, 'mousemove', mv);
+            this.addListener(document, 'click', cl, true);
+            this.addListener(document, 'keydown', kd);
+        }
+
+        updateUI(idx){
+            if (idx !== 1) {
+                this.ui.pk2.innerText = 'Seq: ' + this.state.t2.tagName;
+                this.ui.pk2.style.background = '#059669';
+                return;
+            }
+
+            const t = this.state.t1;
+            this.ui.pk1.innerText = 'Target: ' + t.tagName;
+            this.ui.pk1.style.background = '#059669';
+            this.ui.go.disabled = false;
+            
+            // Text/Input Detection
+            const isText = t.tagName === 'TEXTAREA' || 
+                          (t.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|image|file|hidden)$/i.test(t.type));
+            
+            if(isText || t.tagName === 'SELECT'){
+                this.ui.inpBox.classList.remove('hidden');
+            } else {
+                this.ui.inpBox.classList.add('hidden');
             }
         }
-        window.dc_running = new DC();
-    })();`;
 
-    const href = "javascript:" + encodeURIComponent(source);
-    document.getElementById('bkmk').setAttribute('href', href);
+        /* --- 4. TIMER & EXECUTION --- */
+        async start(){
+            if(this.iv) clearInterval(this.iv);
+
+            const mVal = parseFloat(this.ui.mn.value) || 0;
+            if(mVal <= 0) return alert('Invalid Time');
+            
+            try {
+                if('wakeLock' in navigator) this.state.wakeLock = await navigator.wakeLock.request('screen');
+            } catch(e){}
+
+            const end = Date.now() + (mVal * 60000);
+            this.ui.v1.classList.add('hidden');
+            this.ui.v2.classList.remove('hidden');
+
+            this.iv = setInterval(() => {
+                const r = end - Date.now();
+                if(r <= 0) {
+                    this.exec();
+                    if(this.ui.lp.checked) {
+                        this.start();
+                    } else {
+                        clearInterval(this.iv);
+                    }
+                    return;
+                }
+                const mm = Math.floor(r/60000).toString().padStart(2,'0');
+                const ss = Math.floor((r%60000)/1000).toString().padStart(2,'0');
+                this.ui.tm.innerText = \`\${mm}:\${ss}\`;
+                document.title = \`⏳ \${mm}:\${ss}\`;
+            }, 1000);
+        }
+
+        trigger(el, val) {
+            if(!el) return;
+            if(!document.body.contains(el)) return console.warn('Target detached');
+
+            // Input Handling
+            const isInput = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
+            if(val !== null && (isInput || el.tagName === 'SELECT')) {
+                el.focus();
+                
+                const proto = Object.getPrototypeOf(el);
+                const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+                if(setter && setter !== Object.getOwnPropertyDescriptor(el, 'value')?.set) {
+                    setter.call(el, val);
+                } else {
+                    el.value = val;
+                }
+                
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Press Enter Logic
+                if(this.state.pressEnter) {
+                    const kOpts = {
+                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                        bubbles: true, cancelable: true, view: window
+                    };
+                    el.dispatchEvent(new KeyboardEvent('keydown', kOpts));
+                    el.dispatchEvent(new KeyboardEvent('keypress', kOpts));
+                    el.dispatchEvent(new KeyboardEvent('keyup', kOpts));
+                }
+                
+                el.blur();
+            }
+
+            // Click Sequence
+            const opts = { view: window, bubbles: true, cancelable: true };
+            ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'click'].forEach(evt => {
+                el.dispatchEvent(new MouseEvent(evt, opts));
+            });
+        }
+
+        exec(){
+            try {
+                this.trigger(this.state.t1, this.state.t1Val);
+                if(this.state.t2) setTimeout(() => this.trigger(this.state.t2, null), 600);
+            } catch(e) { console.error(e); }
+        }
+
+        reset(){
+            clearInterval(this.iv);
+            if(this.state.wakeLock) this.state.wakeLock.release();
+            document.title = "Stopped";
+            this.ui.v1.classList.remove('hidden');
+            this.ui.v2.classList.add('hidden');
+        }
+
+        /* --- 5. UTILS & CLEANUP --- */
+        addListener(target, type, fn, opts) {
+            target.addEventListener(type, fn, opts);
+            this.cleanupFns.push(() => target.removeEventListener(type, fn, opts));
+        }
+
+        removeListener(target, type, fn, opts) {
+            target.removeEventListener(type, fn, opts);
+            this.cleanupFns = this.cleanupFns.filter(f => f.toString() !== (() => target.removeEventListener(type, fn, opts)).toString());
+        }
+
+        destroy() {
+            this.reset();
+            this.cleanupFns.forEach(fn => fn());
+            this.h.remove();
+            delete window.__dc_v5;
+        }
+    }
+    window.__dc_v5 = new DC5();
+})();`;
+
+const href = "javascript:" + encodeURIComponent(code);
+document.getElementById('lnk').setAttribute('href', href);
 </script>
-
 </body>
 </html>
+
