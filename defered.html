@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V11.0</title>
+<title>Automation Hub V12.0</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,12 +37,12 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V11.0 Time-Enabled.</div>
+    <div class="subtitle">V12.0 Smart Toggle.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V18</h2>
-            <p>Single-target automation. Now supports specific clock times (e.g., 3:30 PM).</p>
+            <h2>Quick Clicker V19</h2>
+            <p>Single-target automation. Clock time support.</p>
             <div class="features">
                 <div>Delay OR Clock Time</div>
                 <div>Draggable Window</div>
@@ -53,10 +53,10 @@
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V9</h2>
-            <p>Generates <strong>State-Aware Macros</strong>. Checks if the menu is already open before clicking.</p>
+            <h2>Macro Builder V10</h2>
+            <p>Generates <strong>Smart Macros</strong>. Prevents double-toggling if the profile button is part of your sequence.</p>
             <div class="features">
-                <div>Smart "Aria-Expanded" Check</div>
+                <div>Smart Toggle Protection</div>
                 <div>Stabilized Click Sequence</div>
                 <div>Unified Timers</div>
                 <div>Visual Status Updates</div>
@@ -102,7 +102,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V18</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V19</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -385,9 +385,11 @@ function MacroBuilderLogic() {
                 'input.delay{width:40px;background:#0f172a;border:1px solid #334155;color:#fff;border-radius:4px;padding:2px;font-size:11px;text-align:center}' +
                 '.empty-msg{text-align:center;color:#64748b;padding:20px;font-style:italic}' +
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
+                '.action-list{padding-left:28px;font-size:11px;color:#c7d2fe}' +
+                '.action-item{border-left:2px solid #334155;padding-left:8px;margin-bottom:2px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V9</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V10</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -701,6 +703,15 @@ function MacroBuilderLogic() {
                             this.q('#tm').innerText = 'Action...';
                             for(let j=0; j<group.actions.length; j++) {
                                 const action = group.actions[j];
+                                
+                                /* SMART TOGGLE PREVENTION */
+                                if(config.openSel && action.sel === config.openSel) {
+                                    const menuBtn = document.querySelector(config.openSel);
+                                    if(menuBtn && menuBtn.getAttribute('aria-expanded') === 'true') {
+                                        continue; /* Skip clicking Profile if menu is already open */
+                                    }
+                                }
+
                                 const el = await find(action.sel, action.txt);
                                 
                                 if(!el) { alert('Step '+(i+1)+' Sub-action '+(j+1)+' Failed: Not found ('+action.sel+')'); return; }
