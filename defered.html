@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V13.2</title>
+<title>Automation Hub V15.1</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,12 +37,12 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V13.2 Fixed & Validated.</div>
+    <div class="subtitle">V15.1 Final Polish.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V24</h2>
-            <p>Single-target automation. Clock time support. Fixed picker logic.</p>
+            <h2>Quick Clicker V25</h2>
+            <p>Single-target automation. Supports Clock Time (e.g., 3:30 PM).</p>
             <div class="features">
                 <div>Delay OR Clock Time</div>
                 <div>Draggable Window</div>
@@ -53,8 +53,8 @@
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V15</h2>
-            <p>Generates robust, comment-free bookmarklets. Includes fix for selecting parent buttons on Genesys.</p>
+            <h2>Macro Builder V16</h2>
+            <p>Generates robust, comment-free bookmarklets. Genesys parent-selection fix included.</p>
             <div class="features">
                 <div>Intelligent Parent Selection</div>
                 <div>Visual Confirmation</div>
@@ -102,7 +102,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V24</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V25</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -344,7 +344,7 @@ function QuickClickerLogic() {
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v14){window.__mb_v14.destroy();return}
+    if(window.__mb_v16){window.__mb_v16.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
@@ -392,7 +392,7 @@ function MacroBuilderLogic() {
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V14</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V16</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -537,8 +537,15 @@ function MacroBuilderLogic() {
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 
                 let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
-                if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
+                
+                if (!targetEl) {
+                    targetEl = e.target.closest('.menu-selector, .entity-image-button');
+                }
+                
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) {
+                    targetEl = e.target.parentElement;
+                }
+                
                 if (!targetEl) targetEl = e.target;
                 
                 const sel = this.getSel(targetEl);
@@ -688,7 +695,7 @@ function MacroBuilderLogic() {
                                 if(backBtn && backBtn.offsetParent !== null) {
                                     this.q('#st').innerText = 'Resetting Menu...';
                                     backBtn.click();
-                                    await wait(800);
+                                    await wait(1500);
                                 } else {
                                     break;
                                 }
@@ -703,7 +710,7 @@ function MacroBuilderLogic() {
                                 if(!isOpen) {
                                     this.q('#st').innerText = 'Opening Menu...';
                                     menuBtn.click();
-                                    await wait(1000);
+                                    await wait(1500);
                                 }
                             }
                         };
@@ -795,9 +802,9 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v14; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v16; }
     }
-    window.__mb_v14 = new MacroBuilder();
+    window.__mb_v16 = new MacroBuilder();
 }
 
 function generate(func) {
@@ -814,3 +821,6 @@ try {
     alert("Generation failed. See console.");
 }
 </script>
+
+</body>
+</html>
