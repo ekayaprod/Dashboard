@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V13.1</title>
+<title>Automation Hub V13.2</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,29 +37,29 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V13.1 Restored. Correct Picker Logic.</div>
+    <div class="subtitle">V13.2 Fixed & Validated.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V23</h2>
-            <p>Restored logic. Works exactly like V5 but with clock support.</p>
+            <h2>Quick Clicker V24</h2>
+            <p>Single-target automation. Clock time support. Fixed picker logic.</p>
             <div class="features">
                 <div>Delay OR Clock Time</div>
                 <div>Draggable Window</div>
                 <div>Text Input Support</div>
-                <div>Restored Picker</div>
+                <div>Fixed Picker Logic</div>
             </div>
             <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V14</h2>
-            <p>Restored to V13 base. Fixed "Image Selection" bug by forcing parent selection for icons.</p>
+            <h2>Macro Builder V15</h2>
+            <p>Generates robust, comment-free bookmarklets. Includes fix for selecting parent buttons on Genesys.</p>
             <div class="features">
-                <div>Fixed Profile Button Picker</div>
+                <div>Intelligent Parent Selection</div>
                 <div>Visual Confirmation</div>
                 <div>Smart Toggle Protection</div>
-                <div>Restored Generation Logic</div>
+                <div>Validated Generation</div>
             </div>
             <a id="lnk_macro" href="#" class="btn btn-macro">🎛️ Macro Builder</a>
         </div>
@@ -102,7 +102,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V23</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V24</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -233,20 +233,9 @@ function QuickClickerLogic() {
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 if(e.target.tagName==='IFRAME') alert('Cannot click inside IFrame');
                 
-                // Restored V13 base logic, added V14 FIX for Profile Button
                 let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
-                
-                // Extra check for Genesys profile buttons (DIVs with classes)
-                if (!targetEl) {
-                    targetEl = e.target.closest('.menu-selector, .entity-image-button');
-                }
-                
-                // Fallback: If still nothing and we clicked an image/icon, grab parent
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) {
-                    targetEl = e.target.parentElement;
-                }
-                
-                // Ultimate fallback
+                if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
                 if (!targetEl) targetEl = e.target;
                 
                 this.state.t1=targetEl;
@@ -355,7 +344,7 @@ function QuickClickerLogic() {
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v4){window.__mb_v4.destroy();return}
+    if(window.__mb_v14){window.__mb_v14.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
@@ -401,8 +390,6 @@ function MacroBuilderLogic() {
                 'input.delay{width:40px;background:#0f172a;border:1px solid #334155;color:#fff;border-radius:4px;padding:2px;font-size:11px;text-align:center}' +
                 '.empty-msg{text-align:center;color:#64748b;padding:20px;font-style:italic}' +
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
-                '.action-list{padding-left:28px;font-size:11px;color:#c7d2fe}' +
-                '.action-item{border-left:2px solid #334155;padding-left:8px;margin-bottom:2px}' +
             '</style>' +
             '<div class="box">' +
                 '<div class="row" id="drag"><h3>MACRO BUILDER V14</h3><span id="x" style="cursor:pointer">✕</span></div>' +
@@ -499,14 +486,12 @@ function MacroBuilderLogic() {
         getSel(el){
             if(el.hasAttribute('aria-label')) {
                 const label = el.getAttribute('aria-label');
-                // Avoid using dynamic status text in the selector if possible
                 if (!label.match(/On queue|Available|Busy|Away|Break|Meal|Offline/i)) {
                      if(document.querySelectorAll('[aria-label="'+label+'"]').length === 1) return '[aria-label="'+label+'"]';
                 }
             }
             if(el.id && !/\d/.test(el.id)) return '#'+el.id; 
             
-            // Try specific class combinations first
             if (el.classList.contains('menu-selector')) return '.menu-selector';
             if (el.classList.contains('entity-image-button')) return '.entity-image-button';
 
@@ -551,20 +536,9 @@ function MacroBuilderLogic() {
                 if(e.shiftKey) return;
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 
-                // Restored V13 base logic, added V14 FIX for Profile Button
                 let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
-                
-                // Extra check for Genesys profile buttons (DIVs with classes)
-                if (!targetEl) {
-                    targetEl = e.target.closest('.menu-selector, .entity-image-button');
-                }
-                
-                // Fallback: If still nothing and we clicked an image/icon, grab parent
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) {
-                    targetEl = e.target.parentElement;
-                }
-                
-                // Ultimate fallback
+                if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
                 if (!targetEl) targetEl = e.target;
                 
                 const sel = this.getSel(targetEl);
@@ -576,10 +550,9 @@ function MacroBuilderLogic() {
                 this.q('#prev_sel').innerText = sel;
                 this.q('#preview').classList.remove('hidden');
 
-                // Fix: Properly re-bind onclick handlers for the modal
                 this.q('#prev_yes').onclick = () => {
                     this.q('#preview').classList.add('hidden');
-                    this.clearListeners(); // Stop listening for picks
+                    this.clearListeners(); 
                     
                     if(mode === 'reset') {
                         this.config.resetSel = sel;
@@ -600,7 +573,6 @@ function MacroBuilderLogic() {
                         
                         this.currentSequence.push({ sel: sel, txt: txt, val: val, enter: enter });
                         
-                        // Small delay to prevent accidental double-clicks
                         setTimeout(() => {
                             if(!confirm('Element added! Pick another for this sequence? Click Cancel to finish this group.')) {
                                 this.steps.push({ actions: this.currentSequence, delay: 1 });
@@ -614,9 +586,8 @@ function MacroBuilderLogic() {
 
                 this.q('#prev_no').onclick = () => {
                     this.q('#preview').classList.add('hidden');
-                    // Resume picking without clearing listeners or showing main UI yet
                     this.h.style.display='none'; 
-                    document.body.appendChild(hl); // Re-add highlighter
+                    document.body.appendChild(hl); 
                 };
 
                 return false;
@@ -717,7 +688,7 @@ function MacroBuilderLogic() {
                                 if(backBtn && backBtn.offsetParent !== null) {
                                     this.q('#st').innerText = 'Resetting Menu...';
                                     backBtn.click();
-                                    await wait(1500);
+                                    await wait(800);
                                 } else {
                                     break;
                                 }
@@ -732,7 +703,7 @@ function MacroBuilderLogic() {
                                 if(!isOpen) {
                                     this.q('#st').innerText = 'Opening Menu...';
                                     menuBtn.click();
-                                    await wait(1500);
+                                    await wait(1000);
                                 }
                             }
                         };
@@ -824,9 +795,9 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v12; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v14; }
     }
-    window.__mb_v12 = new MacroBuilder();
+    window.__mb_v14 = new MacroBuilder();
 }
 
 function generate(func) {
@@ -843,6 +814,3 @@ try {
     alert("Generation failed. See console.");
 }
 </script>
-
-</body>
-</html>
