@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Automation Hub V15.2</title>
+<title>Automation Hub V15.3</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
     .subtitle { color: #94a3b8; margin-bottom: 40px; }
     
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 900px; width: 100%; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; max-width: 1200px; width: 100%; }
     
     .card { background: #1e293b; border: 1px solid #334155; padding: 2rem; border-radius: 20px; text-align: center; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); display: flex; flex-direction: column; height: 100%; box-sizing: border-box; transition: transform 0.2s; }
     .card:hover { border-color: #475569; transform: translateY(-2px); }
@@ -28,6 +28,10 @@
     .btn-macro { background: #7c3aed; border-color: #6d28d9; }
     .btn-macro:hover { background: #6d28d9; box-shadow: 0 15px 30px -5px rgba(124, 58, 237, 0.4); }
 
+    .c-debug { border-top: 4px solid #f59e0b; }
+    .btn-debug { background: #f59e0b; border-color: #d97706; color: #fff; }
+    .btn-debug:hover { background: #d97706; box-shadow: 0 15px 30px -5px rgba(245, 158, 11, 0.4); }
+
     .features { text-align: left; margin-top: 20px; background: #0f172a; padding: 15px; border-radius: 10px; font-size: 0.85rem; color: #cbd5e1; border: 1px solid #334155; }
     .features div { margin-bottom: 6px; display: flex; align-items: center; }
     .features div::before { content: "•"; color: #fff; margin-right: 8px; font-weight: bold; }
@@ -38,42 +42,54 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V15.2 Fix Release.</div>
+    <div class="subtitle">V15.3 + Debug Recorder</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V26</h2>
+            <h2>Quick Clicker V27</h2>
             <p>Single-target automation. Supports Clock Time (e.g., 3:30 PM).</p>
             <div class="features">
                 <div>Delay OR Clock Time</div>
                 <div>Draggable Window</div>
                 <div>Text Input Support</div>
-                <div>Fixed Picker Logic (No Body Highlight)</div>
+                <div>Shadow DOM Support</div>
             </div>
             <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V17</h2>
+            <h2>Macro Builder V18</h2>
             <p>Generates robust, comment-free bookmarklets. Genesys parent-selection fix included.</p>
             <div class="features">
                 <div>Intelligent Parent Selection</div>
-                <div>Visual Confirmation</div>
+                <div>Shadow DOM Support</div>
                 <div>Smart Toggle Protection</div>
                 <div>Validated Generation</div>
             </div>
             <a id="lnk_macro" href="#" class="btn btn-macro">🎛️ Macro Builder</a>
         </div>
+
+        <div class="card c-debug">
+            <h2>Interaction Recorder</h2>
+            <p>Troubleshoot automation issues by recording your exact clicks on Genesys/ServiceNow.</p>
+            <div class="features">
+                <div>Records Click Targets</div>
+                <div>Captures Shadow DOM</div>
+                <div>Logs ID/Class/Aria</div>
+                <div>Exports Analysis File</div>
+            </div>
+            <a id="lnk_rec" href="#" class="btn btn-debug">🔴 Recorder</a>
+        </div>
     </div>
 
 <script>
 function QuickClickerLogic() {
-    if(window.__dc_v26){window.__dc_v26.destroy();return}
+    if(window.__dc_v27){window.__dc_v27.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
-    class DC26 {
+    class DC27 {
         constructor(){
-            this.id = 'dc26-'+Math.random().toString(36).slice(2);
+            this.id = 'dc27-'+Math.random().toString(36).slice(2);
             this.state = { t1: null, t1Val: null, loop: false, pressEnter: false, wakeLock: null, timeMode: 'delay' };
             this.cleanupFns = [];
             this.init();
@@ -103,7 +119,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V26</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V27</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -209,13 +225,29 @@ function QuickClickerLogic() {
             }
         }
 
+        getDeepTarget(e) {
+            let t = e.target;
+            while (t.shadowRoot && t.shadowRoot.elementFromPoint) {
+                const nested = t.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+                if (!nested || nested === t) break;
+                t = nested;
+            }
+            return t;
+        }
+
         getTarget(e) {
-            let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
-            if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
-            if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
-            if (!targetEl) targetEl = e.target;
+            let t = this.getDeepTarget(e);
+            
+            let targetEl = t.closest('button, a, [role="button"], [role="radio"], label');
+            if (!targetEl) targetEl = t.closest('.menu-selector, .entity-image-button');
+            if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(t.tagName)) targetEl = t.parentElement;
+            if (!targetEl) targetEl = t;
             
             if (targetEl.tagName === 'BODY' || targetEl.tagName === 'HTML') return null;
+            
+            const r = targetEl.getBoundingClientRect();
+            if (r.width >= window.innerWidth * 0.95 && r.height >= window.innerHeight * 0.95) return null;
+            
             return targetEl;
         }
 
@@ -242,9 +274,14 @@ function QuickClickerLogic() {
                 hl.style.height=r.height+'px';
             };
 
-            const cl=e=>{
+            const stopEvent = (e) => {
                 if(e.shiftKey) return;
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            };
+
+            const cl=e=>{
+                if(e.shiftKey) return;
+                stopEvent(e);
                 if(e.target.tagName==='IFRAME') alert('Cannot click inside IFrame');
                 
                 let targetEl = this.getTarget(e);
@@ -269,6 +306,8 @@ function QuickClickerLogic() {
             };
 
             this.add(document, 'mousemove', mv);
+            this.add(document, 'mousedown', stopEvent, true);
+            this.add(document, 'mouseup', stopEvent, true);
             this.add(document, 'click', cl, true);
         }
 
@@ -350,13 +389,13 @@ function QuickClickerLogic() {
             this.q('#v2').classList.add('hidden');
         }
 
-        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v26; }
+        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v27; }
     }
-    window.__dc_v26 = new DC26();
+    window.__dc_v27 = new DC27();
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v17){window.__mb_v17.destroy();return}
+    if(window.__mb_v18){window.__mb_v18.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
@@ -404,7 +443,7 @@ function MacroBuilderLogic() {
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V17</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V18</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -522,6 +561,32 @@ function MacroBuilderLogic() {
             this.pick('sequence');
         }
 
+        getDeepTarget(e) {
+            let t = e.target;
+            while (t.shadowRoot && t.shadowRoot.elementFromPoint) {
+                const nested = t.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+                if (!nested || nested === t) break;
+                t = nested;
+            }
+            return t;
+        }
+
+        getTarget(e) {
+            let t = this.getDeepTarget(e);
+            
+            let targetEl = t.closest('button, a, [role="button"], [role="radio"], label');
+            if (!targetEl) targetEl = t.closest('.menu-selector, .entity-image-button');
+            if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(t.tagName)) targetEl = t.parentElement;
+            if (!targetEl) targetEl = t;
+            
+            if (targetEl.tagName === 'BODY' || targetEl.tagName === 'HTML') return null;
+            
+            const r = targetEl.getBoundingClientRect();
+            if (r.width >= window.innerWidth * 0.95 && r.height >= window.innerHeight * 0.95) return null;
+            
+            return targetEl;
+        }
+
         pick(mode){
             this.h.style.display='none';
             const hl=document.createElement('div');
@@ -536,25 +601,31 @@ function MacroBuilderLogic() {
 
             const mv=e=>{
                 if(e.shiftKey){ hl.style.display='none'; return; }
+                const t = this.getTarget(e);
+                if(!t) { hl.style.display='none'; return; }
+
                 hl.style.display='block';
-                const r=e.target.getBoundingClientRect();
+                const r=t.getBoundingClientRect();
                 hl.style.top=(r.top + window.scrollY)+'px';
                 hl.style.left=(r.left + window.scrollX)+'px';
                 hl.style.width=r.width+'px';
                 hl.style.height=r.height+'px';
             };
 
+            const stopEvent = (e) => {
+                if(e.shiftKey) return;
+                if(this.h.contains(e.target)) return;
+                e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            };
+
             const cl=e=>{
                 if(e.shiftKey) return;
                 
                 if(this.h.contains(e.target)) return;
-
-                e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+                stopEvent(e);
                 
-                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
-                if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
-                if (!targetEl) targetEl = e.target;
+                let targetEl = this.getTarget(e);
+                if(!targetEl) return;
                 
                 const sel = this.getSel(targetEl);
                 const txt = targetEl.innerText ? targetEl.innerText.substring(0, 20).trim() : '';
@@ -609,6 +680,8 @@ function MacroBuilderLogic() {
             };
 
             this.add(document, 'mousemove', mv);
+            this.add(document, 'mousedown', stopEvent, true);
+            this.add(document, 'mouseup', stopEvent, true);
             this.add(document, 'click', cl, true);
         }
 
@@ -810,9 +883,169 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v17; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v18; }
     }
-    window.__mb_v17 = new MacroBuilder();
+    window.__mb_v18 = new MacroBuilder();
+}
+
+function InteractionRecorderLogic() {
+    if(window.__ir_v1){window.__ir_v1.destroy();return}
+    if(!document.body) return alert('Page has no body.');
+
+    class InteractionRecorder {
+        constructor(){
+            this.id = 'ir-'+Math.random().toString(36).slice(2);
+            this.log = [];
+            this.isRecording = false;
+            this.cleanupFns = [];
+            this.init();
+        }
+
+        init(){
+            this.h = document.createElement('div');
+            this.h.style.cssText = 'position:fixed;top:15px;right:15px;z-index:2147483647;font-family:system-ui,sans-serif';
+            this.s = this.h.attachShadow({mode:'open'});
+            
+            this.s.innerHTML = '<style>' +
+                ':host{all:initial;font-family:system-ui,sans-serif}' +
+                '.box{background:#451a03;color:#e2e8f0;width:240px;padding:16px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.7);border:1px solid #d97706;font-size:13px;box-sizing:border-box}' +
+                '.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;cursor:move;user-select:none}' +
+                'h3{margin:0;color:#fcd34d;font-size:14px;font-weight:700}' +
+                'button{width:100%;background:#f59e0b;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:8px;transition:0.2s;border:1px solid #d97706}' +
+                'button:hover{background:#d97706}' +
+                'button.stop{background:#ef4444;border-color:#b91c1c}' +
+                'button.stop:hover{background:#b91c1c}' +
+                '.status{margin-bottom:10px;text-align:center;font-size:11px;color:#cbd5e1}' +
+                '.count{font-size:24px;text-align:center;font-family:monospace;margin:5px 0;color:#fcd34d}' +
+            '</style>' +
+            '<div class="box">' +
+                '<div class="row" id="drag"><h3>RECORDER</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="status" id="st">Ready to record</div>' +
+                '<div class="count" id="cnt">0 Clicks</div>' +
+                '<button id="btn">Start Recording</button>' +
+            '</div>';
+            
+            this.q = s => this.s.querySelector(s);
+            this.bind();
+            document.body.appendChild(this.h);
+        }
+
+        bind(){
+            this.q('#x').onclick = () => this.destroy();
+            const btn = this.q('#btn');
+            btn.onclick = () => {
+                if(this.isRecording) this.stop();
+                else this.start();
+            };
+            this.makeDraggable(this.q('#drag'));
+        }
+
+        makeDraggable(head){
+            let pos1=0,pos2=0,pos3=0,pos4=0;
+            const dragMouseDown = e => { e = e || window.event; e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY; document.onmouseup = closeDragElement; document.onmousemove = elementDrag; };
+            const elementDrag = e => { e = e || window.event; e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY; this.h.style.top = (this.h.offsetTop - pos2) + "px"; this.h.style.left = (this.h.offsetLeft - pos1) + "px"; };
+            const closeDragElement = () => { document.onmouseup = null; document.onmousemove = null; };
+            head.onmousedown = dragMouseDown;
+        }
+
+        getDeepTarget(e) {
+            let t = e.target;
+            while (t.shadowRoot && t.shadowRoot.elementFromPoint) {
+                const nested = t.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+                if (!nested || nested === t) break;
+                t = nested;
+            }
+            return t;
+        }
+
+        start(){
+            this.isRecording = true;
+            this.log = [];
+            this.startTime = Date.now();
+            
+            const btn = this.q('#btn');
+            btn.innerText = 'Stop & Download';
+            btn.classList.add('stop');
+            this.q('#st').innerText = 'Recording...';
+            this.q('#cnt').innerText = '0 Clicks';
+
+            const handleClick = (e) => {
+                if(this.h.contains(e.target)) return;
+                
+                const t = this.getDeepTarget(e);
+                const clickData = {
+                    timeOffset: Date.now() - this.startTime,
+                    tagName: t.tagName,
+                    id: t.id,
+                    className: t.className,
+                    innerText: t.innerText ? t.innerText.substring(0, 50).replace(/\n/g, ' ') : '',
+                    ariaLabel: t.getAttribute('aria-label'),
+                    role: t.getAttribute('role'),
+                    path: this.getPath(t)
+                };
+                
+                this.log.push(clickData);
+                this.q('#cnt').innerText = this.log.length + ' Clicks';
+            };
+
+            document.addEventListener('click', handleClick, true);
+            this.cleanupFns.push(() => document.removeEventListener('click', handleClick, true));
+        }
+
+        getPath(el) {
+            const path = [];
+            let curr = el;
+            while (curr && curr !== document.body && curr !== document.documentElement) {
+                let selector = curr.tagName.toLowerCase();
+                if (curr.id) {
+                    selector += '#' + curr.id;
+                    path.unshift(selector);
+                    break;
+                } else {
+                    if (curr.className && typeof curr.className === 'string') {
+                         const classes = curr.className.trim().split(/\s+/).filter(c => c);
+                         if(classes.length) selector += '.' + classes.join('.');
+                    }
+                    path.unshift(selector);
+                    curr = curr.parentElement;
+                }
+            }
+            return path.join(' > ');
+        }
+
+        stop(){
+            this.isRecording = false;
+            this.cleanupFns.forEach(fn => fn());
+            this.cleanupFns = [];
+            
+            const btn = this.q('#btn');
+            btn.innerText = 'Start Recording';
+            btn.classList.remove('stop');
+            this.q('#st').innerText = 'Saved!';
+            
+            this.download();
+        }
+
+        download(){
+            const text = JSON.stringify(this.log, null, 2);
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'interaction_log_' + Date.now() + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        destroy(){
+            if(this.isRecording) this.stop();
+            this.h.remove();
+            delete window.__ir_v1;
+        }
+    }
+    window.__ir_v1 = new InteractionRecorder();
 }
 
 function generate(func) {
@@ -824,6 +1057,7 @@ function generate(func) {
 try {
     document.getElementById('lnk_quick').href = generate(QuickClickerLogic);
     document.getElementById('lnk_macro').href = generate(MacroBuilderLogic);
+    document.getElementById('lnk_rec').href = generate(InteractionRecorderLogic);
 } catch(e) {
     console.error("Error generating bookmarklets:", e);
     alert("Generation failed. See console.");
