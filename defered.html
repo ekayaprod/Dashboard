@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V14.0</title>
+<title>Automation Hub V13.1</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,29 +37,29 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V14.0 Picker Fix.</div>
+    <div class="subtitle">V13.1 Restored. Correct Picker Logic.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V21</h2>
-            <p>Single-target automation. Clock time support.</p>
+            <h2>Quick Clicker V23</h2>
+            <p>Restored logic. Works exactly like V5 but with clock support.</p>
             <div class="features">
                 <div>Delay OR Clock Time</div>
                 <div>Draggable Window</div>
-                <div>Sync Picker Engine</div>
                 <div>Text Input Support</div>
+                <div>Restored Picker</div>
             </div>
             <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V12</h2>
-            <p>Generates <strong>Robust Macros</strong>. Fixed Picker logic to ignore images and select parent buttons.</p>
+            <h2>Macro Builder V14</h2>
+            <p>Restored to V13 base. Fixed "Image Selection" bug by forcing parent selection for icons.</p>
             <div class="features">
-                <div>Intelligent Parent Selection</div>
+                <div>Fixed Profile Button Picker</div>
                 <div>Visual Confirmation</div>
-                <div>Increased Wait Times</div>
                 <div>Smart Toggle Protection</div>
+                <div>Restored Generation Logic</div>
             </div>
             <a id="lnk_macro" href="#" class="btn btn-macro">🎛️ Macro Builder</a>
         </div>
@@ -102,7 +102,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V20</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V23</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -233,11 +233,20 @@ function QuickClickerLogic() {
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 if(e.target.tagName==='IFRAME') alert('Cannot click inside IFrame');
                 
-                // V14 FIX: Aggressive Parent Traversal for Quick Clicker too
-                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label, .menu-selector, .entity-image-button');
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I'].includes(e.target.tagName)) {
+                // Restored V13 base logic, added V14 FIX for Profile Button
+                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
+                
+                // Extra check for Genesys profile buttons (DIVs with classes)
+                if (!targetEl) {
+                    targetEl = e.target.closest('.menu-selector, .entity-image-button');
+                }
+                
+                // Fallback: If still nothing and we clicked an image/icon, grab parent
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) {
                     targetEl = e.target.parentElement;
                 }
+                
+                // Ultimate fallback
                 if (!targetEl) targetEl = e.target;
                 
                 this.state.t1=targetEl;
@@ -346,7 +355,7 @@ function QuickClickerLogic() {
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v11){window.__mb_v11.destroy();return}
+    if(window.__mb_v4){window.__mb_v4.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
@@ -396,7 +405,7 @@ function MacroBuilderLogic() {
                 '.action-item{border-left:2px solid #334155;padding-left:8px;margin-bottom:2px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V12</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V14</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -542,11 +551,20 @@ function MacroBuilderLogic() {
                 if(e.shiftKey) return;
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 
-                // V14 FIX: Aggressive Parent Traversal for Macro Builder too
-                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label, .menu-selector, .entity-image-button');
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I'].includes(e.target.tagName)) {
+                // Restored V13 base logic, added V14 FIX for Profile Button
+                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
+                
+                // Extra check for Genesys profile buttons (DIVs with classes)
+                if (!targetEl) {
+                    targetEl = e.target.closest('.menu-selector, .entity-image-button');
+                }
+                
+                // Fallback: If still nothing and we clicked an image/icon, grab parent
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) {
                     targetEl = e.target.parentElement;
                 }
+                
+                // Ultimate fallback
                 if (!targetEl) targetEl = e.target;
                 
                 const sel = this.getSel(targetEl);
@@ -806,9 +824,9 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v11; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v12; }
     }
-    window.__mb_v11 = new MacroBuilder();
+    window.__mb_v12 = new MacroBuilder();
 }
 
 function generate(func) {
