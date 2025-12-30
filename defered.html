@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Automation Hub V13.0</title>
+<title>Automation Hub V14.0</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -37,11 +37,11 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V13.0 Fully Aligned.</div>
+    <div class="subtitle">V14.0 Picker Fix.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V20</h2>
+            <h2>Quick Clicker V21</h2>
             <p>Single-target automation. Clock time support.</p>
             <div class="features">
                 <div>Delay OR Clock Time</div>
@@ -53,10 +53,10 @@
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V11</h2>
-            <p>Generates <strong>Robust Macros</strong>. Implements specific timing and scoping fixes for Genesys.</p>
+            <h2>Macro Builder V12</h2>
+            <p>Generates <strong>Robust Macros</strong>. Fixed Picker logic to ignore images and select parent buttons.</p>
             <div class="features">
-                <div>Scoped "Find" Logic</div>
+                <div>Intelligent Parent Selection</div>
                 <div>Visual Confirmation</div>
                 <div>Increased Wait Times</div>
                 <div>Smart Toggle Protection</div>
@@ -102,7 +102,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V19</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V20</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -233,10 +233,17 @@ function QuickClickerLogic() {
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 if(e.target.tagName==='IFRAME') alert('Cannot click inside IFrame');
                 
-                this.state.t1=e.target;
-                this.audit(e.target);
+                // V14 FIX: Aggressive Parent Traversal for Quick Clicker too
+                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label, .menu-selector, .entity-image-button');
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I'].includes(e.target.tagName)) {
+                    targetEl = e.target.parentElement;
+                }
+                if (!targetEl) targetEl = e.target;
                 
-                const t=e.target.tagName;
+                this.state.t1=targetEl;
+                this.audit(targetEl);
+                
+                const t=targetEl.tagName;
                 const inp = this.q('#inp');
                 if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') inp.classList.remove('hidden');
                 else inp.classList.add('hidden');
@@ -389,7 +396,7 @@ function MacroBuilderLogic() {
                 '.action-item{border-left:2px solid #334155;padding-left:8px;margin-bottom:2px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V11</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V12</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -419,8 +426,8 @@ function MacroBuilderLogic() {
                     '<div style="font-weight:bold;margin-bottom:10px">Confirm Selection</div>' +
                     '<div id="prev_tag" style="color:#94a3b8;font-size:12px;margin-bottom:5px"></div>' +
                     '<div id="prev_sel" style="color:#c7d2fe;font-size:11px;margin-bottom:15px;word-break:break-all"></div>' +
-                    '<button id="prev_yes" style="background:#059669;margin-right:10px;width:auto">Confirm</button>' +
-                    '<button id="prev_no" style="background:#ef4444;width:auto">Retry</button>' +
+                    '<button id="prev_yes" style="background:#059669;margin-right:10px;width:auto;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;color:white;">Confirm</button>' +
+                    '<button id="prev_no" style="background:#ef4444;width:auto;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;color:white;">Retry</button>' +
                 '</div>' +
             '</div>';
             
@@ -483,9 +490,17 @@ function MacroBuilderLogic() {
         getSel(el){
             if(el.hasAttribute('aria-label')) {
                 const label = el.getAttribute('aria-label');
-                if(document.querySelectorAll('[aria-label="'+label+'"]').length === 1) return '[aria-label="'+label+'"]';
+                // Avoid using dynamic status text in the selector if possible
+                if (!label.match(/On queue|Available|Busy|Away|Break|Meal|Offline/i)) {
+                     if(document.querySelectorAll('[aria-label="'+label+'"]').length === 1) return '[aria-label="'+label+'"]';
+                }
             }
             if(el.id && !/\d/.test(el.id)) return '#'+el.id; 
+            
+            // Try specific class combinations first
+            if (el.classList.contains('menu-selector')) return '.menu-selector';
+            if (el.classList.contains('entity-image-button')) return '.entity-image-button';
+
             let path = el.tagName.toLowerCase();
             if(el.classList.length) path += '.' + [...el.classList].join('.');
             if(document.querySelectorAll(path).length > 1 && el.parentElement){
@@ -527,7 +542,13 @@ function MacroBuilderLogic() {
                 if(e.shiftKey) return;
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 
-                let targetEl = e.target.closest('button, a, [role="button"]') || e.target;
+                // V14 FIX: Aggressive Parent Traversal for Macro Builder too
+                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label, .menu-selector, .entity-image-button');
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I'].includes(e.target.tagName)) {
+                    targetEl = e.target.parentElement;
+                }
+                if (!targetEl) targetEl = e.target;
+                
                 const sel = this.getSel(targetEl);
                 const txt = targetEl.innerText ? targetEl.innerText.substring(0, 20).trim() : '';
 
@@ -537,9 +558,11 @@ function MacroBuilderLogic() {
                 this.q('#prev_sel').innerText = sel;
                 this.q('#preview').classList.remove('hidden');
 
+                // Fix: Properly re-bind onclick handlers for the modal
                 this.q('#prev_yes').onclick = () => {
                     this.q('#preview').classList.add('hidden');
-                    this.clearListeners();
+                    this.clearListeners(); // Stop listening for picks
+                    
                     if(mode === 'reset') {
                         this.config.resetSel = sel;
                         this.q('#cfg_rst_val').innerText = sel;
@@ -559,18 +582,23 @@ function MacroBuilderLogic() {
                         
                         this.currentSequence.push({ sel: sel, txt: txt, val: val, enter: enter });
                         
-                        if(!confirm('Element added! Pick another for this sequence? Click Cancel to finish this group.')) {
-                            this.steps.push({ actions: this.currentSequence, delay: 1 });
-                            this.refreshList();
-                        } else {
-                           this.pick('sequence'); 
-                        }
+                        // Small delay to prevent accidental double-clicks
+                        setTimeout(() => {
+                            if(!confirm('Element added! Pick another for this sequence? Click Cancel to finish this group.')) {
+                                this.steps.push({ actions: this.currentSequence, delay: 1 });
+                                this.refreshList();
+                            } else {
+                               this.pick('sequence'); 
+                            }
+                        }, 100);
                     }
                 };
 
                 this.q('#prev_no').onclick = () => {
                     this.q('#preview').classList.add('hidden');
-                    this.pick(mode); 
+                    // Resume picking without clearing listeners or showing main UI yet
+                    this.h.style.display='none'; 
+                    document.body.appendChild(hl); // Re-add highlighter
                 };
 
                 return false;
