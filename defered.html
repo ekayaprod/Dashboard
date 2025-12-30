@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Automation Hub V15.1</title>
+<title>Automation Hub V15.2</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -38,23 +38,23 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V15.1 Final Polish.</div>
+    <div class="subtitle">V15.2 Fix Release.</div>
 
     <div class="grid">
         <div class="card c-quick">
-            <h2>Quick Clicker V25</h2>
+            <h2>Quick Clicker V26</h2>
             <p>Single-target automation. Supports Clock Time (e.g., 3:30 PM).</p>
             <div class="features">
                 <div>Delay OR Clock Time</div>
                 <div>Draggable Window</div>
                 <div>Text Input Support</div>
-                <div>Fixed Picker Logic</div>
+                <div>Fixed Picker Logic (No Body Highlight)</div>
             </div>
             <a id="lnk_quick" href="#" class="btn btn-quick">⚡ Quick Clicker</a>
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V16</h2>
+            <h2>Macro Builder V17</h2>
             <p>Generates robust, comment-free bookmarklets. Genesys parent-selection fix included.</p>
             <div class="features">
                 <div>Intelligent Parent Selection</div>
@@ -68,12 +68,12 @@
 
 <script>
 function QuickClickerLogic() {
-    if(window.__dc_v11){window.__dc_v11.destroy();return}
+    if(window.__dc_v26){window.__dc_v26.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
-    class DC11 {
+    class DC26 {
         constructor(){
-            this.id = 'dc11-'+Math.random().toString(36).slice(2);
+            this.id = 'dc26-'+Math.random().toString(36).slice(2);
             this.state = { t1: null, t1Val: null, loop: false, pressEnter: false, wakeLock: null, timeMode: 'delay' };
             this.cleanupFns = [];
             this.init();
@@ -103,7 +103,7 @@ function QuickClickerLogic() {
                 '.mode-opt{cursor:pointer;display:flex;align-items:center;gap:4px}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><b>QUICK CLICKER V25</b><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><b>QUICK CLICKER V26</b><span id="x" style="cursor:pointer">✕</span></div>' +
                 '<div id="v1">' +
                     '<button id="pk">🎯 Pick Target</button>' +
                     '<div id="warn" class="hidden warn"></div>' +
@@ -350,13 +350,13 @@ function QuickClickerLogic() {
             this.q('#v2').classList.add('hidden');
         }
 
-        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v11; }
+        destroy(){ this.reset(); this.h.remove(); delete window.__dc_v26; }
     }
-    window.__dc_v11 = new DC11();
+    window.__dc_v26 = new DC26();
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v16){window.__mb_v16.destroy();return}
+    if(window.__mb_v17){window.__mb_v17.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
@@ -404,7 +404,7 @@ function MacroBuilderLogic() {
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V16</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V17</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -810,9 +810,9 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v16; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v17; }
     }
-    window.__mb_v16 = new MacroBuilder();
+    window.__mb_v17 = new MacroBuilder();
 }
 
 function generate(func) {
