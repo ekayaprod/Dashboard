@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Automation Hub V15.1</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
@@ -208,6 +209,16 @@ function QuickClickerLogic() {
             }
         }
 
+        getTarget(e) {
+            let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
+            if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
+            if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
+            if (!targetEl) targetEl = e.target;
+            
+            if (targetEl.tagName === 'BODY' || targetEl.tagName === 'HTML') return null;
+            return targetEl;
+        }
+
         pick(){
             this.h.style.display='none';
             const hl=document.createElement('div');
@@ -220,8 +231,11 @@ function QuickClickerLogic() {
 
             const mv=e=>{
                 if(e.shiftKey){ hl.style.display='none'; return; }
+                const t = this.getTarget(e);
+                if(!t) { hl.style.display='none'; return; }
+
                 hl.style.display='block';
-                const r=e.target.getBoundingClientRect();
+                const r=t.getBoundingClientRect();
                 hl.style.top=(r.top + window.scrollY)+'px';
                 hl.style.left=(r.left + window.scrollX)+'px';
                 hl.style.width=r.width+'px';
@@ -233,10 +247,8 @@ function QuickClickerLogic() {
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 if(e.target.tagName==='IFRAME') alert('Cannot click inside IFrame');
                 
-                let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
-                if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
-                if (!targetEl) targetEl = e.target;
+                let targetEl = this.getTarget(e);
+                if(!targetEl) return;
                 
                 this.state.t1=targetEl;
                 this.audit(targetEl);
@@ -534,18 +546,14 @@ function MacroBuilderLogic() {
 
             const cl=e=>{
                 if(e.shiftKey) return;
+                
+                if(this.h.contains(e.target)) return;
+
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
                 
                 let targetEl = e.target.closest('button, a, [role="button"], [role="radio"], label');
-                
-                if (!targetEl) {
-                    targetEl = e.target.closest('.menu-selector, .entity-image-button');
-                }
-                
-                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) {
-                    targetEl = e.target.parentElement;
-                }
-                
+                if (!targetEl) targetEl = e.target.closest('.menu-selector, .entity-image-button');
+                if (!targetEl && ['IMG', 'SVG', 'PATH', 'SPAN', 'I', 'GUX-ICON'].includes(e.target.tagName)) targetEl = e.target.parentElement;
                 if (!targetEl) targetEl = e.target;
                 
                 const sel = this.getSel(targetEl);
@@ -821,6 +829,5 @@ try {
     alert("Generation failed. See console.");
 }
 </script>
-
 </body>
 </html>
