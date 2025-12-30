@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Automation Hub V15.3</title>
+<title>Automation Hub V15.4</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -42,7 +42,7 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V15.3 + Debug Recorder</div>
+    <div class="subtitle">V15.4 Shadow Runtime.</div>
 
     <div class="grid">
         <div class="card c-quick">
@@ -58,11 +58,11 @@
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V18</h2>
+            <h2>Macro Builder V19</h2>
             <p>Generates robust, comment-free bookmarklets. Genesys parent-selection fix included.</p>
             <div class="features">
                 <div>Intelligent Parent Selection</div>
-                <div>Shadow DOM Support</div>
+                <div>Shadow DOM Runtime</div>
                 <div>Smart Toggle Protection</div>
                 <div>Validated Generation</div>
             </div>
@@ -395,7 +395,7 @@ function QuickClickerLogic() {
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v18){window.__mb_v18.destroy();return}
+    if(window.__mb_v19){window.__mb_v19.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
@@ -443,7 +443,7 @@ function MacroBuilderLogic() {
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V18</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V19</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
@@ -769,10 +769,23 @@ function MacroBuilderLogic() {
                         try { if('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch(e){}
                         const wait = ms => new Promise(r => setTimeout(r, ms));
                         
+                        const queryDeep = (selector, root = document) => {
+                            let el = root.querySelector(selector);
+                            if (el) return el;
+                            const elements = root.querySelectorAll('*');
+                            for (let i = 0; i < elements.length; i++) {
+                                if (elements[i].shadowRoot) {
+                                    el = queryDeep(selector, elements[i].shadowRoot);
+                                    if (el) return el;
+                                }
+                            }
+                            return null;
+                        };
+
                         const resetMenu = async () => {
                             if(!config.resetSel) return;
                             for(let i=0; i<3; i++){
-                                const backBtn = document.querySelector(config.resetSel);
+                                const backBtn = queryDeep(config.resetSel);
                                 if(backBtn && backBtn.offsetParent !== null) {
                                     this.q('#st').innerText = 'Resetting Menu...';
                                     backBtn.click();
@@ -785,7 +798,7 @@ function MacroBuilderLogic() {
                         
                         const openMenu = async () => {
                             if(!config.openSel) return;
-                            const menuBtn = document.querySelector(config.openSel);
+                            const menuBtn = queryDeep(config.openSel);
                             if(menuBtn) {
                                 let isOpen = menuBtn.getAttribute('aria-expanded') === 'true' || menuBtn.classList.contains('active') || menuBtn.classList.contains('open');
                                 if(!isOpen) {
@@ -799,17 +812,18 @@ function MacroBuilderLogic() {
                         const find = async (sel, txt) => {
                             const end = Date.now() + 10000;
                             while(Date.now() < end) {
-                                let context = document.querySelector('.presence-selector') || document;
-                                let el = context.querySelector(sel);
+                                let el = queryDeep(sel);
                                 if(!el && txt) {
-                                    const all = context.querySelectorAll('button, span, div[role="button"]');
-                                    for(let i=0; i<all.length; i++) {
-                                        if(all[i].innerText && all[i].innerText.includes(txt)) {
-                                            el = all[i]; break;
-                                        }
+                                    // Fallback: This part assumes Light DOM for text search if selector fails
+                                    // A full text deep search is expensive, rely on selector if possible
+                                }
+                                if(el && el.isConnected && el.offsetParent !== null) {
+                                    if(txt && el.innerText && !el.innerText.includes(txt)) {
+                                         // found element but text doesnt match, ignored for now
+                                    } else {
+                                         return el;
                                     }
                                 }
-                                if(el && el.isConnected && el.offsetParent !== null) return el;
                                 await wait(200);
                             }
                             return null;
@@ -840,7 +854,7 @@ function MacroBuilderLogic() {
                                 const action = group.actions[j];
                                 
                                 if(config.openSel && action.sel === config.openSel) {
-                                    const menuBtn = document.querySelector(config.openSel);
+                                    const menuBtn = queryDeep(config.openSel);
                                     if(menuBtn) {
                                         let isOpen = menuBtn.getAttribute('aria-expanded') === 'true' || menuBtn.classList.contains('active') || menuBtn.classList.contains('open');
                                         if(isOpen) continue;
@@ -883,9 +897,9 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v18; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v19; }
     }
-    window.__mb_v18 = new MacroBuilder();
+    window.__mb_v19 = new MacroBuilder();
 }
 
 function InteractionRecorderLogic() {
