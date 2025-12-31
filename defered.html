@@ -775,6 +775,18 @@ function MacroBuilderLogic() {
                             return null;
                         };
                         
+                        const ensureTopLevel = async () => {
+                             let attempts = 0;
+                             while(attempts < 3) {
+                                 const backBtn = document.querySelector('[aria-label="Navigate back to primary presences"]');
+                                 if(!backBtn || !backBtn.isConnected || backBtn.offsetParent === null) break;
+                                 this.q('#st').innerText = 'Resetting Menu...';
+                                 backBtn.click();
+                                 await wait(1000);
+                                 attempts++;
+                             }
+                        };
+
                         for(let i=0; i<steps.length; i++){
                             const group = steps[i];
                             this.q('#st').innerText = 'Sequence '+(i+1)+'/'+steps.length;
@@ -793,6 +805,11 @@ function MacroBuilderLogic() {
                             this.q('#tm').innerText = 'Action...';
                             for(let j=0; j<group.actions.length; j++) {
                                 const action = group.actions[j];
+                                
+                                if(j === 1) { 
+                                   await ensureTopLevel();
+                                }
+
                                 const el = await find(action.sel, action.txt);
                                 
                                 if(!el) { alert('Step '+(i+1)+' Sub-action '+(j+1)+' Failed: Not found ('+action.sel+')'); return; }
