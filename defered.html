@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Automation Hub V15.4</title>
+<title>Automation Hub V16.1</title>
 <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     h1 { color: #fff; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
@@ -42,7 +42,7 @@
 <body>
 
     <h1>Automation Hub</h1>
-    <div class="subtitle">V15.4 Shadow Runtime.</div>
+    <div class="subtitle">V16.1 Streamlined UX.</div>
 
     <div class="grid">
         <div class="card c-quick">
@@ -58,13 +58,13 @@
         </div>
 
         <div class="card c-macro">
-            <h2>Macro Builder V19</h2>
-            <p>Generates robust, comment-free bookmarklets. Genesys parent-selection fix included.</p>
+            <h2>Macro Builder V22</h2>
+            <p>Generates robust, comment-free bookmarklets. Pure record & replay logic.</p>
             <div class="features">
-                <div>Intelligent Parent Selection</div>
-                <div>Shadow DOM Runtime</div>
-                <div>Smart Toggle Protection</div>
-                <div>Validated Generation</div>
+                <div>No Menu Configuration</div>
+                <div>Prioritized Text Search</div>
+                <div>Simplified UX</div>
+                <div>Genesys-Specific Fixes</div>
             </div>
             <a id="lnk_macro" href="#" class="btn btn-macro">🎛️ Macro Builder</a>
         </div>
@@ -395,14 +395,13 @@ function QuickClickerLogic() {
 }
 
 function MacroBuilderLogic() {
-    if(window.__mb_v19){window.__mb_v19.destroy();return}
+    if(window.__mb_v22){window.__mb_v22.destroy();return}
     if(!document.body) return alert('Page has no body.');
 
     class MacroBuilder {
         constructor(){
             this.id = 'mb-'+Math.random().toString(36).slice(2);
             this.steps = [];
-            this.config = { resetSel: null, openSel: null };
             this.cleanupFns = [];
             this.init();
         }
@@ -443,12 +442,11 @@ function MacroBuilderLogic() {
                 '.cfg-grp{margin-bottom:10px;padding:10px;background:#0f172a;border-radius:6px;border:1px solid #334155}' +
             '</style>' +
             '<div class="box">' +
-                '<div class="row" id="drag"><h3>MACRO BUILDER V19</h3><span id="x" style="cursor:pointer">✕</span></div>' +
+                '<div class="row" id="drag"><h3>MACRO BUILDER V22</h3><span id="x" style="cursor:pointer">✕</span></div>' +
                 
                 '<div id="view_steps">' +
                     '<div id="list" class="list"><div class="empty-msg">No steps yet.<br>Click Add Sequence to begin.</div></div>' +
                     '<button id="add">➕ Add Click Sequence</button>' +
-                    '<button id="show_cfg" class="alt">⚙️ Configure Menu</button>' +
                     '<button id="exp" style="background:#db2777">⚡ Export Bookmarklet</button>' +
                     '<div id="out" class="export-area" style="display:none">' +
                         '<p style="text-align:center;color:#e2e8f0;margin:0 0 10px 0">Drag button to toolbar:</p>' +
@@ -456,19 +454,6 @@ function MacroBuilderLogic() {
                     '</div>' +
                 '</div>' +
 
-                '<div id="view_cfg" class="hidden">' +
-                    '<div class="cfg-grp">' +
-                        '<div style="font-size:11px;color:#94a3b8;margin-bottom:5px">RESET BUTTON (Back Arrow)</div>' +
-                        '<div id="cfg_rst_val" style="font-family:monospace;font-size:10px;color:#c7d2fe;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Not Set</div>' +
-                        '<button id="set_rst" class="alt" style="margin-top:0;font-size:11px">Pick Reset Button</button>' +
-                    '</div>' +
-                    '<div class="cfg-grp">' +
-                        '<div style="font-size:11px;color:#94a3b8;margin-bottom:5px">OPEN MENU BUTTON (Profile)</div>' +
-                        '<div id="cfg_opn_val" style="font-family:monospace;font-size:10px;color:#c7d2fe;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Not Set</div>' +
-                        '<button id="set_opn" class="alt" style="margin-top:0;font-size:11px">Pick Open Button</button>' +
-                    '</div>' +
-                    '<button id="done_cfg">Done</button>' +
-                '</div>' +
                 '<div id="preview" class="hidden" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;padding:20px;border-radius:12px;border:2px solid #a855f7;box-shadow:0 25px 50px rgba(0,0,0,0.8);width:80%;text-align:center;z-index:9999">' +
                     '<div style="font-weight:bold;margin-bottom:10px">Confirm Selection</div>' +
                     '<div id="prev_tag" style="color:#94a3b8;font-size:12px;margin-bottom:5px"></div>' +
@@ -485,22 +470,8 @@ function MacroBuilderLogic() {
         bind(){
             this.q('#x').onclick=()=>this.destroy();
             this.q('#add').onclick=()=>this.startSequence();
-            this.q('#show_cfg').onclick=()=>this.toggleView(true);
-            this.q('#done_cfg').onclick=()=>this.toggleView(false);
-            this.q('#set_rst').onclick=()=>this.pick('reset');
-            this.q('#set_opn').onclick=()=>this.pick('open');
             this.q('#exp').onclick=()=>this.compile();
             this.makeDraggable(this.q('#drag'));
-        }
-
-        toggleView(showCfg) {
-            if(showCfg) {
-                this.q('#view_steps').classList.add('hidden');
-                this.q('#view_cfg').classList.remove('hidden');
-            } else {
-                this.q('#view_steps').classList.remove('hidden');
-                this.q('#view_cfg').classList.add('hidden');
-            }
         }
 
         makeDraggable(head){
@@ -535,6 +506,11 @@ function MacroBuilderLogic() {
         clearListeners() { this.cleanupFns.forEach(fn=>fn()); this.cleanupFns = []; }
 
         getSel(el){
+            if(el.matches('button[class*="presence-"]')) {
+                const match = el.className.match(/presence-(break|meal|available|busy|away)/);
+                if(match) return 'button.presence-' + match[1];
+            }
+
             if(el.hasAttribute('aria-label')) {
                 const label = el.getAttribute('aria-label');
                 if (!label.match(/On queue|Available|Busy|Away|Break|Meal|Offline/i)) {
@@ -640,15 +616,7 @@ function MacroBuilderLogic() {
                     this.q('#preview').classList.add('hidden');
                     this.clearListeners(); 
                     
-                    if(mode === 'reset') {
-                        this.config.resetSel = sel;
-                        this.q('#cfg_rst_val').innerText = sel;
-                        this.toggleView(true);
-                    } else if(mode === 'open') {
-                        this.config.openSel = sel;
-                        this.q('#cfg_opn_val').innerText = sel;
-                        this.toggleView(true);
-                    } else if(mode === 'sequence') {
+                    if(mode === 'sequence') {
                         let val = null;
                         let enter = false;
                         const tag = targetEl.tagName;
@@ -728,17 +696,21 @@ function MacroBuilderLogic() {
 
         compile(){
             if(this.steps.length===0) return alert('Add steps first');
-            if(!this.config.openSel || !this.config.resetSel) {
-               if(!confirm('Warning: You have not configured Open/Reset buttons. Dynamic menus like Genesys may fail. Continue anyway?')) return;
-            }
+            
+            this.steps.forEach(step => {
+                step.actions.forEach(action => {
+                    if(action.sel && action.sel.includes('presence-')) {
+                        const match = action.sel.match(/presence-(break|meal|available|busy|away)/);
+                        if(match) action.sel = 'button.presence-' + match[1];
+                    }
+                });
+            });
             
             const jsonSteps = JSON.stringify(this.steps).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
-            const jsonConfig = JSON.stringify(this.config).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
 
             const runtime = `(async function(){
                 if(window.__mb_run){window.__mb_run.destroy();return}
                 const steps = ${jsonSteps};
-                const config = ${jsonConfig};
                 
                 class MacroRuntime {
                     constructor() {
@@ -772,59 +744,33 @@ function MacroBuilderLogic() {
                         const queryDeep = (selector, root = document) => {
                             let el = root.querySelector(selector);
                             if (el) return el;
-                            const elements = root.querySelectorAll('*');
-                            for (let i = 0; i < elements.length; i++) {
-                                if (elements[i].shadowRoot) {
-                                    el = queryDeep(selector, elements[i].shadowRoot);
+                            const allElements = root.querySelectorAll('*');
+                            for (let i = 0; i < allElements.length; i++) {
+                                if (allElements[i].shadowRoot) {
+                                    el = queryDeep(selector, allElements[i].shadowRoot);
                                     if (el) return el;
                                 }
                             }
                             return null;
                         };
 
-                        const resetMenu = async () => {
-                            if(!config.resetSel) return;
-                            for(let i=0; i<3; i++){
-                                const backBtn = queryDeep(config.resetSel);
-                                if(backBtn && backBtn.offsetParent !== null) {
-                                    this.q('#st').innerText = 'Resetting Menu...';
-                                    backBtn.click();
-                                    await wait(1500);
-                                } else {
-                                    break;
-                                }
-                            }
-                        };
-                        
-                        const openMenu = async () => {
-                            if(!config.openSel) return;
-                            const menuBtn = queryDeep(config.openSel);
-                            if(menuBtn) {
-                                let isOpen = menuBtn.getAttribute('aria-expanded') === 'true' || menuBtn.classList.contains('active') || menuBtn.classList.contains('open');
-                                if(!isOpen) {
-                                    this.q('#st').innerText = 'Opening Menu...';
-                                    menuBtn.click();
-                                    await wait(1500);
-                                }
-                            }
-                        };
-
                         const find = async (sel, txt) => {
-                            const end = Date.now() + 10000;
+                            const end = Date.now() + 15000;
                             while(Date.now() < end) {
-                                let el = queryDeep(sel);
-                                if(!el && txt) {
-                                    // Fallback: This part assumes Light DOM for text search if selector fails
-                                    // A full text deep search is expensive, rely on selector if possible
+                                let el = null;
+                                
+                                if(txt) {
+                                    const spans = document.querySelectorAll('.presence-label-text, span');
+                                    const found = Array.from(spans).find(s => s.textContent.trim() === txt);
+                                    el = found ? found.closest('button') : null;
                                 }
-                                if(el && el.isConnected && el.offsetParent !== null) {
-                                    if(txt && el.innerText && !el.innerText.includes(txt)) {
-                                         // found element but text doesnt match, ignored for now
-                                    } else {
-                                         return el;
-                                    }
+                                
+                                if(!el) {
+                                    el = queryDeep(sel);
                                 }
-                                await wait(200);
+
+                                if(el && el.isConnected && el.offsetParent !== null) return el;
+                                await wait(300);
                             }
                             return null;
                         };
@@ -833,11 +779,6 @@ function MacroBuilderLogic() {
                             const group = steps[i];
                             this.q('#st').innerText = 'Sequence '+(i+1)+'/'+steps.length;
                             
-                            if(group.delay > 0 || i === 0) {
-                                await resetMenu();
-                                await openMenu();
-                            }
-
                             let rem = group.delay * 1000;
                             while(rem > 0) {
                                 if(!document.body.contains(this.h)) return; 
@@ -852,15 +793,6 @@ function MacroBuilderLogic() {
                             this.q('#tm').innerText = 'Action...';
                             for(let j=0; j<group.actions.length; j++) {
                                 const action = group.actions[j];
-                                
-                                if(config.openSel && action.sel === config.openSel) {
-                                    const menuBtn = queryDeep(config.openSel);
-                                    if(menuBtn) {
-                                        let isOpen = menuBtn.getAttribute('aria-expanded') === 'true' || menuBtn.classList.contains('active') || menuBtn.classList.contains('open');
-                                        if(isOpen) continue;
-                                    }
-                                }
-
                                 const el = await find(action.sel, action.txt);
                                 
                                 if(!el) { alert('Step '+(i+1)+' Sub-action '+(j+1)+' Failed: Not found ('+action.sel+')'); return; }
@@ -878,7 +810,7 @@ function MacroBuilderLogic() {
                                 ['mousedown','mouseup','click'].forEach(evt => {
                                     el.dispatchEvent(new MouseEvent(evt, {bubbles:true,cancelable:true,view:window}));
                                 });
-                                await wait(1500);
+                                await wait(2500);
                             }
                         }
                         this.q('#tm').innerText = 'DONE';
@@ -897,9 +829,9 @@ function MacroBuilderLogic() {
             area.style.display = 'block';
         }
 
-        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v19; }
+        destroy(){ this.clearListeners(); this.h.remove(); delete window.__mb_v22; }
     }
-    window.__mb_v19 = new MacroBuilder();
+    window.__mb_v22 = new MacroBuilder();
 }
 
 function InteractionRecorderLogic() {
