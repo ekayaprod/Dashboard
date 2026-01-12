@@ -267,7 +267,6 @@ function initializePage() {
                          return "[No valid word structure found]";
                      }
                 } else {
-                    // TODO: Implement specific structure selection from UI config
                     if (C.selectedStructureIndex !== undefined && C.selectedStructureIndex >= 0 && C.selectedStructureIndex < availableForCount.length) {
                         structObj = availableForCount[C.selectedStructureIndex];
                     } else {
