@@ -524,6 +524,21 @@ const AppLifecycle = (() => {
 
         isReady: () => window.__BOOTSTRAP_READY === true,
 
+        /**
+         * Initializes a page by loading state, caching DOM elements, and setting up auto-save.
+         *
+         * @param {Object} config - The configuration object for the page.
+         * @param {string} config.storageKey - The localStorage key for persisting state.
+         * @param {Object} config.defaultState - The default state object to use if no data exists.
+         * @param {string[]} config.requiredElements - Array of DOM element IDs to cache (e.g., ['my-input']).
+         * @param {string} config.version - The current version of the state schema (e.g., '1.0.0').
+         * @param {Function} [config.onCorruption] - Optional callback to run if state corruption is detected.
+         * @returns {Promise<{
+         *   elements: Object<string, HTMLElement>,
+         *   state: Object,
+         *   saveState: Function
+         * } | null>} A promise that resolves to the initialized page context or null on failure.
+         */
         initPage: async (config) => {
             const { storageKey, defaultState, requiredElements, onCorruption, version } = config;
             
