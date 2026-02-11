@@ -75,10 +75,15 @@ const UIUtils = (() => {
     // Shared buffer for random number generation to avoid allocation per call
     const randomBuffer = new Uint32Array(1);
 
+    // Bolt: Optimized for performance - avoids expensive DOM creation
     const escapeHTML = (str) => {
-        const p = document.createElement('p');
-        p.textContent = str ?? '';
-        return p.innerHTML;
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     };
 
     const generateId = () => {
