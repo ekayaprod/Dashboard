@@ -13,7 +13,7 @@
     const CORE_SCRIPTS = [
         { 
             url: 'js/app-core.js', 
-            exports: ['UIUtils', 'SafeUI', 'DOMHelpers', 'AppLifecycle', 'DataHelpers'],
+            exports: ['UIUtils', 'SafeUI', 'DOMHelpers', 'AppLifecycle', 'DataHelpers', 'DateUtils'],
             required: true
         },
         { 
@@ -24,7 +24,7 @@
         },
         { 
             url: 'js/app-data.js', 
-            exports: ['BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager'],
+            exports: ['BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'TreeUtils'],
             required: true,
             dependsOn: ['SafeUI']
         }

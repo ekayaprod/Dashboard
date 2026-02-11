@@ -36,16 +36,23 @@ Shared functionality is distributed across three primary modules, implemented us
 *   **`SafeUI`**: A Facade pattern wrapper around `UIUtils`. It provides a stable API for UI interactions, checking for dependency readiness before execution.
 *   **`DOMHelpers`**: Utilities for DOM manipulation, including element caching and auto-resizing text areas.
 *   **`UIUtils`**: Low-level UI implementation (Modal dialogs, Toasts, Clipboard interactions).
+*   **`DataHelpers`**: Utilities for safer array/collection access (e.g., `findById`, `getCollection`).
+*   **`DateUtils`**: Date and time formatting utilities, including minute-based calculations and seasonal logic.
 
 #### Data Layer (`js/app-data.js`)
 *   **`BackupRestore`**: Handles JSON serialization for full-state backups and restoration. Includes validation logic to ensure data integrity during import.
 *   **`DataConverter`**: Implements an RFC 4180-compliant CSV parser and generator for data interoperability.
 *   **`DataValidator`**: Provides schema validation for imported data and form inputs.
+*   **`CsvManager`**: Higher-level wrapper for CSV import/export operations, including file picker handling.
+*   **`TreeUtils`**: Utilities for traversing and manipulating hierarchical data structures (used by MailTo).
 
 #### UI Layer (`js/app-ui.js`)
 *   **`SharedSettingsModal`**: A configurable component that generates a standardized settings dialog, handling common tasks like data export/import and application-specific configurations.
 *   **`ListRenderer`**: A virtualization-ready component for rendering data lists with support for custom item templates.
 *   **`NotepadManager`**: A reusable module implementing persistent scratchpad functionality with auto-save.
+*   **`UIPatterns`**: Standardized UI interactions like confirmation modals, deletion prompts, and clipboard copying.
+*   **`SearchHelper`**: Utilities for implementing search functionality, including debouncing and multi-field filtering.
+*   **`QuickListManager`**: A reusable component for managing simple lists of shortcuts or items.
 
 ## 3. State Management
 Data persistence is handled via the `localStorage` API. The `AppLifecycle` module implements a `StateManager` factory that provides:
