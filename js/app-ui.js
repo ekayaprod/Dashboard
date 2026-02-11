@@ -312,7 +312,8 @@ const QuickListManager = (() => {
         div.className = 'shortcut-item';
         div.dataset.id = item.id;
         
-        const name = SafeUI.escapeHTML(config.getItemName(item));
+        const rawName = config.getItemName(item);
+        const name = SafeUI.escapeHTML(rawName);
         let nameElement;
 
         const href = config.getItemHref ? config.getItemHref(item) : null;
@@ -340,6 +341,7 @@ const QuickListManager = (() => {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'icon-btn delete-btn';
         deleteBtn.title = 'Delete';
+        deleteBtn.setAttribute('aria-label', `Delete ${rawName}`);
         deleteBtn.innerHTML = SafeUI.SVGIcons.trash;
         deleteBtn.dataset.id = item.id;
 
