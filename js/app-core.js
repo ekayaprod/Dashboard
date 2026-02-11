@@ -72,6 +72,9 @@ const DataHelpers = Object.freeze({
 // MODULE: UIUtils
 // ============================================================================
 const UIUtils = (() => {
+    // Shared buffer for random number generation to avoid allocation per call
+    const randomBuffer = new Uint32Array(1);
+
     const escapeHTML = (str) => {
         const p = document.createElement('p');
         p.textContent = str ?? '';
@@ -106,12 +109,11 @@ const UIUtils = (() => {
         if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
             try {
                 if (max <= 0) return 0;
-                const array = new Uint32Array(1);
                 const limit = 0xFFFFFFFF - (0xFFFFFFFF % max);
                 let r;
                 do {
-                    crypto.getRandomValues(array);
-                    r = array[0];
+                    crypto.getRandomValues(randomBuffer);
+                    r = randomBuffer[0];
                 } while (r >= limit);
                 return r % max;
             } catch (e) {}
