@@ -85,9 +85,11 @@
     function updateActiveLink(pageUrl) {
         elements.navLinks.forEach(link => {
             link.classList.remove('active');
+            link.removeAttribute('aria-current');
             const href = link.getAttribute('data-href');
             if (href === pageUrl) {
                 link.classList.add('active');
+                link.setAttribute('aria-current', 'page');
             }
         });
     }
