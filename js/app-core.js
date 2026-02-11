@@ -198,6 +198,19 @@ const UIUtils = (() => {
         }, onError);
     };
 
+    /**
+     * Creates a state manager instance for handling localStorage persistence.
+     * Implements atomic saving, versioning, and corruption handling.
+     *
+     * @param {string} key - The localStorage key to use.
+     * @param {Object} defaults - The default state object to return if no data exists.
+     * @param {string} version - The version string (e.g., '1.0.0') to enforce schema compatibility.
+     * @param {Function} [onCorruption] - Optional callback invoked when JSON parsing fails.
+     * @returns {{
+     *   load: () => Object,
+     *   save: (state: Object) => void
+     * }|null} The state manager object or null if initialization fails.
+     */
     const createStateManager = (key, defaults, version, onCorruption) => {
         if (!key || typeof key !== 'string' || !defaults || typeof defaults !== 'object' || !version) {
             console.error("State Manager initialization error: Invalid parameters provided.");
