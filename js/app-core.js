@@ -76,14 +76,15 @@ const UIUtils = (() => {
     const randomBuffer = new Uint32Array(1);
 
     // Bolt: Optimized for performance - avoids expensive DOM creation
+    // Uses replaceAll for better performance than chained regex replaces
     const escapeHTML = (str) => {
         if (str == null) return '';
         return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
     };
 
     const generateId = () => {
