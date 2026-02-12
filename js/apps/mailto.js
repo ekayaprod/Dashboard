@@ -50,26 +50,30 @@ function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = fal
 function setActiveSection(sectionName) {
     const libSec = document.getElementById('library-section');
     const editSec = document.getElementById('editor-section');
+    const libHeader = document.getElementById('library-header');
+    const editHeader = document.getElementById('editor-header');
     
-    const setExpanded = (el, isExpanded) => {
+    const setExpanded = (el, header, isExpanded) => {
         if (isExpanded) {
             el.classList.add('expanded');
             el.classList.remove('collapsed');
+            if (header) header.setAttribute('aria-expanded', 'true');
         } else {
             el.classList.remove('expanded');
             el.classList.add('collapsed');
+            if (header) header.setAttribute('aria-expanded', 'false');
         }
     };
     
     if (sectionName === 'library') {
-        setExpanded(libSec, true);
-        setExpanded(editSec, false);
+        setExpanded(libSec, libHeader, true);
+        setExpanded(editSec, editHeader, false);
     } else if (sectionName === 'editor') {
-        setExpanded(editSec, true);
-        setExpanded(libSec, false);
+        setExpanded(editSec, editHeader, true);
+        setExpanded(libSec, libHeader, false);
     } else {
-        setExpanded(libSec, false);
-        setExpanded(editSec, false);
+        setExpanded(libSec, libHeader, false);
+        setExpanded(editSec, editHeader, false);
     }
     
     if (state.ui) { state.ui.activeSection = sectionName; saveState(); }
@@ -286,17 +290,26 @@ async function init() {
         }
     };
 
-    const handleHeaderClick = (section) => {
+    const handleHeaderInteraction = (e, section) => {
+        // Allow bubbling only if not button or input
+        if (e.target.closest('button, input, select, a') && e.target !== e.currentTarget) return;
+
+        if (e.type === 'keydown' && !(e.key === 'Enter' || e.key === ' ')) return;
+        if (e.type === 'keydown') e.preventDefault();
+
         const next = state.ui.activeSection === section ? null : section;
         setActiveSection(next);
-        if(next === 'editor') refreshSaveDropdown();
+        if (next === 'editor') refreshSaveDropdown();
     };
 
-    document.getElementById('library-header').addEventListener('click', (e) => {
-        if (!e.target.closest('button')) handleHeaderClick('library');
-    });
-    document.getElementById('editor-header').addEventListener('click', (e) => {
-        if (!e.target.closest('button')) handleHeaderClick('editor');
+    ['library-header', 'editor-header'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.setAttribute('role', 'button');
+            el.setAttribute('tabindex', '0');
+            el.addEventListener('click', (e) => handleHeaderInteraction(e, id === 'library-header' ? 'library' : 'editor'));
+            el.addEventListener('keydown', (e) => handleHeaderInteraction(e, id === 'library-header' ? 'library' : 'editor'));
+        }
     });
 
     DOMElements.btnClearAll.addEventListener('click', (e) => {
