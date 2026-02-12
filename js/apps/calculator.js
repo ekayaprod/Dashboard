@@ -392,25 +392,47 @@ function initializePage() {
 
         const allHeaders = document.querySelectorAll('.accordion-header');
         allHeaders.forEach(header => {
-            header.addEventListener('click', (e) => {
+            // Accessibility
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+            const accordion = header.closest('.accordion');
+            const isExpanded = accordion && accordion.classList.contains('expanded');
+            header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+
+            const toggleAccordion = (e) => {
+                if (e.target.closest('button, input, select, a') && e.target !== header) return;
+
                 e.stopPropagation();
-                const accordion = header.closest('.accordion');
                 if (accordion) {
                     accordion.classList.toggle('expanded');
+                    const expanded = accordion.classList.contains('expanded');
+                    header.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
                     if (header.id === 'schedule-header') {
-                         state.ui.isScheduleCollapsed = !accordion.classList.contains('expanded');
+                         state.ui.isScheduleCollapsed = !expanded;
                          saveState();
                     }
+                }
+            };
+
+            header.addEventListener('click', toggleAccordion);
+            header.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleAccordion(e);
                 }
             });
         });
 
         const scheduleAccordion = document.getElementById('schedule-header')?.closest('.accordion');
         if (scheduleAccordion) {
+            const header = document.getElementById('schedule-header');
             if (state.ui.isScheduleCollapsed) {
                 scheduleAccordion.classList.remove('expanded');
+                if (header) header.setAttribute('aria-expanded', 'false');
             } else {
                 scheduleAccordion.classList.add('expanded');
+                if (header) header.setAttribute('aria-expanded', 'true');
             }
         }
 
