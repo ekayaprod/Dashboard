@@ -111,6 +111,17 @@ function initializePage() {
 
         // --- 2. DASHBOARD BADGES ---
 
+        function getOrCreateTargetCard(container, targetName) {
+            let card = container.querySelector(`[data-target-name="${targetName}"]`);
+            if (!card) {
+                card = document.createElement('div');
+                card.setAttribute('data-target-name', targetName);
+                // Initial creation - styling handled by update
+                container.appendChild(card);
+            }
+            return card;
+        }
+
         function buildTargetCardHTML(label, ticketText, callTimeText, isMet) {
             if (isMet) {
                 return `
@@ -145,13 +156,54 @@ function initializePage() {
             `;
         }
 
-        function getTargetCardState(params) {
+        function updateTargetCard(card, data) {
+            const { boundary, ticketsNeeded, callTimeDisplay, isMet, boxClass } = data;
+
+            const prevState = card.getAttribute('data-met');
+            const newState = isMet ? 'true' : 'false';
+
+            // Apply Box Class
+            card.className = `target-card ${boxClass}`;
+
+            // Pulse Animation on Success
+            if (prevState === 'false' && newState === 'true') {
+                 card.classList.add('pulse-success');
+                 setTimeout(() => card.classList.remove('pulse-success'), 600);
+            }
+
+            card.setAttribute('data-met', newState);
+
+            // Rebuild HTML if state structure changes or empty
+            if (prevState !== newState || !card.hasChildNodes()) {
+                 card.innerHTML = buildTargetCardHTML(boundary.name, ticketsNeeded, callTimeDisplay, isMet);
+                 return;
+            }
+
+            // Fine-grained updates for "Not Met" state to avoid flicker
+            if (!isMet) {
+                 const ticketEl = card.querySelector('.target-value:not(.target-alt-metric)');
+                 const callTimeEl = card.querySelector('.target-alt-metric');
+
+                 if (ticketEl && ticketEl.innerText !== String(ticketsNeeded)) {
+                     ticketEl.innerText = ticketsNeeded;
+                 }
+
+                 if (callTimeEl && callTimeEl.innerText !== callTimeDisplay) {
+                     callTimeEl.innerText = callTimeDisplay;
+                 }
+            }
+        }
+
+        function getTargetCardData(params) {
             const { boundary, ticketsNeeded, totalProductiveMinutes, currentTickets, currentCallTime } = params;
 
             if (ticketsNeeded <= 0) {
                 return {
-                    boxClass: 'target-good',
-                    html: buildTargetCardHTML(boundary.name, "", "", true)
+                    boundary,
+                    ticketsNeeded: "",
+                    callTimeDisplay: "",
+                    isMet: true,
+                    boxClass: 'target-good'
                 };
             }
 
@@ -173,13 +225,11 @@ function initializePage() {
             }
 
             return {
-                boxClass: 'target-warn',
-                html: buildTargetCardHTML(
-                    boundary.name, 
-                    `${ticketsNeeded}`, 
-                    callTimeDisplay, 
-                    false
-                )
+                boundary,
+                ticketsNeeded: `${ticketsNeeded}`,
+                callTimeDisplay,
+                isMet: false,
+                boxClass: 'target-warn'
             };
         }
 
@@ -297,13 +347,12 @@ function initializePage() {
             DOMElements.totalWorkTimeEOD.innerText = DateUtils.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
             if (DOMElements.baseTargetDisplay) DOMElements.baseTargetDisplay.innerText = targetTicketGoal;
 
-            DOMElements.targetsGrid.innerHTML = '';
+            // DOMElements.targetsGrid.innerHTML = ''; // Removed for DOM Diffing
             for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
-                const targetBox = document.createElement('div');
                 const ticketsToHitGrade = targetTicketGoal + boundary.min;
                 const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
                 
-                const { boxClass, html } = getTargetCardState({
+                const cardData = getTargetCardData({
                     boundary,
                     ticketsNeeded,
                     totalProductiveMinutes,
@@ -311,9 +360,8 @@ function initializePage() {
                     currentCallTime: currentCallTimeSoFar
                 });
                 
-                targetBox.className = `target-card ${boxClass}`;
-                targetBox.innerHTML = html;
-                DOMElements.targetsGrid.appendChild(targetBox);
+                const card = getOrCreateTargetCard(DOMElements.targetsGrid, targetName);
+                updateTargetCard(card, cardData);
             }
 
             renderTargetStats({ totalWorkTimeEOD, isRoundedUp, minutesInHour });
