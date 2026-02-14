@@ -13,6 +13,7 @@ function initializePage() {
     };
 
     const TEXTAREA_MAX_HEIGHT = 200;
+    const SEARCH_FIELDS = ['keyword', 'assignmentGroup', 'phoneLogPath'];
 
     // ============================================================================
     // INITIALIZATION ROUTINE
@@ -49,6 +50,11 @@ function initializePage() {
             if (!ctx) return;
 
             let { elements: DOMElements, state, saveState: originalSaveState } = ctx;
+
+            // Initialize Search Index
+            if (state.items && state.items.length > 0) {
+                 SearchHelper.createIndex(state.items, SEARCH_FIELDS);
+            }
 
             try {
                 if (state.settings.kbBaseUrl) {
@@ -186,7 +192,26 @@ function initializePage() {
 
             const getEmptyMessage = (lowerTerm) => {
                 if (isEditMode) return 'No entries in the database. Click "+ Create Entry".';
-                return lowerTerm ? 'No local entries found.' : 'Search to see local results.';
+
+                if (lowerTerm) {
+                    const escapedTerm = SafeUI.escapeHTML(lowerTerm);
+                    return `
+                        <div class="empty-search-state" style="text-align: center; padding: 2rem 1rem;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;">🔍</div>
+                            <h3 style="margin: 0 0 1rem 0; font-weight: 500;">No matches for "${escapedTerm}"</h3>
+                            <button class="btn btn-primary" data-action="create-from-search">
+                                + Create "${escapedTerm}"
+                            </button>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div style="text-align: center; padding: 2rem 1rem; opacity: 0.7;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">⌨️</div>
+                        <p style="margin: 0;">Type to search local entries...</p>
+                    </div>
+                `;
             };
 
             const modalActions = {
@@ -257,7 +282,8 @@ function initializePage() {
 
                 if (lowerTerm && !isEditMode) {
                     const sourceItems = state.items;
-                    itemsToRender = SearchHelper.simpleSearch(sourceItems, lowerTerm, ['keyword', 'assignmentGroup', 'phoneLogPath']);
+                    // Bolt: Optimized Search
+                    itemsToRender = SearchHelper.searchIndex(sourceItems, lowerTerm);
                 }
 
                 if (currentEditState.id) {
@@ -450,6 +476,10 @@ function initializePage() {
 
                 const searchTerm = DOMElements.searchInput.value.trim();
                 const newItem = createEntry({ keyword: searchTerm });
+
+                // Bolt: Update Index for new item
+                SearchHelper.createIndex([newItem], SEARCH_FIELDS);
+
                 state.items.unshift(newItem);
 
                 currentEditState = { id: newItem.id, type: 'local' };
@@ -459,7 +489,7 @@ function initializePage() {
                     saveState();
                 }
 
-                clearEditStateAndRender();
+                renderAll();
                 focusAndScroll(`edit-keyword-${newItem.id}`);
             }
 
@@ -494,6 +524,9 @@ function initializePage() {
                         state.items.push(itemToUpdate);
                     }
                     Object.assign(itemToUpdate, { keyword, assignmentGroup, notes, phoneLogPath });
+
+                    // Bolt: Update Index for modified item
+                    SearchHelper.createIndex([itemToUpdate], SEARCH_FIELDS);
 
                     sortAndSaveState();
                     clearEditStateAndRender("Entry saved.");
@@ -586,6 +619,10 @@ function initializePage() {
                                 else state.items.push(action.item);
                             }
                         });
+
+                        // Bolt: Rebuild Index for all items (batch op)
+                        SearchHelper.createIndex(state.items, SEARCH_FIELDS);
+
                         sortAndSaveState();
                         renderAll();
                         SafeUI.showToast(`Imported ${toAdd + toOverwrite} entries.`);
@@ -710,6 +747,12 @@ function initializePage() {
 
                 const onRestore = (dataToRestore) => {
                     state.items = dataToRestore.items || [];
+
+                    // Bolt: Rebuild Index on Restore
+                    if (state.items.length > 0) {
+                        SearchHelper.createIndex(state.items, SEARCH_FIELDS);
+                    }
+
                     if (dataToRestore.settings?.kbBaseUrl) {
                         state.settings.customSearches = [{
                             id: SafeUI.generateId(),
@@ -797,6 +840,12 @@ function initializePage() {
                 });
 
                 DOMElements.localResults.addEventListener('click', async (e) => {
+                    const createFromSearchBtn = e.target.closest('[data-action="create-from-search"]');
+                    if (createFromSearchBtn) {
+                        handleAddNewEntry();
+                        return;
+                    }
+
                     const editBtn = e.target.closest('.btn-edit');
                     if (editBtn) {
                         handleEdit(e.target.closest('.result-item').dataset.id);

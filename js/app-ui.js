@@ -101,6 +101,34 @@ const SearchHelper = (() => {
             });
         },
 
+        createIndex: (items, fields) => {
+            if (!items || !Array.isArray(items)) return;
+            items.forEach(item => {
+                if (!item) return;
+                // Create a single string of all searchable values
+                const content = fields.map(f => String(item[f] || '').toLowerCase()).join(' ');
+                // Use defineProperty to make it non-enumerable (so it doesn't show up in JSON.stringify/loops)
+                Object.defineProperty(item, '_searchContent', {
+                    value: content,
+                    writable: true,
+                    enumerable: false,
+                    configurable: true
+                });
+            });
+        },
+
+        searchIndex: (items, term) => {
+            if (!term || !term.trim()) return items;
+            const lowerTerm = term.toLowerCase().trim();
+
+            // Fast path: use pre-computed index
+            // Fallback: if item doesn't have index, we can't search it efficiently here
+            // (caller should have ensured index exists or used simpleSearch)
+            return items.filter(item => {
+                return item._searchContent && item._searchContent.includes(lowerTerm);
+            });
+        },
+
         setupDebouncedSearch: (inputElement, onSearch, delay = 300) => {
             if (!inputElement) return;
             const debouncedSearch = SafeUI.debounce(onSearch, delay);
