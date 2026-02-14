@@ -142,6 +142,9 @@ function initializePage() {
                 if (DOMElements.searchSpinner) {
                     DOMElements.searchSpinner.classList.toggle('hidden', !isLoading);
                 }
+                if (DOMElements.localResults) {
+                    DOMElements.localResults.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+                }
             };
 
             const updateResultsStatus = (matches, rendered) => {
@@ -242,12 +245,18 @@ function initializePage() {
                 if (batch.length === 0 && !append && currentMatches.length > 0) return;
 
                 // Add fade-in animation to appended items
-                const createAnimatedItemElement = (item) => {
+                const createAnimatedItemElement = (item, index) => {
                      const el = (isEditMode || (currentEditState.id === item.id)) ?
                         createEditForm(item) :
                         createItemElement(item, searchTerm);
 
                      if (append) el.classList.add('fade-in');
+
+                     // Artisan: Staggered animation for initial load
+                     if (!append && index < 10) {
+                         el.classList.add('fade-in');
+                         el.style.animationDelay = `${index * 0.05}s`;
+                     }
                      return el;
                 };
 
@@ -356,13 +365,19 @@ function initializePage() {
                 // Ensure observer is setup
                 if (!loadingObserver) setupObserver();
 
-                renderLocalList(searchTerm);
-                renderCustomSearches(searchTerm);
+                // Artisan: Performance optimization (Bolt+)
+                // Wrap heavy rendering in requestAnimationFrame to allow UI (spinner) to update first.
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderLocalList(searchTerm);
+                        renderCustomSearches(searchTerm);
 
-                DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
+                        DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
 
-                // Hide spinner after render is done
-                setLoading(false);
+                        // Hide spinner after render is done
+                        setLoading(false);
+                    });
+                });
             };
 
             function createItemElement(item, searchTerm) {
@@ -378,7 +393,7 @@ function initializePage() {
                             <strong>${label}:</strong>
                             <div class="item-value">
                                 <span>${highlightedValue}</span>
-                                <button class="btn-copy btn-icon" title="Copy ${label}" data-copy="${SafeUI.escapeHTML(value)}">
+                                <button class="btn-copy btn-icon" title="Copy ${label}" aria-label="Copy ${label}" data-copy="${SafeUI.escapeHTML(value)}">
                                     ${SafeUI.SVGIcons.copy}
                                 </button>
                             </div>
@@ -400,8 +415,8 @@ function initializePage() {
                     <div class="item-header">
                         <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
                         <div class="item-actions">
-                            <button class="btn-edit btn-icon" title="Edit">${SafeUI.SVGIcons.pencil}</button>
-                            <button class="btn-delete btn-icon" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                            <button class="btn-edit btn-icon" title="Edit" aria-label="Edit Entry">${SafeUI.SVGIcons.pencil}</button>
+                            <button class="btn-delete btn-icon" title="Delete" aria-label="Delete Entry">${SafeUI.SVGIcons.trash}</button>
                         </div>
                     </div>
                     <div class="item-content">
