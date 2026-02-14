@@ -36,4 +36,41 @@ describe('app-core.js', () => {
     // H:MM:SS
     expect(window.DateUtils.parseTimeToMinutes('1:30:30')).toBe(90.5)
   })
+
+  describe('CoreValidators', () => {
+    // Access validators via SafeUI as it's the public API wrapper
+    const validators = () => window.SafeUI.validators
+
+    it('should validate URLs correctly', () => {
+      // Valid URLs
+      expect(validators().url('https://google.com')).toBe(true)
+      expect(validators().url('http://localhost:3000')).toBe(true)
+      expect(validators().url('google.com')).toBe(true) // Should auto-prepend http
+      expect(validators().url('sub.domain.com')).toBe(true)
+
+      // Invalid URLs
+      expect(validators().url('not a url')).toBe(false)
+      expect(validators().url(null)).toBe(false)
+      expect(validators().url('')).toBe(false)
+    })
+
+    it('should validate notEmpty correctly', () => {
+      expect(validators().notEmpty('hello')).toBe(true)
+      expect(validators().notEmpty('  hello  ')).toBe(true) // Trims
+      expect(validators().notEmpty(0)).toBe(true)
+
+      expect(validators().notEmpty('')).toBe(false)
+      expect(validators().notEmpty('   ')).toBe(false) // Trims to empty
+      expect(validators().notEmpty(null)).toBe(false)
+      expect(validators().notEmpty(undefined)).toBe(false)
+    })
+
+    it('should validate maxLength correctly', () => {
+      expect(validators().maxLength('abc', 3)).toBe(true)
+      expect(validators().maxLength('ab', 3)).toBe(true)
+
+      expect(validators().maxLength('abcd', 3)).toBe(false)
+      expect(validators().maxLength(null, 3)).toBe(false)
+    })
+  })
 })
