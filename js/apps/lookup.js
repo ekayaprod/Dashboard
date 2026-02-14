@@ -2,6 +2,52 @@
 // PAGE-SPECIFIC LOGIC: Lookup (lookup.html)
 // ============================================================================
 
+const LookupHelpers = {
+    createEntry: (partial = {}) => ({
+        id: partial.id || SafeUI.generateId(),
+        keyword: (partial.keyword || '').trim(),
+        assignmentGroup: (partial.assignmentGroup || '').trim(),
+        notes: (partial.notes || '').trim(),
+        phoneLogPath: (partial.phoneLogPath || '').trim()
+    }),
+
+    validateEntry: (entry) => {
+        const errors = [];
+        if (!entry.keyword?.trim()) errors.push('Keyword is required');
+        return { valid: errors.length === 0, errors };
+    },
+
+    keywordUtils: {
+        parse: (keywordString) => keywordString.split(',').map(k => k.trim()).filter(Boolean),
+        merge: (keywordString1, keywordString2, caseSensitive = false) => {
+            const keywords1 = LookupHelpers.keywordUtils.parse(keywordString1);
+            const keywords2 = LookupHelpers.keywordUtils.parse(keywordString2);
+            if (caseSensitive) return [...new Set([...keywords1, ...keywords2])].join(', ');
+            const keywordMap = new Map();
+            [...keywords1, ...keywords2].forEach(kw => {
+                const key = kw.toLowerCase();
+                if (!keywordMap.has(key)) keywordMap.set(key, kw);
+            });
+            return Array.from(keywordMap.values()).join(', ');
+        }
+    },
+
+    validateSearchUrl: (url) => {
+        if (!url) return { valid: false, message: 'URL Template cannot be empty.' };
+        if (!/\{query\}/i.test(url)) return { valid: false, message: 'The URL must contain the {query} placeholder.' };
+        try {
+            const testUrl = url.replace(/\{query\}/ig, 'test');
+            const urlObj = new URL(testUrl);
+            if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                return { valid: false, message: 'URL must use http:// or https:// protocol.' };
+            }
+        } catch (e) {
+            return { valid: false, message: 'The URL format is invalid.' };
+        }
+        return { valid: true, message: '' };
+    }
+};
+
 AppLifecycle.onBootstrap(initializePage);
 
 function initializePage() {
@@ -20,8 +66,6 @@ function initializePage() {
     // ============================================================================
     (async () => {
         try {
-            console.log(`[Lookup] Bypassing AppLifecycle.run, initializing v${APP_CONFIG.VERSION}`);
-
             const defaultState = {
                 items: [],
                 settings: {
@@ -146,49 +190,6 @@ function initializePage() {
                 if (message) SafeUI.showToast(message);
             };
 
-            const createEntry = (partial = {}) => ({
-                id: partial.id || SafeUI.generateId(),
-                keyword: (partial.keyword || '').trim(),
-                assignmentGroup: (partial.assignmentGroup || '').trim(),
-                notes: (partial.notes || '').trim(),
-                phoneLogPath: (partial.phoneLogPath || '').trim()
-            });
-
-            const validateEntry = (entry) => {
-                const errors = [];
-                if (!entry.keyword?.trim()) errors.push('Keyword is required');
-                return { valid: errors.length === 0, errors };
-            };
-
-            const keywordUtils = {
-                parse: (keywordString) => keywordString.split(',').map(k => k.trim()).filter(Boolean),
-                merge: (keywordString1, keywordString2, caseSensitive = false) => {
-                    const keywords1 = keywordUtils.parse(keywordString1);
-                    const keywords2 = keywordUtils.parse(keywordString2);
-                    if (caseSensitive) return [...new Set([...keywords1, ...keywords2])].join(', ');
-                    const keywordMap = new Map();
-                    [...keywords1, ...keywords2].forEach(kw => {
-                        const key = kw.toLowerCase();
-                        if (!keywordMap.has(key)) keywordMap.set(key, kw);
-                    });
-                    return Array.from(keywordMap.values()).join(', ');
-                }
-            };
-
-            const validateSearchUrl = (url) => {
-                if (!url) return { valid: false, message: 'URL Template cannot be empty.' };
-                if (!/\{query\}/i.test(url)) return { valid: false, message: 'The URL must contain the {query} placeholder.' };
-                try {
-                    const testUrl = url.replace(/\{query\}/ig, 'test');
-                    const urlObj = new URL(testUrl);
-                    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                        return { valid: false, message: 'URL must use http:// or https:// protocol.' };
-                    }
-                } catch (e) {
-                    return { valid: false, message: 'The URL format is invalid.' };
-                }
-                return { valid: true, message: '' };
-            };
 
             const getEmptyMessage = (lowerTerm) => {
                 if (isEditMode) return 'No entries in the database. Click "+ Create Entry".';
@@ -329,7 +330,7 @@ function initializePage() {
                         button.classList.add('button-disabled-link');
                         button.removeAttribute('href');
                     } else {
-                        const validation = validateSearchUrl(search.urlTemplate);
+                        const validation = LookupHelpers.validateSearchUrl(search.urlTemplate);
                         if (!validation.valid) {
                             button.textContent = `Search ${escapedName} (URL is invalid)`;
                             button.classList.add('button-disabled-link');
@@ -475,7 +476,7 @@ function initializePage() {
                 }
 
                 const searchTerm = DOMElements.searchInput.value.trim();
-                const newItem = createEntry({ keyword: searchTerm });
+                const newItem = LookupHelpers.createEntry({ keyword: searchTerm });
 
                 // Bolt: Update Index for new item
                 SearchHelper.createIndex([newItem], SEARCH_FIELDS);
@@ -506,7 +507,7 @@ function initializePage() {
             function handleSave(form, id) {
                 const { keyword, assignmentGroup, notes, phoneLogPath } = getFormValues(form, id);
 
-                const validation = validateEntry({ keyword, assignmentGroup });
+                const validation = LookupHelpers.validateEntry({ keyword, assignmentGroup });
                 if (!validation.valid) {
                     const errorField = validation.errors[0].includes('Keyword') ? `edit-keyword-${id}` : `edit-group-${id}`;
                     return SafeUI.showValidationError("Invalid Input", validation.errors.join('. '), errorField);
@@ -520,7 +521,7 @@ function initializePage() {
                 const saveAction = () => {
                     let itemToUpdate = state.items.find(item => item.id === id);
                     if (!itemToUpdate) {
-                        itemToUpdate = createEntry({ id });
+                        itemToUpdate = LookupHelpers.createEntry({ id });
                         state.items.push(itemToUpdate);
                     }
                     Object.assign(itemToUpdate, { keyword, assignmentGroup, notes, phoneLogPath });
@@ -541,7 +542,7 @@ function initializePage() {
                                 label: 'Merge Keywords',
                                 class: 'btn-primary',
                                 callback: () => {
-                                    existingEntry.keyword = keywordUtils.merge(existingEntry.keyword, keyword);
+                                    existingEntry.keyword = LookupHelpers.keywordUtils.merge(existingEntry.keyword, keyword);
                                     handleDelete(id, true);
                                     sortAndSaveState();
                                     clearEditStateAndRender("Keywords merged.");
@@ -571,8 +572,8 @@ function initializePage() {
             }
 
             function validateCsvRow(row, index) {
-                const entry = createEntry(row);
-                const validation = validateEntry(entry);
+                const entry = LookupHelpers.createEntry(row);
+                const validation = LookupHelpers.validateEntry(entry);
                 if (!validation.valid) return { error: `Row ${index + 2}: ${validation.errors.join(', ')}` };
 
                 const contentKey = `${entry.keyword.toLowerCase()}|${entry.assignmentGroup.toLowerCase()}`;
@@ -678,7 +679,7 @@ function initializePage() {
                             return;
                         }
 
-                        const validation = validateSearchUrl(urlTemplate);
+                        const validation = LookupHelpers.validateSearchUrl(urlTemplate);
                         if (!validation.valid) {
                             SafeUI.showValidationError("Invalid URL", validation.message, urlInput.id);
                             validationFailed = true;
