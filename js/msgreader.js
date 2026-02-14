@@ -712,57 +712,43 @@ class MsgReaderParser {
             }
         });
         
-        console.log('METHOD 1: Extracted recipients from OLE storages:', recipients.length);
-        recipients.forEach((r, i) => console.log(`  [${i}] Type=${r.recipientType}, Email=${r.email}, Name=${r.name}`));
-        
         let displayTo = this.properties[PROP_ID_DISPLAY_TO] ? this.properties[PROP_ID_DISPLAY_TO].value : null;
         let displayCc = this.properties[PROP_ID_DISPLAY_CC] ? this.properties[PROP_ID_DISPLAY_CC].value : null;
         
-        console.log('METHOD 3: Display Fields');
-        console.log('  DisplayTo:', displayTo);
-        console.log('  DisplayCc:', displayCc);
-        
-        if (displayTo || displayCc) {
-            let displayToEmails = _extractAddresses(displayTo);
-            let displayCcEmails = _extractAddresses(displayCc);
-
-            console.log('  Parsed TO emails:', displayToEmails);
-            console.log('  Parsed CC emails:', displayCcEmails);
-
-            let toEmailCounts = {};
-            let ccEmailCounts = {};
-
-            displayToEmails.forEach(email => {
-                toEmailCounts[email] = (toEmailCounts[email] || 0) + 1;
-            });
-
-            displayCcEmails.forEach(email => {
-                ccEmailCounts[email] = (ccEmailCounts[email] || 0) + 1;
-            });
-
-            console.log('  TO counts:', toEmailCounts);
-            console.log('  CC counts:', ccEmailCounts);
-
-            recipients.forEach(recipient => {
-                let emailKey = recipient.email.toLowerCase();
-
-                if (ccEmailCounts[emailKey] && ccEmailCounts[emailKey] > 0) {
-                    recipient.recipientType = RECIPIENT_TYPE_CC;
-                    ccEmailCounts[emailKey]--;
-                    console.log(`  Matched ${emailKey} to CC (remaining: ${ccEmailCounts[emailKey]})`);
-                }
-                else if (toEmailCounts[emailKey] && toEmailCounts[emailKey] > 0) {
-                    recipient.recipientType = RECIPIENT_TYPE_TO;
-                    toEmailCounts[emailKey]--;
-                    console.log(`  Matched ${emailKey} to TO (remaining: ${toEmailCounts[emailKey]})`);
-                }
-            });
-        }
-        
-        console.log('FINAL: Corrected recipient types');
-        recipients.forEach((r, i) => console.log(`  [${i}] Type=${r.recipientType}, Email=${r.email}`));
+        this._reconcileRecipients(recipients, displayTo, displayCc);
         
         this.properties['recipients'] = { id: 0, value: recipients };
+    }
+
+    _reconcileRecipients(recipients, displayTo, displayCc) {
+        if (!displayTo && !displayCc) return;
+
+        let displayToEmails = _extractAddresses(displayTo);
+        let displayCcEmails = _extractAddresses(displayCc);
+
+        let toEmailCounts = {};
+        let ccEmailCounts = {};
+
+        displayToEmails.forEach(email => {
+            toEmailCounts[email] = (toEmailCounts[email] || 0) + 1;
+        });
+
+        displayCcEmails.forEach(email => {
+            ccEmailCounts[email] = (ccEmailCounts[email] || 0) + 1;
+        });
+
+        recipients.forEach(recipient => {
+            let emailKey = recipient.email.toLowerCase();
+
+            if (ccEmailCounts[emailKey] && ccEmailCounts[emailKey] > 0) {
+                recipient.recipientType = RECIPIENT_TYPE_CC;
+                ccEmailCounts[emailKey]--;
+            }
+            else if (toEmailCounts[emailKey] && toEmailCounts[emailKey] > 0) {
+                recipient.recipientType = RECIPIENT_TYPE_TO;
+                toEmailCounts[emailKey]--;
+            }
+        });
     }
 
     getFieldValue(name) {
