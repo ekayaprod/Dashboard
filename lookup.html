@@ -22,9 +22,13 @@
                         </div>
                     </header>
                     <div class="search-controls" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="text" id="search-input" class="form-control" placeholder="Search Local Database..." style="flex: 1;">
+                        <div class="search-wrapper">
+                            <input type="text" id="search-input" class="form-control" placeholder="Search Local Database..." style="flex: 1;">
+                            <div id="search-spinner" class="spinner hidden" aria-hidden="true"></div>
+                        </div>
                         <button id="btn-clear-search" class="btn hidden" style="padding: 0.35rem 0.6rem;">✕ Clear</button>
                     </div>
+                    <div id="results-status" aria-live="polite"></div>
                 </div>
 
                 <section id="custom-search-section" class="generator-section">

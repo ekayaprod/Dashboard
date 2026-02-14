@@ -57,19 +57,23 @@ const UIPatterns = (() => {
 const ListRenderer = (() => {
     return {
         renderList: (config) => {
-            const { container, items, emptyMessage, createItemElement } = config;
+            const { container, items, emptyMessage, createItemElement, append } = config;
 
             if (!container) {
                 console.error("ListRenderer: container element is null.");
                 return;
             }
 
-            container.innerHTML = '';
+            if (!append) {
+                container.innerHTML = '';
+            }
 
-            if (!items || items.length === 0) {
+            if ((!items || items.length === 0) && !append) {
                 container.innerHTML = `<div class="empty-state-message">${emptyMessage}</div>`;
                 return;
             }
+
+            if (!items || items.length === 0) return;
 
             const fragment = document.createDocumentFragment();
             items.forEach(item => {

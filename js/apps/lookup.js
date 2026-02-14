@@ -42,7 +42,7 @@ function initializePage() {
                     'btn-add-new-entry', 'btn-settings', 'btn-edit-mode',
                     'toast', 'modal-overlay', 'modal-content',
                         'custom-search-section', 'custom-search-buttons',
-                    'btn-clear-search'
+                    'btn-clear-search', 'search-spinner', 'results-status'
                 ]
             });
 
@@ -80,8 +80,49 @@ function initializePage() {
                 saveState();
             };
 
+            const BATCH_SIZE = 50;
             let currentEditState = { id: null, type: null };
             let isEditMode = false;
+            let currentMatches = [];
+            let renderedCount = 0;
+            let loadingSentinel = null;
+            let loadingObserver = null;
+
+            const setLoading = (isLoading) => {
+                if (DOMElements.searchSpinner) {
+                    DOMElements.searchSpinner.classList.toggle('hidden', !isLoading);
+                }
+            };
+
+            const updateResultsStatus = (matches, rendered) => {
+                if (!DOMElements.resultsStatus) return;
+
+                if (matches === 0) {
+                    DOMElements.resultsStatus.textContent = '';
+                    return;
+                }
+
+                const showingText = rendered >= matches ?
+                    `Showing all ${matches} results` :
+                    `Showing ${rendered} of ${matches} results`;
+
+                DOMElements.resultsStatus.textContent = showingText;
+            };
+
+            const setupObserver = () => {
+                loadingSentinel = document.createElement('div');
+                loadingSentinel.id = 'loading-sentinel';
+                loadingSentinel.style.height = '20px';
+                loadingSentinel.style.marginTop = '10px';
+
+                loadingObserver = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        if (renderedCount < currentMatches.length) {
+                            renderBatch(true);
+                        }
+                    }
+                }, { root: null, rootMargin: '200px' });
+            };
 
             const focusAndScroll = (elementId) => {
                 setTimeout(() => {
@@ -166,6 +207,48 @@ function initializePage() {
                 }, {});
             };
 
+            const renderBatch = (append = false) => {
+                const start = append ? renderedCount : 0;
+                const end = Math.min(start + BATCH_SIZE, currentMatches.length);
+                const batch = currentMatches.slice(start, end);
+                const searchTerm = DOMElements.searchInput.value.trim();
+
+                if (batch.length === 0 && !append && currentMatches.length > 0) return;
+
+                // Add fade-in animation to appended items
+                const createAnimatedItemElement = (item) => {
+                     const el = (isEditMode || (currentEditState.id === item.id)) ?
+                        createEditForm(item) :
+                        createItemElement(item, searchTerm);
+
+                     if (append) el.classList.add('fade-in');
+                     return el;
+                };
+
+                ListRenderer.renderList({
+                    container: DOMElements.localResults,
+                    items: batch,
+                    emptyMessage: getEmptyMessage(searchTerm.toLowerCase()),
+                    createItemElement: createAnimatedItemElement,
+                    append: append
+                });
+
+                renderedCount = end;
+                updateResultsStatus(currentMatches.length, renderedCount);
+
+                if (loadingSentinel) {
+                    // Remove if exists to re-append at end
+                    if (loadingSentinel.parentNode) loadingSentinel.parentNode.removeChild(loadingSentinel);
+
+                    if (renderedCount < currentMatches.length) {
+                        DOMElements.localResults.appendChild(loadingSentinel);
+                        loadingObserver.observe(loadingSentinel);
+                    } else {
+                        loadingObserver.unobserve(loadingSentinel);
+                    }
+                }
+            };
+
             const renderLocalList = (searchTerm = '') => {
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
@@ -187,17 +270,11 @@ function initializePage() {
 
                 DOMElements.btnAddNewEntry.classList.toggle('hidden', isEditMode || itemsToRender.length > 0 || !lowerTerm);
 
-                ListRenderer.renderList({
-                    container: DOMElements.localResults,
-                    items: itemsToRender,
-                    emptyMessage: getEmptyMessage(lowerTerm),
-                    createItemElement: (item) => {
-                        if (isEditMode || (currentEditState.id === item.id)) {
-                            return createEditForm(item);
-                        }
-                        return createItemElement(item, searchTerm);
-                    }
-                });
+                // Reset state for new search
+                currentMatches = itemsToRender;
+                renderedCount = 0;
+
+                renderBatch(false);
             };
 
             const renderCustomSearches = (term) => {
@@ -248,10 +325,17 @@ function initializePage() {
                 if (isEditMode) {
                     DOMElements.btnAddNewEntry.classList.remove('hidden');
                 }
+
+                // Ensure observer is setup
+                if (!loadingObserver) setupObserver();
+
                 renderLocalList(searchTerm);
                 renderCustomSearches(searchTerm);
 
                 DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
+
+                // Hide spinner after render is done
+                setLoading(false);
             };
 
             function createItemElement(item, searchTerm) {
@@ -680,6 +764,7 @@ function initializePage() {
                 const debouncedRender = SafeUI.debounce(renderAll, 150);
 
                 DOMElements.searchInput.addEventListener('input', () => {
+                    setLoading(true);
                     debouncedRender();
                     debouncedSearchSave();
                 });
