@@ -85,4 +85,23 @@ describe('MsgReader Text Decoding', () => {
         expect(result.subject).toBe('Test QP UTF-8');
         expect(result.body).toBe('é');
     });
+
+    it('should correctly parse recipients with commas in quoted names', () => {
+        const mime =
+            'Subject: Test Recipients\r\n' +
+            'To: "Doe, John" <john.doe@example.com>, Jane <jane@example.com>, "Smith, Bob, Jr." <bob@example.com>\r\n' +
+            '\r\n' +
+            'Body';
+
+        const buffer = new TextEncoder().encode(mime);
+        // MsgReader.read automatically falls back to parseMime() if the OLE signature is missing.
+        // This test verifies the MIME recipient parsing logic (specifically regex splitting).
+        const result = MsgReader.read(buffer);
+
+        expect(result.recipients).toHaveLength(3);
+        // recipientType: 1 is TO
+        expect(result.recipients[0]).toEqual({ name: 'Doe, John', email: 'john.doe@example.com', recipientType: 1 });
+        expect(result.recipients[1]).toEqual({ name: 'Jane', email: 'jane@example.com', recipientType: 1 });
+        expect(result.recipients[2]).toEqual({ name: 'Smith, Bob, Jr.', email: 'bob@example.com', recipientType: 1 });
+    });
 });
