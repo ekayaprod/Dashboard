@@ -75,8 +75,15 @@ const UIUtils = (() => {
     // Shared buffer for random number generation to avoid allocation per call
     const randomBuffer = new Uint32Array(1);
 
-    // Bolt: Optimized for performance - avoids expensive DOM creation
-    // Uses replaceAll for better performance than chained regex replaces
+    /**
+     * Escapes HTML characters in a string to prevent XSS attacks.
+     *
+     * Bolt: Optimized for performance - avoids expensive DOM creation
+     * and uses replaceAll for better performance than chained regex replaces.
+     *
+     * @param {string} str - The input string to escape.
+     * @returns {string} The escaped string safe for HTML insertion.
+     */
     const escapeHTML = (str) => {
         if (str == null) return '';
         return String(str)
@@ -377,6 +384,15 @@ const SafeUI = (() => {
 // ============================================================================
 const DOMHelpers = (() => {
     return {
+        /**
+         * Caches DOM elements by their ID, converting hyphenated IDs to camelCase keys.
+         *
+         * @param {string[]} requiredIds - Array of element IDs to cache (e.g., ['my-input']).
+         * @returns {{
+         *   elements: Object<string, HTMLElement>,
+         *   allFound: boolean
+         * }} An object containing the mapped elements and a success flag.
+         */
         cacheElements: (requiredIds) => {
             const elements = {};
             let allFound = true;
