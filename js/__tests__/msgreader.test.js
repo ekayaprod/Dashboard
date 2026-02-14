@@ -55,4 +55,34 @@ describe('MsgReader Text Decoding', () => {
         expect(rawBody).not.toContain('PREFIX');
         expect(rawBody).not.toContain('SUFFIX');
     });
+
+    it('should correctly decode Quoted-Printable content with ISO-8859-1 charset', () => {
+        const mime =
+            'Subject: Test QP\r\n' +
+            'Content-Type: text/plain; charset="iso-8859-1"\r\n' +
+            'Content-Transfer-Encoding: quoted-printable\r\n' +
+            '\r\n' +
+            '=E9'; // é in ISO-8859-1
+
+        const buffer = new TextEncoder().encode(mime);
+        const result = MsgReader.read(buffer);
+
+        expect(result.subject).toBe('Test QP');
+        expect(result.body).toBe('é');
+    });
+
+    it('should correctly decode Quoted-Printable content with UTF-8 charset', () => {
+        const mime =
+            'Subject: Test QP UTF-8\r\n' +
+            'Content-Type: text/plain; charset="utf-8"\r\n' +
+            'Content-Transfer-Encoding: quoted-printable\r\n' +
+            '\r\n' +
+            '=C3=A9'; // é in UTF-8
+
+        const buffer = new TextEncoder().encode(mime);
+        const result = MsgReader.read(buffer);
+
+        expect(result.subject).toBe('Test QP UTF-8');
+        expect(result.body).toBe('é');
+    });
 });
