@@ -76,8 +76,8 @@ const ListRenderer = (() => {
             if (!items || items.length === 0) return;
 
             const fragment = document.createDocumentFragment();
-            items.forEach(item => {
-                const element = createItemElement(item);
+            items.forEach((item, index) => {
+                const element = createItemElement(item, index);
                 if (element) fragment.appendChild(element);
             });
             container.appendChild(fragment);
