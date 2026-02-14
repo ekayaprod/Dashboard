@@ -1,10 +1,11 @@
 /**
  * js/msgreader.js
- * Version 2.0.22 (ES6 Module - Fix: Double Spacing & EML Encoding)
+ * Version 2.0.23 (ES6 Module - Fix: Robust Text Decoding & Type Checks)
  * * CHANGE LOG:
- * - Updated _stripHtml to collapse multiple newlines into single/double newlines correctly.
- * - Updated _scanBufferForMimeText to detect and apply 'charset' from MIME headers
- * during Quoted-Printable decoding (fixes Schrödinger in .eml).
+ * - Consolidated text decoding logic into `_robustDecode` helper.
+ * - Replaced fragile `try/catch` blocks in `parseMime` and `_scanBufferForMimeText` with `_robustDecode`.
+ * - Fixed `MsgReaderParser` constructor to use safer type checking for ArrayBuffer/Uint8Array.
+ * - Unified 8-bit fallback encoding to 'windows-1252'.
  */
 
 'use strict';
@@ -39,16 +40,20 @@ let _textDecoderWin1252 = null;
 let _domParser = null;
 
 function getTextDecoder(encoding) {
-    if (encoding === 'utf-16le') {
-        if (!_textDecoderUtf16) _textDecoderUtf16 = new TextDecoder('utf-16le', { fatal: false });
-        return _textDecoderUtf16;
+    try {
+        if (encoding === 'utf-16le') {
+            if (!_textDecoderUtf16) _textDecoderUtf16 = new TextDecoder('utf-16le', { fatal: false });
+            return _textDecoderUtf16;
+        }
+        if (encoding === 'windows-1252') {
+            if (!_textDecoderWin1252) _textDecoderWin1252 = new TextDecoder('windows-1252', { fatal: false });
+            return _textDecoderWin1252;
+        }
+        return new TextDecoder(encoding, { fatal: false });
+    } catch (e) {
+        // Fallback for environments without TextDecoder or invalid encoding
+        return null;
     }
-    if (encoding === 'windows-1252') {
-        if (!_textDecoderWin1252) _textDecoderWin1252 = new TextDecoder('windows-1252', { fatal: false });
-        return _textDecoderWin1252;
-    }
-    // Dynamic encoding (e.g. iso-8859-1), don't cache or cache separately if needed
-    return new TextDecoder(encoding, { fatal: false });
 }
 
 function getDOMParser() {
@@ -59,6 +64,43 @@ function getDOMParser() {
 }
 
 // --- Helpers ---
+
+/**
+ * Robustly decodes a buffer to string, trying UTF-8 first, then Windows-1252, then manual ASCII.
+ * @param {ArrayBuffer|Uint8Array|DataView} buffer
+ * @returns {string}
+ */
+function _robustDecode(buffer) {
+    // Try UTF-8 (Strict)
+    try {
+        const decoder = new TextDecoder('utf-8', { fatal: true });
+        return decoder.decode(buffer);
+    } catch (e) {
+        // Fallback to Windows-1252
+        try {
+            const decoder = getTextDecoder('windows-1252');
+            if (decoder) return decoder.decode(buffer);
+        } catch (e2) { }
+    }
+
+    // Manual fallback (Binary/ASCII)
+    try {
+        const bytes = (buffer instanceof DataView)
+            ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+            : (buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer));
+
+        let result = '';
+        const len = bytes.length;
+        // Optimization: Process in chunks if large? No, simple loop for fallback is fine.
+        for (let i = 0; i < len; i++) {
+            result += String.fromCharCode(bytes[i]);
+        }
+        return result;
+    } catch (e) {
+        console.error("MsgReader: Critical decoding failure", e);
+        return "";
+    }
+}
 
 function _decodeQuotedPrintable(str, charset = 'utf-8') {
     if (!str) return '';
@@ -74,11 +116,12 @@ function _decodeQuotedPrintable(str, charset = 'utf-8') {
         for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
         
         // Decode using the specified charset
-        // Normalize charset names
         let encoding = charset.toLowerCase();
         if (encoding === 'us-ascii') encoding = 'utf-8'; // Compatible fallback
         
-        return new TextDecoder(encoding, { fatal: false }).decode(bytes);
+        const decoder = getTextDecoder(encoding);
+        if (decoder) return decoder.decode(bytes);
+        return decoded;
     } catch (e) { 
         console.warn(`QP Decode Error for charset ${charset}:`, e);
         return decoded; 
@@ -100,7 +143,6 @@ function _stripHtml(html) {
     text = text.replace(/[.#a-z0-9_]+\s*\{[^}]+\}/gi, '');
 
     // FIX: Better whitespace handling for block tags
-    // Replace block tags with a placeholder, consume surrounding whitespace
     text = text.replace(/\s*<(br|p|div|tr|li|h1|h2|h3|h4|h5|h6)[^>]*>\s*/gi, '\n');
     
     // Pass 2: DOM Parsing
@@ -123,57 +165,39 @@ function _stripHtml(html) {
 
 function _normalizeText(text) {
     if (!text) return '';
-    // Normalize line endings and trim excessive whitespace
     return text
         .replace(/\r\n/g, '\n') // Windows to Unix
         .replace(/\r/g, '\n')   // Mac to Unix
-        // FIX: Collapse multiple newlines (3 or more) into 2 (Paragraph break)
         .replace(/\n{3,}/g, '\n\n') 
         .trim();
 }
 
 function dataViewToString(view, encoding) {
-    if (encoding === 'utf-8') {
-        try {
-            if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
-            let decoded = new TextDecoder('utf-8', { fatal: true }).decode(view);
-            const nullIdx = decoded.indexOf('\0');
-            return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
-        } catch (e) { 
-            return dataViewToString(view, 'ascii'); 
-        }
-    }
-    
     if (encoding === 'utf16le') {
         try {
-            if (typeof TextDecoder === 'undefined') throw new Error("TextDecoder missing");
-            let decoded = getTextDecoder('utf-16le').decode(view);
-            const nullIdx = decoded.indexOf('\0');
-            return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
-        } catch (e) {
-            let result = '';
-            for (let i = 0; i < view.byteLength - 1; i += 2) {
-                let charCode = view.getUint16(i, true);
-                if (charCode === 0) break;
-                result += String.fromCharCode(charCode);
+            const decoder = getTextDecoder('utf-16le');
+            if (decoder) {
+                let decoded = decoder.decode(view);
+                const nullIdx = decoded.indexOf('\0');
+                return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
             }
-            return result;
-        }
-    }
-    
-    try {
-        let decoded = getTextDecoder('windows-1252').decode(view);
-        const nullIdx = decoded.indexOf('\0');
-        return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
-    } catch(e) {
+        } catch (e) { }
+
+        // Manual UTF-16LE Fallback
         let result = '';
-        for (let i = 0; i < view.byteLength; i++) {
-            let charCode = view.getUint8(i);
+        for (let i = 0; i < view.byteLength - 1; i += 2) {
+            let charCode = view.getUint16(i, true);
             if (charCode === 0) break;
             result += String.fromCharCode(charCode);
         }
         return result;
     }
+
+    // Default / UTF-8 / Fallback
+    // If specifically asked for utf-8, we try it, otherwise robust decode handles it
+    let decoded = _robustDecode(view);
+    const nullIdx = decoded.indexOf('\0');
+    return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
 }
 
 function filetimeToDate(low, high) {
@@ -236,10 +260,24 @@ function _extractAddresses(displayString) {
 // --- Internal Parser Class ---
 class MsgReaderParser {
     constructor(arrayBuffer) {
-        if (!(arrayBuffer instanceof ArrayBuffer) && !(arrayBuffer instanceof Uint8Array)) {
+        // Safer type check for ArrayBuffer/Uint8Array to support cross-realm/VM contexts (e.g. Jest/JSDOM)
+        const isArrayBuffer = arrayBuffer instanceof ArrayBuffer || Object.prototype.toString.call(arrayBuffer) === '[object ArrayBuffer]';
+        const isUint8Array = arrayBuffer instanceof Uint8Array || Object.prototype.toString.call(arrayBuffer) === '[object Uint8Array]';
+
+        if (!isArrayBuffer && !isUint8Array) {
             throw new Error("MsgReader: Input must be ArrayBuffer or Uint8Array.");
         }
-        this.buffer = arrayBuffer instanceof ArrayBuffer ? arrayBuffer : new Uint8Array(arrayBuffer).buffer;
+
+        // Ensure we work with ArrayBuffer for DataView
+        if (isUint8Array) {
+            // Create a copy to ensure we handle views correctly and own the buffer
+            // This also handles cross-realm/VM context issues safely
+            const copy = new Uint8Array(arrayBuffer);
+            this.buffer = copy.buffer;
+        } else {
+            this.buffer = arrayBuffer;
+        }
+
         this.dataView = new DataView(this.buffer);
         this.header = null; this.fat = null; this.miniFat = null;
         this.directoryEntries = []; this.properties = {}; this._mimeScanCache = null;
@@ -257,14 +295,8 @@ class MsgReaderParser {
     }
 
     parseMime() {
-        console.log('Parsing as MIME/text file');
         this._mimeScanCache = null;
-        let rawText = '';
-        try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
-        catch (e) {
-            try { rawText = new TextDecoder('latin1').decode(this.dataView); }
-            catch (e2) { rawText = ''; }
-        }
+        let rawText = _robustDecode(this.dataView);
 
         let mimeData = this._scanBufferForMimeText(rawText);
         let recipients = [];
@@ -440,14 +472,7 @@ class MsgReaderParser {
         if (this._mimeScanCache) return this._mimeScanCache;
 
         if (!rawText) {
-            try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
-            catch (e) {
-                try { rawText = new TextDecoder('latin1').decode(this.dataView); }
-                catch (e2) {
-                    console.warn('Could not decode raw buffer for MIME scan.');
-                    return { subject: null, to: null, cc: null, body: null };
-                }
-            }
+             rawText = _robustDecode(this.dataView);
         }
 
         let result = { subject: null, to: null, cc: null, body: null };
@@ -591,9 +616,8 @@ class MsgReaderParser {
         const isBodyProp = (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY);
         
         if (isBodyProp || type === PROP_TYPE_STRING || type === PROP_TYPE_STRING8) {
-            let u16 = '', u8 = '';
-            try { u16 = dataViewToString(view, 'utf16le'); } catch (e) {}
-            try { u8 = dataViewToString(view, 'utf-8'); } catch (e) {}
+            let u16 = dataViewToString(view, 'utf16le');
+            let u8 = dataViewToString(view, 'utf-8');
 
             let isPrintable = (s) => {
                 if (!s || s.length === 0) return false;
