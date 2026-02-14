@@ -26,5 +26,9 @@
 ## 🚧 In Progress
 <!-- No active tasks -->
 
+## 📅 Planned
+- **Accessibility Audit & Improvements**: Add ARIA labels, improve keyboard navigation, and ensure high contrast.
+
 ## 🧊 Backlog
 - **Future Optimizations**: Further performance tuning and code consolidation.
+- **Mobile Responsiveness Enhancements**: Improve layout stacking and touch targets for mobile devices.
