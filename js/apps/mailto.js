@@ -3,8 +3,6 @@
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
  */
 
-import { MsgReader } from '../msgreader.js';
-
 const APP_CONFIG = {
     NAME: 'mailto_library',
     VERSION: '2.3.3',
@@ -140,26 +138,74 @@ function buildMailto(data) {
     } catch (e) { return ''; }
 }
 
-function handleFile(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const d = MsgReader.read(e.target.result);
-            DOMElements.resultSubject.value = d.subject || '';
-            DOMElements.resultBody.value = d.body || '';
-            
-            const map = {1:[], 2:[], 3:[]}; 
+let msgWorker = null;
+
+function handleWorkerMessage(e) {
+    const response = e.data;
+    const uploadWrapper = document.getElementById('upload-wrapper');
+    if (uploadWrapper) {
+        uploadWrapper.classList.remove('loading');
+        uploadWrapper.removeAttribute('aria-busy');
+    }
+
+    if (response.success) {
+        const d = response.data;
+        if(DOMElements.resultSubject) DOMElements.resultSubject.value = d.subject || '';
+        if(DOMElements.resultBody) DOMElements.resultBody.value = d.body || '';
+
+        const map = {1:[], 2:[], 3:[]};
+        if (d.recipients) {
             d.recipients.forEach(r => {
                 const addr = r.email || (r.name && r.name.includes('@')?r.name:'');
                 if(addr) map[r.recipientType || 1].push(addr);
             });
-            DOMElements.resultTo.value = map[1].join(', ');
-            DOMElements.resultCc.value = map[2].join(', ');
-            DOMElements.resultBcc.value = map[3].join(', ');
-            
-            setActiveSection('editor');
-            SafeUI.showToast('File loaded');
+        }
+        if(DOMElements.resultTo) DOMElements.resultTo.value = map[1].join(', ');
+        if(DOMElements.resultCc) DOMElements.resultCc.value = map[2].join(', ');
+        if(DOMElements.resultBcc) DOMElements.resultBcc.value = map[3].join(', ');
+
+        setActiveSection('editor');
+        SafeUI.showToast('File loaded');
+    } else {
+        SafeUI.showModal("Error", `<p>${SafeUI.escapeHTML(response.error)}</p>`, [{label:'OK'}]);
+    }
+}
+
+function initWorker() {
+    if (!msgWorker) {
+        msgWorker = new Worker(new URL('../workers/msg-worker.js', import.meta.url), { type: 'module' });
+        msgWorker.onmessage = handleWorkerMessage;
+        msgWorker.onerror = (e) => {
+            const uploadWrapper = document.getElementById('upload-wrapper');
+            if (uploadWrapper) {
+                uploadWrapper.classList.remove('loading');
+                uploadWrapper.removeAttribute('aria-busy');
+            }
+            console.error("Worker Error:", e);
+            SafeUI.showModal("Error", `<p>An error occurred in the background worker.</p>`, [{label:'OK'}]);
+        };
+    }
+    return msgWorker;
+}
+
+function handleFile(file) {
+    const uploadWrapper = document.getElementById('upload-wrapper');
+    if (uploadWrapper) {
+        uploadWrapper.classList.add('loading');
+        uploadWrapper.setAttribute('aria-busy', 'true');
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const worker = initWorker();
+            // Transfer the buffer to the worker for zero-copy efficiency
+            worker.postMessage(e.target.result, [e.target.result]);
         } catch (err) { 
+            if (uploadWrapper) {
+                uploadWrapper.classList.remove('loading');
+                uploadWrapper.removeAttribute('aria-busy');
+            }
             SafeUI.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]); 
         }
     };
