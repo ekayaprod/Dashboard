@@ -222,396 +222,6 @@ function parseAddress(addr) {
     return { name, email };
 }
 
-// --- Internal Parser Class ---
-function MsgReaderParser(arrayBuffer) {
-    if (!(arrayBuffer instanceof ArrayBuffer) && !(arrayBuffer instanceof Uint8Array)) {
-        throw new Error("MsgReader: Input must be ArrayBuffer or Uint8Array.");
-    }
-    this.buffer = arrayBuffer instanceof ArrayBuffer ? arrayBuffer : new Uint8Array(arrayBuffer).buffer;
-    this.dataView = new DataView(this.buffer);
-    this.header = null; this.fat = null; this.miniFat = null;
-    this.directoryEntries = []; this.properties = {}; this._mimeScanCache = null;
-}
-
-MsgReaderParser.prototype.parse = function() {
-    this.readHeader(); this.readFAT(); this.readMiniFAT(); this.readDirectory(); this.extractProperties();
-    return {
-        getFieldValue: this.getFieldValue.bind(this),
-        subject: this.getFieldValue('subject'),
-        body: this.getFieldValue('body'),
-        bodyHTML: this.getFieldValue('bodyHTML'),
-        recipients: this.getFieldValue('recipients')
-    };
-};
-
-MsgReaderParser.prototype.parseMime = function() {
-    console.log('Parsing as MIME/text file');
-    this._mimeScanCache = null;
-    let rawText = '';
-    try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
-    catch (e) { 
-        try { rawText = new TextDecoder('latin1').decode(this.dataView); }
-        catch (e2) { rawText = ''; }
-    }
-    
-    let mimeData = this._scanBufferForMimeText(rawText);
-    let recipients = [];
-    let parseMimeAddresses = (addrString, type) => {
-        if (!addrString) return;
-        addrString.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).forEach(addr => {
-            let parsed = parseAddress(addr);
-            if (parsed.email) recipients.push({ name: parsed.name, email: parsed.email, recipientType: type });
-        });
-    };
-
-    parseMimeAddresses(mimeData.to, RECIPIENT_TYPE_TO);
-    parseMimeAddresses(mimeData.cc, RECIPIENT_TYPE_CC);
-    let bccMatch = rawText.match(/^Bcc:\s*([^\r\n]+)/im);
-    if (bccMatch) parseMimeAddresses(bccMatch[1].trim(), RECIPIENT_TYPE_BCC);
-
-    this.properties[PROP_ID_SUBJECT] = { id: PROP_ID_SUBJECT, value: mimeData.subject };
-    this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: mimeData.body };
-    this.properties[PROP_ID_HTML_BODY] = { id: PROP_ID_HTML_BODY, value: null };
-    this.properties['recipients'] = { id: 0, value: recipients };
-
-    return {
-        getFieldValue: this.getFieldValue.bind(this),
-        subject: mimeData.subject,
-        body: mimeData.body,
-        bodyHTML: null, recipients: recipients
-    };
-};
-
-MsgReaderParser.prototype.readHeader = function() {
-    if (this.buffer.byteLength < 512) throw new Error('File too small to be a valid OLE file');
-    if (this.dataView.getUint32(0, true) !== 0xE011CFD0) throw new Error('Invalid OLE file signature.');
-    this.header = {
-        sectorShift: this.dataView.getUint16(30, true),
-        miniSectorShift: this.dataView.getUint16(32, true),
-        fatSectors: this.dataView.getUint32(44, true),
-        directoryFirstSector: this.dataView.getUint32(48, true),
-        miniFatFirstSector: this.dataView.getUint32(60, true),
-        miniFatTotalSectors: this.dataView.getUint32(64, true),
-        difFirstSector: this.dataView.getUint32(68, true),
-        difTotalSectors: this.dataView.getUint32(72, true)
-    };
-    this.header.sectorSize = Math.pow(2, this.header.sectorShift);
-    this.header.miniSectorSize = Math.pow(2, this.header.miniSectorShift);
-};
-
-MsgReaderParser.prototype.readFAT = function() {
-    let sectorSize = this.header.sectorSize, entriesPerSector = sectorSize / 4;
-    this.fat = [];
-    let fatSectorPositions = [];
-    for (let i = 0; i < 109 && i < this.header.fatSectors; i++) {
-        let s = this.dataView.getUint32(76 + i * 4, true);
-        if (s !== 0xFFFFFFFE && s !== 0xFFFFFFFF) fatSectorPositions.push(s);
-    }
-    if (this.header.difTotalSectors > 0) {
-        let difSector = this.header.difFirstSector;
-        let sectorsRead = 0;
-        while (difSector !== 0xFFFFFFFE && difSector !== 0xFFFFFFFF && sectorsRead < this.header.difTotalSectors) {
-            let difOffset = 512 + difSector * sectorSize;
-            for (let j = 0; j < entriesPerSector - 1; j++) {
-                let s = this.dataView.getUint32(difOffset + j * 4, true);
-                if (s !== 0xFFFFFFFE && s !== 0xFFFFFFFF) fatSectorPositions.push(s);
-            }
-            difSector = this.dataView.getUint32(difOffset + (entriesPerSector - 1) * 4, true);
-            sectorsRead++;
-        }
-    }
-    for (let i = 0; i < fatSectorPositions.length; i++) {
-        let offset = 512 + fatSectorPositions[i] * sectorSize;
-        for (let j = 0; j < entriesPerSector; j++) {
-            if (offset + j * 4 + 4 <= this.buffer.byteLength) this.fat.push(this.dataView.getUint32(offset + j * 4, true));
-        }
-    }
-};
-
-MsgReaderParser.prototype.readMiniFAT = function() {
-    if (this.header.miniFatFirstSector === 0xFFFFFFFE) { this.miniFat = []; return; }
-    this.miniFat = [];
-    let sector = this.header.miniFatFirstSector, sectorSize = this.header.sectorSize;
-    let sectorsRead = 0; 
-    while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
-        let offset = 512 + sector * sectorSize;
-        for (let i = 0; i < sectorSize / 4; i++) {
-            if (offset + i * 4 + 4 <= this.buffer.byteLength) this.miniFat.push(this.dataView.getUint32(offset + i * 4, true));
-        }
-        if (sector >= this.fat.length) break;
-        sector = this.fat[sector];
-        sectorsRead++;
-    }
-};
-
-MsgReaderParser.prototype.readDirectory = function() {
-    let sector = this.header.directoryFirstSector, sectorSize = this.header.sectorSize, entrySize = 128;
-    let sectorsRead = 0;
-    while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
-        let offset = 512 + sector * sectorSize;
-        for (let i = 0; i < sectorSize / entrySize; i++) {
-            let entryOffset = offset + i * entrySize;
-            if (entryOffset + entrySize > this.buffer.byteLength) break;
-            let entry = this.readDirectoryEntry(entryOffset);
-            if (entry && entry.name) this.directoryEntries.push(entry);
-        }
-        if (sector >= this.fat.length) break;
-        sector = this.fat[sector];
-        sectorsRead++;
-    }
-    this.directoryEntries.forEach((de, idx) => de.id = idx);
-};
-
-MsgReaderParser.prototype.readDirectoryEntry = function(offset) {
-    let nameLen = this.dataView.getUint16(offset + 64, true);
-    if (nameLen === 0 || nameLen > 64) return null;
-    let name = dataViewToString(new DataView(this.buffer, offset, Math.min(nameLen, 64)), 'utf16le');
-    let type = this.dataView.getUint8(offset + 66);
-    if (type !== 1 && type !== 2 && type !== 5) return null;
-    return {
-        name: name, type: type,
-        startSector: this.dataView.getUint32(offset + 116, true),
-        size: this.dataView.getUint32(offset + 120, true),
-        leftSiblingId: this.dataView.getInt32(offset + 68, true),
-        rightSiblingId: this.dataView.getInt32(offset + 72, true),
-        childId: this.dataView.getInt32(offset + 76, true),
-        id: -1
-    };
-};
-
-MsgReaderParser.prototype._readSectorChain = function(startSector, sectorSize, fatArray, totalSize) {
-    let data = new Uint8Array(totalSize);
-    let dataOffset = 0;
-    let sector = startSector;
-    
-    while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && dataOffset < totalSize) {
-        let offset = (fatArray === this.miniFat) 
-            ? sector * sectorSize 
-            : 512 + sector * sectorSize;
-            
-        let sourceData = (fatArray === this.miniFat)
-            ? this._miniStreamData
-            : this.dataView; 
-            
-        let copy = Math.min(sectorSize, totalSize - dataOffset);
-        
-        for (let i = 0; i < copy; i++) {
-            data[dataOffset++] = (fatArray === this.miniFat) 
-                ? sourceData[offset + i] 
-                : sourceData.getUint8(offset + i);
-        }
-        
-        if (sector >= fatArray.length) break;
-        sector = fatArray[sector];
-    }
-    return data;
-};
-
-MsgReaderParser.prototype.readStream = function(entry) {
-    if (!entry || entry.size === 0) return new Uint8Array(0);
-    
-    if (entry.size < 4096 && entry.type !== 5) {
-        let root = this.directoryEntries.find(e => e.type === 5);
-        if (!root) return new Uint8Array(0);
-        
-        if (!this._miniStreamData) {
-             this._miniStreamData = this.readStream(root);
-        }
-        
-        return this._readSectorChain(entry.startSector, this.header.miniSectorSize, this.miniFat, entry.size);
-    } else {
-        return this._readSectorChain(entry.startSector, this.header.sectorSize, this.fat, entry.size);
-    }
-};
-
-MsgReaderParser.prototype._scanBufferForMimeText = function(rawText) {
-    if (this._mimeScanCache) return this._mimeScanCache;
-    
-    if (!rawText) {
-        try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
-        catch (e) { 
-            try { rawText = new TextDecoder('latin1').decode(this.dataView); }
-            catch (e2) { 
-                console.warn('Could not decode raw buffer for MIME scan.');
-                return { subject: null, to: null, cc: null, body: null };
-            }
-        }
-    }
-
-    let result = { subject: null, to: null, cc: null, body: null };
-    
-    const findField = (name) => {
-        const search = new RegExp(`\\b${name}:\\s*([^\\r\\n]+)`, 'i');
-        const match = rawText.match(search);
-        return match ? match[1].trim() : null;
-    };
-    
-    result.subject = findField('Subject');
-    result.to = findField('To');
-    result.cc = findField('Cc');
-    
-    let headerEndIndex = rawText.indexOf('\r\n\r\n');
-    if (headerEndIndex === -1) headerEndIndex = rawText.indexOf('\n\n');
-    
-    if (headerEndIndex !== -1) {
-        let bodyText = rawText.substring(headerEndIndex + 4);
-        let encoding = null;
-        let charset = 'utf-8'; // Default
-
-        if (/Content-Type:\s*multipart/i.test(rawText)) {
-             const plainMatch = bodyText.match(/Content-Type:\s*text\/plain/i);
-             if (plainMatch) {
-                 const plainTypeIndex = plainMatch.index;
-                 
-                 let start = -1;
-                 let startOffset = 0;
-                 
-                 const rnrn = bodyText.indexOf('\r\n\r\n', plainTypeIndex);
-                 const nn = bodyText.indexOf('\n\n', plainTypeIndex);
-                 
-                 if (rnrn !== -1 && (nn === -1 || rnrn < nn)) {
-                     start = rnrn;
-                     startOffset = 4;
-                 } else if (nn !== -1) {
-                     start = nn;
-                     startOffset = 2;
-                 }
-                 
-                 const partHeaders = bodyText.substring(plainTypeIndex, start);
-                 if (/Content-Transfer-Encoding:\s*quoted-printable/i.test(partHeaders)) {
-                     encoding = 'quoted-printable';
-                 }
-                 // FIX: Capture charset from part headers (e.g. iso-8859-1)
-                 const charsetMatch = partHeaders.match(/charset=["']?([^"';\r\n]+)/i);
-                 if (charsetMatch) charset = charsetMatch[1];
-
-                 if (start !== -1) {
-                     let end = -1;
-                     const boundRN = bodyText.indexOf('\r\n--', start + startOffset);
-                     const boundN = bodyText.indexOf('\n--', start + startOffset);
-                     
-                     if (boundRN !== -1 && (boundN === -1 || boundRN < boundN)) {
-                         end = boundRN;
-                     } else if (boundN !== -1) {
-                         end = boundN;
-                     }
-                     
-                     if (end === -1) end = bodyText.length;
-                     
-                     bodyText = bodyText.substring(start + startOffset, end).trim();
-                 }
-             }
-        } else {
-             if (rawText.match(/^Content-Transfer-Encoding:\s*quoted-printable/im)) {
-                encoding = 'quoted-printable';
-             }
-             // Check global charset
-             const charsetMatch = rawText.match(/charset=["']?([^"';\r\n]+)/i);
-             if (charsetMatch) charset = charsetMatch[1];
-        }
-        
-        // FIX: Pass charset to decoder
-        result.body = (encoding === 'quoted-printable') ? _decodeQuotedPrintable(bodyText, charset) : bodyText;
-    }
-    
-    this._mimeScanCache = result;
-    return result;
-};
-
-MsgReaderParser.prototype.extractProperties = function() {
-    let self = this, rawProps = {};
-    this.directoryEntries.forEach(entry => {
-        if (entry.name.indexOf('__substg1.0_') !== 0 || entry.name.indexOf('__recip_version1.0_') > -1) return;
-        let propTag = _parsePropTag(entry.name);
-        if (!propTag) return;
-        if (!_shouldStoreProperty(propTag.id, propTag.type, rawProps[propTag.id])) return;
-        rawProps[propTag.id] = { id: propTag.id, type: propTag.type, data: self.readStream(entry) };
-    });
-
-    let getVal = (id, type) => {
-        let p = rawProps[id];
-        return p ? self.convertPropertyValue(p.data, p.type, id) : null;
-    };
-
-    let bodyHtml = getVal(PROP_ID_HTML_BODY, PROP_TYPE_STRING);
-    if (bodyHtml) this.properties[PROP_ID_HTML_BODY] = { id: PROP_ID_HTML_BODY, value: bodyHtml };
-    
-    if (this.properties[PROP_ID_HTML_BODY] && this.properties[PROP_ID_HTML_BODY].value instanceof Uint8Array) {
-        let view = new DataView(this.properties[PROP_ID_HTML_BODY].value.buffer);
-        let decoded = dataViewToString(view, 'utf-8');
-        this.properties[PROP_ID_HTML_BODY].value = decoded;
-        bodyHtml = decoded;
-    }
-
-    let body = getVal(PROP_ID_BODY, PROP_TYPE_STRING);
-    
-    if (body instanceof Uint8Array) {
-         let view = new DataView(body.buffer);
-         body = dataViewToString(view, 'utf-8');
-         this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: body };
-    }
-
-    if (!body && bodyHtml) body = _stripHtml(bodyHtml);
-    if (body) this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: body };
-
-    Object.values(rawProps).forEach(p => {
-        if (p.id !== PROP_ID_BODY && p.id !== PROP_ID_HTML_BODY) {
-            this.properties[p.id] = { id: p.id, value: self.convertPropertyValue(p.data, p.type, p.id) };
-        }
-    });
-
-    let mimeData = this._scanBufferForMimeText(null);
-    if (!this.properties[PROP_ID_SUBJECT]) this.properties[PROP_ID_SUBJECT] = { value: mimeData.subject };
-    if (!this.properties[PROP_ID_BODY]) this.properties[PROP_ID_BODY] = { value: mimeData.body };
-
-    this.extractRecipients();
-};
-
-MsgReaderParser.prototype.convertPropertyValue = function(data, type, propId) {
-    if (!data || data.length === 0) return null;
-    let view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-    
-    const isBodyProp = (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY);
-    
-    if (isBodyProp || type === PROP_TYPE_STRING || type === PROP_TYPE_STRING8) {
-        let u16 = '', u8 = '';
-        try { u16 = dataViewToString(view, 'utf16le'); } catch (e) {}
-        try { u8 = dataViewToString(view, 'utf-8'); } catch (e) {}
-        
-        let isPrintable = (s) => {
-            if (!s || s.length === 0) return false;
-            let printableCount = s.replace(/[^\x20-\x7E\n\r\t\u00A0-\u00FF]/g, '').length;
-            return (printableCount / s.length) > 0.7;
-        };
-        
-        let u16IsBetter = isPrintable(u16);
-        let u8IsBetter = isPrintable(u8);
-        
-        if (u8IsBetter && u16IsBetter && u8.length < u16.length && u8.length < 5) {
-             u8IsBetter = false;
-        }
-        
-        let useU16 = false;
-        if (type === PROP_TYPE_STRING8) {
-            useU16 = u16IsBetter && !u8IsBetter;
-        } else {
-            useU16 = u16IsBetter;
-        }
-        
-        let text = useU16 ? u16 : u8;
-
-        if (propId === PROP_ID_BODY) return _normalizeText(_stripHtml(text));
-        
-        return text;
-    }
-    
-    if (type === PROP_TYPE_BINARY) return data;
-    if (type === PROP_TYPE_INTEGER32) return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
-    if (type === PROP_TYPE_BOOLEAN) return view.byteLength > 0 ? view.getUint8(0) !== 0 : false;
-    if (type === PROP_TYPE_TIME) return view.byteLength >= 8 ? filetimeToDate(view.getUint32(0, true), view.getUint32(4, true)) : null;
-    return data;
-};
-
 function _extractAddresses(displayString) {
     let emails = [];
     if (displayString) {
@@ -623,123 +233,520 @@ function _extractAddresses(displayString) {
     return emails;
 }
 
-MsgReaderParser.prototype.extractRecipients = function() {
-    let self = this;
-    let recipients = [];
-    
-    let recipientStorages = this.directoryEntries.filter(entry => 
-        entry.type === 1 && entry.name.indexOf('__recip_version1.0_') === 0
-    );
-    
-    recipientStorages.forEach(storage => {
-        let recipient = {
-            recipientType: RECIPIENT_TYPE_TO,
-            name: '',
-            email: ''
+// --- Internal Parser Class ---
+class MsgReaderParser {
+    constructor(arrayBuffer) {
+        if (!(arrayBuffer instanceof ArrayBuffer) && !(arrayBuffer instanceof Uint8Array)) {
+            throw new Error("MsgReader: Input must be ArrayBuffer or Uint8Array.");
+        }
+        this.buffer = arrayBuffer instanceof ArrayBuffer ? arrayBuffer : new Uint8Array(arrayBuffer).buffer;
+        this.dataView = new DataView(this.buffer);
+        this.header = null; this.fat = null; this.miniFat = null;
+        this.directoryEntries = []; this.properties = {}; this._mimeScanCache = null;
+    }
+
+    parse() {
+        this.readHeader(); this.readFAT(); this.readMiniFAT(); this.readDirectory(); this.extractProperties();
+        return {
+            getFieldValue: this.getFieldValue.bind(this),
+            subject: this.getFieldValue('subject'),
+            body: this.getFieldValue('body'),
+            bodyHTML: this.getFieldValue('bodyHTML'),
+            recipients: this.getFieldValue('recipients')
         };
-        
-        let findChildren = (parentId) => {
-            let parent = self.directoryEntries[parentId];
-            if (!parent || parent.childId === -1) return [];
-            let children = [];
-            let stack = [parent.childId];
-            let visited = new Set();
-            
-            while (stack.length > 0) {
-                let id = stack.pop();
-                if (id === -1 || visited.has(id)) continue;
-                visited.add(id);
-                let entry = self.directoryEntries[id];
-                if (!entry) continue;
-                children.push(entry);
-                if (entry.leftSiblingId !== -1) stack.push(entry.leftSiblingId);
-                if (entry.rightSiblingId !== -1) stack.push(entry.rightSiblingId);
+    }
+
+    parseMime() {
+        console.log('Parsing as MIME/text file');
+        this._mimeScanCache = null;
+        let rawText = '';
+        try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
+        catch (e) {
+            try { rawText = new TextDecoder('latin1').decode(this.dataView); }
+            catch (e2) { rawText = ''; }
+        }
+
+        let mimeData = this._scanBufferForMimeText(rawText);
+        let recipients = [];
+        let parseMimeAddresses = (addrString, type) => {
+            if (!addrString) return;
+            addrString.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).forEach(addr => {
+                let parsed = parseAddress(addr);
+                if (parsed.email) recipients.push({ name: parsed.name, email: parsed.email, recipientType: type });
+            });
+        };
+
+        parseMimeAddresses(mimeData.to, RECIPIENT_TYPE_TO);
+        parseMimeAddresses(mimeData.cc, RECIPIENT_TYPE_CC);
+        let bccMatch = rawText.match(/^Bcc:\s*([^\r\n]+)/im);
+        if (bccMatch) parseMimeAddresses(bccMatch[1].trim(), RECIPIENT_TYPE_BCC);
+
+        this.properties[PROP_ID_SUBJECT] = { id: PROP_ID_SUBJECT, value: mimeData.subject };
+        this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: mimeData.body };
+        this.properties[PROP_ID_HTML_BODY] = { id: PROP_ID_HTML_BODY, value: null };
+        this.properties['recipients'] = { id: 0, value: recipients };
+
+        return {
+            getFieldValue: this.getFieldValue.bind(this),
+            subject: mimeData.subject,
+            body: mimeData.body,
+            bodyHTML: null, recipients: recipients
+        };
+    }
+
+    readHeader() {
+        if (this.buffer.byteLength < 512) throw new Error('File too small to be a valid OLE file');
+        if (this.dataView.getUint32(0, true) !== 0xE011CFD0) throw new Error('Invalid OLE file signature.');
+        this.header = {
+            sectorShift: this.dataView.getUint16(30, true),
+            miniSectorShift: this.dataView.getUint16(32, true),
+            fatSectors: this.dataView.getUint32(44, true),
+            directoryFirstSector: this.dataView.getUint32(48, true),
+            miniFatFirstSector: this.dataView.getUint32(60, true),
+            miniFatTotalSectors: this.dataView.getUint32(64, true),
+            difFirstSector: this.dataView.getUint32(68, true),
+            difTotalSectors: this.dataView.getUint32(72, true)
+        };
+        this.header.sectorSize = Math.pow(2, this.header.sectorShift);
+        this.header.miniSectorSize = Math.pow(2, this.header.miniSectorShift);
+    }
+
+    readFAT() {
+        let sectorSize = this.header.sectorSize, entriesPerSector = sectorSize / 4;
+        this.fat = [];
+        let fatSectorPositions = [];
+        for (let i = 0; i < 109 && i < this.header.fatSectors; i++) {
+            let s = this.dataView.getUint32(76 + i * 4, true);
+            if (s !== 0xFFFFFFFE && s !== 0xFFFFFFFF) fatSectorPositions.push(s);
+        }
+        if (this.header.difTotalSectors > 0) {
+            let difSector = this.header.difFirstSector;
+            let sectorsRead = 0;
+            while (difSector !== 0xFFFFFFFE && difSector !== 0xFFFFFFFF && sectorsRead < this.header.difTotalSectors) {
+                let difOffset = 512 + difSector * sectorSize;
+                for (let j = 0; j < entriesPerSector - 1; j++) {
+                    let s = this.dataView.getUint32(difOffset + j * 4, true);
+                    if (s !== 0xFFFFFFFE && s !== 0xFFFFFFFF) fatSectorPositions.push(s);
+                }
+                difSector = this.dataView.getUint32(difOffset + (entriesPerSector - 1) * 4, true);
+                sectorsRead++;
             }
-            return children;
+        }
+        for (let i = 0; i < fatSectorPositions.length; i++) {
+            let offset = 512 + fatSectorPositions[i] * sectorSize;
+            for (let j = 0; j < entriesPerSector; j++) {
+                if (offset + j * 4 + 4 <= this.buffer.byteLength) this.fat.push(this.dataView.getUint32(offset + j * 4, true));
+            }
+        }
+    }
+
+    readMiniFAT() {
+        if (this.header.miniFatFirstSector === 0xFFFFFFFE) { this.miniFat = []; return; }
+        this.miniFat = [];
+        let sector = this.header.miniFatFirstSector, sectorSize = this.header.sectorSize;
+        let sectorsRead = 0;
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
+            let offset = 512 + sector * sectorSize;
+            for (let i = 0; i < sectorSize / 4; i++) {
+                if (offset + i * 4 + 4 <= this.buffer.byteLength) this.miniFat.push(this.dataView.getUint32(offset + i * 4, true));
+            }
+            if (sector >= this.fat.length) break;
+            sector = this.fat[sector];
+            sectorsRead++;
+        }
+    }
+
+    readDirectory() {
+        let sector = this.header.directoryFirstSector, sectorSize = this.header.sectorSize, entrySize = 128;
+        let sectorsRead = 0;
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
+            let offset = 512 + sector * sectorSize;
+            for (let i = 0; i < sectorSize / entrySize; i++) {
+                let entryOffset = offset + i * entrySize;
+                if (entryOffset + entrySize > this.buffer.byteLength) break;
+                let entry = this.readDirectoryEntry(entryOffset);
+                if (entry && entry.name) this.directoryEntries.push(entry);
+            }
+            if (sector >= this.fat.length) break;
+            sector = this.fat[sector];
+            sectorsRead++;
+        }
+        this.directoryEntries.forEach((de, idx) => de.id = idx);
+    }
+
+    readDirectoryEntry(offset) {
+        let nameLen = this.dataView.getUint16(offset + 64, true);
+        if (nameLen === 0 || nameLen > 64) return null;
+        let name = dataViewToString(new DataView(this.buffer, offset, Math.min(nameLen, 64)), 'utf16le');
+        let type = this.dataView.getUint8(offset + 66);
+        if (type !== 1 && type !== 2 && type !== 5) return null;
+        return {
+            name: name, type: type,
+            startSector: this.dataView.getUint32(offset + 116, true),
+            size: this.dataView.getUint32(offset + 120, true),
+            leftSiblingId: this.dataView.getInt32(offset + 68, true),
+            rightSiblingId: this.dataView.getInt32(offset + 72, true),
+            childId: this.dataView.getInt32(offset + 76, true),
+            id: -1
         };
+    }
+
+    _readSectorChain(startSector, sectorSize, fatArray, totalSize) {
+        let data = new Uint8Array(totalSize);
+        let dataOffset = 0;
+        let sector = startSector;
+
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && dataOffset < totalSize) {
+            let offset = (fatArray === this.miniFat)
+                ? sector * sectorSize
+                : 512 + sector * sectorSize;
+
+            let sourceData = (fatArray === this.miniFat)
+                ? this._miniStreamData
+                : this.dataView;
+
+            let copy = Math.min(sectorSize, totalSize - dataOffset);
+            
+            for (let i = 0; i < copy; i++) {
+                data[dataOffset++] = (fatArray === this.miniFat)
+                    ? sourceData[offset + i]
+                    : sourceData.getUint8(offset + i);
+            }
+            
+            if (sector >= fatArray.length) break;
+            sector = fatArray[sector];
+        }
+        return data;
+    }
+
+    readStream(entry) {
+        if (!entry || entry.size === 0) return new Uint8Array(0);
         
-        let children = findChildren(storage.id);
-        children.forEach(child => {
-            let propTag = _parsePropTag(child.name);
-            if (!propTag) return;
-            
-            let propData = self.readStream(child);
-            let propValue = self.convertPropertyValue(propData, propTag.type, propTag.id);
-            
-            if (propTag.id === PROP_ID_RECIPIENT_TYPE) {
-                recipient.recipientType = propValue || RECIPIENT_TYPE_TO;
-            } else if (propTag.id === PROP_ID_RECIPIENT_DISPLAY_NAME) {
-                recipient.name = propValue || '';
-            } else if (propTag.id === PROP_ID_RECIPIENT_EMAIL_ADDRESS || propTag.id === PROP_ID_RECIPIENT_SMTP_ADDRESS) {
-                if (propValue && propValue.indexOf('@') > -1) {
-                    recipient.email = propValue;
+        if (entry.size < 4096 && entry.type !== 5) {
+            let root = this.directoryEntries.find(e => e.type === 5);
+            if (!root) return new Uint8Array(0);
+
+            if (!this._miniStreamData) {
+                 this._miniStreamData = this.readStream(root);
+            }
+
+            return this._readSectorChain(entry.startSector, this.header.miniSectorSize, this.miniFat, entry.size);
+        } else {
+            return this._readSectorChain(entry.startSector, this.header.sectorSize, this.fat, entry.size);
+        }
+    }
+
+    _scanBufferForMimeText(rawText) {
+        if (this._mimeScanCache) return this._mimeScanCache;
+
+        if (!rawText) {
+            try { rawText = new TextDecoder('utf-8', { fatal: false }).decode(this.dataView); }
+            catch (e) {
+                try { rawText = new TextDecoder('latin1').decode(this.dataView); }
+                catch (e2) {
+                    console.warn('Could not decode raw buffer for MIME scan.');
+                    return { subject: null, to: null, cc: null, body: null };
                 }
             }
-        });
-        
-        if (recipient.email || recipient.name) {
-            recipients.push(recipient);
         }
-    });
-    
-    console.log('METHOD 1: Extracted recipients from OLE storages:', recipients.length);
-    recipients.forEach((r, i) => console.log(`  [${i}] Type=${r.recipientType}, Email=${r.email}, Name=${r.name}`));
-    
-    let displayTo = this.properties[PROP_ID_DISPLAY_TO] ? this.properties[PROP_ID_DISPLAY_TO].value : null;
-    let displayCc = this.properties[PROP_ID_DISPLAY_CC] ? this.properties[PROP_ID_DISPLAY_CC].value : null;
-    
-    console.log('METHOD 3: Display Fields');
-    console.log('  DisplayTo:', displayTo);
-    console.log('  DisplayCc:', displayCc);
-    
-    if (displayTo || displayCc) {
-        let displayToEmails = _extractAddresses(displayTo);
-        let displayCcEmails = _extractAddresses(displayCc);
-        
-        console.log('  Parsed TO emails:', displayToEmails);
-        console.log('  Parsed CC emails:', displayCcEmails);
-        
-        let toEmailCounts = {};
-        let ccEmailCounts = {};
-        
-        displayToEmails.forEach(email => {
-            toEmailCounts[email] = (toEmailCounts[email] || 0) + 1;
-        });
-        
-        displayCcEmails.forEach(email => {
-            ccEmailCounts[email] = (ccEmailCounts[email] || 0) + 1;
-        });
-        
-        console.log('  TO counts:', toEmailCounts);
-        console.log('  CC counts:', ccEmailCounts);
-        
-        recipients.forEach(recipient => {
-            let emailKey = recipient.email.toLowerCase();
-            
-            if (ccEmailCounts[emailKey] && ccEmailCounts[emailKey] > 0) {
-                recipient.recipientType = RECIPIENT_TYPE_CC;
-                ccEmailCounts[emailKey]--;
-                console.log(`  Matched ${emailKey} to CC (remaining: ${ccEmailCounts[emailKey]})`);
-            }
-            else if (toEmailCounts[emailKey] && toEmailCounts[emailKey] > 0) {
-                recipient.recipientType = RECIPIENT_TYPE_TO;
-                toEmailCounts[emailKey]--;
-                console.log(`  Matched ${emailKey} to TO (remaining: ${toEmailCounts[emailKey]})`);
-            }
-        });
-    }
-    
-    console.log('FINAL: Corrected recipient types');
-    recipients.forEach((r, i) => console.log(`  [${i}] Type=${r.recipientType}, Email=${r.email}`));
-    
-    this.properties['recipients'] = { id: 0, value: recipients };
-};
 
-MsgReaderParser.prototype.getFieldValue = function(name) {
-    let id = { subject: PROP_ID_SUBJECT, body: PROP_ID_BODY, bodyHTML: PROP_ID_HTML_BODY }[name];
-    if (name === 'recipients') return this.properties['recipients'] ? this.properties['recipients'].value : [];
-    return (this.properties[id]) ? this.properties[id].value : null;
-};
+        let result = { subject: null, to: null, cc: null, body: null };
+
+        const findField = (name) => {
+            const search = new RegExp(`\\b${name}:\\s*([^\\r\\n]+)`, 'i');
+            const match = rawText.match(search);
+            return match ? match[1].trim() : null;
+        };
+
+        result.subject = findField('Subject');
+        result.to = findField('To');
+        result.cc = findField('Cc');
+
+        let headerEndIndex = rawText.indexOf('\r\n\r\n');
+        let offset = 4;
+
+        if (headerEndIndex === -1) {
+             headerEndIndex = rawText.indexOf('\n\n');
+             offset = 2;
+        }
+
+        if (headerEndIndex !== -1) {
+            let bodyText = rawText.substring(headerEndIndex + offset);
+            let encoding = null;
+            let charset = 'utf-8'; // Default
+
+            if (/Content-Type:\s*multipart/i.test(rawText)) {
+                 const plainMatch = bodyText.match(/Content-Type:\s*text\/plain/i);
+                 if (plainMatch) {
+                     const plainTypeIndex = plainMatch.index;
+                     
+                     let start = -1;
+                     let startOffset = 0;
+
+                     const rnrn = bodyText.indexOf('\r\n\r\n', plainTypeIndex);
+                     const nn = bodyText.indexOf('\n\n', plainTypeIndex);
+                     
+                     if (rnrn !== -1 && (nn === -1 || rnrn < nn)) {
+                         start = rnrn;
+                         startOffset = 4;
+                     } else if (nn !== -1) {
+                         start = nn;
+                         startOffset = 2;
+                     }
+                     
+                     const partHeaders = bodyText.substring(plainTypeIndex, start);
+                     if (/Content-Transfer-Encoding:\s*quoted-printable/i.test(partHeaders)) {
+                         encoding = 'quoted-printable';
+                     }
+                     // FIX: Capture charset from part headers (e.g. iso-8859-1)
+                     const charsetMatch = partHeaders.match(/charset=["']?([^"';\r\n]+)/i);
+                     if (charsetMatch) charset = charsetMatch[1];
+
+                     if (start !== -1) {
+                         let end = -1;
+                         const boundRN = bodyText.indexOf('\r\n--', start + startOffset);
+                         const boundN = bodyText.indexOf('\n--', start + startOffset);
+
+                         if (boundRN !== -1 && (boundN === -1 || boundRN < boundN)) {
+                             end = boundRN;
+                         } else if (boundN !== -1) {
+                             end = boundN;
+                         }
+
+                         if (end === -1) end = bodyText.length;
+
+                         bodyText = bodyText.substring(start + startOffset, end).trim();
+                     }
+                 }
+            } else {
+                 if (rawText.match(/^Content-Transfer-Encoding:\s*quoted-printable/im)) {
+                    encoding = 'quoted-printable';
+                 }
+                 // Check global charset
+                 const charsetMatch = rawText.match(/charset=["']?([^"';\r\n]+)/i);
+                 if (charsetMatch) charset = charsetMatch[1];
+            }
+
+            // FIX: Pass charset to decoder
+            result.body = (encoding === 'quoted-printable') ? _decodeQuotedPrintable(bodyText, charset) : bodyText;
+        }
+        
+        this._mimeScanCache = result;
+        return result;
+    }
+
+    extractProperties() {
+        let self = this, rawProps = {};
+        this.directoryEntries.forEach(entry => {
+            if (entry.name.indexOf('__substg1.0_') !== 0 || entry.name.indexOf('__recip_version1.0_') > -1) return;
+            let propTag = _parsePropTag(entry.name);
+            if (!propTag) return;
+            if (!_shouldStoreProperty(propTag.id, propTag.type, rawProps[propTag.id])) return;
+            rawProps[propTag.id] = { id: propTag.id, type: propTag.type, data: self.readStream(entry) };
+        });
+
+        let getVal = (id, type) => {
+            let p = rawProps[id];
+            return p ? self.convertPropertyValue(p.data, p.type, id) : null;
+        };
+
+        let bodyHtml = getVal(PROP_ID_HTML_BODY, PROP_TYPE_STRING);
+        if (bodyHtml) this.properties[PROP_ID_HTML_BODY] = { id: PROP_ID_HTML_BODY, value: bodyHtml };
+
+        if (this.properties[PROP_ID_HTML_BODY] && this.properties[PROP_ID_HTML_BODY].value instanceof Uint8Array) {
+            let view = new DataView(this.properties[PROP_ID_HTML_BODY].value.buffer);
+            let decoded = dataViewToString(view, 'utf-8');
+            this.properties[PROP_ID_HTML_BODY].value = decoded;
+            bodyHtml = decoded;
+        }
+
+        let body = getVal(PROP_ID_BODY, PROP_TYPE_STRING);
+
+        if (body instanceof Uint8Array) {
+             let view = new DataView(body.buffer);
+             body = dataViewToString(view, 'utf-8');
+             this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: body };
+        }
+
+        if (!body && bodyHtml) body = _stripHtml(bodyHtml);
+        if (body) this.properties[PROP_ID_BODY] = { id: PROP_ID_BODY, value: body };
+
+        Object.values(rawProps).forEach(p => {
+            if (p.id !== PROP_ID_BODY && p.id !== PROP_ID_HTML_BODY) {
+                this.properties[p.id] = { id: p.id, value: self.convertPropertyValue(p.data, p.type, p.id) };
+            }
+        });
+
+        let mimeData = this._scanBufferForMimeText(null);
+        if (!this.properties[PROP_ID_SUBJECT]) this.properties[PROP_ID_SUBJECT] = { value: mimeData.subject };
+        if (!this.properties[PROP_ID_BODY]) this.properties[PROP_ID_BODY] = { value: mimeData.body };
+
+        this.extractRecipients();
+    }
+
+    convertPropertyValue(data, type, propId) {
+        if (!data || data.length === 0) return null;
+        let view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        
+        const isBodyProp = (propId === PROP_ID_BODY || propId === PROP_ID_HTML_BODY);
+        
+        if (isBodyProp || type === PROP_TYPE_STRING || type === PROP_TYPE_STRING8) {
+            let u16 = '', u8 = '';
+            try { u16 = dataViewToString(view, 'utf16le'); } catch (e) {}
+            try { u8 = dataViewToString(view, 'utf-8'); } catch (e) {}
+
+            let isPrintable = (s) => {
+                if (!s || s.length === 0) return false;
+                let printableCount = s.replace(/[^\x20-\x7E\n\r\t\u00A0-\u00FF]/g, '').length;
+                return (printableCount / s.length) > 0.7;
+            };
+
+            let u16IsBetter = isPrintable(u16);
+            let u8IsBetter = isPrintable(u8);
+
+            if (u8IsBetter && u16IsBetter && u8.length < u16.length && u8.length < 5) {
+                 u8IsBetter = false;
+            }
+
+            let useU16 = false;
+            if (type === PROP_TYPE_STRING8) {
+                useU16 = u16IsBetter && !u8IsBetter;
+            } else {
+                useU16 = u16IsBetter;
+            }
+
+            let text = useU16 ? u16 : u8;
+
+            if (propId === PROP_ID_BODY) return _normalizeText(_stripHtml(text));
+
+            return text;
+        }
+        
+        if (type === PROP_TYPE_BINARY) return data;
+        if (type === PROP_TYPE_INTEGER32) return view.byteLength >= 4 ? view.getUint32(0, true) : 0;
+        if (type === PROP_TYPE_BOOLEAN) return view.byteLength > 0 ? view.getUint8(0) !== 0 : false;
+        if (type === PROP_TYPE_TIME) return view.byteLength >= 8 ? filetimeToDate(view.getUint32(0, true), view.getUint32(4, true)) : null;
+        return data;
+    }
+
+    extractRecipients() {
+        let self = this;
+        let recipients = [];
+        
+        let recipientStorages = this.directoryEntries.filter(entry =>
+            entry.type === 1 && entry.name.indexOf('__recip_version1.0_') === 0
+        );
+        
+        recipientStorages.forEach(storage => {
+            let recipient = {
+                recipientType: RECIPIENT_TYPE_TO,
+                name: '',
+                email: ''
+            };
+            
+            let findChildren = (parentId) => {
+                let parent = self.directoryEntries[parentId];
+                if (!parent || parent.childId === -1) return [];
+                let children = [];
+                let stack = [parent.childId];
+                let visited = new Set();
+
+                while (stack.length > 0) {
+                    let id = stack.pop();
+                    if (id === -1 || visited.has(id)) continue;
+                    visited.add(id);
+                    let entry = self.directoryEntries[id];
+                    if (!entry) continue;
+                    children.push(entry);
+                    if (entry.leftSiblingId !== -1) stack.push(entry.leftSiblingId);
+                    if (entry.rightSiblingId !== -1) stack.push(entry.rightSiblingId);
+                }
+                return children;
+            };
+            
+            let children = findChildren(storage.id);
+            children.forEach(child => {
+                let propTag = _parsePropTag(child.name);
+                if (!propTag) return;
+
+                let propData = self.readStream(child);
+                let propValue = self.convertPropertyValue(propData, propTag.type, propTag.id);
+
+                if (propTag.id === PROP_ID_RECIPIENT_TYPE) {
+                    recipient.recipientType = propValue || RECIPIENT_TYPE_TO;
+                } else if (propTag.id === PROP_ID_RECIPIENT_DISPLAY_NAME) {
+                    recipient.name = propValue || '';
+                } else if (propTag.id === PROP_ID_RECIPIENT_EMAIL_ADDRESS || propTag.id === PROP_ID_RECIPIENT_SMTP_ADDRESS) {
+                    if (propValue && propValue.indexOf('@') > -1) {
+                        recipient.email = propValue;
+                    }
+                }
+            });
+
+            if (recipient.email || recipient.name) {
+                recipients.push(recipient);
+            }
+        });
+        
+        console.log('METHOD 1: Extracted recipients from OLE storages:', recipients.length);
+        recipients.forEach((r, i) => console.log(`  [${i}] Type=${r.recipientType}, Email=${r.email}, Name=${r.name}`));
+        
+        let displayTo = this.properties[PROP_ID_DISPLAY_TO] ? this.properties[PROP_ID_DISPLAY_TO].value : null;
+        let displayCc = this.properties[PROP_ID_DISPLAY_CC] ? this.properties[PROP_ID_DISPLAY_CC].value : null;
+        
+        console.log('METHOD 3: Display Fields');
+        console.log('  DisplayTo:', displayTo);
+        console.log('  DisplayCc:', displayCc);
+        
+        if (displayTo || displayCc) {
+            let displayToEmails = _extractAddresses(displayTo);
+            let displayCcEmails = _extractAddresses(displayCc);
+
+            console.log('  Parsed TO emails:', displayToEmails);
+            console.log('  Parsed CC emails:', displayCcEmails);
+
+            let toEmailCounts = {};
+            let ccEmailCounts = {};
+
+            displayToEmails.forEach(email => {
+                toEmailCounts[email] = (toEmailCounts[email] || 0) + 1;
+            });
+
+            displayCcEmails.forEach(email => {
+                ccEmailCounts[email] = (ccEmailCounts[email] || 0) + 1;
+            });
+
+            console.log('  TO counts:', toEmailCounts);
+            console.log('  CC counts:', ccEmailCounts);
+
+            recipients.forEach(recipient => {
+                let emailKey = recipient.email.toLowerCase();
+
+                if (ccEmailCounts[emailKey] && ccEmailCounts[emailKey] > 0) {
+                    recipient.recipientType = RECIPIENT_TYPE_CC;
+                    ccEmailCounts[emailKey]--;
+                    console.log(`  Matched ${emailKey} to CC (remaining: ${ccEmailCounts[emailKey]})`);
+                }
+                else if (toEmailCounts[emailKey] && toEmailCounts[emailKey] > 0) {
+                    recipient.recipientType = RECIPIENT_TYPE_TO;
+                    toEmailCounts[emailKey]--;
+                    console.log(`  Matched ${emailKey} to TO (remaining: ${toEmailCounts[emailKey]})`);
+                }
+            });
+        }
+        
+        console.log('FINAL: Corrected recipient types');
+        recipients.forEach((r, i) => console.log(`  [${i}] Type=${r.recipientType}, Email=${r.email}`));
+        
+        this.properties['recipients'] = { id: 0, value: recipients };
+    }
+
+    getFieldValue(name) {
+        let id = { subject: PROP_ID_SUBJECT, body: PROP_ID_BODY, bodyHTML: PROP_ID_HTML_BODY }[name];
+        if (name === 'recipients') return this.properties['recipients'] ? this.properties['recipients'].value : [];
+        return (this.properties[id]) ? this.properties[id].value : null;
+    }
+}
 
 // --- Exported Object ---
 const MsgReader = {
