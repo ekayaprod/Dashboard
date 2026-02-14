@@ -73,6 +73,7 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
 *   **Function**: Calculates productivity metrics based on shift duration and output.
 *   **Logic**: Implements a time-based algorithm that accounts for breaks, shift start/end times, and leeway factors to project required output ("pacing") in real-time.
 *   **Visualization**: Renders color-coded status cards indicating progress against defined grade boundaries.
+*   **Strategy Engine**: Analyzes current pacing to provide actionable recommendations (e.g., "Easy Win" opportunities) to optimize end-of-day results.
 
 ### 4.3. Lookup (`lookup.html`)
 *   **Function**: Database for quick retrieval of assignment groups and procedural notes.
@@ -91,6 +92,7 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
 *   **Logic**:
     *   **Entropy**: Utilizes `window.crypto.getRandomValues` for cryptographically secure random number generation.
     *   **Structure**: Supports configurable sentence structures (e.g., Adjective-Noun-Verb) and seasonal word banks that can be dynamically loaded.
+    *   **Presets**: Allows saving and loading of custom generator configurations for quick access.
 
 ## 5. Development Guidelines
 *   **No Build Step**: The codebase uses standard ES6+ JavaScript and CSS variables, requiring no transpilation or bundling.

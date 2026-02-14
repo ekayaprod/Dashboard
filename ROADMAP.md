@@ -14,10 +14,10 @@
 
 ### Applications
 - **Dashboard**: Application launcher, quick actions, scratchpad.
-- **Calculator**: Shift pacing calculator with visual targets.
+- **Calculator**: Shift pacing calculator with visual targets and optimization strategy engine.
 - **Lookup**: Local knowledge base search.
 - **MailTo**: Email template generator with `.msg` parsing.
-- **Passwords**: Secure passphrase generator with seasonal word banks.
+- **Passwords**: Secure passphrase generator with seasonal word banks and presets.
 
 ### Documentation & Maintenance
 - **Documentation & Alignment**: Syncing roadmap, clarifying core functions, and establishing the Chronicler's journal.
