@@ -3,6 +3,11 @@
 // ============================================================================
 
 const LookupHelpers = {
+    /**
+     * Creates a new lookup entry object with default values.
+     * @param {Object} partial - Partial entry object to merge with defaults.
+     * @returns {Object} A complete lookup entry object.
+     */
     createEntry: (partial = {}) => ({
         id: partial.id || SafeUI.generateId(),
         keyword: (partial.keyword || '').trim(),
@@ -11,6 +16,11 @@ const LookupHelpers = {
         phoneLogPath: (partial.phoneLogPath || '').trim()
     }),
 
+    /**
+     * Validates a lookup entry.
+     * @param {Object} entry - The entry to validate.
+     * @returns {{valid: boolean, errors: string[]}} Validation result.
+     */
     validateEntry: (entry) => {
         const errors = [];
         if (!entry.keyword?.trim()) errors.push('Keyword is required');
@@ -18,7 +28,20 @@ const LookupHelpers = {
     },
 
     keywordUtils: {
+        /**
+         * Parses a comma-separated keyword string into an array.
+         * @param {string} keywordString
+         * @returns {string[]} Array of keywords.
+         */
         parse: (keywordString) => keywordString.split(',').map(k => k.trim()).filter(Boolean),
+
+        /**
+         * Merges two keyword strings, removing duplicates.
+         * @param {string} keywordString1
+         * @param {string} keywordString2
+         * @param {boolean} [caseSensitive=false]
+         * @returns {string} Merged comma-separated string.
+         */
         merge: (keywordString1, keywordString2, caseSensitive = false) => {
             const keywords1 = LookupHelpers.keywordUtils.parse(keywordString1);
             const keywords2 = LookupHelpers.keywordUtils.parse(keywordString2);
@@ -32,6 +55,11 @@ const LookupHelpers = {
         }
     },
 
+    /**
+     * Validates a custom search URL template.
+     * @param {string} url - The URL template containing {query}.
+     * @returns {{valid: boolean, message: string}} Validation result.
+     */
     validateSearchUrl: (url) => {
         if (!url) return { valid: false, message: 'URL Template cannot be empty.' };
         if (!/\{query\}/i.test(url)) return { valid: false, message: 'The URL must contain the {query} placeholder.' };

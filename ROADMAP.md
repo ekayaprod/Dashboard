@@ -27,8 +27,13 @@
 <!-- No active tasks -->
 
 ## 📅 Planned
-- **Accessibility Audit & Improvements**: Add ARIA labels, improve keyboard navigation, and ensure high contrast.
+- **Accessibility Improvements**:
+    - Add `aria-label` to icon-only buttons in `dashboard.html`.
+    - Ensure high contrast compliance.
+- **Code Hygiene**:
+    - Remove legacy `console.log` statements identified by Overseer.
 
 ## 🧊 Backlog
 - **Future Optimizations**: Further performance tuning and code consolidation.
+- **Architectural Refactoring**: Modularize `js/apps/lookup.js` as it approaches 50KB size limit.
 - **Mobile Responsiveness Enhancements**: Improve layout stacking and touch targets for mobile devices.
