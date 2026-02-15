@@ -599,15 +599,56 @@ function initializePage() {
             }
 
             function handleDelete(id, skipConfirm = false) {
+                // Artisan: Optimistic UI removal for performance (Bolt+) and smoothness (Palette+)
+                const element = DOMElements.localResults.querySelector(`[data-id="${id}"]`);
+
                 if (currentEditState.id === id) currentEditState = { id: null, type: null };
 
                 const index = state.items.findIndex(i => i.id === id);
                 if (index === -1) return;
 
                 const doDelete = () => {
-                    state.items.splice(index, 1);
-                    sortAndSaveState();
-                    clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
+                    if (element) {
+                        // Palette+: Fade out animation
+                        element.classList.add('fade-out');
+
+                        // Bolt+: Wait for animation, then surgical DOM removal to avoid full O(N) re-render
+                        setTimeout(() => {
+                            // 1. Update Data State
+                            // Check index again in case of race condition (unlikely here but safe)
+                            const currentIndex = state.items.findIndex(i => i.id === id);
+                            if (currentIndex > -1) state.items.splice(currentIndex, 1);
+
+                            // 2. Update View State (currentMatches)
+                            const matchIndex = currentMatches.findIndex(i => i.id === id);
+                            if (matchIndex > -1) {
+                                currentMatches.splice(matchIndex, 1);
+                            }
+
+                            // 3. Update DOM
+                            if (element.parentNode) element.parentNode.removeChild(element);
+
+                            // 4. Update Counters
+                            renderedCount--;
+                            updateResultsStatus(currentMatches.length, renderedCount);
+
+                            // 5. Persist
+                            sortAndSaveState();
+
+                            // 6. Feedback
+                            if (!skipConfirm) SafeUI.showToast("Entry deleted.");
+
+                            // 7. Handle Empty/Edge Cases
+                            if (currentMatches.length === 0) {
+                                renderAll();
+                            }
+                        }, 300); // Duration matches CSS animation
+                    } else {
+                        // Fallback if element not found in DOM
+                        state.items.splice(index, 1);
+                        sortAndSaveState();
+                        clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
+                    }
                 };
 
                 if (skipConfirm) doDelete();
