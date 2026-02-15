@@ -73,4 +73,13 @@ describe('app-core.js', () => {
       expect(validators().maxLength(null, 3)).toBe(false)
     })
   })
+
+  describe('SVGIcons', () => {
+    it('should have aria-hidden="true" on all icons', () => {
+      const icons = window.SafeUI.SVGIcons
+      Object.values(icons).forEach((icon) => {
+        expect(icon).toContain('aria-hidden="true"')
+      })
+    })
+  })
 })
