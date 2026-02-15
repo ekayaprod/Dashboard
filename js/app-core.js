@@ -179,14 +179,13 @@ const UIUtils = (() => {
         input.click();
     };
     
-    const readTextFile = (file, onSuccess, onError) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try { onSuccess(event.target.result); } 
-            catch (err) { onError("Failed to read file as text."); }
-        };
-        reader.onerror = () => onError("Failed to read the file.");
-        reader.readAsText(file);
+    const readTextFile = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target.result);
+            reader.onerror = () => reject(new Error("Failed to read the file."));
+            reader.readAsText(file);
+        });
     };
 
     const parseJSON = (jsonString, onSuccess, onError) => {
@@ -200,10 +199,13 @@ const UIUtils = (() => {
         }
     };
 
-    const readJSONFile = (file, onSuccess, onError) => {
-        readTextFile(file, (text) => {
-            parseJSON(text, onSuccess, onError);
-        }, onError);
+    const readJSONFile = (file) => {
+        return readTextFile(file)
+            .then(text => {
+                return new Promise((resolve, reject) => {
+                    parseJSON(text, resolve, (err) => reject(new Error(err)));
+                });
+            });
     };
 
     /**
@@ -371,8 +373,8 @@ const SafeUI = (() => {
         copyToClipboard: (text) => UIUtils.copyToClipboard(text),
         downloadJSON: (data, filename, mimeType) => UIUtils.downloadJSON(data, filename, mimeType),
         openFilePicker: (cb, accept) => UIUtils.openFilePicker(cb, accept),
-        readJSONFile: (file, onSuccess, onError) => UIUtils.readJSONFile(file, onSuccess, onError),
-        readTextFile: (file, onSuccess, onError) => UIUtils.readTextFile(file, onSuccess, onError),
+        readJSONFile: (file) => UIUtils.readJSONFile(file),
+        readTextFile: (file) => UIUtils.readTextFile(file),
         parseJSON: (str, success, error) => UIUtils.parseJSON(str, success, error),
         createStateManager: (key, defaults, version, onCorruption) => UIUtils.createStateManager(key, defaults, version, onCorruption),
         validators: UIUtils.validators
