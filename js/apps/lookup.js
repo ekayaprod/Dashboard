@@ -165,6 +165,7 @@ function initializePage() {
             let renderedCount = 0;
             let loadingSentinel = null;
             let loadingObserver = null;
+            let currentSearchId = 0;
 
             const setLoading = (isLoading) => {
                 if (DOMElements.searchSpinner) {
@@ -172,6 +173,11 @@ function initializePage() {
                 }
                 if (DOMElements.localResults) {
                     DOMElements.localResults.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+                    if (isLoading) {
+                         DOMElements.localResults.classList.add('results-fading');
+                    } else {
+                         DOMElements.localResults.classList.remove('results-fading');
+                    }
                 }
             };
 
@@ -312,7 +318,7 @@ function initializePage() {
                 }
             };
 
-            const renderLocalList = (searchTerm = '') => {
+            const renderLocalList = async (searchTerm = '', searchId) => {
                 let itemsToRender = [];
                 const lowerTerm = searchTerm.toLowerCase().trim();
 
@@ -320,8 +326,11 @@ function initializePage() {
 
                 if (lowerTerm && !isEditMode) {
                     const sourceItems = state.items;
-                    // Bolt: Optimized Search
-                    itemsToRender = SearchHelper.searchIndex(sourceItems, lowerTerm);
+                    // Bolt: Async Optimized Search
+                    itemsToRender = await SearchHelper.searchIndexAsync(sourceItems, lowerTerm);
+
+                    // Race condition check: if a new search started, abort
+                    if (searchId !== currentSearchId) return;
                 }
 
                 if (currentEditState.id) {
@@ -393,17 +402,26 @@ function initializePage() {
                 // Ensure observer is setup
                 if (!loadingObserver) setupObserver();
 
+                // Increment search ID to invalidate previous searches
+                const mySearchId = ++currentSearchId;
+
                 // Artisan: Performance optimization (Bolt+)
                 // Wrap heavy rendering in requestAnimationFrame to allow UI (spinner) to update first.
                 requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        renderLocalList(searchTerm);
-                        renderCustomSearches(searchTerm);
+                    requestAnimationFrame(async () => {
+                        // Ensure loading state is visible during async search
+                        setLoading(true);
 
-                        DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
+                        await renderLocalList(searchTerm, mySearchId);
 
-                        // Hide spinner after render is done
-                        setLoading(false);
+                        // Check if we are still the active search
+                        if (mySearchId === currentSearchId) {
+                            renderCustomSearches(searchTerm);
+                            DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
+
+                            // Hide spinner after render is done
+                            setLoading(false);
+                        }
                     });
                 });
             };

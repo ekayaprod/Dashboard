@@ -129,6 +129,43 @@ const SearchHelper = (() => {
             });
         },
 
+        /**
+         * Asynchronous search that yields to the main thread to prevent UI freezing.
+         * @param {Array} items
+         * @param {string} term
+         * @param {number} [chunkSize=1000]
+         * @returns {Promise<Array>}
+         */
+        searchIndexAsync: (items, term, chunkSize = 1000) => {
+            return new Promise((resolve) => {
+                if (!term || !term.trim()) {
+                    resolve(items);
+                    return;
+                }
+                const lowerTerm = term.toLowerCase().trim();
+                const results = [];
+                let index = 0;
+
+                const processChunk = () => {
+                    const end = Math.min(index + chunkSize, items.length);
+                    for (let i = index; i < end; i++) {
+                        const item = items[i];
+                        if (item._searchContent && item._searchContent.includes(lowerTerm)) {
+                            results.push(item);
+                        }
+                    }
+                    index = end;
+                    if (index < items.length) {
+                        // Yield to main thread
+                        setTimeout(processChunk, 0);
+                    } else {
+                        resolve(results);
+                    }
+                };
+                processChunk();
+            });
+        },
+
         setupDebouncedSearch: (inputElement, onSearch, delay = 300) => {
             if (!inputElement) return;
             const debouncedSearch = SafeUI.debounce(onSearch, delay);
