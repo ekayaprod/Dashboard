@@ -17,9 +17,9 @@
                 <div class="section-header-wrapper">
                     <h3 id="app-section-header" class="section-header">Applications</h3>
                     <div class="actions-menu-wrapper button-group">
-                        <button id="add-shortcut-btn-menu" class="btn btn-icon" title="Add Shortcut"></button>
-                        <button id="add-new-app-btn-menu" class="btn btn-icon" title="Add App"></button>
-                        <button id="btn-settings" class="btn-icon" title="Settings"></button>
+                        <button id="add-shortcut-btn-menu" class="btn btn-icon" title="Add Shortcut" aria-label="Add Shortcut"></button>
+                        <button id="add-new-app-btn-menu" class="btn btn-icon" title="Add App" aria-label="Add Application"></button>
+                        <button id="btn-settings" class="btn-icon" title="Settings" aria-label="Settings"></button>
                     </div>
                 </div>
                  <div class="form-group" id="app-select-group">
@@ -45,7 +45,7 @@
                                 <label for="edit-app-escalation">App Notes / Escalation</label>
                                 <div class="button-group">
                                     <button id="save-changes-btn" class="btn btn-primary save-btn">Save</button>
-                                    <button id="delete-app-btn" class="btn-icon delete-btn" title="Delete Application"></button>
+                                    <button id="delete-app-btn" class="btn-icon delete-btn" title="Delete Application" aria-label="Delete Application"></button>
                                 </div>
                             </div>
                             <textarea id="edit-app-escalation" class="form-control sidebar-textarea"></textarea>
@@ -55,10 +55,10 @@
 
                 <div class="notepad-wrapper generator-section">
                     <div id="notepad-header" class="notepad-header">
-                        <select id="note-select" class="form-control"></select>
-                        <button id="new-note-btn" class="btn btn-icon" title="New Note"></button>
-                        <button id="rename-note-btn" class="btn btn-icon" title="Rename Note"></button>
-                        <button id="delete-note-btn" class="btn btn-icon" title="Delete Current Note"></button>
+                        <select id="note-select" class="form-control" aria-label="Select Note"></select>
+                        <button id="new-note-btn" class="btn btn-icon" title="New Note" aria-label="New Note"></button>
+                        <button id="rename-note-btn" class="btn btn-icon" title="Rename Note" aria-label="Rename Note"></button>
+                        <button id="delete-note-btn" class="btn btn-icon" title="Delete Current Note" aria-label="Delete Current Note"></button>
                     </div>
                     <textarea id="notepad-editor" class="notepad-editor form-control" placeholder="Start typing..."></textarea>
                 </div>
