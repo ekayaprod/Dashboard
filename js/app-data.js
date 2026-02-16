@@ -28,15 +28,13 @@ const BackupRestore = (() => {
 
         restoreBackup: (onRestore) => {
             SafeUI.openFilePicker((file) => {
-                SafeUI.readJSONFile(
-                    file,
-                    (parsedData) => {
+                SafeUI.readJSONFile(file)
+                    .then(parsedData => {
                         onRestore(parsedData);
-                    },
-                    (errorMsg) => {
-                        SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(errorMsg)}</p>`, [{ label: 'OK' }]);
-                    }
-                );
+                    })
+                    .catch(err => {
+                        SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                    });
             });
         },
 
@@ -247,87 +245,79 @@ const DataConverter = (() => {
             return [headerRow, ...rows].join('\n');
         },
 
-        fromCSV: (file, requiredHeaders) => {
-            return new Promise((resolve, reject) => {
-                SafeUI.readTextFile(file,
-                    (text) => {
-                        const lines = [];
-                        let currentLine = '';
-                        let inQuotes = false;
+        fromCSV: async (file, requiredHeaders) => {
+            const text = await SafeUI.readTextFile(file);
+            const lines = [];
+                let currentLine = '';
+                let inQuotes = false;
 
-                        const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-                        for (let i = 0; i < normalizedText.length; i++) {
-                            const char = normalizedText[i];
+                for (let i = 0; i < normalizedText.length; i++) {
+                    const char = normalizedText[i];
 
-                            if (char === '"') {
-                                inQuotes = !inQuotes;
-                            }
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    }
 
-                            if (char === '\n' && !inQuotes) {
-                                if (currentLine.trim() || lines.length > 0) {
-                                    lines.push(currentLine);
-                                }
-                                currentLine = '';
-                            } else {
-                                currentLine += char;
-                            }
-                        }
-
+                    if (char === '\n' && !inQuotes) {
                         if (currentLine.trim() || lines.length > 0) {
                             lines.push(currentLine);
                         }
-
-                        if (lines.length === 0) {
-                            return resolve({ data: [], errors: [] });
-                        }
-
-                        const headerLine = lines.shift();
-                        const headers = _parseCsvLine(headerLine).map(h => h.trim());
-
-                        if (headers.length === 0 || (headers.length === 1 && headers[0] === '')) {
-                             return reject(new Error("CSV file is empty or has invalid headers."));
-                        }
-
-                        const errors = [];
-
-                        for (const reqHeader of requiredHeaders) {
-                            if (!headers.includes(reqHeader)) {
-                                errors.push(`Missing required CSV header: "${reqHeader}"`);
-                            }
-                        }
-                        if (errors.length > 0) {
-                            return reject(new Error(`CSV Import Failed: ${errors.join(', ')}`));
-                        }
-
-                        const data = lines.filter(line => line.trim().length > 0).map((line, lineIndex) => {
-                            const obj = {};
-                            const values = _parseCsvLine(line);
-
-                            if (values.length > headers.length) {
-                                errors.push(`Row ${lineIndex + 2}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating.`);
-                            }
-
-                            headers.forEach((header, i) => {
-                                if (requiredHeaders.includes(header)) {
-                                    obj[header] = values[i] || '';
-                                }
-                            });
-
-                            return obj;
-                        });
-
-                        if (errors.length > 10) {
-                            errors.splice(10, errors.length - 10, `... and ${errors.length - 10} more errors.`);
-                        }
-
-                        resolve({ data, errors });
-                    },
-                    (errorMsg) => {
-                        reject(new Error(errorMsg));
+                        currentLine = '';
+                    } else {
+                        currentLine += char;
                     }
-                );
-            });
+                }
+
+                if (currentLine.trim() || lines.length > 0) {
+                    lines.push(currentLine);
+                }
+
+                if (lines.length === 0) {
+                    return { data: [], errors: [] };
+                }
+
+                const headerLine = lines.shift();
+                const headers = _parseCsvLine(headerLine).map(h => h.trim());
+
+                if (headers.length === 0 || (headers.length === 1 && headers[0] === '')) {
+                     throw new Error("CSV file is empty or has invalid headers.");
+                }
+
+                const errors = [];
+
+                for (const reqHeader of requiredHeaders) {
+                    if (!headers.includes(reqHeader)) {
+                        errors.push(`Missing required CSV header: "${reqHeader}"`);
+                    }
+                }
+                if (errors.length > 0) {
+                    throw new Error(`CSV Import Failed: ${errors.join(', ')}`);
+                }
+
+                const data = lines.filter(line => line.trim().length > 0).map((line, lineIndex) => {
+                    const obj = {};
+                    const values = _parseCsvLine(line);
+
+                    if (values.length > headers.length) {
+                        errors.push(`Row ${lineIndex + 2}: Too many columns. Expected ${headers.length}, got ${values.length}. Truncating.`);
+                    }
+
+                    headers.forEach((header, i) => {
+                        if (requiredHeaders.includes(header)) {
+                            obj[header] = values[i] || '';
+                        }
+                    });
+
+                    return obj;
+                });
+
+                if (errors.length > 10) {
+                    errors.splice(10, errors.length - 10, `... and ${errors.length - 10} more errors.`);
+                }
+
+                return { data, errors };
         }
     };
 })();
