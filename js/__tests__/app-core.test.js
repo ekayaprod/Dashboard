@@ -37,6 +37,25 @@ describe('app-core.js', () => {
     expect(window.DateUtils.parseTimeToMinutes('1:30:30')).toBe(90.5)
   })
 
+  it('should verify DateUtils formatting functions', () => {
+    const utils = window.DateUtils
+    expect(utils.formatMinutesToHHMM(90)).toBe('01:30')
+    expect(utils.formatMinutesToHHMM(-90)).toBe('00:00') // Default behavior
+
+    expect(utils.formatMinutesToHM(90)).toBe('1:30')
+    expect(utils.formatMinutesToHM(90.6)).toBe('1:31') // Rounding
+
+    expect(utils.formatMinutesToHHMM_Signed(90)).toBe('01:30')
+    expect(utils.formatMinutesToHHMM_Signed(-90)).toBe('-01:30')
+
+    expect(utils.formatMinutesToHHMMShort(90)).toBe('1h 30m')
+    expect(utils.formatMinutesToHHMMShort(60)).toBe('1h')
+    expect(utils.formatMinutesToHHMMShort(30)).toBe('30m')
+    expect(utils.formatMinutesToHHMMShort(0)).toBe('0m')
+    expect(utils.formatMinutesToHHMMShort(-1)).toBe('0m')
+    expect(utils.formatMinutesToHHMMShort(NaN)).toBe('0m')
+  })
+
   describe('CoreValidators', () => {
     // Access validators via SafeUI as it's the public API wrapper
     const validators = () => window.SafeUI.validators

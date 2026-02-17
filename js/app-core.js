@@ -448,40 +448,29 @@ const DateUtils = {
         return 0;
     },
 
-    formatMinutesToHHMM(totalMinutes) {
-        if (isNaN(totalMinutes) || totalMinutes < 0) return '00:00';
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = Math.floor(totalMinutes % 60);
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    _format(m, opts = {}) {
+        if (isNaN(m) || (m < 0 && !opts.signed)) return opts.fallback || '00:00';
+        if (m === 0 && opts.short) return '0m';
+
+        let abs = Math.abs(m);
+        if (opts.round) abs = Math.round(abs);
+
+        const hrs = Math.floor(abs / 60);
+        const mins = Math.floor(abs % 60);
+        const pad = n => String(n).padStart(2, '0');
+
+        if (opts.short) {
+            return ((hrs ? `${hrs}h ` : '') + (mins || !hrs ? `${mins}m` : '')).trim();
+        }
+
+        const sign = (opts.signed && m < 0) ? '-' : '';
+        return opts.hm ? `${sign}${hrs}:${pad(mins)}` : `${sign}${pad(hrs)}:${pad(mins)}`;
     },
 
-    formatMinutesToHM(totalMinutes) {
-        if (isNaN(totalMinutes) || totalMinutes < 0) return '0:00';
-        const rounded = Math.round(totalMinutes);
-        const hours = Math.floor(rounded / 60);
-        const minutes = rounded % 60;
-        return `${hours}:${String(minutes).padStart(2, '0')}`;
-    },
-
-    formatMinutesToHHMM_Signed(totalMinutes) {
-        if (isNaN(totalMinutes)) return '00:00';
-        const sign = totalMinutes < 0 ? '-' : '';
-        const absMinutes = Math.abs(totalMinutes);
-        const hours = Math.floor(absMinutes / 60);
-        const minutes = Math.floor(absMinutes % 60);
-        return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    },
-
-    formatMinutesToHHMMShort(totalMinutes) {
-        if (isNaN(totalMinutes) || totalMinutes < 0) return '0m';
-        if (totalMinutes === 0) return '0m';
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = Math.floor(totalMinutes % 60);
-        let parts = [];
-        if (hours > 0) parts.push(`${hours}h`);
-        if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
-        return parts.join(' ');
-    },
+    formatMinutesToHHMM(m) { return this._format(m); },
+    formatMinutesToHM(m) { return this._format(m, { round: true, hm: true, fallback: '0:00' }); },
+    formatMinutesToHHMM_Signed(m) { return this._format(m, { signed: true }); },
+    formatMinutesToHHMMShort(m) { return this._format(m, { short: true, fallback: '0m' }); },
 
     formatTimeAMPM(hour, minute) {
         return `${String(hour % 12 || 12)}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
