@@ -347,7 +347,6 @@ function initializePage() {
             DOMElements.totalWorkTimeEOD.innerText = DateUtils.formatMinutesToHHMM_Signed(totalWorkTimeEOD);
             if (DOMElements.baseTargetDisplay) DOMElements.baseTargetDisplay.innerText = targetTicketGoal;
 
-            // DOMElements.targetsGrid.innerHTML = ''; // Removed for DOM Diffing
             for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
                 const ticketsToHitGrade = targetTicketGoal + boundary.min;
                 const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
