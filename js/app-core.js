@@ -432,6 +432,19 @@ const DOMHelpers = (() => {
 // MODULE: DateUtils
 // ============================================================================
 const DateUtils = {
+    /**
+     * Parses various time formats into total minutes.
+     * Supports "HH:MM", decimal hours, or plain minutes.
+     *
+     * @param {string|number} input - The time string or number to parse.
+     * @returns {number} The total minutes (e.g. 90 for "1:30").
+     *
+     * @example
+     * DateUtils.parseTimeToMinutes("1:30"); // Returns 90
+     * DateUtils.parseTimeToMinutes("1.5");  // Returns 90 (1.5 hours)
+     * DateUtils.parseTimeToMinutes("45");   // Returns 45
+     * DateUtils.parseTimeToMinutes("1:30:30"); // Returns 90.5
+     */
     parseTimeToMinutes(input) {
         if (!input) return 0;
         const trimmed = String(input).trim();

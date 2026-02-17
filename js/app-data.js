@@ -224,6 +224,25 @@ const DataConverter = (() => {
     };
 
     return {
+        /**
+         * Converts an array of objects to a CSV string.
+         * Handles quoting and escaping of special characters.
+         *
+         * @param {Object[]} data - The array of data objects.
+         * @param {string[]} headers - The list of keys to export as columns.
+         * @returns {string} The formatted CSV string.
+         *
+         * @example
+         * const data = [
+         *   { name: "Alice", role: "Admin" },
+         *   { name: "Bob", role: "User, Guest" } // Contains comma
+         * ];
+         * const csv = DataConverter.toCSV(data, ["name", "role"]);
+         * // Returns:
+         * // name,role
+         * // Alice,Admin
+         * // Bob,"User, Guest"
+         */
         toCSV: (data, headers) => {
             if (!Array.isArray(data) || !Array.isArray(headers) || headers.length === 0) {
                 throw new Error("Invalid data or headers for CSV conversion.");
@@ -408,6 +427,22 @@ const CsvManager = (() => {
 
 const TreeUtils = (() => {
     return {
+        /**
+         * Recursively searches for an item in a tree structure.
+         *
+         * @param {Object[]} items - The array of tree nodes (items/folders).
+         * @param {Function} predicate - A function that returns true for the target item.
+         * @param {Object|null} [parent=null] - Internal use: the parent of the current items.
+         * @returns {{item: Object, parent: Object|null}|null} The found item and its parent, or null.
+         *
+         * @example
+         * const tree = [
+         *   { id: 1, name: "Root", type: "folder", children: [{ id: 2, name: "Child" }] }
+         * ];
+         *
+         * const result = TreeUtils.findInTree(tree, item => item.id === 2);
+         * // Returns { item: { id: 2, name: "Child" }, parent: { id: 1, ... } }
+         */
         findInTree: (items, predicate, parent = null) => {
             if (!Array.isArray(items)) return null;
             for (const item of items) {
