@@ -362,7 +362,7 @@ async function init() {
         e.stopPropagation();
         UIPatterns.confirmAction(
             'Clear Form',
-            '<p>Are you sure you want to clear the Subject and Body?</p>',
+            '<p>Clear Subject and Body?</p>',
             'Clear',
             () => {
                  clearEditorFields();
@@ -374,7 +374,7 @@ async function init() {
 
     DOMElements.btnNewFolder.addEventListener('click', (e) => {
         e.stopPropagation();
-        SafeUI.showModal('New Folder', '<input id="fn" class="form-control" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
+        SafeUI.showModal('New Folder', '<input id="fn" class="form-control" placeholder="Name">', [{label:'Create', class:'button-primary', callback:()=>{
             const name = document.getElementById('fn').value.trim();
             if(name) {
                 const f = TreeUtils.findItemById(state.library, currentFolderId);
@@ -422,16 +422,16 @@ async function init() {
 
         const content = `
             <div class="form-group">
-                <label>Template Name</label>
-                <input id="modal-save-name" class="form-control" value="${SafeUI.escapeHTML(defaultName)}" placeholder="Template Name">
+                <label>Name</label>
+                <input id="modal-save-name" class="form-control" value="${SafeUI.escapeHTML(defaultName)}" placeholder="Name">
             </div>
             <div class="form-group">
-                <label>Save To</label>
+                <label>Folder</label>
                 <select id="${folderSelectId}" class="form-control"></select>
             </div>
             <div id="modal-new-folder-group" class="form-group hidden" style="margin-left: 1rem; border-left: 2px solid var(--border-color); padding-left: 0.5rem;">
-                <label>New Folder Name</label>
-                <input id="modal-new-folder-name" class="form-control" placeholder="Folder Name">
+                <label>New Folder</label>
+                <input id="modal-new-folder-name" class="form-control" placeholder="Name">
             </div>
         `;
 

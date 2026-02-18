@@ -17,13 +17,13 @@
                     <header class="section-header-wrapper">
                         <h3 class="section-header">Lookup</h3>
                         <div class="header-actions button-group">
-                            <button id="btn-settings" class="btn-icon" title="Settings"></button>
-                            <button id="btn-edit-mode" class="btn" title="Toggle Edit Mode">Edit Mode</button>
+                            <button id="btn-settings" class="btn-icon" title="Settings" aria-label="Settings"></button>
+                            <button id="btn-edit-mode" class="btn" title="Toggle Edit Mode" aria-label="Toggle Edit Mode">Edit</button>
                         </div>
                     </header>
                     <div class="search-controls" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
                         <div class="search-wrapper">
-                            <input type="text" id="search-input" class="form-control" placeholder="Search database..." style="flex: 1;">
+                            <input type="text" id="search-input" class="form-control" placeholder="Search..." style="flex: 1;">
                             <div id="search-spinner" class="spinner hidden" aria-hidden="true"></div>
                         </div>
                         <button id="btn-clear-search" class="btn hidden" style="padding: 0.35rem 0.6rem;">✕ Clear</button>
@@ -39,7 +39,7 @@
                     <section class="column" id="local-column">
                         <div class="local-header section-header-wrapper">
                             <h3 class="section-header">Local Results</h3>
-                            <button id="btn-add-new-entry" class="btn btn-primary hidden" title="Create new entry">+ Create Entry</button>
+                            <button id="btn-add-new-entry" class="btn btn-primary hidden" title="Create new entry">+ Create</button>
                         </div>
                         <ul id="local-results" class="result-list"></ul>
                     </section>
@@ -54,7 +54,7 @@
     </div>
     
     <!-- Scroll to Top Button -->
-    <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top">↑</button>
+    <button id="scroll-to-top" class="scroll-to-top-btn" title="Back to Top" aria-label="Back to Top">↑</button>
 
     <!-- 
       CRITICAL: Bootstrap script must be at the END of the body.

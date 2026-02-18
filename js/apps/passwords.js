@@ -130,7 +130,7 @@ function initializePage() {
             <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <p class="empty-state-text">Generate a password to get started.</p>
+            <p class="empty-state-text">Generate to start.</p>
         </div>
     `;
 
@@ -614,7 +614,7 @@ function initializePage() {
             ListRenderer.renderList({
                 container: DOMElements.resultsList,
                 items: [],
-                emptyMessage: 'Password generator is disabled.',
+                emptyMessage: 'Disabled.',
             });
         };
 
@@ -709,14 +709,14 @@ function initializePage() {
         };
 
         const handleAddQuickCopy = () => {
-            SafeUI.showModal('Add Quick Copy Password',
+            SafeUI.showModal('Add Quick Copy',
                 `<div class="form-group">
-                    <label for="qc-name">Name (e.g., "Guest WiFi")</label>
+                    <label for="qc-name">Name</label>
                     <input id="qc-name" class="form-control" placeholder="Name">
                     </div>
                     <div class="form-group">
-                    <label for="qc-value">Password Value</label>
-                    <input id="qc-value" class="form-control" placeholder="The password to copy">
+                    <label for="qc-value">Password</label>
+                    <input id="qc-value" class="form-control" placeholder="Password">
                     </div>`,
                 [
                     { label: 'Cancel' },
@@ -751,7 +751,7 @@ function initializePage() {
 
         const handleAddPreset = () => {
             const { type, config } = getConfigFromUI();
-            SafeUI.showModal('Save Generator Preset', '<input id="preset-name" class="form-control" placeholder="e.g., 4-Word TitleCase">', [
+            SafeUI.showModal('Save Preset', '<input id="preset-name" class="form-control" placeholder="Preset Name">', [
                 { label: 'Cancel' },
                 {
                     label: 'Save',

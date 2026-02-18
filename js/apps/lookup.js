@@ -238,7 +238,7 @@ function initializePage() {
 
 
             const getEmptyMessage = (lowerTerm) => {
-                if (isEditMode) return 'No entries. Create one?';
+                if (isEditMode) return 'No entries. Create?';
 
                 if (lowerTerm) {
                     const escapedTerm = SafeUI.escapeHTML(lowerTerm);
@@ -247,7 +247,7 @@ function initializePage() {
                             <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;">🔍</div>
                             <h3 style="margin: 0 0 1rem 0; font-weight: 500;">No matches for "${escapedTerm}"</h3>
                             <button class="btn btn-primary" data-action="create-from-search">
-                                + Create "${escapedTerm}"
+                                Create "${escapedTerm}"
                             </button>
                         </div>
                     `;
@@ -256,7 +256,7 @@ function initializePage() {
                 return `
                     <div style="text-align: center; padding: 2rem 1rem; opacity: 0.7;">
                         <div style="font-size: 2rem; margin-bottom: 0.5rem;">⌨️</div>
-                        <p style="margin: 0;">Search entries...</p>
+                        <p style="margin: 0;">Type to search...</p>
                     </div>
                 `;
             };
@@ -719,10 +719,10 @@ function initializePage() {
                                 ${errorList}${moreErrors}
                             </ul>`;
                 }
-                summaryHtml += `<p>This is permanent.</p>`;
+                summaryHtml += `<p>Cannot be undone.</p>`;
 
-                SafeUI.showModal("Confirm Import", summaryHtml,
-                    modalActions.cancelAndConfirm('Import Data', () => {
+                SafeUI.showModal("Import CSV", summaryHtml,
+                    modalActions.cancelAndConfirm('Import', () => {
                         actions.forEach(action => {
                             if (action.action === 'add') state.items.push(action.item);
                             else if (action.action === 'overwrite') {
@@ -748,8 +748,8 @@ function initializePage() {
                 const getSettingsHtml = () => {
                     let searchesHtml = state.settings.customSearches.map(search => `
                         <div class="custom-search-item" data-id="${search.id}">
-                            <input type="text" class="form-control search-name" value="${SafeUI.escapeHTML(search.name)}" placeholder="Search Name">
-                            <input type="text" class="form-control search-url" value="${SafeUI.escapeHTML(search.urlTemplate)}" placeholder="https://my-kb.com/search?q={query}">
+                            <input type="text" class="form-control search-name" value="${SafeUI.escapeHTML(search.name)}" placeholder="Name">
+                            <input type="text" class="form-control search-url" value="${SafeUI.escapeHTML(search.urlTemplate)}" placeholder="https://site.com?q={query}">
                             <button type="button" class="btn-icon delete-search-btn" title="Delete Search">${SafeUI.SVGIcons.trash}</button>
                         </div>
                     `).join('');
@@ -760,17 +760,17 @@ function initializePage() {
 
                     return `
                         <div class="form-group">
-                            <label>Custom Search Engines</label>
-                            <p class="form-help">Add links to external sites. Use <strong>{query}</strong> as a placeholder for the search term.</p>
+                            <label>Custom Search</label>
+                            <p class="form-help">External links. Use <strong>{query}</strong> for term.</p>
                             <div id="custom-search-list">${searchesHtml}</div>
-                            <button type="button" id="btn-add-search" class="btn" style="margin-top: 0.5rem;">+ Add Search</button>
+                            <button type="button" id="btn-add-search" class="btn" style="margin-top: 0.5rem;">Add Search</button>
                         </div>
                     `;
                 };
 
                 const pageDataHtml = `
-                    <button id="modal-export-csv-btn" class="btn">Export DB (CSV)</button>
-                    <button id="modal-import-csv-btn" class="btn">Import DB (CSV)</button>
+                    <button id="modal-export-csv-btn" class="btn">Export CSV</button>
+                    <button id="modal-import-csv-btn" class="btn">Import CSV</button>
                 `;
 
                 const onSave = () => {
@@ -822,8 +822,8 @@ function initializePage() {
                         newItem.className = 'custom-search-item';
                         newItem.dataset.id = newId;
                         newItem.innerHTML = `
-                            <input type="text" id="search-name-${newId}" class="form-control search-name" value="" placeholder="Search Name">
-                            <input type="text" id="search-url-${newId}" class="form-control search-url" value="" placeholder="https://my-kb.com/search?q={query}">
+                            <input type="text" id="search-name-${newId}" class="form-control search-name" value="" placeholder="Name">
+                            <input type="text" id="search-url-${newId}" class="form-control search-url" value="" placeholder="https://site.com?q={query}">
                             <button type="button" class="btn-icon delete-search-btn" title="Delete Search">${SafeUI.SVGIcons.trash}</button>
                         `;
                         const emptyMsg = listContainer.querySelector('p');
@@ -1010,7 +1010,7 @@ function initializePage() {
                     saveState();
                 }
 
-                DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
+                DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit' : 'Edit';
                 DOMElements.btnEditMode.classList.toggle('btn-primary', isEditMode);
                 clearEditStateAndRender();
             }
@@ -1026,7 +1026,7 @@ function initializePage() {
 
                     if (state.ui.isEditMode) {
                         isEditMode = true;
-                        DOMElements.btnEditMode.textContent = 'Exit Edit Mode';
+                        DOMElements.btnEditMode.textContent = 'Exit Edit';
                         DOMElements.btnEditMode.classList.add('btn-primary');
                     }
 
