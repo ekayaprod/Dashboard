@@ -134,7 +134,7 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
     it('should fail if URL is empty', () => {
         const result = window.LookupHelpers.validateSearchUrl('')
         expect(result.valid).toBe(false)
-        expect(result.message).toContain('empty')
+        expect(result.message).toContain('URL is required')
     })
   })
 })
