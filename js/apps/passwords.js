@@ -11,6 +11,9 @@ function initializePage() {
         DATA_KEY: 'passwords_v1_data',
     };
 
+    const FETCH_TIMEOUT_MS = 10000;
+    const NUM_PASSWORDS_TO_GENERATE = 5;
+
     // ====================================================================
     // DEFAULT STATE & LOGIC
     // ====================================================================
@@ -365,7 +368,7 @@ function initializePage() {
         const loadWordBank = async () => {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
                 const data = await SafeUI.fetchJSON(
                     'wordbanks/wordbank-base.json',
@@ -492,7 +495,7 @@ function initializePage() {
             if (activeSeasonKey !== 'standard') {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
                     const seasonalBankData = await SafeUI.fetchJSON(
                         `wordbanks/wordbank-${activeSeasonKey}.json`,
@@ -631,7 +634,7 @@ function initializePage() {
         const handleGenerate = async (configObj) => {
             const { type, config } = configObj || getConfigFromUI();
             generatedPasswords = [];
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < NUM_PASSWORDS_TO_GENERATE; i++) {
                 generatedPasswords.push(generatePassphrase(config));
             }
             renderResults();
