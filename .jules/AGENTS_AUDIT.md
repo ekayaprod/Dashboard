@@ -18,7 +18,7 @@
 - [ ] Dependencies are managed via package.json (dev only)
 
 ## 🕵️ Coverage Gaps
-- [ ] js/apps/lookup.js (High Complexity, 0 Test Files found)
+- [x] js/apps/lookup.js (High Complexity, 0 Test Files found)
 - [ ] js/apps/passwords.js (Moderate Complexity, 0 Test Files found)
 - [ ] js/apps/calculator.js (0 Test Files found)
 - [ ] js/apps/dashboard.js (0 Test Files found)
