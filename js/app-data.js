@@ -6,6 +6,12 @@
 
 const BackupRestore = (() => {
     return {
+        /**
+         * Creates a JSON backup of the current application state and triggers a download.
+         *
+         * @param {Object} state - The current application state object.
+         * @param {string} [appName='app'] - The name of the application (used for filename).
+         */
         createBackup: (state, appName = 'app') => {
             try {
                 const backupData = {
@@ -26,6 +32,11 @@ const BackupRestore = (() => {
             }
         },
 
+        /**
+         * Opens a file picker to upload a JSON backup file and restores it.
+         *
+         * @param {Function} onRestore - Callback function invoked with the parsed data upon success.
+         */
         restoreBackup: (onRestore) => {
             SafeUI.openFilePicker((file) => {
                 SafeUI.readJSONFile(file)
@@ -38,6 +49,13 @@ const BackupRestore = (() => {
             });
         },
 
+        /**
+         * Validates the structure of a backup object.
+         *
+         * @param {Object} data - The backup data object (expected to have `data` property).
+         * @param {string[]} [requiredKeys=[]] - List of keys that must exist in `data.data`.
+         * @returns {boolean} True if the backup is valid, false otherwise.
+         */
         validateBackup: (data, requiredKeys = []) => {
             if (!data || typeof data !== 'object' || !data.data || typeof data.data !== 'object') {
                 return false;
@@ -45,6 +63,13 @@ const BackupRestore = (() => {
             return requiredKeys.every(key => key in data.data);
         },
 
+        /**
+         * Validates an array of items to ensure they contain required fields.
+         *
+         * @param {Object[]} items - The array of items to validate.
+         * @param {string[]} requiredFields - List of fields that each item must have.
+         * @returns {boolean} True if all items are valid, false otherwise.
+         */
         validateItems: (items, requiredFields) => {
             if (!Array.isArray(items)) return false;
             if (requiredFields.length === 0) return true;
@@ -55,6 +80,15 @@ const BackupRestore = (() => {
             });
         },
 
+        /**
+         * Orchestrates the restore process, including validation and confirmation.
+         *
+         * @param {Object} config - Configuration object.
+         * @param {string} config.appName - Expected application name in the backup.
+         * @param {Object} config.itemValidators - Map of data keys to required field arrays.
+         * @param {Function} config.onRestore - Callback invoked with validated data ready for restore.
+         * @throws {Error} If validation fails or app name mismatches.
+         */
         handleRestoreUpload: (config) => {
             BackupRestore.restoreBackup((restoredData) => {
                 try {
@@ -88,6 +122,18 @@ const BackupRestore = (() => {
             });
         },
 
+        /**
+         * Sets up event listeners for backup and restore buttons.
+         *
+         * @param {Object} config - Configuration object.
+         * @param {Object} config.state - The current application state.
+         * @param {string} config.appName - The application name.
+         * @param {HTMLElement} [config.backupBtn] - The button element to trigger backup.
+         * @param {HTMLElement} [config.restoreBtn] - The button element to trigger restore.
+         * @param {Object} config.itemValidators - Validators for restore verification.
+         * @param {string} [config.restoreConfirmMessage] - Custom confirmation message.
+         * @param {Function} config.onRestoreCallback - Callback to execute the actual state update.
+         */
         setupBackupRestoreHandlers: (config) => {
             const {
                 state,
@@ -134,6 +180,16 @@ const BackupRestore = (() => {
 
 const DataValidator = (() => {
     return {
+        /**
+         * Checks if a value already exists in a specific field within an array of items.
+         * Case-insensitive.
+         *
+         * @param {Object[]} items - The array of items to check.
+         * @param {string} field - The property name to check against.
+         * @param {string|number} value - The value to look for.
+         * @param {string|number|null} [excludeId=null] - An ID to exclude from the check (useful for updates).
+         * @returns {boolean} True if a duplicate is found, false otherwise.
+         */
         hasDuplicate: (items, field, value, excludeId = null) => {
             if (!Array.isArray(items)) return false;
             const normalizedValue = String(value).toLowerCase().trim();
@@ -145,6 +201,19 @@ const DataValidator = (() => {
             });
         },
 
+        /**
+         * Validates a set of fields against a schema of rules.
+         *
+         * @param {Object} fields - Key-value pairs of field names and their values.
+         * @param {Object} rules - Schema defining validation rules for each field.
+         * @param {boolean} [rules.fieldName.required] - If true, value must not be empty.
+         * @param {number} [rules.fieldName.maxLength] - Maximum character length.
+         * @param {number} [rules.fieldName.minLength] - Minimum character length.
+         * @param {RegExp} [rules.fieldName.pattern] - Regex pattern the value must match.
+         * @param {Function} [rules.fieldName.custom] - Custom validation function (value => boolean).
+         * @param {string} [rules.fieldName.customMessage] - Error message for custom validation failure.
+         * @returns {{valid: boolean, errors: string[]}} Result object containing validity status and error messages.
+         */
         validateFields: (fields, rules) => {
             const errors = [];
 
@@ -264,6 +333,15 @@ const DataConverter = (() => {
             return [headerRow, ...rows].join('\n');
         },
 
+        /**
+         * Parses a CSV file into an array of objects.
+         * Handles quoted values and validates headers.
+         *
+         * @param {File} file - The CSV file object to parse.
+         * @param {string[]} requiredHeaders - List of column headers that must be present.
+         * @returns {Promise<{data: Object[], errors: string[]}>} Promise resolving to data and errors.
+         * @throws {Error} If file reading fails or validation errors exceed threshold.
+         */
         fromCSV: async (file, requiredHeaders) => {
             const text = await SafeUI.readTextFile(file);
             const lines = [];
@@ -354,6 +432,15 @@ const CsvManager = (() => {
     };
 
     return {
+        /**
+         * Attaches a click listener to the export button to generate and download a CSV file.
+         *
+         * @param {Object} config - Configuration object.
+         * @param {HTMLElement} config.exportBtn - The button to trigger export.
+         * @param {Function} config.dataGetter - Function returning the array of data to export.
+         * @param {string[]} config.headers - List of keys to include in the CSV.
+         * @param {string} config.filename - The base filename for the download.
+         */
         setupExport: (config) => {
             if (!config.exportBtn) return;
 
@@ -380,6 +467,16 @@ const CsvManager = (() => {
             });
         },
 
+        /**
+         * Attaches a click listener to the import button to handle CSV file upload and processing.
+         *
+         * @param {Object} config - Configuration object.
+         * @param {HTMLElement} config.importBtn - The button to trigger import.
+         * @param {string[]} config.headers - Expected headers in the CSV file.
+         * @param {Function} config.onValidate - Function to validate each row (row, index, currentData).
+         * @param {Function} config.onConfirm - Function called with valid data to finalize import.
+         * @param {Function} [config.stateItemsGetter] - Optional function to get current items for validation context.
+         */
         setupImport: (config) => {
             if (!config.importBtn) return;
 
@@ -455,18 +552,40 @@ const TreeUtils = (() => {
             return null;
         },
 
+        /**
+         * Finds a specific item by its ID within the tree.
+         *
+         * @param {Object[]} rootItems - The root array of the tree.
+         * @param {string} id - The ID of the item to find.
+         * @returns {Object|null} The found item or null if not found.
+         */
         findItemById: (rootItems, id) => {
             if (id === 'root') return { id: 'root', name: 'Root', children: rootItems, type: 'folder' };
             const result = TreeUtils.findInTree(rootItems, i => i.id === id);
             return result ? result.item : null;
         },
 
+        /**
+         * Finds the parent folder of a specific item.
+         *
+         * @param {Object[]} rootItems - The root array of the tree.
+         * @param {string} childId - The ID of the child item.
+         * @returns {Object|null} The parent folder object or null.
+         */
         findParentOfItem: (rootItems, childId) => {
             if (childId === 'root') return null;
             const result = TreeUtils.findInTree(rootItems, i => i.id === childId);
             return result ? (result.parent || { id: 'root', children: rootItems }) : null;
         },
 
+        /**
+         * Flattens the tree to return a list of all folder items.
+         * Useful for populating dropdowns or move-to dialogues.
+         *
+         * @param {Object[]} items - The tree items to traverse.
+         * @param {number} [level=0] - Internal recursion level tracker.
+         * @returns {Object[]} Array of folder objects with `level` property for indentation.
+         */
         getAllFolders: (items, level = 0) => {
             let folders = [];
             if (level === 0) folders.push({ id: 'root', name: 'Root', level: 0 });
@@ -484,6 +603,13 @@ const TreeUtils = (() => {
             return folders;
         },
 
+        /**
+         * Generates the breadcrumb path from root to a specific folder.
+         *
+         * @param {Object[]} rootItems - The root array of the tree.
+         * @param {string} folderId - The target folder ID.
+         * @returns {Object[]} Array of objects representing the path (each has id and name).
+         */
         getBreadcrumbPath: (rootItems, folderId) => {
             if (folderId === 'root') return [{ id: 'root', name: 'Root' }];
             const path = [];
