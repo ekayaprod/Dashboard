@@ -21,7 +21,7 @@
 
 ## 🕵️ Coverage Gaps
 - [x] js/apps/lookup.js (High Complexity, 0 Test Files found)
-- [ ] js/apps/passwords.js (Moderate Complexity, 0 Test Files found)
+- [x] js/apps/passwords.js (Moderate Complexity, 13 Tests Added)
 - [ ] js/apps/calculator.js (0 Test Files found)
 - [ ] js/apps/dashboard.js (0 Test Files found)
 - [ ] js/apps/mailto.js (0 Test Files found)

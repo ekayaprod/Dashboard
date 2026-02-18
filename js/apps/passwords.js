@@ -2,20 +2,8 @@
 // PAGE-SPECIFIC LOGIC: Passwords (passwords.html)
 // ============================================================================
 
-AppLifecycle.onBootstrap(initializePage);
-
-function initializePage() {
-    const APP_CONFIG = {
-        NAME: 'passwords',
-        VERSION: '1.4.11',
-        DATA_KEY: 'passwords_v1_data',
-    };
-
-    // ====================================================================
-    // DEFAULT STATE & LOGIC
-    // ====================================================================
-
-    const SEASON_CONFIG = {
+const PasswordLogic = {
+    SEASON_CONFIG: {
         rules: {
             startOffset: 12, // days before start
             endCutoff: 60    // days before end
@@ -26,37 +14,10 @@ function initializePage() {
             autumn: { start: { m: 8, d: 22 }, end: { m: 11, d: 21 } },// Sep 22 - Dec 21
             winter: { start: { m: 11, d: 21 }, end: { m: 2, d: 20 } } // Dec 21 - Mar 20
         }
-    };
-
-    const getCurrentSeason = () => {
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const makeDate = (m, d, year = currentYear) => new Date(year, m, d);
-
-        for (const [season, range] of Object.entries(SEASON_CONFIG.seasons)) {
-            let sDate = makeDate(range.start.m, range.start.d);
-            let eDate = makeDate(range.end.m, range.end.d);
-
-            if (range.start.m > range.end.m) {
-                 if (now.getMonth() < range.start.m) {
-                     sDate.setFullYear(currentYear - 1);
-                 } else {
-                     eDate.setFullYear(currentYear + 1);
-                 }
-            }
-
-            sDate.setDate(sDate.getDate() - SEASON_CONFIG.rules.startOffset);
-            eDate.setDate(eDate.getDate() - SEASON_CONFIG.rules.endCutoff);
-
-            if (now >= sDate && now < eDate) {
-                return season;
-            }
-        }
-        return 'none';
-    };
+    },
 
     // Enhanced Structure Definitions with Metadata
-    const phraseStructureConfig = {
+    phraseStructureConfig: {
         "standard": {
             "1": [{ categories: ["LongWord"], label: "Long Word", description: "A single long, complex word." }],
             "2": [
@@ -111,7 +72,203 @@ function initializePage() {
             "3": [{ categories: ["Adjective","Verb","Object"], label: "Autumn 3-Word", description: "Seasonal three word phrase." }],
             "4": [{ categories: ["Adjective","Verb","Color","Noun"], label: "Autumn 4-Word", description: "Seasonal four word phrase." }]
         }
+    },
+
+    getCurrentSeason: () => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const makeDate = (m, d, year = currentYear) => new Date(year, m, d);
+
+        for (const [season, range] of Object.entries(PasswordLogic.SEASON_CONFIG.seasons)) {
+            let sDate = makeDate(range.start.m, range.start.d);
+            let eDate = makeDate(range.end.m, range.end.d);
+
+            if (range.start.m > range.end.m) {
+                 if (now.getMonth() < range.start.m) {
+                     sDate.setFullYear(currentYear - 1);
+                 } else {
+                     eDate.setFullYear(currentYear + 1);
+                 }
+            }
+
+            sDate.setDate(sDate.getDate() - PasswordLogic.SEASON_CONFIG.rules.startOffset);
+            eDate.setDate(eDate.getDate() - PasswordLogic.SEASON_CONFIG.rules.endCutoff);
+
+            if (now >= sDate && now < eDate) {
+                return season;
+            }
+        }
+        return 'none';
+    },
+
+    computeAvailableStructures: (seasonConfig, activeWordBank) => {
+        const availableCategories = Object.keys(activeWordBank).filter(cat => activeWordBank[cat] && activeWordBank[cat].length > 0);
+        const structures = {};
+
+        for (const numWords in seasonConfig) {
+             const validOptions = seasonConfig[numWords].filter(item =>
+                 item.categories.every(cat => availableCategories.includes(cat))
+             );
+             structures[numWords] = validOptions;
+        }
+        return structures;
+    },
+
+    generatePassphrase: (config, context) => {
+        const R = (a) => a[SafeUI.getRandomInt(a.length)];
+        const Cap = (s) => SafeUI.capitalize(s);
+
+        const C = { ...config };
+        C.passNumWords = Math.max(0, C.passNumWords || 0);
+        C.passNumDigits = Math.max(0, C.passNumDigits || 0);
+        C.passNumSymbols = Math.max(0, C.passNumSymbols || 0);
+        C.minLength = Math.max(0, C.minLength || 0);
+        C.maxLength = Math.max(1, C.maxLength || 1);
+
+        const P_structs = context.availableStructures;
+        const W = context.activeWordBank;
+        const SYMBOL_RULES = context.symbolRules;
+        const MAX_RETRIES = 500;
+        let retries = 0;
+
+        if (C.minLength > C.maxLength) return "[Min length > Max length]";
+        if (!C.passNumWords && !C.passNumDigits && !C.passNumSymbols) return "[No content selected]";
+
+        // This is purely for validation in generatePassphrase if needed, but the original logic
+        // used resolvedSeason for... actually it didn't use it except to calculate it.
+        // Wait, the original code had:
+        // let resolvedSeason = C.seasonalBank;
+        // if (C.seasonalBank === 'auto') resolvedSeason = getCurrentSeason();
+        // But then `resolvedSeason` was unused.
+        // Ah, `generatePassphrase` logic only depends on `P_structs` which is already resolved.
+        // So we can remove that block or keep it if side effects were intended (unlikely).
+
+        let minEstimate = C.passNumDigits + C.passNumSymbols + (C.passNumWords * 4);
+        if (C.passNumWords > 1) minEstimate += (C.passNumWords - 1) * C.passSeparator.length;
+        if (minEstimate > C.maxLength) return "[Settings exceed Max Length]";
+
+        C.passNumPlacement = C.passNumPlacement || 'random';
+        C.passSymPlacement = C.passSymPlacement || 'any';
+
+        while (retries < MAX_RETRIES) {
+            retries++;
+            let words = [];
+            let structObj;
+
+            const availableForCount = P_structs[C.passNumWords];
+
+            if (!availableForCount || availableForCount.length === 0) {
+                 if (C.passNumWords === 0) {
+                     structObj = { categories: [] };
+                 } else {
+                     return "[No valid word structure found]";
+                 }
+            } else {
+                if (C.selectedStructureIndex !== undefined && C.selectedStructureIndex >= 0 && C.selectedStructureIndex < availableForCount.length) {
+                    structObj = availableForCount[C.selectedStructureIndex];
+                } else {
+                    structObj = R(availableForCount);
+                }
+            }
+
+            const struct = structObj.categories;
+
+            words = struct.map(cat => {
+                if (!W[cat] || W[cat].length === 0) {
+                    const fallbackCat = W['Object'] ? 'Object' : 'Word';
+                    if (W[fallbackCat] && W[fallbackCat].length > 0) return R(W[fallbackCat]);
+                    return "Word";
+                }
+                return R(W[cat]);
+            });
+
+            if (words.some(w => !w || w.length === 0)) continue;
+
+            let wordStr;
+            if (C.passSeparator === '') {
+                words = words.map(Cap);
+                wordStr = words.join('');
+            } else {
+                words = words.map(w => w.toLowerCase());
+                wordStr = words.join(C.passSeparator);
+            }
+
+            let numberBlock = [];
+            for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
+
+            let preliminaryLength = wordStr.length + numberBlock.length + C.passNumSymbols;
+            if (C.padToMin && preliminaryLength < C.minLength) {
+                const paddingNeeded = C.minLength - preliminaryLength;
+                for (let j = 0; j < paddingNeeded; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
+                preliminaryLength += paddingNeeded;
+            }
+
+            if (preliminaryLength > C.maxLength) continue;
+
+            let symbolsToUse = { beforeNum: '', afterNum: '', junction: '', end: '' };
+            let symbolLength = 0;
+
+            if (C.passNumSymbols > 0) {
+                let availableTypes = ['end', 'junction'];
+                if (numberBlock.length > 0) { availableTypes.push('beforeNum', 'afterNum'); }
+
+                if (C.passSymPlacement === 'aroundNum') {
+                    if (numberBlock.length > 0) availableTypes = ['beforeNum', 'afterNum'];
+                } else if (C.passSymPlacement === 'suffix') {
+                    availableTypes = ['end'];
+                }
+
+                for (let k = availableTypes.length - 1; k > 0; k--) {
+                    const l = SafeUI.getRandomInt(k + 1);
+                    [availableTypes[k], availableTypes[l]] = [availableTypes[l], availableTypes[k]];
+                }
+                for (let j = 0; j < C.passNumSymbols; j++) {
+                    if (availableTypes.length === 0) break;
+                    let type = availableTypes.shift();
+                    if (type && SYMBOL_RULES[type] && SYMBOL_RULES[type].length > 0) {
+                        const symbol = R(SYMBOL_RULES[type]);
+                        symbolsToUse[type] = symbol;
+                        symbolLength += symbol.length;
+                    }
+                }
+            }
+
+            let numberPart = symbolsToUse.beforeNum + numberBlock.join('') + symbolsToUse.afterNum;
+            let finalPass;
+            if (wordStr.length === 0) {
+                finalPass = numberPart + symbolsToUse.end;
+            } else {
+                let placeAtStart = false;
+                if (C.passNumPlacement === 'start') placeAtStart = true;
+                else if (C.passNumPlacement === 'end') placeAtStart = false;
+                else placeAtStart = (SafeUI.getRandomInt(2) === 0);
+
+                finalPass = (placeAtStart && numberPart.length > 0)
+                    ? (numberPart + symbolsToUse.junction + wordStr)
+                    : (wordStr + symbolsToUse.junction + numberPart);
+                finalPass += symbolsToUse.end;
+            }
+
+            if (finalPass.length > C.maxLength) continue;
+            if (!C.padToMin && finalPass.length < C.minLength) continue;
+            return finalPass;
+        }
+        return "[Retry limit hit. Relax length settings.]";
+    }
+};
+
+AppLifecycle.onBootstrap(initializePage);
+
+function initializePage() {
+    const APP_CONFIG = {
+        NAME: 'passwords',
+        VERSION: '1.4.11',
+        DATA_KEY: 'passwords_v1_data',
     };
+
+    // ====================================================================
+    // DEFAULT STATE & LOGIC
+    // ====================================================================
 
     const defaultSymbolRules = {"beforeNum":["$","#","*"],"afterNum":["%","+"],"junction":["=","@",".","-"],"end":["!","?"]};
 
@@ -214,151 +371,6 @@ function initializePage() {
         };
 
         // ====================================================================
-        // GENERATION LOGIC
-        // ====================================================================
-
-        const R = (a) => a[SafeUI.getRandomInt(a.length)];
-        const Cap = (s) => SafeUI.capitalize(s);
-
-        const generatePassphrase = (config) => {
-            const C = { ...config };
-            C.passNumWords = Math.max(0, C.passNumWords || 0);
-            C.passNumDigits = Math.max(0, C.passNumDigits || 0);
-            C.passNumSymbols = Math.max(0, C.passNumSymbols || 0);
-            C.minLength = Math.max(0, C.minLength || 0);
-            C.maxLength = Math.max(1, C.maxLength || 1);
-
-            const P_structs = availableStructures;
-            const W = activeWordBank;
-            const SYMBOL_RULES = state.symbolRules;
-            const MAX_RETRIES = 500;
-            let retries = 0;
-
-            if (C.minLength > C.maxLength) return "[Min length > Max length]";
-            if (!C.passNumWords && !C.passNumDigits && !C.passNumSymbols) return "[No content selected]";
-
-            let resolvedSeason = C.seasonalBank;
-            if (C.seasonalBank === 'auto') resolvedSeason = getCurrentSeason();
-
-            let minEstimate = C.passNumDigits + C.passNumSymbols + (C.passNumWords * 4);
-            if (C.passNumWords > 1) minEstimate += (C.passNumWords - 1) * C.passSeparator.length;
-            if (minEstimate > C.maxLength) return "[Settings exceed Max Length]";
-
-            C.passNumPlacement = C.passNumPlacement || 'random';
-            C.passSymPlacement = C.passSymPlacement || 'any';
-
-            while (retries < MAX_RETRIES) {
-                retries++;
-                let words = [];
-                let structObj;
-
-                // Structure Selection Logic
-                // If a specific structure is requested via config (e.g., from UI dropdown), use it.
-                // Otherwise, pick random from availableStructures[numWords]
-
-                const availableForCount = P_structs[C.passNumWords];
-
-                if (!availableForCount || availableForCount.length === 0) {
-                     if (C.passNumWords === 0) {
-                         structObj = { categories: [] };
-                     } else {
-                         return "[No valid word structure found]";
-                     }
-                } else {
-                    if (C.selectedStructureIndex !== undefined && C.selectedStructureIndex >= 0 && C.selectedStructureIndex < availableForCount.length) {
-                        structObj = availableForCount[C.selectedStructureIndex];
-                    } else {
-                        structObj = R(availableForCount);
-                    }
-                }
-
-                const struct = structObj.categories;
-
-                words = struct.map(cat => {
-                    if (!W[cat] || W[cat].length === 0) {
-                        // Fallback logic
-                        const fallbackCat = W['Object'] ? 'Object' : 'Word';
-                        if (W[fallbackCat] && W[fallbackCat].length > 0) return R(W[fallbackCat]);
-                        return "Word";
-                    }
-                    return R(W[cat]);
-                });
-
-                if (words.some(w => !w || w.length === 0)) continue;
-
-                let wordStr;
-                if (C.passSeparator === '') {
-                    words = words.map(Cap);
-                    wordStr = words.join('');
-                } else {
-                    words = words.map(w => w.toLowerCase());
-                    wordStr = words.join(C.passSeparator);
-                }
-
-                let numberBlock = [];
-                for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
-
-                let preliminaryLength = wordStr.length + numberBlock.length + C.passNumSymbols;
-                if (C.padToMin && preliminaryLength < C.minLength) {
-                    const paddingNeeded = C.minLength - preliminaryLength;
-                    for (let j = 0; j < paddingNeeded; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
-                    preliminaryLength += paddingNeeded;
-                }
-
-                if (preliminaryLength > C.maxLength) continue;
-
-                let symbolsToUse = { beforeNum: '', afterNum: '', junction: '', end: '' };
-                let symbolLength = 0;
-
-                if (C.passNumSymbols > 0) {
-                    let availableTypes = ['end', 'junction'];
-                    if (numberBlock.length > 0) { availableTypes.push('beforeNum', 'afterNum'); }
-
-                    if (C.passSymPlacement === 'aroundNum') {
-                        if (numberBlock.length > 0) availableTypes = ['beforeNum', 'afterNum'];
-                    } else if (C.passSymPlacement === 'suffix') {
-                        availableTypes = ['end'];
-                    }
-
-                    for (let k = availableTypes.length - 1; k > 0; k--) {
-                        const l = SafeUI.getRandomInt(k + 1);
-                        [availableTypes[k], availableTypes[l]] = [availableTypes[l], availableTypes[k]];
-                    }
-                    for (let j = 0; j < C.passNumSymbols; j++) {
-                        if (availableTypes.length === 0) break;
-                        let type = availableTypes.shift();
-                        if (type && SYMBOL_RULES[type] && SYMBOL_RULES[type].length > 0) {
-                            const symbol = R(SYMBOL_RULES[type]);
-                            symbolsToUse[type] = symbol;
-                            symbolLength += symbol.length;
-                        }
-                    }
-                }
-
-                let numberPart = symbolsToUse.beforeNum + numberBlock.join('') + symbolsToUse.afterNum;
-                let finalPass;
-                if (wordStr.length === 0) {
-                    finalPass = numberPart + symbolsToUse.end;
-                } else {
-                    let placeAtStart = false;
-                    if (C.passNumPlacement === 'start') placeAtStart = true;
-                    else if (C.passNumPlacement === 'end') placeAtStart = false;
-                    else placeAtStart = (SafeUI.getRandomInt(2) === 0);
-
-                    finalPass = (placeAtStart && numberPart.length > 0)
-                        ? (numberPart + symbolsToUse.junction + wordStr)
-                        : (wordStr + symbolsToUse.junction + numberPart);
-                    finalPass += symbolsToUse.end;
-                }
-
-                if (finalPass.length > C.maxLength) continue;
-                if (!C.padToMin && finalPass.length < C.minLength) continue;
-                return finalPass;
-            }
-            return "[Retry limit hit. Relax length settings.]";
-        };
-
-        // ====================================================================
         // DATA LOADING & ANALYSIS
         // ====================================================================
 
@@ -389,7 +401,7 @@ function initializePage() {
             const rangeEl = document.getElementById('seasonal-range-inline');
 
             let activeKey = selected;
-            if (activeKey === 'auto') activeKey = getCurrentSeason();
+            if (activeKey === 'auto') activeKey = PasswordLogic.getCurrentSeason();
             if (activeKey === 'none') activeKey = 'standard';
 
             // Update Label "(Now: Summer)"
@@ -410,14 +422,14 @@ function initializePage() {
             if (rangeEl) {
                 if (activeKey === 'standard') {
                     rangeEl.textContent = "Standard dictionary enabled.";
-                } else if (SEASON_CONFIG.seasons[activeKey]) {
-                     const range = SEASON_CONFIG.seasons[activeKey];
+                } else if (PasswordLogic.SEASON_CONFIG.seasons[activeKey]) {
+                     const range = PasswordLogic.SEASON_CONFIG.seasons[activeKey];
                      const formatDate = (m, d) => new Date(2000, m, d).toLocaleString('default', { month: 'short', day: 'numeric' });
 
                      const sDate = new Date(2000, range.start.m, range.start.d);
-                     sDate.setDate(sDate.getDate() - SEASON_CONFIG.rules.startOffset);
+                     sDate.setDate(sDate.getDate() - PasswordLogic.SEASON_CONFIG.rules.startOffset);
                      const eDate = new Date(2000, range.end.m, range.end.d);
-                     eDate.setDate(eDate.getDate() - SEASON_CONFIG.rules.endCutoff);
+                     eDate.setDate(eDate.getDate() - PasswordLogic.SEASON_CONFIG.rules.endCutoff);
                      if (range.start.m > range.end.m) eDate.setFullYear(2001);
 
                      rangeEl.textContent = `Active: ${formatDate(sDate.getMonth(), sDate.getDate())} - ${formatDate(eDate.getMonth(), eDate.getDate())}`;
@@ -485,7 +497,7 @@ function initializePage() {
             activeWordBank = JSON.parse(JSON.stringify(memoryWordBank));
 
             let activeSeasonKey = selectedSeason;
-            if (activeSeasonKey === 'auto') activeSeasonKey = getCurrentSeason();
+            if (activeSeasonKey === 'auto') activeSeasonKey = PasswordLogic.getCurrentSeason();
             if (activeSeasonKey === 'none') activeSeasonKey = 'standard';
 
             // Load Seasonal Data if applicable
@@ -512,28 +524,10 @@ function initializePage() {
                 }
             }
 
-            // Filter structures based on availability of categories in the active bank
-            const availableCategories = Object.keys(activeWordBank).filter(cat => activeWordBank[cat] && activeWordBank[cat].length > 0);
-
             // Get the structure config for the active season (or standard)
-            const seasonConfig = phraseStructureConfig[activeSeasonKey] || phraseStructureConfig['standard'];
+            const seasonConfig = PasswordLogic.phraseStructureConfig[activeSeasonKey] || PasswordLogic.phraseStructureConfig['standard'];
 
-            availableStructures = {};
-            // Structure: { "2": [ {categories:[], ...}, ... ], "3": ... }
-            // We need to map this to the format expected by generatePassphrase which is { seasonal: { "2": [ catList, catList ] }, standard: ... }
-            // Actually, I should update generatePassphrase to use a simpler structure lookup, but to minimize changes I will map it.
-            // Wait, generatePassphrase currently looks at P_structs.seasonal or P_structs.standard.
-            // I should simplify generatePassphrase to just look at P_structs[numWords].
-
-            // Let's populate availableStructures in a flattened way:
-            // availableStructures = { "1": [[...]], "2": [[...], [...]] }
-
-            for (const numWords in seasonConfig) {
-                 const validOptions = seasonConfig[numWords].filter(item =>
-                     item.categories.every(cat => availableCategories.includes(cat))
-                 );
-                 availableStructures[numWords] = validOptions; // Store the full objects with metadata
-            }
+            availableStructures = PasswordLogic.computeAvailableStructures(seasonConfig, activeWordBank);
 
             // Trigger UI update for Structure dropdown if it exists (Step 4 task, but good to have hook)
             if (typeof updateStructureOptions === 'function') {
@@ -631,8 +625,13 @@ function initializePage() {
         const handleGenerate = async (configObj) => {
             const { type, config } = configObj || getConfigFromUI();
             generatedPasswords = [];
+            const context = {
+                availableStructures: availableStructures,
+                activeWordBank: activeWordBank,
+                symbolRules: state.symbolRules
+            };
             for (let i = 0; i < 5; i++) {
-                generatedPasswords.push(generatePassphrase(config));
+                generatedPasswords.push(PasswordLogic.generatePassphrase(config, context));
             }
             renderResults();
             const accordion = DOMElements.customGenHeader.closest('.accordion');
