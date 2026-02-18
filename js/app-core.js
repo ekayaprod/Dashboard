@@ -179,6 +179,11 @@ const UIUtils = (() => {
         input.click();
     };
     
+    /**
+     * Reads the content of a text file.
+     * @param {File} file - The file to read.
+     * @returns {Promise<string>} A promise resolving to the file content.
+     */
     const readTextFile = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
