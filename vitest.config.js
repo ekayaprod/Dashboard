@@ -12,7 +12,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['js/**/*.js'],
-      exclude: ['js/__tests__/**', 'js/libs/**']
+      exclude: ['js/__tests__/**']
     }
   }
 })
