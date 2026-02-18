@@ -13,6 +13,7 @@
 - [ ] wordbanks/*.json (Static data, rarely changed)
 - [ ] 4 "TODO" comments found in codebase
 - [x] Removed unused `DateUtils.getSeason` and `DateUtils.formatTimeAMPM`
+- [x] Removed unused `DateUtils.formatMinutesToHM` and `DateUtils.formatMinutesToHHMMShort`
 
 ## 🛡️ Security Radar
 - [ ] 0 Vulnerabilities in dependencies (npm audit)

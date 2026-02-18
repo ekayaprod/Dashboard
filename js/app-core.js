@@ -536,28 +536,19 @@ const DateUtils = {
     },
 
     _format(m, opts = {}) {
-        if (isNaN(m) || (m < 0 && !opts.signed)) return opts.fallback || '00:00';
-        if (m === 0 && opts.short) return '0m';
+        if (isNaN(m) || (m < 0 && !opts.signed)) return '00:00';
 
-        let abs = Math.abs(m);
-        if (opts.round) abs = Math.round(abs);
-
+        const abs = Math.abs(m);
         const hrs = Math.floor(abs / 60);
         const mins = Math.floor(abs % 60);
         const pad = n => String(n).padStart(2, '0');
 
-        if (opts.short) {
-            return ((hrs ? `${hrs}h ` : '') + (mins || !hrs ? `${mins}m` : '')).trim();
-        }
-
         const sign = (opts.signed && m < 0) ? '-' : '';
-        return opts.hm ? `${sign}${hrs}:${pad(mins)}` : `${sign}${pad(hrs)}:${pad(mins)}`;
+        return `${sign}${pad(hrs)}:${pad(mins)}`;
     },
 
     formatMinutesToHHMM(m) { return this._format(m); },
-    formatMinutesToHM(m) { return this._format(m, { round: true, hm: true, fallback: '0:00' }); },
     formatMinutesToHHMM_Signed(m) { return this._format(m, { signed: true }); },
-    formatMinutesToHHMMShort(m) { return this._format(m, { short: true, fallback: '0m' }); },
 };
 
 // ============================================================================
