@@ -72,6 +72,8 @@ const DataHelpers = Object.freeze({
 // MODULE: UIUtils
 // ============================================================================
 const UIUtils = (() => {
+    const MAX_UINT32 = 0xFFFFFFFF;
+
     // Shared buffer for random number generation to avoid allocation per call
     const randomBuffer = new Uint32Array(1);
 
@@ -122,7 +124,7 @@ const UIUtils = (() => {
         if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
             try {
                 if (max <= 0) return 0;
-                const limit = 0xFFFFFFFF - (0xFFFFFFFF % max);
+                const limit = MAX_UINT32 - (MAX_UINT32 % max);
                 let r;
                 do {
                     crypto.getRandomValues(randomBuffer);
@@ -505,6 +507,9 @@ const DOMHelpers = (() => {
 // ============================================================================
 // MODULE: DateUtils
 // ============================================================================
+const MINUTES_IN_HOUR = 60;
+const PAD_LENGTH = 2;
+
 const DateUtils = {
     /**
      * Parses various time formats into total minutes.
@@ -523,14 +528,14 @@ const DateUtils = {
         if (!input) return 0;
         const trimmed = String(input).trim();
         if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
-        if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * 60;
+        if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * MINUTES_IN_HOUR;
         if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
             const parts = trimmed.split(':').map(Number);
-            return (parts[0] * 60) + parts[1];
+            return (parts[0] * MINUTES_IN_HOUR) + parts[1];
         }
         if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
             const parts = trimmed.split(':').map(Number);
-            return (parts[0] * 60) + parts[1] + (parts[2] / 60);
+            return (parts[0] * MINUTES_IN_HOUR) + parts[1] + (parts[2] / MINUTES_IN_HOUR);
         }
         return 0;
     },
@@ -539,9 +544,9 @@ const DateUtils = {
         if (isNaN(m) || (m < 0 && !opts.signed)) return '00:00';
 
         const abs = Math.abs(m);
-        const hrs = Math.floor(abs / 60);
-        const mins = Math.floor(abs % 60);
-        const pad = n => String(n).padStart(2, '0');
+        const hrs = Math.floor(abs / MINUTES_IN_HOUR);
+        const mins = Math.floor(abs % MINUTES_IN_HOUR);
+        const pad = n => String(n).padStart(PAD_LENGTH, '0');
 
         const sign = (opts.signed && m < 0) ? '-' : '';
         return `${sign}${pad(hrs)}:${pad(mins)}`;

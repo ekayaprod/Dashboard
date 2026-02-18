@@ -34,6 +34,10 @@ const RECIPIENT_TYPE_TO = 1;
 const RECIPIENT_TYPE_CC = 2;
 const RECIPIENT_TYPE_BCC = 3;
 
+const OLE_SIGNATURE = 0xE011CFD0;
+const MIN_OLE_FILE_SIZE = 512;
+const FILETIME_EPOCH_DIFF = 116444736000000000n;
+
 // --- Module-Level Caches ---
 let _textDecoderUtf16 = null;
 let _textDecoderWin1252 = null;
@@ -203,7 +207,6 @@ function dataViewToString(view, encoding) {
 function filetimeToDate(low, high) {
     if (typeof BigInt === 'undefined') return null;
     try {
-        const FILETIME_EPOCH_DIFF = 116444736000000000n;
         let filetime = (BigInt(high) << 32n) | BigInt(low);
         return new Date(Number((filetime - FILETIME_EPOCH_DIFF) / 10000n));
     } catch (e) { return null; }
@@ -327,8 +330,8 @@ class MsgReaderParser {
     }
 
     readHeader() {
-        if (this.buffer.byteLength < 512) throw new Error('File too small to be a valid OLE file');
-        if (this.dataView.getUint32(0, true) !== 0xE011CFD0) throw new Error('Invalid OLE file signature.');
+        if (this.buffer.byteLength < MIN_OLE_FILE_SIZE) throw new Error('File too small to be a valid OLE file');
+        if (this.dataView.getUint32(0, true) !== OLE_SIGNATURE) throw new Error('Invalid OLE file signature.');
         this.header = {
             sectorShift: this.dataView.getUint16(30, true),
             miniSectorShift: this.dataView.getUint16(32, true),
@@ -764,7 +767,7 @@ const MsgReader = {
         let reader = new MsgReaderParser(arrayBuffer);
         if (reader.dataView.byteLength < 8) return reader.parseMime();
         let sig = reader.dataView.getUint32(0, true);
-        return (sig === 0xE011CFD0) ? reader.parse() : reader.parseMime();
+        return (sig === OLE_SIGNATURE) ? reader.parse() : reader.parseMime();
     }
 };
 

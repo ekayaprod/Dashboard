@@ -89,6 +89,15 @@ function initializePage() {
     const TEXTAREA_MAX_HEIGHT = 200;
     const SEARCH_FIELDS = ['keyword', 'assignmentGroup', 'phoneLogPath'];
 
+    const ANIMATION_DURATION_MS = 300;
+    const SCROLL_DEBOUNCE_DELAY_MS = 500;
+    const RENDER_DEBOUNCE_DELAY_MS = 150;
+    const SCROLL_TOP_VISIBILITY_THRESHOLD = 300;
+    const ANIMATION_DELAY_INCREMENT_S = 0.05;
+    const SENTINEL_ROOT_MARGIN = '200px';
+    const MAX_IMPORT_ERRORS_DISPLAY = 10;
+    const MAX_ANIMATED_ITEMS = 10;
+
     // ============================================================================
     // INITIALIZATION ROUTINE
     // ============================================================================
@@ -208,7 +217,7 @@ function initializePage() {
                             renderBatch(true);
                         }
                     }
-                }, { root: null, rootMargin: '200px' });
+                }, { root: null, rootMargin: SENTINEL_ROOT_MARGIN });
             };
 
             const focusAndScroll = (elementId) => {
@@ -287,9 +296,9 @@ function initializePage() {
                      if (append) el.classList.add('fade-in');
 
                      // Artisan: Staggered animation for initial load
-                     if (!append && index < 10) {
+                     if (!append && index < MAX_ANIMATED_ITEMS) {
                          el.classList.add('fade-in');
-                         el.style.animationDelay = `${index * 0.05}s`;
+                         el.style.animationDelay = `${index * ANIMATION_DELAY_INCREMENT_S}s`;
                      }
                      return el;
                 };
@@ -660,7 +669,7 @@ function initializePage() {
                             if (currentMatches.length === 0) {
                                 renderAll();
                             }
-                        }, 300); // Duration matches CSS animation
+                        }, ANIMATION_DURATION_MS); // Duration matches CSS animation
                     } else {
                         // Fallback if element not found in DOM
                         state.items.splice(index, 1);
@@ -695,8 +704,8 @@ function initializePage() {
                 const toAdd = actions.filter(a => a.action === 'add').length;
                 const toOverwrite = actions.filter(a => a.action === 'overwrite').length;
 
-                const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
-                const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
+                const errorList = importErrors.slice(0, MAX_IMPORT_ERRORS_DISPLAY).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                const moreErrors = importErrors.length > MAX_IMPORT_ERRORS_DISPLAY ? `<li>... and ${importErrors.length - MAX_IMPORT_ERRORS_DISPLAY} more errors.</li>` : '';
 
                 let summaryHtml = `<p>CSV file processed:</p>
                     <ul style="text-align: left; margin: 0.5rem 0 1rem 1.5rem;">
@@ -905,9 +914,9 @@ function initializePage() {
                         state.ui.searchTerm = DOMElements.searchInput.value.trim();
                         saveState();
                     }
-                }, 300);
+                }, ANIMATION_DURATION_MS);
 
-                const debouncedRender = SafeUI.debounce(renderAll, 150);
+                const debouncedRender = SafeUI.debounce(renderAll, RENDER_DEBOUNCE_DELAY_MS);
 
                 DOMElements.searchInput.addEventListener('input', () => {
                     setLoading(true);
@@ -980,12 +989,12 @@ function initializePage() {
                         state.ui.scrollTop = DOMElements.localResults.scrollTop;
                         saveState();
                     }
-                }, 500));
+                }, SCROLL_DEBOUNCE_DELAY_MS));
 
                 const scrollToTopBtn = document.getElementById('scroll-to-top');
                 if (scrollToTopBtn) {
                     DOMElements.localResults.addEventListener('scroll', SafeUI.debounce(() => {
-                        scrollToTopBtn.classList.toggle('visible', DOMElements.localResults.scrollTop > 300);
+                        scrollToTopBtn.classList.toggle('visible', DOMElements.localResults.scrollTop > SCROLL_TOP_VISIBILITY_THRESHOLD);
                     }, 200));
                     scrollToTopBtn.addEventListener('click', () => {
                         DOMElements.localResults.scrollTo({ top: 0, behavior: 'smooth' });

@@ -255,6 +255,8 @@ const DataValidator = (() => {
 })();
 
 const DataConverter = (() => {
+    const MAX_DISPLAY_ERRORS = 10;
+
     const _parseCsvLine = (line) => {
         const values = [];
         let currentVal = '';
@@ -410,8 +412,8 @@ const DataConverter = (() => {
                     return obj;
                 });
 
-                if (errors.length > 10) {
-                    errors.splice(10, errors.length - 10, `... and ${errors.length - 10} more errors.`);
+                if (errors.length > MAX_DISPLAY_ERRORS) {
+                    errors.splice(MAX_DISPLAY_ERRORS, errors.length - MAX_DISPLAY_ERRORS, `... and ${errors.length - MAX_DISPLAY_ERRORS} more errors.`);
                 }
 
                 return { data, errors };
