@@ -469,6 +469,11 @@ function initializePage() {
             }
         };
 
+        /**
+         * Loads and analyzes the appropriate word bank based on the selected season.
+         * Handles fetching seasonal data files and falls back to the standard bank on failure.
+         * Populates `availableStructures` based on available categories.
+         */
         const analyzeWordBank = async () => {
             const selectedSeason = DOMElements.seasonalBankSelect.value;
             updateSeasonDisplay();
@@ -498,7 +503,7 @@ function initializePage() {
                     activeWordBank = seasonalBankData.wordBank;
 
                 } catch (err) {
-                    console.error(err);
+                    console.error(`[analyzeWordBank] Failed to load seasonal wordbank "${activeSeasonKey}":`, err);
                     SafeUI.showToast(`Error loading ${activeSeasonKey} wordbank. Using base words only.`);
                     activeSeasonKey = 'standard';
                 }
