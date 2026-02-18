@@ -534,11 +534,11 @@ const DateUtils = {
         const trimmed = String(input).trim();
         if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
         if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * MINUTES_IN_HOUR;
-        if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+        if (/^\d{1,2}:\d{1,2}$/.test(trimmed)) {
             const parts = trimmed.split(':').map(Number);
             return (parts[0] * MINUTES_IN_HOUR) + parts[1];
         }
-        if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
+        if (/^\d{1,2}:\d{1,2}:\d{1,2}$/.test(trimmed)) {
             const parts = trimmed.split(':').map(Number);
             return (parts[0] * MINUTES_IN_HOUR) + parts[1] + (parts[2] / MINUTES_IN_HOUR);
         }

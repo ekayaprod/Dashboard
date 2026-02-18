@@ -35,6 +35,10 @@ describe('app-core.js', () => {
     expect(window.DateUtils.parseTimeToMinutes('1.5')).toBe(90)
     // H:MM:SS
     expect(window.DateUtils.parseTimeToMinutes('1:30:30')).toBe(90.5)
+    // H:M (Single digit minute)
+    expect(window.DateUtils.parseTimeToMinutes('1:5')).toBe(65)
+    // H:M:SS
+    expect(window.DateUtils.parseTimeToMinutes('1:5:30')).toBe(65.5)
   })
 
   it('should verify DateUtils formatting functions', () => {
