@@ -363,17 +363,17 @@ function initializePage() {
         // ====================================================================
 
         const loadWordBank = async () => {
-            if (!window.fetch) throw new Error("Browser does not support fetch API");
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                const response = await fetch('wordbanks/wordbank-base.json', { signal: controller.signal });
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                const data = await SafeUI.fetchJSON(
+                    'wordbanks/wordbank-base.json',
+                    { signal: controller.signal },
+                    (d) => d && typeof d.wordBank === 'object'
+                );
+
                 clearTimeout(timeoutId);
-
-                if (!response.ok) throw new Error(`Failed to fetch 'wordbanks/wordbank-base.json'`);
-                const data = await response.json();
-                if (!data.wordBank) throw new Error("Invalid base wordbank file structure.");
-
                 memoryWordBank = data.wordBank;
                 return true;
             } catch (err) {
@@ -492,12 +492,15 @@ function initializePage() {
             if (activeSeasonKey !== 'standard') {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 3000);
-                    const response = await fetch(`wordbanks/wordbank-${activeSeasonKey}.json`, { signal: controller.signal });
-                    clearTimeout(timeoutId);
+                    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-                    if (!response.ok) throw new Error(`File not found or failed to load (Status: ${response.status})`);
-                    const seasonalBankData = await response.json();
+                    const seasonalBankData = await SafeUI.fetchJSON(
+                        `wordbanks/wordbank-${activeSeasonKey}.json`,
+                        { signal: controller.signal },
+                        (d) => d && typeof d.wordBank === 'object'
+                    );
+
+                    clearTimeout(timeoutId);
 
                     // STRICT SWITCHING: Replace activeWordBank entirely with seasonal data
                     activeWordBank = seasonalBankData.wordBank;
