@@ -12,6 +12,7 @@
 ## 🧹 Debris Field
 - [ ] wordbanks/*.json (Static data, rarely changed)
 - [ ] 4 "TODO" comments found in codebase
+- [x] Removed unused `DateUtils.getSeason` and `DateUtils.formatTimeAMPM`
 
 ## 🛡️ Security Radar
 - [ ] 0 Vulnerabilities in dependencies (npm audit)
