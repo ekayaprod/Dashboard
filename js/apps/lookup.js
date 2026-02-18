@@ -23,7 +23,7 @@ const LookupHelpers = {
      */
     validateEntry: (entry) => {
         const errors = [];
-        if (!entry.keyword?.trim()) errors.push('Keyword is required');
+        if (!entry.keyword?.trim()) errors.push('Keyword required');
         return { valid: errors.length === 0, errors };
     },
 
@@ -61,13 +61,13 @@ const LookupHelpers = {
      * @returns {{valid: boolean, message: string}} Validation result.
      */
     validateSearchUrl: (url) => {
-        if (!url) return { valid: false, message: 'URL Template cannot be empty.' };
-        if (!/\{query\}/i.test(url)) return { valid: false, message: 'The URL must contain the {query} placeholder.' };
+        if (!url) return { valid: false, message: 'URL required' };
+        if (!/\{query\}/i.test(url)) return { valid: false, message: 'Must contain {query}' };
         try {
             const testUrl = url.replace(/\{query\}/ig, 'test');
             const urlObj = new URL(testUrl);
             if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                return { valid: false, message: 'URL must use http:// or https:// protocol.' };
+                return { valid: false, message: 'Must use http:// or https://' };
             }
         } catch (e) {
             return { valid: false, message: 'The URL format is invalid.' };
@@ -229,7 +229,7 @@ function initializePage() {
 
 
             const getEmptyMessage = (lowerTerm) => {
-                if (isEditMode) return 'No entries in the database. Click "+ Create Entry".';
+                if (isEditMode) return 'No entries. Create one?';
 
                 if (lowerTerm) {
                     const escapedTerm = SafeUI.escapeHTML(lowerTerm);
@@ -247,7 +247,7 @@ function initializePage() {
                 return `
                     <div style="text-align: center; padding: 2rem 1rem; opacity: 0.7;">
                         <div style="font-size: 2rem; margin-bottom: 0.5rem;">⌨️</div>
-                        <p style="margin: 0;">Type to search local entries...</p>
+                        <p style="margin: 0;">Search entries...</p>
                     </div>
                 `;
             };
@@ -591,7 +591,7 @@ function initializePage() {
                     SearchHelper.createIndex([itemToUpdate], SEARCH_FIELDS);
 
                     sortAndSaveState();
-                    clearEditStateAndRender("Entry saved.");
+                    clearEditStateAndRender("Saved.");
                 };
 
                 if (existingEntry) {
@@ -606,7 +606,7 @@ function initializePage() {
                                     existingEntry.keyword = LookupHelpers.keywordUtils.merge(existingEntry.keyword, keyword);
                                     handleDelete(id, true);
                                     sortAndSaveState();
-                                    clearEditStateAndRender("Keywords merged.");
+                                    clearEditStateAndRender("Merged.");
                                 }
                             }
                         ])
@@ -654,7 +654,7 @@ function initializePage() {
                             sortAndSaveState();
 
                             // 6. Feedback
-                            if (!skipConfirm) SafeUI.showToast("Entry deleted.");
+                            if (!skipConfirm) SafeUI.showToast("Deleted.");
 
                             // 7. Handle Empty/Edge Cases
                             if (currentMatches.length === 0) {
@@ -665,7 +665,7 @@ function initializePage() {
                         // Fallback if element not found in DOM
                         state.items.splice(index, 1);
                         sortAndSaveState();
-                        clearEditStateAndRender(skipConfirm ? null : "Entry deleted.");
+                        clearEditStateAndRender(skipConfirm ? null : "Deleted.");
                     }
                 };
 
@@ -710,7 +710,7 @@ function initializePage() {
                                 ${errorList}${moreErrors}
                             </ul>`;
                 }
-                summaryHtml += `<p>This cannot be undone.</p>`;
+                summaryHtml += `<p>This is permanent.</p>`;
 
                 SafeUI.showModal("Confirm Import", summaryHtml,
                     modalActions.cancelAndConfirm('Import Data', () => {
