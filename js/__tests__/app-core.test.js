@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 
@@ -99,6 +99,112 @@ describe('app-core.js', () => {
       Object.values(icons).forEach((icon) => {
         expect(icon).toContain('aria-hidden="true"')
       })
+    })
+  })
+
+  describe('SafeUI.fetchJSON', () => {
+    const fetchJSON = (url, opts, validator) => window.SafeUI.fetchJSON(url, opts, validator)
+
+    // Mock fetch
+    const originalFetch = global.fetch
+    let mockFetch
+
+    beforeEach(() => {
+        mockFetch = vi.fn()
+        global.fetch = mockFetch
+        // reduce initial delay for tests to speed up
+        // Note: We cannot easily change the internal INITIAL_DELAY variable since it's inside the closure.
+        // We will mock setTimeout to fast-forward time?
+        // Or just rely on the fact that we might be mocking Promise?
+        // No, fetchJSON uses `await new Promise(resolve => setTimeout(resolve, delay));`
+        // We should use fake timers.
+        vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+        global.fetch = originalFetch
+        vi.useRealTimers()
+    })
+
+    it('should return parsed JSON on success', async () => {
+        const mockData = { success: true }
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => mockData,
+            status: 200
+        })
+
+        const result = await fetchJSON('http://test.com')
+        expect(result).toEqual(mockData)
+        expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should retry on 500 error and succeed', async () => {
+        const mockData = { success: true }
+        mockFetch
+            .mockResolvedValueOnce({ status: 500, ok: false })
+            .mockResolvedValueOnce({ status: 500, ok: false })
+            .mockResolvedValueOnce({ ok: true, json: async () => mockData, status: 200 })
+
+        // We need to advance timers for retries
+        const promise = fetchJSON('http://test.com')
+
+        // Advance for first retry
+        await vi.advanceTimersByTimeAsync(1000)
+        // Advance for second retry
+        await vi.advanceTimersByTimeAsync(2000)
+
+        const result = await promise
+        expect(result).toEqual(mockData)
+        expect(mockFetch).toHaveBeenCalledTimes(3)
+    })
+
+    it('should retry on 429 error', async () => {
+        const mockData = { success: true }
+        mockFetch
+            .mockResolvedValueOnce({ status: 429, ok: false })
+            .mockResolvedValueOnce({ ok: true, json: async () => mockData, status: 200 })
+
+        const promise = fetchJSON('http://test.com')
+
+        // Advance for first retry
+        await vi.advanceTimersByTimeAsync(1000)
+
+        const result = await promise
+        expect(result).toEqual(mockData)
+        expect(mockFetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('should NOT retry on 404 error', async () => {
+        mockFetch.mockResolvedValue({ status: 404, ok: false })
+
+        await expect(fetchJSON('http://test.com')).rejects.toThrow('Request failed with status 404')
+        expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should fail if validation fails', async () => {
+        const mockData = { valid: false }
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => mockData,
+            status: 200
+        })
+
+        const validator = (d) => d.valid === true
+
+        await expect(fetchJSON('http://test.com', {}, validator)).rejects.toThrow('Response validation failed')
+    })
+
+    it('should fail if JSON is invalid', async () => {
+         mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => { throw new Error('Bad JSON') },
+            status: 200
+        })
+
+        await expect(fetchJSON('http://test.com')).rejects.toThrow('Invalid JSON response')
+        // Should not retry on JSON error
+        expect(mockFetch).toHaveBeenCalledTimes(1)
     })
   })
 })

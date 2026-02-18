@@ -199,6 +199,78 @@ const UIUtils = (() => {
         }
     };
 
+    /**
+     * Enhanced fetch with retry logic and JSON parsing.
+     *
+     * @param {string} url - The URL to fetch.
+     * @param {Object} [options] - Fetch options.
+     * @param {Function} [validator] - Optional validator function (data => boolean).
+     * @returns {Promise<any>} The parsed JSON response.
+     */
+    const fetchJSON = async (url, options = {}, validator = null) => {
+        const MAX_RETRIES = 3;
+        const INITIAL_DELAY = 1000;
+
+        let lastError;
+
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                const response = await fetch(url, options);
+
+                if (response.ok) {
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (e) {
+                        throw new Error(`Invalid JSON response: ${e.message}`);
+                    }
+
+                    if (validator && typeof validator === 'function') {
+                        if (!validator(data)) {
+                            throw new Error('Response validation failed');
+                        }
+                    }
+                    return data;
+                }
+
+                // Handle 429 (Too Many Requests) and 5xx (Server Error)
+                if (response.status === 429 || response.status >= 500) {
+                     const msg = `Request failed with status ${response.status}`;
+                     // If it's the last attempt, throw
+                     if (attempt === MAX_RETRIES) throw new Error(msg);
+                     throw new Error(msg);
+                }
+
+                // Other 4xx errors - do not retry
+                throw new Error(`Request failed with status ${response.status}`);
+
+            } catch (error) {
+                lastError = error;
+
+                const isRetryable =
+                    error.message.includes('NetworkError') ||
+                    error.message.includes('Failed to fetch') ||
+                    error.message.includes('status 429') ||
+                    error.message.includes('status 5'); // 500, 502, etc.
+
+                // Stop retrying if not retryable, or if it's a validation/parsing error
+                if (!isRetryable || attempt === MAX_RETRIES || error.message.includes('Invalid JSON') || error.message.includes('validation failed')) {
+                    throw lastError;
+                }
+
+                const delay = INITIAL_DELAY * Math.pow(2, attempt);
+                // Respect AbortSignal if present
+                if (options.signal && options.signal.aborted) {
+                    throw new Error('Request aborted');
+                }
+
+                console.warn(`[fetchJSON] Attempt ${attempt + 1} failed. Retrying in ${delay}ms...`, error);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        throw lastError;
+    };
+
     const readJSONFile = (file) => {
         return readTextFile(file)
             .then(text => {
@@ -341,6 +413,7 @@ const UIUtils = (() => {
         readJSONFile,
         readTextFile,
         parseJSON,
+        fetchJSON,
         createStateManager,
         hideModal: _hideModal,
         showModal: _showModal,
@@ -376,6 +449,7 @@ const SafeUI = (() => {
         readJSONFile: (file) => UIUtils.readJSONFile(file),
         readTextFile: (file) => UIUtils.readTextFile(file),
         parseJSON: (str, success, error) => UIUtils.parseJSON(str, success, error),
+        fetchJSON: (url, options, validator) => UIUtils.fetchJSON(url, options, validator),
         createStateManager: (key, defaults, version, onCorruption) => UIUtils.createStateManager(key, defaults, version, onCorruption),
         validators: UIUtils.validators
     };
