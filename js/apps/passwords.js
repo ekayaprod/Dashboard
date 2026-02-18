@@ -125,6 +125,15 @@ function initializePage() {
         settings: {}
     };
 
+    const EMPTY_STATE_HTML = `
+        <div class="empty-state-container">
+            <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <p class="empty-state-text">Generate a password to get started.</p>
+        </div>
+    `;
+
     (async () => {
         try {
         const ctx = await AppLifecycle.initPage({
@@ -182,10 +191,15 @@ function initializePage() {
             }
 
             const header = document.getElementById('custom-gen-header');
+            const toggleBtn = document.getElementById('accordion-toggle');
             const accordion = header ? header.closest('.accordion') : null;
             if (!accordion) return;
+
             const isExpanded = accordion.classList.toggle('expanded');
+
             if (header) header.setAttribute('aria-expanded', isExpanded);
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', isExpanded);
+
             try { localStorage.setItem(ACCORDION_STATE_KEY, isExpanded); } catch (err) { }
         };
 
@@ -201,9 +215,11 @@ function initializePage() {
                 if (expanded) {
                     accordion.classList.add('expanded');
                     DOMElements.customGenHeader.setAttribute('aria-expanded', 'true');
+                    if (DOMElements.accordionToggle) DOMElements.accordionToggle.setAttribute('aria-expanded', 'true');
                 } else {
                     accordion.classList.remove('expanded');
                     DOMElements.customGenHeader.setAttribute('aria-expanded', 'false');
+                    if (DOMElements.accordionToggle) DOMElements.accordionToggle.setAttribute('aria-expanded', 'false');
                 }
             }
             if (DOMElements.accordionToggle) {
@@ -481,6 +497,9 @@ function initializePage() {
             const selectedSeason = DOMElements.seasonalBankSelect.value;
             updateSeasonDisplay();
 
+            // Optimistic UI: Show loading
+            SafeUI.showToast("Loading theme data...", 1000);
+
             const loaded = await loadWordBank();
             if (!loaded) return;
 
@@ -552,10 +571,12 @@ function initializePage() {
             ListRenderer.renderList({
                 container: DOMElements.resultsList,
                 items: generatedPasswords,
-                emptyMessage: 'Click "Generate" or a button above.',
-                createItemElement: (pass) => {
+                emptyMessage: EMPTY_STATE_HTML,
+                createItemElement: (pass, index) => {
                     const li = document.createElement('li');
-                    li.className = 'result-item';
+                    li.className = 'result-item animate-in';
+                    li.style.animationDelay = `${index * 50}ms`;
+
                     const text = document.createElement('span');
                     text.textContent = pass;
                     if (pass.startsWith('[')) text.className = 'error';

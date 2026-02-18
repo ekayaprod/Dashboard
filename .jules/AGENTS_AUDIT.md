@@ -32,5 +32,5 @@
 
 ## 🎨 UX/A11y Friction
 - [ ] lookup.html: Button "btn-settings" missing aria-label
-- [ ] passwords.html: Button "btn-settings" missing aria-label
+- [x] passwords.html: Button "btn-settings" missing aria-label
 - [ ] 37 buttons found with potential accessibility improvements
