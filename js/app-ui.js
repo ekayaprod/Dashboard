@@ -8,8 +8,8 @@ const UIPatterns = (() => {
     return {
         confirmDelete: (itemType, itemName, onConfirm) => {
             SafeUI.showModal(
-                `Delete ${itemType}`,
-                `<p>Are you sure you want to delete "${SafeUI.escapeHTML(itemName)}"?</p><p>This cannot be undone.</p>`,
+                `Delete`,
+                `<p>Delete "${SafeUI.escapeHTML(itemName)}"?</p><p>This is permanent.</p>`,
                 [
                     { label: 'Cancel' },
                     { label: 'Delete', class: 'button-danger', callback: onConfirm }
@@ -31,7 +31,7 @@ const UIPatterns = (() => {
         confirmUnsavedChanges: (onDiscard) => {
             SafeUI.showModal(
                 'Unsaved Changes',
-                '<p>You have unsaved changes. Discard them?</p>',
+                '<p>Discard unsaved changes?</p>',
                 [
                     { label: 'Cancel' },
                     { label: 'Discard', class: 'button-danger', callback: onDiscard }
@@ -46,9 +46,9 @@ const UIPatterns = (() => {
             return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
         },
 
-        copyToClipboard: async (text, successMessage = 'Copied to clipboard!') => {
+        copyToClipboard: async (text, successMessage = 'Copied!') => {
             const success = await SafeUI.copyToClipboard(text);
-            SafeUI.showToast(success ? successMessage : 'Failed to copy.');
+            SafeUI.showToast(success ? successMessage : 'Copy failed.');
             return success;
         }
     };
@@ -500,8 +500,8 @@ const SharedSettingsModal = (() => {
                 <label>Advanced Data Management (All Apps)</label>
                 <p class="form-help">Use these tools for disaster recovery. This will backup/restore *all* data for *all* apps.</p>
                 <div class="button-group">
-                    <button id="modal-backup-btn" class="btn">Backup ALL (JSON)</button>
-                    <button id="modal-restore-btn" class="btn">Restore ALL (JSON)</button>
+                    <button id="modal-backup-btn" class="btn">Backup All</button>
+                    <button id="modal-restore-btn" class="btn">Restore All</button>
                 </div>
             </div>
         `;
@@ -526,7 +526,7 @@ const SharedSettingsModal = (() => {
                     onRestore: (dataToRestore) => {
                         UIPatterns.confirmAction(
                             "Restore Data",
-                            "<p>This will overwrite all data for this app. This cannot be undone.</p>",
+                            "<p>Overwrite all data? This is permanent.</p>",
                             "Restore",
                             () => {
                                 config.onRestoreCallback(dataToRestore);

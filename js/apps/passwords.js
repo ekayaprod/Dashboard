@@ -652,7 +652,7 @@ function initializePage() {
             window.QuickListManager.init({
                 container: DOMElements.quickActionsContainer,
                 items: combinedItems,
-                emptyMessage: "No quick actions. Save a preset or add a quick-copy password.",
+                emptyMessage: "No quick actions yet.",
                 getItemName: (item) => item.name,
                 onItemClick: async (item) => {
                     if (item.type === 'preset') {
@@ -703,22 +703,22 @@ function initializePage() {
                             const name = document.getElementById('qc-name').value.trim();
                             const value = document.getElementById('qc-value').value;
                             if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 50)) {
-                                SafeUI.showValidationError('Invalid Name', 'Name must be 1-50 characters.', 'qc-name');
+                                SafeUI.showValidationError('Invalid Name', 'Name: 1-50 chars.', 'qc-name');
                                 return false;
                             }
                             if (!SafeUI.validators.notEmpty(value)) {
-                                SafeUI.showValidationError('Invalid Password', 'Password value cannot be empty.', 'qc-value');
+                                SafeUI.showValidationError('Invalid Password', 'Value required.', 'qc-value');
                                 return false;
                             }
                             if (DataValidator.hasDuplicate(state.quickCopyItems, 'name', name)) {
-                                SafeUI.showValidationError('Duplicate Name', 'A password with this name already exists.', 'qc-name');
+                                SafeUI.showValidationError('Duplicate Name', 'Name exists.', 'qc-name');
                                 return false;
                             }
                             const newItem = { id: SafeUI.generateId(), name: name, value: value };
                             state.quickCopyItems.push(newItem);
                             saveState();
                             initQuickActions();
-                            SafeUI.showToast('Password saved!');
+                            SafeUI.showToast('Saved.');
                         }
                     }
                 ]
@@ -735,18 +735,18 @@ function initializePage() {
                     callback: () => {
                         const name = document.getElementById('preset-name').value.trim();
                         if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 50)) {
-                            SafeUI.showValidationError('Invalid Name', 'Name must be 1-50 characters.', 'preset-name');
+                            SafeUI.showValidationError('Invalid Name', 'Name: 1-50 chars.', 'preset-name');
                             return false;
                         }
                         if (DataValidator.hasDuplicate(state.generatorPresets, 'name', name)) {
-                            SafeUI.showValidationError('Duplicate Name', 'A preset with this name already exists.', 'preset-name');
+                            SafeUI.showValidationError('Duplicate Name', 'Name exists.', 'preset-name');
                             return false;
                         }
                         const newPreset = { id: SafeUI.generateId(), name: name, config: config };
                         state.generatorPresets.push(newPreset);
                         saveState();
                         initQuickActions();
-                        SafeUI.showToast('Preset saved!');
+                        SafeUI.showToast('Saved.');
                     }
                 }
             ]);

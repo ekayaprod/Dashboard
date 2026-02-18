@@ -217,7 +217,7 @@ function initializePage() {
                     if (importErrors.length > 0) {
                         summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p><ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">${errorList}${moreErrors}</ul>`;
                     }
-                    summaryHtml += `<p>Do you want to apply these changes? This cannot be undone.</p>`;
+                    summaryHtml += `<p>Apply changes? This is permanent.</p>`;
                     SafeUI.showModal("Confirm CSV Import", summaryHtml, [
                         { label: 'Cancel' },
                         {
