@@ -76,6 +76,95 @@ const LookupHelpers = {
     }
 };
 
+const LookupRenderer = {
+    getEmptyMessage: (lowerTerm, isEditMode) => {
+        if (isEditMode) return 'No entries. Create one?';
+
+        if (lowerTerm) {
+            const escapedTerm = SafeUI.escapeHTML(lowerTerm);
+            return `
+                <div class="empty-search-state" style="text-align: center; padding: 2rem 1rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;">🔍</div>
+                    <h3 style="margin: 0 0 1rem 0; font-weight: 500;">No matches for "${escapedTerm}"</h3>
+                    <button class="btn btn-primary" data-action="create-from-search">
+                        + Create "${escapedTerm}"
+                    </button>
+                </div>
+            `;
+        }
+
+        return `
+            <div style="text-align: center; padding: 2rem 1rem; opacity: 0.7;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⌨️</div>
+                <p style="margin: 0;">Search entries...</p>
+            </div>
+        `;
+    },
+
+    createItemElement: (item, searchTerm) => {
+        const li = document.createElement('li');
+        li.className = 'result-item';
+        li.dataset.id = item.id;
+
+        const createDataRow = (label, value, highlightTerm) => {
+            if (!value) return '';
+            const highlightedValue = highlightTerm ? UIPatterns.highlightSearchTerm(value, highlightTerm) : SafeUI.escapeHTML(value);
+            return `
+                <div class="item-row">
+                    <strong>${label}:</strong>
+                    <div class="item-value">
+                        <span>${highlightedValue}</span>
+                        <button class="btn-copy btn-icon" title="Copy ${label}" aria-label="Copy ${label}" data-copy="${SafeUI.escapeHTML(value)}">
+                            ${SafeUI.SVGIcons.copy}
+                        </button>
+                    </div>
+                </div>
+            `;
+        };
+
+        const createNotesRow = (notes) => {
+            if (!notes) return '';
+            return `
+                <div class="item-row-notes">
+                    <strong>Notes:</strong>
+                    <span class="item-notes-text">${SafeUI.escapeHTML(notes)}</span>
+                </div>
+            `;
+        };
+
+        li.innerHTML = `
+            <div class="item-header">
+                <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
+                <div class="item-actions">
+                    <button class="btn-edit btn-icon" title="Edit" aria-label="Edit Entry">${SafeUI.SVGIcons.pencil}</button>
+                    <button class="btn-delete btn-icon" title="Delete" aria-label="Delete Entry">${SafeUI.SVGIcons.trash}</button>
+                </div>
+            </div>
+            <div class="item-content">
+                ${createDataRow('Group', item.assignmentGroup, searchTerm)}
+                ${createDataRow('Path', item.phoneLogPath, searchTerm)}
+                ${createNotesRow(item.notes)}
+            </div>
+        `;
+        return li;
+    }
+};
+
+const LookupCSV = {
+    validateRow: (row, index, existingItems) => {
+        const entry = LookupHelpers.createEntry(row);
+        const validation = LookupHelpers.validateEntry(entry);
+        if (!validation.valid) return { error: `Row ${index + 2}: ${validation.errors.join(', ')}` };
+
+        const contentKey = `${entry.keyword.toLowerCase()}|${entry.assignmentGroup.toLowerCase()}`;
+        if (entry.id && existingItems.some(item => item.id === entry.id)) return { action: 'overwrite', entry: entry };
+        if (existingItems.some(item => `${item.keyword.toLowerCase()}|${item.assignmentGroup.toLowerCase()}` === contentKey)) {
+            return { error: `Row ${index + 2}: A identical entry (Keyword + Group) already exists. Row skipped.` };
+        }
+        return { action: 'add', entry: entry };
+    }
+};
+
 AppLifecycle.onBootstrap(initializePage);
 
 function initializePage() {
@@ -237,30 +326,6 @@ function initializePage() {
             };
 
 
-            const getEmptyMessage = (lowerTerm) => {
-                if (isEditMode) return 'No entries. Create one?';
-
-                if (lowerTerm) {
-                    const escapedTerm = SafeUI.escapeHTML(lowerTerm);
-                    return `
-                        <div class="empty-search-state" style="text-align: center; padding: 2rem 1rem;">
-                            <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;">🔍</div>
-                            <h3 style="margin: 0 0 1rem 0; font-weight: 500;">No matches for "${escapedTerm}"</h3>
-                            <button class="btn btn-primary" data-action="create-from-search">
-                                + Create "${escapedTerm}"
-                            </button>
-                        </div>
-                    `;
-                }
-
-                return `
-                    <div style="text-align: center; padding: 2rem 1rem; opacity: 0.7;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">⌨️</div>
-                        <p style="margin: 0;">Search entries...</p>
-                    </div>
-                `;
-            };
-
             const modalActions = {
                 cancelAndConfirm: (label, callback, isDangerous = false) => [
                     { label: 'Cancel' },
@@ -291,7 +356,7 @@ function initializePage() {
                 const createAnimatedItemElement = (item, index) => {
                      const el = (isEditMode || (currentEditState.id === item.id)) ?
                         createEditForm(item) :
-                        createItemElement(item, searchTerm);
+                        LookupRenderer.createItemElement(item, searchTerm);
 
                      if (append) el.classList.add('fade-in');
 
@@ -306,7 +371,7 @@ function initializePage() {
                 ListRenderer.renderList({
                     container: DOMElements.localResults,
                     items: batch,
-                    emptyMessage: getEmptyMessage(searchTerm.toLowerCase()),
+                    emptyMessage: LookupRenderer.getEmptyMessage(searchTerm.toLowerCase(), isEditMode),
                     createItemElement: createAnimatedItemElement,
                     append: append
                 });
@@ -434,54 +499,6 @@ function initializePage() {
                     });
                 });
             };
-
-            function createItemElement(item, searchTerm) {
-                const li = document.createElement('li');
-                li.className = 'result-item';
-                li.dataset.id = item.id;
-
-                const createDataRow = (label, value, highlightTerm) => {
-                    if (!value) return '';
-                    const highlightedValue = highlightTerm ? UIPatterns.highlightSearchTerm(value, highlightTerm) : SafeUI.escapeHTML(value);
-                    return `
-                        <div class="item-row">
-                            <strong>${label}:</strong>
-                            <div class="item-value">
-                                <span>${highlightedValue}</span>
-                                <button class="btn-copy btn-icon" title="Copy ${label}" aria-label="Copy ${label}" data-copy="${SafeUI.escapeHTML(value)}">
-                                    ${SafeUI.SVGIcons.copy}
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                };
-
-                const createNotesRow = (notes) => {
-                    if (!notes) return '';
-                    return `
-                        <div class="item-row-notes">
-                            <strong>Notes:</strong>
-                            <span class="item-notes-text">${SafeUI.escapeHTML(notes)}</span>
-                        </div>
-                    `;
-                };
-
-                li.innerHTML = `
-                    <div class="item-header">
-                        <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
-                        <div class="item-actions">
-                            <button class="btn-edit btn-icon" title="Edit" aria-label="Edit Entry">${SafeUI.SVGIcons.pencil}</button>
-                            <button class="btn-delete btn-icon" title="Delete" aria-label="Delete Entry">${SafeUI.SVGIcons.trash}</button>
-                        </div>
-                    </div>
-                    <div class="item-content">
-                        ${createDataRow('Group', item.assignmentGroup, searchTerm)}
-                        ${createDataRow('Path', item.phoneLogPath, searchTerm)}
-                        ${createNotesRow(item.notes)}
-                    </div>
-                `;
-                return li;
-            }
 
             function createEditForm(item) {
                 const li = document.createElement('li');
@@ -682,19 +699,6 @@ function initializePage() {
                 else UIPatterns.confirmDelete('Entry', state.items[index].keyword || 'New Entry', doDelete);
             }
 
-            function validateCsvRow(row, index) {
-                const entry = LookupHelpers.createEntry(row);
-                const validation = LookupHelpers.validateEntry(entry);
-                if (!validation.valid) return { error: `Row ${index + 2}: ${validation.errors.join(', ')}` };
-
-                const contentKey = `${entry.keyword.toLowerCase()}|${entry.assignmentGroup.toLowerCase()}`;
-                if (entry.id && state.items.some(item => item.id === entry.id)) return { action: 'overwrite', entry: entry };
-                if (state.items.some(item => `${item.keyword.toLowerCase()}|${item.assignmentGroup.toLowerCase()}` === contentKey)) {
-                    return { error: `Row ${index + 2}: A identical entry (Keyword + Group) already exists. Row skipped.` };
-                }
-                return { action: 'add', entry: entry };
-            }
-
             function confirmCsvImport(validatedData, importErrors) {
                 const actions = validatedData.map(item => {
                     const existingItem = state.items.find(i => i.id === item.id);
@@ -852,7 +856,7 @@ function initializePage() {
                     CsvManager.setupImport({
                         importBtn: document.getElementById('modal-import-csv-btn'),
                         headers: APP_CONFIG.CSV_HEADERS,
-                        onValidate: validateCsvRow,
+                        onValidate: (row, index) => LookupCSV.validateRow(row, index, state.items),
                         onConfirm: (validatedData, importErrors) => confirmCsvImport(validatedData, importErrors)
                     });
                 };

@@ -9,6 +9,13 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
     const coreScriptContent = fs.readFileSync(coreScriptPath, 'utf8')
     new Function(coreScriptContent)()
 
+    // Overwrite with minimal mocks for unit testing if needed
+    window.SafeUI.SVGIcons = { copy: 'COPY_ICON', pencil: 'EDIT_ICON', trash: 'DELETE_ICON' };
+    window.UIPatterns = {
+      highlightSearchTerm: (text, term) => term ? `HIGHLIGHT(${text})` : window.SafeUI.escapeHTML(text),
+      confirmDelete: vi.fn()
+    };
+
     // 2. Mock AppLifecycle to prevent initializePage from running
     window.AppLifecycle = {
       onBootstrap: vi.fn(),
@@ -22,6 +29,8 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
 
     // Append code to expose the local const LookupHelpers to window
     lookupScriptContent += '; window.LookupHelpers = LookupHelpers;'
+    lookupScriptContent += '; if(typeof LookupRenderer !== "undefined") window.LookupRenderer = LookupRenderer;'
+    lookupScriptContent += '; if(typeof LookupCSV !== "undefined") window.LookupCSV = LookupCSV;'
 
     new Function(lookupScriptContent)()
   })
@@ -59,7 +68,7 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
       const entry = window.LookupHelpers.createEntry({ keyword: '' })
       const result = window.LookupHelpers.validateEntry(entry)
       expect(result.valid).toBe(false)
-      expect(result.errors).toContain('Keyword is required')
+      expect(result.errors).toContain('Keyword required')
     })
 
     it('should return valid=true for a complete entry', () => {
@@ -134,7 +143,51 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
     it('should fail if URL is empty', () => {
         const result = window.LookupHelpers.validateSearchUrl('')
         expect(result.valid).toBe(false)
-        expect(result.message).toContain('empty')
+        expect(result.message).toContain('URL required')
+    })
+  })
+
+  describe('LookupRenderer', () => {
+    it('should be defined', () => {
+        expect(window.LookupRenderer).toBeDefined()
+    })
+
+    it('getEmptyMessage should return "No entries" in edit mode', () => {
+        const msg = window.LookupRenderer.getEmptyMessage('foo', true)
+        expect(msg).toBe('No entries. Create one?')
+    })
+
+    it('getEmptyMessage should return search suggestion if not edit mode and no term', () => {
+        const msg = window.LookupRenderer.getEmptyMessage('', false)
+        expect(msg).toContain('Search entries...')
+    })
+
+    it('createItemElement should create li with correct classes', () => {
+        const item = { id: '1', keyword: 'key', assignmentGroup: 'grp', notes: 'note', phoneLogPath: 'path' }
+        const li = window.LookupRenderer.createItemElement(item, '')
+        expect(li.tagName).toBe('LI')
+        expect(li.className).toBe('result-item')
+        expect(li.dataset.id).toBe('1')
+        expect(li.innerHTML).toContain('key')
+    })
+  })
+
+  describe('LookupCSV', () => {
+    it('should be defined', () => {
+        expect(window.LookupCSV).toBeDefined()
+    })
+
+    it('validateRow should return error for invalid entry', () => {
+        const row = { keyword: '' } // Invalid
+        const result = window.LookupCSV.validateRow(row, 0, [])
+        expect(result.error).toContain('Row 2')
+    })
+
+    it('validateRow should return overwrite action if ID exists', () => {
+        const row = { id: '1', keyword: 'k', assignmentGroup: 'g' }
+        const existing = [{ id: '1', keyword: 'old', assignmentGroup: 'old' }]
+        const result = window.LookupCSV.validateRow(row, 0, existing)
+        expect(result.action).toBe('overwrite')
     })
   })
 })
