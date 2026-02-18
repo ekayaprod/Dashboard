@@ -23,7 +23,7 @@ const LookupHelpers = {
      */
     validateEntry: (entry) => {
         const errors = [];
-        if (!entry.keyword?.trim()) errors.push('Keyword required');
+        if (!entry.keyword?.trim()) errors.push('Keyword is required');
         return { valid: errors.length === 0, errors };
     },
 
@@ -61,7 +61,7 @@ const LookupHelpers = {
      * @returns {{valid: boolean, message: string}} Validation result.
      */
     validateSearchUrl: (url) => {
-        if (!url) return { valid: false, message: 'URL required' };
+        if (!url) return { valid: false, message: 'URL is required' };
         if (!/\{query\}/i.test(url)) return { valid: false, message: 'Must contain {query}' };
         try {
             const testUrl = url.replace(/\{query\}/ig, 'test');
@@ -97,6 +97,10 @@ function initializePage() {
     const SENTINEL_ROOT_MARGIN = '200px';
     const MAX_IMPORT_ERRORS_DISPLAY = 10;
     const MAX_ANIMATED_ITEMS = 10;
+    const BATCH_SIZE = 50;
+    const LOADING_SENTINEL_HEIGHT = '20px';
+    const LOADING_SENTINEL_MARGIN = '10px';
+    const SCROLL_VISIBILITY_DEBOUNCE_MS = 200;
 
     // ============================================================================
     // INITIALIZATION ROUTINE
@@ -167,7 +171,6 @@ function initializePage() {
                 saveState();
             };
 
-            const BATCH_SIZE = 50;
             let currentEditState = { id: null, type: null };
             let isEditMode = false;
             let currentMatches = [];
@@ -208,8 +211,8 @@ function initializePage() {
             const setupObserver = () => {
                 loadingSentinel = document.createElement('div');
                 loadingSentinel.id = 'loading-sentinel';
-                loadingSentinel.style.height = '20px';
-                loadingSentinel.style.marginTop = '10px';
+                loadingSentinel.style.height = LOADING_SENTINEL_HEIGHT;
+                loadingSentinel.style.marginTop = LOADING_SENTINEL_MARGIN;
 
                 loadingObserver = new IntersectionObserver((entries) => {
                     if (entries[0].isIntersecting) {
@@ -995,7 +998,7 @@ function initializePage() {
                 if (scrollToTopBtn) {
                     DOMElements.localResults.addEventListener('scroll', SafeUI.debounce(() => {
                         scrollToTopBtn.classList.toggle('visible', DOMElements.localResults.scrollTop > SCROLL_TOP_VISIBILITY_THRESHOLD);
-                    }, 200));
+                    }, SCROLL_VISIBILITY_DEBOUNCE_MS));
                     scrollToTopBtn.addEventListener('click', () => {
                         DOMElements.localResults.scrollTo({ top: 0, behavior: 'smooth' });
                     });
