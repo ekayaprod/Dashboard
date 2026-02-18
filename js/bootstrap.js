@@ -9,35 +9,6 @@
     // HTML Fragments injection is removed as per new Shell architecture.
     // Navbar is now handled by the Shell (index.html).
     const HTML_FRAGMENTS = [];
-
-    const CORE_SCRIPTS = [
-        { 
-            url: 'js/app-core.js', 
-            exports: ['UIUtils', 'SafeUI', 'DOMHelpers', 'AppLifecycle', 'DataHelpers', 'DateUtils'],
-            required: true
-        },
-        { 
-            url: 'js/app-ui.js', 
-            exports: ['UIPatterns', 'ListRenderer', 'SearchHelper', 'NotepadManager', 'QuickListManager', 'SharedSettingsModal'],
-            required: true,
-            dependsOn: ['SafeUI']
-        },
-        { 
-            url: 'js/app-data.js', 
-            exports: ['BackupRestore', 'DataValidator', 'DataConverter', 'CsvManager', 'TreeUtils'],
-            required: true,
-            dependsOn: ['SafeUI']
-        }
-    ];
-    
-    const PAGE_SCRIPTS = {
-        'dashboard.html': [{ url: 'js/apps/dashboard.js', required: true }],
-        'index.html': [{ url: 'js/shell.js', required: true }], // Shell now uses bootstrap
-        'calculator.html': [{ url: 'js/apps/calculator.js', required: true }],
-        'lookup.html': [{ url: 'js/apps/lookup.js', required: true }],
-        'passwords.html': [{ url: 'js/apps/passwords.js', required: true }],
-        'mailto.html': [{ url: 'js/apps/mailto.js', required: true, type: 'module' }]
-    };
     
     let loadedScripts = new Set();
     let failedScripts = new Set();
@@ -110,6 +81,14 @@
         console.log('[Bootstrap] Starting dependency loader...');
         
         try {
+            // Load Manifest
+            const response = await fetch('js/manifest.json');
+            if (!response.ok) throw new Error(`Failed to load manifest: ${response.status}`);
+            const manifest = await response.json();
+
+            const CORE_SCRIPTS = manifest.core || [];
+            const PAGE_SCRIPTS = manifest.pages || {};
+
             // Load app-core first as it is a dependency for others
             const coreScript = CORE_SCRIPTS.find(c => c.url.includes('app-core.js'));
             if (coreScript) {
