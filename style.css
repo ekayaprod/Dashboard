@@ -735,6 +735,41 @@ textarea.form-control {
     overflow: hidden;
 }
 
+/* Staggered List Entry */
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.result-item.animate-in {
+    animation: slideInUp 0.3s ease-out forwards;
+}
+
+/* Empty State */
+.empty-state-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    color: var(--subtle-text);
+    text-align: center;
+    gap: 0.5rem;
+}
+
+.empty-state-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--border-color);
+    margin-bottom: 0.5rem;
+    opacity: 0.6;
+}
+
+.empty-state-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
 /* Search Wrapper & Spinner */
 .search-wrapper {
     position: relative;
