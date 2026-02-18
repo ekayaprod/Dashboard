@@ -23,12 +23,14 @@
 - **Documentation & Alignment**: Syncing roadmap, clarifying core functions, and establishing the Chronicler's journal.
 - **Navigator Setup**: Established Navigator persona and process.
 
+## ✅ Completed (v1.1)
+- **Accessibility**: Added `aria-label` to icon-only buttons in `dashboard.html`.
+
 ## 🚧 In Progress
 <!-- No active tasks -->
 
 ## 📅 Planned
 - **Accessibility Improvements**:
-    - Add `aria-label` to icon-only buttons in `dashboard.html`.
     - Ensure high contrast compliance.
 - **Code Hygiene**:
     - Remove legacy `console.log` statements identified by Overseer.
