@@ -184,6 +184,10 @@ function initializePage() {
 
         const ACCORDION_STATE_KEY = 'password_generator_accordion_expanded';
 
+        /**
+         * Toggles the accordion state and persists it to localStorage.
+         * @param {Event|null} e - The click event or null if triggered programmatically.
+         */
         const toggleAccordion = (e) => {
             if (e) {
                 if (e.target.closest('button') && e.currentTarget.id === 'custom-gen-header' && e.target.id !== 'accordion-toggle') {
@@ -202,15 +206,24 @@ function initializePage() {
             if (header) header.setAttribute('aria-expanded', isExpanded);
             if (toggleBtn) toggleBtn.setAttribute('aria-expanded', isExpanded);
 
-            try { localStorage.setItem(ACCORDION_STATE_KEY, isExpanded); } catch (err) { }
+            try {
+                localStorage.setItem(ACCORDION_STATE_KEY, isExpanded);
+            } catch (err) {
+                console.warn('Failed to save accordion state:', err);
+            }
         };
 
+        /**
+         * Initializes the accordion state from localStorage.
+         */
         const initAccordion = () => {
             let expanded = true;
             try {
                 const savedState = localStorage.getItem(ACCORDION_STATE_KEY);
                 if (savedState !== null) expanded = savedState === 'true';
-            } catch (err) { }
+            } catch (err) {
+                console.warn('Failed to load accordion state:', err);
+            }
 
             const accordion = DOMElements.customGenHeader.closest('.accordion');
             if (accordion) {
