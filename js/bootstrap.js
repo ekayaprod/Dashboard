@@ -6,10 +6,6 @@
 (function() {
     'use strict';
 
-    // HTML Fragments injection is removed as per new Shell architecture.
-    // Navbar is now handled by the Shell (index.html).
-    const HTML_FRAGMENTS = [];
-    
     let loadedScripts = new Set();
     let failedScripts = new Set();
     
@@ -36,11 +32,6 @@
         } else if (document.documentElement) {
             document.documentElement.appendChild(banner);
         }
-    }
-
-    // Deprecated: HTML loading removed
-    async function loadHtmlFragment(config) {
-        return Promise.resolve();
     }
 
     function loadScript(config) {

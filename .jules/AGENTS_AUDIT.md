@@ -12,6 +12,7 @@
 ## 🧹 Debris Field
 - [ ] wordbanks/*.json (Static data, rarely changed)
 - [ ] 4 "TODO" comments found in codebase
+- [x] Removed unused `HTML_FRAGMENTS` and `loadHtmlFragment` in `js/bootstrap.js`
 - [x] Removed unused `DateUtils.getSeason` and `DateUtils.formatTimeAMPM`
 - [x] Removed unused `DateUtils.formatMinutesToHM` and `DateUtils.formatMinutesToHHMMShort`
 
