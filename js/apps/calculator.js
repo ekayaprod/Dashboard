@@ -57,10 +57,6 @@ function initializePage() {
         if (!ctx) return;
 
         const { elements: DOMElements, state, saveState } = ctx;
-        
-        // Fix Label Reference (removing "Admin" from UI if present)
-        const callLabel = document.querySelector('label[for="currentCallTime"]');
-        if (callLabel) callLabel.innerText = "Call Time";
 
         // --- CONSTANTS ---
         const CONSTANTS = {
@@ -68,6 +64,8 @@ function initializePage() {
             PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 15:30
             LEEWAY_RATIO: 1 / 7
         };
+
+        const CHECK_ICON = `<svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
         const gradeBoundaries = {
             'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
@@ -127,7 +125,7 @@ function initializePage() {
                 return `
                 <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap: 4px;">
                     <span class="target-label" style="font-weight:700;">${label}</span>
-                    <span style="font-size:1.5rem; line-height:1;">✓</span>
+                    <span class="target-icon">${CHECK_ICON}</span>
                     <span style="font-size:0.8rem; opacity:0.9;">Met</span>
                 </div>
                 `;
@@ -427,7 +425,7 @@ function initializePage() {
         });
         
         DOMElements.btnResetData.addEventListener('click', () => {
-             SafeUI.showModal('Reset?', 'Reset data?', [{label:'Cancel'}, {label:'Reset', class:'button-danger', callback: handleResetData}]);
+             SafeUI.showModal('Clear All?', 'Clear all data?', [{label:'Cancel'}, {label:'Clear All', class:'button-danger', callback: handleResetData}]);
         });
         
         function handleResetData() {
