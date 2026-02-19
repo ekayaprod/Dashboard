@@ -54,11 +54,35 @@
             border-radius: 4px;
         }
         
+        /* Tactile Feedback */
+        .btn:active, .btn-icon:active, .icon-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Smooth Transitions */
+        .target-value {
+            transition: color 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .target-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 0;
+        }
+
         /* Dark Mode adjustments for the Safe Zone bar */
         @media (prefers-color-scheme: dark) {
             #target-stats-bar div {
                 background: rgba(255, 255, 255, 0.1) !important;
             }
+        }
+
+        /* Respect Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            .btn:active, .btn-icon:active, .icon-btn:active { transform: none; }
+            .target-value { transition: none; }
+            .pulse-success { animation: none !important; }
         }
     </style>
 </head>
@@ -73,18 +97,22 @@
                 <div class="accordion expanded">
                     <div class="accordion-header" id="schedule-header">
                         <div style="display: flex; align-items: center;">
-                            <span id="schedule-collapse-icon" class="accordion-icon">▼</span>
-                            <h2>1. Schedule</h2>
+                            <span id="schedule-collapse-icon" class="accordion-icon">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </span>
+                            <h2>Schedule</h2>
                         </div>
                     </div>
                     <div class="accordion-content" id="schedule-content">
                         <div class="compact-grid-2">
                             <div>
-                                <label for="shiftStart" class="sidebar-label">Start</label>
+                                <label for="shiftStart" class="sidebar-label">Shift Start</label>
                                 <select id="shiftStart" class="form-control"></select>
                             </div>
                             <div>
-                                <label for="shiftEnd" class="sidebar-label">End</label>
+                                <label for="shiftEnd" class="sidebar-label">Shift End</label>
                                 <select id="shiftEnd" class="form-control"></select>
                             </div>
                             <div>
@@ -101,7 +129,7 @@
                                     <option value="120">2h</option>
                                 </select>
                             </div>
-                            <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Reset</button>
+                            <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Clear All</button>
                         </div>
                     </div>
                 </div>
@@ -110,25 +138,29 @@
                 <div class="accordion expanded">
                     <div class="accordion-header">
                          <div style="display: flex; align-items: center;">
-                            <span class="accordion-icon">▼</span>
-                            <h2>2. Progress</h2>
+                            <span class="accordion-icon">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </span>
+                            <h2>Progress</h2>
                         </div>
                     </div>
                     <div class="accordion-content">
                          <div class="compact-grid-2">
                              <div>
-                                 <label for="currentCallTime" class="sidebar-label" title="Call/Admin Time">Call/Admin Time</label>
+                                 <label for="currentCallTime" class="sidebar-label" title="Call Time">Call Time</label>
                                  <input type="text" id="currentCallTime" class="form-control" placeholder="0:00" value="0">
                              </div>
                              <div>
-                                 <label for="currentTickets" class="sidebar-label">Tickets Completed</label>
+                                 <label for="currentTickets" class="sidebar-label">Tickets Done</label>
                                  <input type="number" id="currentTickets" class="form-control" value="0">
                              </div>
                          </div>
                          <!-- Add Call Row -->
                          <div class="compact-grid-row" style="margin-top: 0.5rem;">
                              <div>
-                                 <label for="addCallTime" class="sidebar-label">Add Call (min)</label>
+                                 <label for="addCallTime" class="sidebar-label">Add Minutes</label>
                                  <input type="number" id="addCallTime" class="form-control" placeholder="mins">
                              </div>
                              <div>
@@ -142,7 +174,7 @@
                 <!-- SECTION 3: Targets & Analysis -->
                 <div class="results-section">
                     <div class="results-header">
-                        <span>3. Target Status</span>
+                        <span>Targets</span>
                     </div>
                     
                     <!-- Main Badges -->
