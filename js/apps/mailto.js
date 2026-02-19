@@ -171,6 +171,10 @@ function handleWorkerMessage(e) {
     }
 }
 
+/**
+ * Initializes the background worker for parsing MSG files.
+ * @returns {Worker} The initialized MSG worker instance.
+ */
 function initWorker() {
     if (!msgWorker) {
         msgWorker = new Worker(new URL('../workers/msg-worker.js', import.meta.url), { type: 'module' });
@@ -181,7 +185,7 @@ function initWorker() {
                 uploadWrapper.classList.remove('loading');
                 uploadWrapper.removeAttribute('aria-busy');
             }
-            console.error("Worker Error:", e);
+            console.error(`Worker Error in ${e.filename} at line ${e.lineno}:`, e.message);
             SafeUI.showModal("Error", `<p>An error occurred in the background worker.</p>`, [{label:'OK'}]);
         };
     }
