@@ -23,6 +23,13 @@
 - **Documentation & Alignment**: Syncing roadmap, clarifying core functions, and establishing the Chronicler's journal.
 - **Navigator Setup**: Established Navigator persona and process.
 
+## ✅ Completed (v1.2)
+- **Passwords Polish**: Enhanced UI with accessibility, motion, and optimistic feedback.
+- **Calculator Polish**: Elevated UI to Premium status.
+- **Lookup Optimization**: Refactored `js/apps/lookup.js` to flatten logic and extract helpers.
+- **Mailto Debugging**: Enriched worker error logs.
+- **Code Hygiene**: Removed dead code in `bootstrap.js`.
+
 ## ✅ Completed (v1.1)
 - **Accessibility**: Added `aria-label` to icon-only buttons in `dashboard.html`.
 
@@ -32,8 +39,6 @@
 ## 📅 Planned
 - **Accessibility Improvements**:
     - Ensure high contrast compliance.
-- **Code Hygiene**:
-    - Remove legacy `console.log` statements identified by Overseer.
 
 ## 🧊 Backlog
 - **Future Optimizations**: Further performance tuning and code consolidation.
