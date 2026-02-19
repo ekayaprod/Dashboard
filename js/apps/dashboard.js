@@ -428,7 +428,6 @@ function initializePage() {
     (async () => {
         try {
             const APP_VERSION = '6.3.1';
-            console.log(`[Dashboard] Initializing v${APP_VERSION}`);
 
             const LOCAL_STORAGE_KEY = 'dashboard_state_v5';
             const APP_CONFIG = {

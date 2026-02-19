@@ -311,7 +311,6 @@ function openMoveModal(itemId) {
 }
 
 async function init() {
-    console.log(`[MailTo] Initializing v${APP_CONFIG.VERSION}`);
     
     if (typeof SafeUI === 'undefined') { return; }
 
@@ -599,8 +598,6 @@ async function init() {
         },
         onRestoreCallback: (d) => { state.library = d.library; saveState(); renderCatalogue(); refreshSaveDropdown(); }
     });
-
-    console.log("[MailTo] Ready");
 }
 
 // MailTo uses ES modules so we need to be careful about scope,

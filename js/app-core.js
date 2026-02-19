@@ -688,7 +688,6 @@ const AppLifecycle = (() => {
                  state = JSON.parse(JSON.stringify(defaultState));
                  stateWasMigrated = true;
             } else if (!state.ui && defaultState.ui) {
-                console.log(`[AppLifecycle] Migrating state for ${storageKey}: Added UI state`);
                 state.ui = { ...defaultState.ui };
                 stateWasMigrated = true;
             }
