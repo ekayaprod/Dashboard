@@ -170,6 +170,7 @@ function initializePage() {
 
         let generatedPasswords = [];
         let memoryWordBank = null;
+        const seasonalCache = {}; // Cache for seasonal word banks
         let activeWordBank = {};
         let availableStructures = {};
 
@@ -527,25 +528,31 @@ function initializePage() {
 
             // Load Seasonal Data if applicable
             if (activeSeasonKey !== 'standard') {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+                if (seasonalCache[activeSeasonKey]) {
+                    // Use cached data
+                    activeWordBank = seasonalCache[activeSeasonKey];
+                } else {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-                    const seasonalBankData = await SafeUI.fetchJSON(
-                        `wordbanks/wordbank-${activeSeasonKey}.json`,
-                        { signal: controller.signal },
-                        (d) => d && typeof d.wordBank === 'object'
-                    );
+                        const seasonalBankData = await SafeUI.fetchJSON(
+                            `wordbanks/wordbank-${activeSeasonKey}.json`,
+                            { signal: controller.signal },
+                            (d) => d && typeof d.wordBank === 'object'
+                        );
 
-                    clearTimeout(timeoutId);
+                        clearTimeout(timeoutId);
 
-                    // STRICT SWITCHING: Replace activeWordBank entirely with seasonal data
-                    activeWordBank = seasonalBankData.wordBank;
+                        // Cache and use
+                        seasonalCache[activeSeasonKey] = seasonalBankData.wordBank;
+                        activeWordBank = seasonalBankData.wordBank;
 
-                } catch (err) {
-                    console.error(`[analyzeWordBank] Failed to load seasonal wordbank "${activeSeasonKey}":`, err);
-                    SafeUI.showToast(`Error loading ${activeSeasonKey} wordbank. Using base words only.`);
-                    activeSeasonKey = 'standard';
+                    } catch (err) {
+                        console.error(`[analyzeWordBank] Failed to load seasonal wordbank "${activeSeasonKey}":`, err);
+                        SafeUI.showToast(`Error loading ${activeSeasonKey} wordbank. Using base words only.`);
+                        activeSeasonKey = 'standard';
+                    }
                 }
             }
 

@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'vitest';
-import { MsgReader } from '../msgreader.js';
+import { MsgReader } from '../workers/msgreader.js';
 
 describe('MsgReader Text Decoding', () => {
     it('should decode valid UTF-8 content in parseMime', () => {

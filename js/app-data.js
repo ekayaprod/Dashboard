@@ -38,14 +38,13 @@ const BackupRestore = (() => {
          * @param {Function} onRestore - Callback function invoked with the parsed data upon success.
          */
         restoreBackup: (onRestore) => {
-            SafeUI.openFilePicker((file) => {
-                SafeUI.readJSONFile(file)
-                    .then(parsedData => {
-                        onRestore(parsedData);
-                    })
-                    .catch(err => {
-                        SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
-                    });
+            SafeUI.openFilePicker(async (file) => {
+                try {
+                    const parsedData = await SafeUI.readJSONFile(file);
+                    onRestore(parsedData);
+                } catch (err) {
+                    SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                }
             });
         },
 
