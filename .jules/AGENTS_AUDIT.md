@@ -14,8 +14,8 @@
 
 ## 🧹 Debris Field
 - [ ] 5 "TODO" comments found (mostly in .git/hooks)
-- [ ] console.log usage in js/apps/mailto.js, js/apps/dashboard.js, js/bootstrap.js
-- [ ] console.log usage in js/app-core.js (migration logging)
+- [x] console.log usage in js/apps/mailto.js, js/apps/dashboard.js, js/bootstrap.js
+- [x] console.log usage in js/app-core.js (migration logging)
 
 ## 🛡️ Security Radar
 - [ ] 0 Vulnerabilities in dependencies (npm audit)

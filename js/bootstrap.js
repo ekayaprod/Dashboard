@@ -52,7 +52,6 @@
             }
             
             script.onload = () => {
-                console.log(`[Bootstrap] ✓ Script Loaded: ${config.url}`);
                 loadedScripts.add(config.url);
                 resolve();
             };
@@ -69,7 +68,6 @@
     }
     
     async function bootstrap() {
-        console.log('[Bootstrap] Starting dependency loader...');
         
         try {
             // Load Manifest
@@ -90,7 +88,6 @@
             const remainingCoreScripts = CORE_SCRIPTS.filter(c => !c.url.includes('app-core.js'));
             await Promise.all(remainingCoreScripts.map(loadScript));
             
-            console.log('[Bootstrap] Verifying exports...');
             const allMissingExports = [];
             for (const config of CORE_SCRIPTS) {
                 const missing = config.exports.filter(exp => typeof window[exp] === 'undefined');
@@ -112,8 +109,6 @@
                     if (config.required) throw err; 
                 }
             }
-            
-            console.log('[Bootstrap] ✓ System Ready');
             
             window.__BOOTSTRAP_READY = true;
             document.dispatchEvent(new CustomEvent('bootstrap:ready'));
