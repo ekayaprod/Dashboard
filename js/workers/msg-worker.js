@@ -1,4 +1,4 @@
-import { MsgReader } from '../msgreader.js';
+import { MsgReader } from './msgreader.js';
 
 self.onmessage = function(e) {
     try {
