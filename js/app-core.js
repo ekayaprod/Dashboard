@@ -515,6 +515,11 @@ const DOMHelpers = (() => {
 const MINUTES_IN_HOUR = 60;
 const PAD_LENGTH = 2;
 
+const REGEX_DIGITS = /^\d+$/;
+const REGEX_DECIMAL = /^\d+\.\d+$/;
+const REGEX_TIME_MM = /^\d{1,2}:\d{2}$/;
+const REGEX_TIME_MMSS = /^\d{1,2}:\d{2}:\d{2}$/;
+
 const DateUtils = {
     /**
      * Parses various time formats into total minutes.
@@ -532,13 +537,13 @@ const DateUtils = {
     parseTimeToMinutes(input) {
         if (!input) return 0;
         const trimmed = String(input).trim();
-        if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
-        if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed) * MINUTES_IN_HOUR;
-        if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+        if (REGEX_DIGITS.test(trimmed)) return parseInt(trimmed, 10);
+        if (REGEX_DECIMAL.test(trimmed)) return parseFloat(trimmed) * MINUTES_IN_HOUR;
+        if (REGEX_TIME_MM.test(trimmed)) {
             const parts = trimmed.split(':').map(Number);
             return (parts[0] * MINUTES_IN_HOUR) + parts[1];
         }
-        if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
+        if (REGEX_TIME_MMSS.test(trimmed)) {
             const parts = trimmed.split(':').map(Number);
             return (parts[0] * MINUTES_IN_HOUR) + parts[1] + (parts[2] / MINUTES_IN_HOUR);
         }
@@ -583,7 +588,7 @@ const AppLifecycle = (() => {
         }
     };
 
-    let onExitSaveFunctions = [];
+    const onExitSaveFunctions = [];
     let beforeUnloadPrompt = null;
 
     window.addEventListener('pagehide', () => {
