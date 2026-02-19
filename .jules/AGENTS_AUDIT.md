@@ -3,7 +3,7 @@
 ## 🏗️ Structural Hotspots
 - [x] js/apps/lookup.js (Changed recently, >1000 lines) - Refactored `initializePage` into `LookupSettings`
 - [ ] style.css (Changed recently, >800 lines)
-- [ ] js/apps/passwords.js (>800 lines)
+- [x] js/apps/passwords.js (>800 lines) - Refactored logic into `PasswordLogic`, `PasswordUI`, `PasswordSettings`
 
 ## 🧬 Genetic Drift
 - [ ] No significant genetic drift detected (Files appear distinct)
@@ -22,7 +22,7 @@
 - [ ] Suspicious dependency version: vitest ^4.0.18 in package.json (Verify if intended)
 
 ## 🕵️ Coverage Gaps
-- [ ] js/apps/passwords.js (High Complexity, 0 Test Files found)
+- [x] js/apps/passwords.js (High Complexity, 0 Test Files found) - Added unit/integration tests
 - [ ] js/apps/calculator.js (Medium Complexity, 0 Test Files found)
 - [ ] js/apps/mailto.js (Medium Complexity, 0 Test Files found)
 
@@ -42,7 +42,7 @@
 - [ ] "Reset" in calculator.html is generic
 
 ## 🧐 Code Quality & Style
-- [ ] Magic numbers detected in js/apps/passwords.js (Seasonal config)
+- [x] Magic numbers detected in js/apps/passwords.js (Seasonal config) - Extracted to constants
 - [ ] Magic numbers detected in js/apps/calculator.js (Formula constants)
 
 ## 🧶 Cognitive Complexity
