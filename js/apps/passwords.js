@@ -11,6 +11,8 @@ function initializePage() {
         DATA_KEY: 'passwords_v1_data',
     };
 
+    const CHECK_ICON_SVG = '<svg aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
     const FETCH_TIMEOUT_MS = 10000;
     const NUM_PASSWORDS_TO_GENERATE = 5;
 
@@ -127,10 +129,10 @@ function initializePage() {
 
     const EMPTY_STATE_HTML = `
         <div class="empty-state-container">
-            <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="empty-state-icon" aria-hidden="true" role="img" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <p class="empty-state-text">Generate a password to get started.</p>
+            <p class="empty-state-text">Hit Generate to create passwords.</p>
         </div>
     `;
 
@@ -583,9 +585,16 @@ function initializePage() {
                     const copyBtn = document.createElement('button');
                     copyBtn.className = 'copy-btn btn-icon';
                     copyBtn.title = 'Copy';
+                    copyBtn.setAttribute('aria-label', 'Copy password to clipboard');
                     copyBtn.innerHTML = SafeUI.SVGIcons.copy;
                     copyBtn.disabled = pass.startsWith('[');
-                    copyBtn.onclick = async () => { await UIPatterns.copyToClipboard(pass, "Copied!"); };
+                    copyBtn.onclick = async () => {
+                        const success = await UIPatterns.copyToClipboard(pass, "Copied!");
+                        if (success) {
+                            copyBtn.innerHTML = CHECK_ICON_SVG;
+                            setTimeout(() => { copyBtn.innerHTML = SafeUI.SVGIcons.copy; }, 1000);
+                        }
+                    };
                     li.appendChild(text);
                     li.appendChild(copyBtn);
                     return li;
@@ -709,7 +718,7 @@ function initializePage() {
         };
 
         const handleAddQuickCopy = () => {
-            SafeUI.showModal('Add Quick Copy Password',
+            SafeUI.showModal('Add Static Password',
                 `<div class="form-group">
                     <label for="qc-name">Name (e.g., "Guest WiFi")</label>
                     <input id="qc-name" class="form-control" placeholder="Name">
@@ -751,7 +760,7 @@ function initializePage() {
 
         const handleAddPreset = () => {
             const { type, config } = getConfigFromUI();
-            SafeUI.showModal('Save Generator Preset', '<input id="preset-name" class="form-control" placeholder="e.g., 4-Word TitleCase">', [
+            SafeUI.showModal('Save Settings Preset', '<input id="preset-name" class="form-control" placeholder="e.g., 4-Word TitleCase">', [
                 { label: 'Cancel' },
                 {
                     label: 'Save',
@@ -859,8 +868,8 @@ function initializePage() {
         }
 
         async function init() {
-            DOMElements.btnAddPreset.innerHTML = SafeUI.SVGIcons.plus + ' Save Preset';
-            DOMElements.btnAddQuickCopy.innerHTML = SafeUI.SVGIcons.plus + ' Add Quick Copy';
+            DOMElements.btnAddPreset.innerHTML = SafeUI.SVGIcons.plus + ' Save Settings';
+            DOMElements.btnAddQuickCopy.innerHTML = SafeUI.SVGIcons.plus + ' Add Static Password';
 
             initAccordion();
 
