@@ -762,6 +762,33 @@ class MsgReaderParser {
 
 // --- Exported Object ---
 const MsgReader = {
+    /**
+     * Reads and parses a message file from an ArrayBuffer.
+     * Detects if the file is a binary OLE (.msg) file or a MIME (text/eml) file
+     * and dispatches to the appropriate parser.
+     *
+     * @param {ArrayBuffer} arrayBuffer - The raw file data to parse.
+     * @returns {Object} A structured object containing the parsed message data.
+     *                   The returned object will have a `subject`, `body`, `recipients` array,
+     *                   and a `getFieldValue(name)` method.
+     * @throws {Error} If the input is not a valid ArrayBuffer or if OLE parsing fails.
+     *
+     * @example
+     * // Example usage:
+     * const fileInput = document.getElementById('file-input');
+     * fileInput.addEventListener('change', async (e) => {
+     *   const file = e.target.files[0];
+     *   const buffer = await file.arrayBuffer();
+     *   try {
+     *     const msg = MsgReader.read(buffer);
+     *     console.log('Subject:', msg.subject);
+     *     console.log('Body:', msg.body);
+     *     console.log('Recipients:', msg.recipients);
+     *   } catch (err) {
+     *     console.error('Failed to read message:', err);
+     *   }
+     * });
+     */
     read: function(arrayBuffer) {
         let reader = new MsgReaderParser(arrayBuffer);
         if (reader.dataView.byteLength < 8) return reader.parseMime();
