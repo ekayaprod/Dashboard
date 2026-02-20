@@ -4,6 +4,10 @@
 
 AppLifecycle.onBootstrap(initializePage);
 
+/**
+ * Initializes the Calculator application.
+ * Sets up state management, loads previous data, and binds event listeners.
+ */
 function initializePage() {
     const APP_CONFIG = {
         NAME: 'calculator',
@@ -78,6 +82,16 @@ function initializePage() {
         /**
          * Calculates how much additional Call Time is needed to drop the target 
          * such that the CURRENT ticket count satisfies the grade requirement.
+         *
+         * Formula Logic:
+         * 1. MaxRoundedHours = floor((CurrentTickets - Offset) / 6)
+         * 2. RequiredTotalCallTime = floor(Prod - (60 * MaxRoundedHours) - 30) + 1
+         *
+         * @param {number} totalProductiveMinutes - Total minutes in the shift excluding breaks and leeway.
+         * @param {number} currentTickets - The number of tickets currently completed.
+         * @param {number} offset - The grade boundary offset (e.g., +7 for Outstanding, -3 for Satisfactory).
+         * @param {number} currentCallTime - The current call time in minutes.
+         * @returns {number} The additional call time needed in minutes (min 0), or Infinity if unreachable.
          */
         function calculateAdditionalCallTimeNeeded(totalProductiveMinutes, currentTickets, offset, currentCallTime) {
             // Logic:
@@ -109,6 +123,13 @@ function initializePage() {
 
         // --- 2. DASHBOARD BADGES ---
 
+        /**
+         * Finds or creates a target card element within the container.
+         *
+         * @param {HTMLElement} container - The parent container.
+         * @param {string} targetName - The unique identifier for the target (e.g., 'Excellent').
+         * @returns {HTMLElement} The existing or newly created card element.
+         */
         function getOrCreateTargetCard(container, targetName) {
             let card = container.querySelector(`[data-target-name="${targetName}"]`);
             if (!card) {
@@ -120,6 +141,15 @@ function initializePage() {
             return card;
         }
 
+        /**
+         * Generates the HTML content for a target card.
+         *
+         * @param {string} label - The target name (e.g., 'Outstanding').
+         * @param {string|number} ticketText - Text displaying tickets needed.
+         * @param {string} callTimeText - Text displaying call time needed.
+         * @param {boolean} isMet - Whether the target has been met.
+         * @returns {string} HTML string.
+         */
         function buildTargetCardHTML(label, ticketText, callTimeText, isMet) {
             if (isMet) {
                 return `
@@ -154,6 +184,18 @@ function initializePage() {
             `;
         }
 
+        /**
+         * Updates the visual state of a target card.
+         * Applies animations and efficient DOM updates to minimize flickering.
+         *
+         * @param {HTMLElement} card - The card element to update.
+         * @param {Object} data - The display data for the card.
+         * @param {Object} data.boundary - The grade boundary configuration.
+         * @param {string|number} data.ticketsNeeded - Tickets needed to hit target.
+         * @param {string} data.callTimeDisplay - Call time needed text.
+         * @param {boolean} data.isMet - Whether the target is met.
+         * @param {string} data.boxClass - CSS class for color coding (e.g., 'target-good').
+         */
         function updateTargetCard(card, data) {
             const { boundary, ticketsNeeded, callTimeDisplay, isMet, boxClass } = data;
 
@@ -192,6 +234,18 @@ function initializePage() {
             }
         }
 
+        /**
+         * Computes the display data for a single target card.
+         * Determines if the target is met and calculates the "Alternative Path" (Call Time) if not.
+         *
+         * @param {Object} params - The calculation parameters.
+         * @param {Object} params.boundary - The grade boundary.
+         * @param {number} params.ticketsNeeded - Raw calculation of tickets remaining.
+         * @param {number} params.totalProductiveMinutes - Productive time.
+         * @param {number} params.currentTickets - Current ticket count.
+         * @param {number} params.currentCallTime - Current call time.
+         * @returns {Object} Data object suitable for `updateTargetCard`.
+         */
         function getTargetCardData(params) {
             const { boundary, ticketsNeeded, totalProductiveMinutes, currentTickets, currentCallTime } = params;
 
@@ -232,6 +286,18 @@ function initializePage() {
         }
 
         // --- 3. STATS BAR (BUFFER) ---
+
+        /**
+         * Renders the buffer status bar showing how close the user is to the next target jump (XX:30).
+         *
+         * Logic:
+         * - If minutes >= 30: Target is elevated. Shows how much call time is needed to drop back.
+         * - If minutes < 30: Target is lower. Shows how many work minutes remain until target jumps.
+         *
+         * @param {Object} data - Calculation data.
+         * @param {boolean} data.isRoundedUp - Whether the current time rounds up (>= XX:30).
+         * @param {number} data.minutesInHour - The minute component of the total work time (0-59).
+         */
         function renderTargetStats(data) {
             const { isRoundedUp, minutesInHour } = data;
             
@@ -273,6 +339,14 @@ function initializePage() {
         }
 
         // --- 4. STRATEGY ENGINE ---
+
+        /**
+         * Renders strategic advice based on the current metrics.
+         * E.g., suggests "Easy Wins" if a small amount of call time significantly reduces the target.
+         *
+         * @param {Object} scheduleData - Schedule metrics including minutesInHour and isRoundedUp.
+         * @param {Date} now - Current time context.
+         */
         function renderCalculationInfo(scheduleData, now) {
             const { minutesInHour, isRoundedUp } = scheduleData;
             
@@ -301,6 +375,13 @@ function initializePage() {
 
         // --- STANDARD CALCULATIONS ---
 
+        /**
+         * Retrieves and calculates schedule details based on UI inputs.
+         *
+         * @param {Date} now - The current date/time (used for context, though currently unused in calculation logic).
+         * @returns {{totalProductiveMinutes: number, shiftStartMinutes: number}|{error: string}}
+         *          Object containing productive minutes and start time, or an error object.
+         */
         function getScheduleInfo(now) {
             const startMinutes = DateUtils.parseTimeToMinutes(DOMElements.shiftStart.value);
             const endMinutes = DateUtils.parseTimeToMinutes(DOMElements.shiftEnd.value);
@@ -319,6 +400,16 @@ function initializePage() {
             };
         }
 
+        /**
+         * Main calculation loop.
+         * Reads inputs, computes productive time, determines targets, and updates the UI.
+         *
+         * Steps:
+         * 1. Get schedule info (productive minutes).
+         * 2. Calculate Total Work Time (Productive - Call Time).
+         * 3. Determine if rounding is pushing the target up (XX:30 threshold).
+         * 4. Update Target Cards and Stats Bar.
+         */
         function calculateDailyRatings() {
             const now = (window.APP_TIME_TRAVEL_DATE) ? new Date(window.APP_TIME_TRAVEL_DATE) : new Date();
             const { totalProductiveMinutes, shiftStartMinutes, error } = getScheduleInfo(now);
@@ -366,6 +457,11 @@ function initializePage() {
         }
 
         // --- EVENT LISTENERS ---
+
+        /**
+         * Synchronizes the DOM input values with the current application state.
+         * Ensures that the UI reflects loaded data or defaults on startup.
+         */
         function updateInputsFromState() {
             if (!state.ui) state.ui = { ...defaultState.ui };
             DOMElements.shiftStart.value = state.ui.shiftStart || defaultState.ui.shiftStart;
@@ -375,6 +471,15 @@ function initializePage() {
             DOMElements.currentTickets.value = isNaN(state.ui.currentTickets) ? 0 : state.ui.currentTickets;
         }
 
+        /**
+         * Wrapper to debounce calculation and save operations.
+         * Prevents excessive calculations during rapid input.
+         *
+         * Actions:
+         * 1. Reads current DOM values into state.
+         * 2. Persists state to localStorage.
+         * 3. Triggers calculation of daily ratings.
+         */
         const debouncedCalculateAndSave = SafeUI.debounce(() => {
             state.ui.shiftStart = DOMElements.shiftStart.value;
             state.ui.shiftEnd = DOMElements.shiftEnd.value;
@@ -385,6 +490,14 @@ function initializePage() {
             calculateDailyRatings();
         }, 250);
 
+        /**
+         * Populates a select element with time options in 15-minute increments.
+         *
+         * @param {HTMLSelectElement} select - The select element to populate.
+         * @param {number} startHour - The starting hour (0-23).
+         * @param {number} endHour - The ending hour (0-23).
+         * @param {string} defaultVal - The value to mark as selected (e.g., "08:00").
+         */
         function populateTimeOptions(select, startHour, endHour, defaultVal) {
             for (let h = startHour; h <= endHour; h++) {
                 for (let m = 0; m < 60; m += 15) {
@@ -428,6 +541,9 @@ function initializePage() {
              SafeUI.showModal('Clear All?', 'Clear all data?', [{label:'Cancel'}, {label:'Clear All', class:'button-danger', callback: handleResetData}]);
         });
         
+        /**
+         * Resets the application state to default values and updates the UI.
+         */
         function handleResetData() {
             state.ui = JSON.parse(JSON.stringify(defaultState.ui));
             updateInputsFromState();
@@ -444,6 +560,12 @@ function initializePage() {
             const isExpanded = accordion && accordion.classList.contains('expanded');
             header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
 
+            /**
+             * Toggles the expansion state of the accordion.
+             * Saves the state preference for the Schedule accordion.
+             *
+             * @param {Event} e - The click or keydown event.
+             */
             const toggleAccordion = (e) => {
                 if (e.target.closest('button, input, select, a') && e.target !== header) return;
 
@@ -487,6 +609,10 @@ function initializePage() {
         calculateDailyRatings();
         autoImportBookmarkletData();
 
+        /**
+         * Checks for data left by legacy bookmarklets in localStorage.
+         * If found, imports the call time minutes into the current session and clears the legacy key.
+         */
         function autoImportBookmarkletData() {
             try {
                 const mins = parseInt(localStorage.getItem(APP_CONFIG.IMPORT_KEY) || "0", 10);
