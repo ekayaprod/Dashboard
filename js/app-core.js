@@ -322,7 +322,11 @@ const UIUtils = (() => {
                 },
                 (err) => {
                     if (onCorruption) {
-                        try { onCorruption(); } catch (e) {}
+                        try {
+                            onCorruption();
+                        } catch (e) {
+                            console.error('Error in onCorruption callback:', e);
+                        }
                     }
                     localStorage.setItem(`${key}_corrupted_${Date.now()}`, rawData);
                     _showModal('Data Corruption Detected', '<p>Your saved data was corrupted and has been reset. A backup was saved.</p>', [{label: 'OK'}]);
