@@ -107,7 +107,7 @@ function clearEditorFields() {
     if (fileInput) fileInput.value = '';
     
     updateLivePreview();
-    SafeUI.showToast("Editor cleared");
+    SafeUI.showToast("Form reset");
 }
 
 function parseMailto(str) {
@@ -165,7 +165,7 @@ function handleWorkerMessage(e) {
         if(DOMElements.resultBcc) DOMElements.resultBcc.value = map[3].join(', ');
 
         setActiveSection('editor');
-        SafeUI.showToast('File loaded');
+        SafeUI.showToast('File processed successfully');
     } else {
         SafeUI.showModal("Error", `<p>${SafeUI.escapeHTML(response.error)}</p>`, [{label:'OK'}]);
     }
@@ -364,9 +364,9 @@ async function init() {
     DOMElements.btnClearAll.addEventListener('click', (e) => {
         e.stopPropagation();
         UIPatterns.confirmAction(
-            'Clear Form',
+            'Reset Form',
             '<p>Are you sure you want to clear the Subject and Body?</p>',
-            'Clear',
+            'Reset',
             () => {
                  clearEditorFields();
             }
@@ -397,13 +397,27 @@ async function init() {
     });
     DOMElements.msgUpload.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
     
-    const handleDrag = e => { e.preventDefault(); e.stopPropagation(); };
+    const handleDrag = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadWrapper.classList.add('drag-active');
+    };
+    const handleDragLeave = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!uploadWrapper.contains(e.relatedTarget)) {
+            uploadWrapper.classList.remove('drag-active');
+        }
+    };
     const handleDrop = e => { 
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
+        uploadWrapper.classList.remove('drag-active');
         if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); 
     };
     uploadWrapper.addEventListener('dragenter', handleDrag);
     uploadWrapper.addEventListener('dragover', handleDrag);
+    uploadWrapper.addEventListener('dragleave', handleDragLeave);
     uploadWrapper.addEventListener('drop', handleDrop);
 
     // Live Update Listeners
@@ -482,7 +496,7 @@ async function init() {
                         });
                         saveState();
                         renderCatalogue();
-                        SafeUI.showToast("Saved to Library");
+                        SafeUI.showToast("Template saved");
                         return true;
                     } else {
                         SafeUI.showToast("Error: Target folder not found.");
