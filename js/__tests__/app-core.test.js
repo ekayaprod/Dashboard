@@ -197,4 +197,42 @@ describe('app-core.js', () => {
         expect(mockFetch).toHaveBeenCalledTimes(1)
     })
   })
+
+  describe('createStateManager', () => {
+    // We access via SafeUI which exposes createStateManager from UIUtils
+    const createStateManager = (key, defaults, version, onCorruption) =>
+        window.SafeUI.createStateManager(key, defaults, version, onCorruption)
+
+    const KEY = 'test_key'
+    const DEFAULTS = { value: 0 }
+    const VERSION = '1.0.0'
+
+    beforeEach(() => {
+        localStorage.clear()
+        vi.restoreAllMocks()
+    })
+
+    it('should call onCorruption and log error if onCorruption throws', () => {
+        // Arrange: corrupted data in localStorage
+        localStorage.setItem(KEY, 'invalid json {')
+
+        // Mock console.error
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        // Mock onCorruption to throw
+        const error = new Error('Callback failed')
+        const onCorruption = vi.fn(() => { throw error })
+
+        // Act
+        const manager = createStateManager(KEY, DEFAULTS, VERSION, onCorruption)
+        const loadedState = manager.load() // Load triggers parsing
+
+        // Assert
+        expect(onCorruption).toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Error in onCorruption callback:', error)
+
+        // Ensure returned state is default despite the error in callback
+        expect(loadedState).toEqual({ ...DEFAULTS, version: VERSION })
+    })
+  })
 })
