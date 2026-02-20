@@ -614,6 +614,19 @@ const AppLifecycle = (() => {
     });
 
     return {
+        /**
+         * Registers an initialization function to run once the bootstrap process is complete.
+         * If bootstrap is already ready, the function executes immediately.
+         *
+         * @param {Function} initFn - The callback function to execute when dependencies are loaded.
+         * @returns {void}
+         *
+         * @example
+         * AppLifecycle.onBootstrap(() => {
+         *     const config = { storageKey: 'myApp', defaultState: {} };
+         *     AppLifecycle.initPage(config);
+         * });
+         */
         onBootstrap: (initFn) => {
             if (window.__BOOTSTRAP_READY) {
                 initFn();
