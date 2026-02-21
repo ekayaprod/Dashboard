@@ -62,7 +62,7 @@ function initializePage() {
         window.QuickListManager.init({
             container: DOMElements.shortcutsContainer,
             items: DataHelpers.getCollection(state, 'shortcuts'),
-            emptyMessage: "No shortcuts. Add from 'Actions'.",
+            emptyMessage: "No shortcuts found. Add one from the Actions menu.",
             getItemName: (item) => item.name,
             getItemHref: (item) => item.url,
             onDeleteClick: (item, renderCallback) => {
@@ -92,7 +92,7 @@ function initializePage() {
                                 saveState();
                                 renderCallback();
                             } else {
-                                SafeUI.showToast('Invalid name or URL');
+                                SafeUI.showToast('Please enter a valid name and URL.');
                                 return false;
                             }
                         }
@@ -110,7 +110,7 @@ function initializePage() {
     const renderAppDropdown = () => {
         const appSelect = DOMElements.appSelect;
         const selectedValue = appSelect.value;
-        appSelect.innerHTML = '<option value="">-- Select an App --</option>';
+        appSelect.innerHTML = '<option value="">-- Select Application --</option>';
         const sortedApps = [...DataHelpers.getCollection(state, 'apps')].sort((a,b) => a.name.localeCompare(b.name));
         sortedApps.forEach(app => { appSelect.add(new Option(app.name, app.id)); });
 
@@ -243,8 +243,8 @@ function initializePage() {
      */
     const setupSettingsModal = () => {
         const pageDataHtml = `
-            <button id="modal-export-csv-btn" class="btn">Export Apps (CSV)</button>
-            <button id="modal-import-csv-btn" class="btn">Import Apps (CSV)</button>
+            <button id="modal-export-csv-btn" class="btn">Export to CSV</button>
+            <button id="modal-import-csv-btn" class="btn">Import from CSV</button>
         `;
 
         /**
@@ -310,7 +310,7 @@ function initializePage() {
                                 });
                                 saveState();
                                 renderAppData();
-                                SafeUI.showToast(`Imported ${importedCount} applications.`);
+                                SafeUI.showToast(`Successfully imported ${importedCount} applications.`);
                                 SafeUI.hideModal();
                             }
                         }
@@ -355,7 +355,7 @@ function initializePage() {
                 if (!verification) {
                     SafeUI.showModal('Restore Warning', '<p>Restore completed but verification failed. Please refresh the page.</p>', [{label: 'OK'}]);
                 } else if (regeneratedCount > 0) {
-                    SafeUI.showToast(`Restored and regenerated ${regeneratedCount} legacy IDs`);
+                    SafeUI.showToast(`Successfully restored and updated legacy data.`);
                 }
             }, 100);
 
@@ -465,14 +465,14 @@ function initializePage() {
             if (isNewApp) {
                 appData.id = SafeUI.generateId();
                 DataHelpers.getCollection(state, 'apps').push(appData);
-                SafeUI.showToast('Application created');
+                SafeUI.showToast('Application successfully created.');
             } else {
                 const app = DataHelpers.findById(state, 'apps', selectedAppId);
                 if (app) {
                     app.name = appData.name;
                     app.urls = appData.urls;
                     app.escalation = appData.escalation;
-                    SafeUI.showToast('Application updated');
+                    SafeUI.showToast('Application successfully updated.');
                 }
             }
 
@@ -519,7 +519,7 @@ function initializePage() {
         setTimeout(() => {
             const notepadRestored = window.NotepadManager && window.NotepadManager.didRestore;
             if (restoredApp && !notepadRestored) {
-                    SafeUI.showToast('Restored previous session');
+                    SafeUI.showToast('Session restored successfully.');
             }
         }, 100);
     };
