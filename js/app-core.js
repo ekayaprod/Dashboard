@@ -150,6 +150,28 @@ const UIUtils = (() => {
         }
     };
 
+    /**
+     * Triggers a browser download of a string as a file.
+     *
+     * Creates a temporary Blob and anchor element to force the browser
+     * to download the provided string content with the specified filename.
+     * Handles creation, clicking, and cleanup of the DOM elements.
+     *
+     * @param {string} dataStr - The content to be downloaded.
+     * @param {string} filename - The name of the file to be saved (e.g., "data.json").
+     * @param {string} [mimeType='application/json'] - The MIME type of the file.
+     * @returns {boolean} True if the download was triggered successfully, false otherwise.
+     *
+     * @example
+     * // Download a JSON object
+     * const data = { id: 1, name: "Test" };
+     * UIUtils.downloadJSON(JSON.stringify(data), "export.json");
+     *
+     * @example
+     * // Download a CSV string
+     * const csv = "id,name\n1,Test";
+     * UIUtils.downloadJSON(csv, "export.csv", "text/csv");
+     */
     const downloadJSON = function(dataStr, filename, mimeType = 'application/json') {
         try {
             if (typeof dataStr !== 'string' || !filename) throw new Error('Invalid download parameters.');
