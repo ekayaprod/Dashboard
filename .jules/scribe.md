@@ -4,14 +4,20 @@
 
 ### js/apps/calculator.js
 - **Date:** [Current Date]
-- **Status:** UNDOCUMENTED
+- **Status:** VERIFIED
 - **Details:**
-  - Found 17 potential undocumented functions using `scan_docs.py`.
-  - Core logic functions like `calculateAdditionalCallTimeNeeded` lack formal JSDoc.
-  - UI rendering functions are completely undocumented.
-  - Key business logic (formulas) is present but not explained in JSDoc for `calculateDailyRatings`.
+  - Initial scan indicated missing docs.
+  - Manual review confirmed that core logic functions (`calculateAdditionalCallTimeNeeded`) and UI functions (`updateTargetCard`) are now documented.
+  - No further action required at this time.
+
+### js/apps/dashboard.js
+- **Date:** [Current Date]
+- **Status:** COMPLETED
+- **Details:**
+  - Identified as a high-complexity module with zero documentation.
+  - `initializePage` and all internal helper functions (`checkFormDirty`, `initQuickList`, etc.) were undocumented.
+  - **Action:** Added comprehensive JSDoc to all functions, including "Why" context for data normalization and state management.
 
 ## Action Plan
-- Document all exported and internal functions in `js/apps/calculator.js`.
-- Add `@param`, `@returns`, and descriptions.
-- Verify with `scan_docs.py`.
+- [x] Document `js/apps/dashboard.js`
+- [ ] Scan `js/apps/mailto.js` for similar issues.
