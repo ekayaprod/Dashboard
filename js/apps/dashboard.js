@@ -5,33 +5,59 @@
 
 AppLifecycle.onBootstrap(initializePage);
 
+/**
+ * Initializes the Dashboard application.
+ * Sets up state management, loads previous data, and binds event listeners.
+ *
+ * This function encapsulates the entire page logic to avoid polluting the global scope
+ * and to ensure dependencies (AppLifecycle, SafeUI) are ready before execution.
+ */
 function initializePage() {
     const DEBOUNCE_DELAY = 300;
 
+    // Core application state and DOM elements
     let DOMElements;
     let state;
     let saveState;
     let APP_CONFIG;
-    let selectedAppId = null;
-    let initialAppData = null;
 
+    // UI State tracking
+    let selectedAppId = null;
+    let initialAppData = null; // Used for dirty checking
+
+    /**
+     * Checks if the currently edited form has unsaved changes.
+     * Compares current input values against `initialAppData`.
+     *
+     * @returns {boolean} True if the form is dirty (has changes), false otherwise.
+     */
     const checkFormDirty = () => {
         if (!initialAppData) return false;
         const currentUrls = DOMElements.editAppUrls.value.trim();
         const currentEscalation = DOMElements.editAppEscalation.value.trim();
 
         if (initialAppData.id === null) {
+            // New App: Dirty if any field is non-empty
             return DOMElements.editAppName.value.trim() !== '' || currentUrls !== '' || currentEscalation !== '';
         }
+        // Existing App: Dirty if any field differs from initial load
         return DOMElements.editAppName.value.trim() !== initialAppData.name ||
                 currentUrls !== initialAppData.urls ||
                 currentEscalation !== initialAppData.escalation;
     };
 
+    /**
+     * Updates the "Save Changes" button state based on form dirty status.
+     * Disables the button if there are no changes to save.
+     */
     const updateSaveButtonState = () => {
         if(DOMElements.saveChangesBtn) DOMElements.saveChangesBtn.disabled = !checkFormDirty();
     };
 
+    /**
+     * Initializes the Quick List (Shortcuts) feature.
+     * Uses the global `QuickListManager` to render shortcuts and handle add/delete actions.
+     */
     const initQuickList = () => {
         window.QuickListManager.init({
             container: DOMElements.shortcutsContainer,
@@ -76,6 +102,11 @@ function initializePage() {
         });
     };
 
+    /**
+     * Renders the application selection dropdown.
+     * Sorts applications alphabetically by name.
+     * Resets selection if the currently selected app ID is no longer valid.
+     */
     const renderAppDropdown = () => {
         const appSelect = DOMElements.appSelect;
         const selectedValue = appSelect.value;
@@ -87,12 +118,17 @@ function initializePage() {
             appSelect.value = selectedValue;
         } else {
             appSelect.value = '';
+            // If the previously selected app was deleted, clear the selection state
             if (selectedAppId && !sortedApps.some(app => app.id === selectedAppId)) {
                 selectedAppId = null;
             }
         }
     };
 
+    /**
+     * Renders the application data section.
+     * Toggles between the "Empty State" and the "Dropdown" based on whether apps exist.
+     */
     const renderAppData = () => {
         if (!DataHelpers.hasItems(state, 'apps')) {
             DOMElements.appSelectGroup.classList.add('hidden');
@@ -104,19 +140,38 @@ function initializePage() {
         }
     };
 
+    /**
+     * Re-renders all page-specific components (Shortcuts, Apps).
+     * Called after data restoration or significant state changes.
+     */
     const renderAllPageSpecific = () => {
         initQuickList();
         renderAppData();
     };
 
+    /**
+     * Normalizes line endings in text to `\n`.
+     * Ensures consistency across different operating systems (Windows \r\n vs Unix \n)
+     * which is crucial for multi-line textareas and data portability.
+     *
+     * @param {string} text - The input text.
+     * @returns {string} The normalized text with `\n` line endings.
+     */
     const normalizeLineEndings = (text) => {
         if (!text) return '';
         return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     };
 
+    /**
+     * Displays the details of a selected application in the editor.
+     * Handles state persistence for the selected app ID.
+     *
+     * @param {string|null} appId - The ID of the application to display, or null to clear.
+     */
     const displayAppDetails = (appId) => {
         selectedAppId = appId;
 
+        // Persist selection so it survives page reloads
         if (state.ui) {
             state.ui.selectedAppId = appId;
             saveState();
@@ -143,6 +198,7 @@ function initializePage() {
                 }
                 return;
             }
+            // Normalize for display to ensure textarea content matches value logic
             const urlsNormalized = normalizeLineEndings(app.urls);
             const escalationNormalized = normalizeLineEndings(app.escalation);
 
@@ -158,6 +214,7 @@ function initializePage() {
         const isCollapsed = escalationTextarea.value.trim() === '';
         escalationTextarea.style.height = isCollapsed ? '40px' : 'auto';
 
+        // Trigger auto-resize after DOM update
         setTimeout(() => {
             DOMHelpers.triggerTextareaResize(DOMElements.editAppUrls);
             DOMHelpers.triggerTextareaResize(DOMElements.editAppEscalation);
@@ -165,22 +222,35 @@ function initializePage() {
         updateSaveButtonState();
     };
 
+    /**
+     * Prepares the form for creating a new application.
+     * Clears selection and focuses the name input.
+     */
     const createNewAppForm = () => {
         DOMElements.appSelect.value = '';
         displayAppDetails(null);
         DOMElements.appDetailsContainer.classList.remove('hidden');
         DOMElements.editAppNameWrapper.classList.remove('hidden');
         DOMElements.editAppName.focus();
+        // ID is null to indicate creation mode
         initialAppData = {id: null, name: '', urls: '', escalation: ''};
         updateSaveButtonState();
     };
 
+    /**
+     * Configures the global Settings Modal for this application.
+     * Sets up CSV Export/Import handlers and full state restoration logic.
+     */
     const setupSettingsModal = () => {
         const pageDataHtml = `
             <button id="modal-export-csv-btn" class="btn">Export Apps (CSV)</button>
             <button id="modal-import-csv-btn" class="btn">Import Apps (CSV)</button>
         `;
 
+        /**
+         * Handler for modal open event.
+         * Binds CSV export/import listeners dynamically when the modal is shown.
+         */
         const onModalOpen = () => {
             CsvManager.setupExport({
                 exportBtn: document.getElementById('modal-export-csv-btn'),
@@ -201,6 +271,7 @@ function initializePage() {
                     };
                     if (!SafeUI.validators.notEmpty(entry.name)) return { error: `Row ${index + 2}: 'name' is required.` };
                     if (!SafeUI.validators.maxLength(entry.name, 100)) return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
+                    // Check for duplicates in existing state
                     if (DataValidator.hasDuplicate(state.apps, 'name', entry.name, row.id)) return { error: `Row ${index + 2}: App name "${entry.name}" already exists.` };
                     return { entry: entry };
                 },
@@ -208,9 +279,11 @@ function initializePage() {
                     const newEntries = [];
                     const updatedEntries = [];
                     const existingIds = new Set(state.apps.map(app => app.id));
+
                     validatedData.forEach(entry => {
                         if (existingIds.has(entry.id)) { updatedEntries.push(entry); } else { newEntries.push(entry); }
                     });
+
                     const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
                     const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
                     let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
@@ -218,6 +291,7 @@ function initializePage() {
                         summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p><ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">${errorList}${moreErrors}</ul>`;
                     }
                     summaryHtml += `<p>Apply changes? This is permanent.</p>`;
+
                     SafeUI.showModal("Confirm CSV Import", summaryHtml, [
                         { label: 'Cancel' },
                         {
@@ -246,11 +320,18 @@ function initializePage() {
             });
         };
 
+        /**
+         * Handler for full state restoration (Backup & Restore).
+         * Clears local storage and re-populates it with backup data.
+         *
+         * @param {Object} dataToRestore - The parsed backup object.
+         */
         const onRestore = (dataToRestore) => {
             console.warn('FULL RESTORE: Overwriting all localStorage data');
             try { localStorage.removeItem('dashboard_state_v5'); } catch (e) { console.error('Failed to clear localStorage:', e); }
 
             let regeneratedCount = 0;
+            // Validate and regenerate IDs for core collections if necessary
             ['apps', 'notes', 'shortcuts'].forEach(key => {
                 (dataToRestore[key] || []).forEach(item => {
                     if (item.id && item.id.length < 20) {
@@ -268,6 +349,7 @@ function initializePage() {
 
             saveState();
 
+            // Verify persistence
             setTimeout(() => {
                 const verification = localStorage.getItem('dashboard_state_v5');
                 if (!verification) {
@@ -281,6 +363,7 @@ function initializePage() {
             displayAppDetails(null);
             renderAllPageSpecific();
 
+            // Restore UI state if valid
             if (state.ui.selectedAppId) {
                 DOMElements.appSelect.value = state.ui.selectedAppId;
                 displayAppDetails(state.ui.selectedAppId);
@@ -308,6 +391,13 @@ function initializePage() {
         }
     };
 
+    /**
+     * Finalizes page initialization after the core AppLifecycle has loaded.
+     * Binds DOM elements, events, and initializes sub-modules (QuickList, Settings).
+     *
+     * @param {Object} ctx - The initialization context from AppLifecycle.
+     * @param {Object} appConfig - The application configuration object.
+     */
     const initDashboardPageSpecific = (ctx, appConfig) => {
         DOMElements = ctx.elements;
         state = ctx.state;
@@ -318,22 +408,26 @@ function initializePage() {
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppUrls);
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
 
+        // Inject SVG Icons
         DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
         DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
         DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
 
         initQuickList();
 
+        // Prevent accidental navigation if form is dirty
         window.addEventListener('beforeunload', (e) => {
             if (checkFormDirty()) { e.preventDefault(); e.returnValue = ''; }
         });
 
+        // App Selection Logic
         DOMElements.appSelect.addEventListener('change', () => {
             if (checkFormDirty()) {
                 UIPatterns.confirmUnsavedChanges(() => {
                     const appId = DOMElements.appSelect.value || null;
                     displayAppDetails(appId);
                 });
+                // Revert selection until confirmed
                 DOMElements.appSelect.value = selectedAppId;
                 return;
             }
@@ -341,11 +435,13 @@ function initializePage() {
             displayAppDetails(appId);
         });
 
+        // Auto-save logic (debounced)
         const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
         DOMElements.editAppName.addEventListener('input', debouncedSave);
         DOMElements.editAppUrls.addEventListener('input', debouncedSave);
         DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
 
+        // Save Changes Button Logic
         DOMElements.saveChangesBtn.addEventListener('click', () => {
             const newName = DOMElements.editAppName.value.trim();
             if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
@@ -355,6 +451,7 @@ function initializePage() {
             const isNewApp = initialAppData.id === null;
             const nameChanged = !isNewApp && newName !== initialAppData.name;
 
+            // Duplicate Check
             if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName, isNewApp ? null : selectedAppId)) {
                 return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
             }
@@ -385,6 +482,7 @@ function initializePage() {
             displayAppDetails(appData.id || selectedAppId);
         });
 
+        // Delete App Logic
         DOMElements.deleteAppBtn.addEventListener('click', () => {
             if (!selectedAppId) return;
             const app = DataHelpers.findById(state, 'apps', selectedAppId);
@@ -404,6 +502,7 @@ function initializePage() {
         setupSettingsModal();
         renderAppData();
 
+        // Restore State on Load
         let restoredApp = false;
         if (state.ui && state.ui.selectedAppId) {
             const appExists = DataHelpers.getCollection(state, 'apps').some(app => app.id === state.ui.selectedAppId);
@@ -425,6 +524,13 @@ function initializePage() {
         }, 100);
     };
 
+    /**
+     * MAIN EXECUTION BLOCK
+     * 1. Defines configuration constants.
+     * 2. Initializes the AppLifecycle.
+     * 3. Starts the Dashboard logic.
+     * 4. Initializes the Notepad module.
+     */
     (async () => {
         try {
             const APP_VERSION = '6.3.1';
