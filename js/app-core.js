@@ -131,7 +131,9 @@ const UIUtils = (() => {
                     r = randomBuffer[0];
                 } while (r >= limit);
                 return r % max;
-            } catch (e) {}
+            } catch (e) {
+                console.warn('UIUtils: crypto.getRandomValues failed, falling back to Math.random', e);
+            }
         }
         return Math.floor(Math.random() * max);
     };
