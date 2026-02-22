@@ -56,6 +56,28 @@ const UIPatterns = (() => {
 
 const ListRenderer = (() => {
     return {
+        /**
+         * Renders a list of items into a container with support for empty states and custom item creation.
+         *
+         * @param {Object} config - The configuration object.
+         * @param {HTMLElement} config.container - The DOM element to render into.
+         * @param {Array<any>} [config.items] - The array of data items to render.
+         * @param {string} [config.emptyMessage] - The message to display if no items are present.
+         * @param {Function} config.createItemElement - Callback function that returns an HTMLElement for a given item.
+         * @param {boolean} [config.append] - If true, appends to the container instead of clearing it.
+         * @returns {void}
+         * @example
+         * ListRenderer.renderList({
+         *   container: document.getElementById('list'),
+         *   items: [{name: 'Item 1'}],
+         *   emptyMessage: 'No items',
+         *   createItemElement: (item) => {
+         *     const div = document.createElement('div');
+         *     div.textContent = item.name;
+         *     return div;
+         *   }
+         * });
+         */
         renderList: (config) => {
             const { container, items, emptyMessage, createItemElement, append } = config;
 
