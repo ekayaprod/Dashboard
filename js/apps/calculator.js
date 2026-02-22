@@ -69,12 +69,53 @@ function initializePage() {
             LEEWAY_RATIO: 1 / 7
         };
 
+        const COPY = {
+            TARGETS: {
+                OUTSTANDING: 'Outstanding',
+                EXCELLENT: 'Excellent',
+                SATISFACTORY: 'Satisfactory',
+            },
+            STATUS: {
+                MET: 'Goal Met!',
+                MET_SUB: 'Great job!',
+                TICKETS_REMAINING: 'Tickets to Go',
+                CALL_TIME: 'Call Time',
+                OR: '— OR —',
+                NA: 'N/A',
+                OVER_SHIFT: '> Shift',
+                ADD_PREFIX: 'Add ',
+                MIN_SUFFIX: 'm',
+            },
+            BUFFER: {
+                SPIKE_TITLE: 'Target Spiked! (+6 Tickets)',
+                SPIKE_ACTION: (mins) => `Add <strong>${mins} min</strong> Call Time to fix it.`,
+                SAFE_LABEL: 'Safe work time before target jump (+6)',
+            },
+            STRATEGY: {
+                QUICK_FIX_TITLE: '📉 Quick Fix',
+                QUICK_FIX_BODY: (mins) => `You're just <strong>${mins} min</strong> over. Add a little Call Time to drop your goal by 6.`,
+            },
+            ERRORS: {
+                CHECK_TIMES: "Check Shift Times",
+                INVALID: "Invalid Settings",
+            },
+            MODALS: {
+                RESET_TITLE: 'Start Fresh?',
+                RESET_BODY: 'Reset all data to defaults?',
+                CANCEL: 'Cancel',
+                CONFIRM_RESET: 'Reset',
+            },
+            TOASTS: {
+                RESTORED: (mins) => `Restored ${mins} mins`,
+            }
+        };
+
         const CHECK_ICON = `<svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
         const gradeBoundaries = {
-            'Outstanding': { name: 'Outstanding', min: 7, max: Infinity },
-            'Excellent': { name: 'Excellent', min: 4, max: 6 },
-            'Satisfactory': { name: 'Satisfactory', min: -3, max: 3 }
+            [COPY.TARGETS.OUTSTANDING]: { name: COPY.TARGETS.OUTSTANDING, min: 7, max: Infinity },
+            [COPY.TARGETS.EXCELLENT]: { name: COPY.TARGETS.EXCELLENT, min: 4, max: 6 },
+            [COPY.TARGETS.SATISFACTORY]: { name: COPY.TARGETS.SATISFACTORY, min: -3, max: 3 }
         };
 
         // --- 1. CORE LOGIC: REQUIRED CALL TIME ---
@@ -156,7 +197,8 @@ function initializePage() {
                 <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap: 4px;">
                     <span class="target-label" style="font-weight:700;">${label}</span>
                     <span class="target-icon">${CHECK_ICON}</span>
-                    <span style="font-size:0.8rem; opacity:0.9;">Met</span>
+                    <span style="font-size:0.8rem; opacity:0.9;">${COPY.STATUS.MET}</span>
+                    <span style="font-size:0.65rem; opacity:0.8;">${COPY.STATUS.MET_SUB}</span>
                 </div>
                 `;
             }
@@ -169,16 +211,16 @@ function initializePage() {
                     <!-- Path 1: Tickets -->
                     <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
                         <span class="target-value" style="font-size:1.1rem;">${ticketText}</span>
-                        <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">Tickets Needed</span>
+                        <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">${COPY.STATUS.TICKETS_REMAINING}</span>
                     </div>
 
                     <!-- Divider -->
-                    <div style="font-size:0.6rem; opacity:0.5; text-align:center; margin:1px 0;">— OR —</div>
+                    <div style="font-size:0.6rem; opacity:0.5; text-align:center; margin:1px 0;">${COPY.STATUS.OR}</div>
 
                     <!-- Path 2: Call Time -->
                     <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
                          <span class="target-value target-alt-metric" style="font-size:1.0rem;">${callTimeText}</span>
-                         <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">Call Time</span>
+                         <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">${COPY.STATUS.CALL_TIME}</span>
                     </div>
                 </div>
             `;
@@ -269,11 +311,11 @@ function initializePage() {
 
             let callTimeDisplay;
             if (additionalCallTime === Infinity) {
-                callTimeDisplay = "N/A";
+                callTimeDisplay = COPY.STATUS.NA;
             } else if (additionalCallTime > 480) {
-                callTimeDisplay = "> Shift";
+                callTimeDisplay = COPY.STATUS.OVER_SHIFT;
             } else {
-                callTimeDisplay = `Add ${additionalCallTime}m`;
+                callTimeDisplay = `${COPY.STATUS.ADD_PREFIX}${additionalCallTime}${COPY.STATUS.MIN_SUFFIX}`;
             }
 
             return {
@@ -313,8 +355,8 @@ function initializePage() {
                 const reduceNeeded = Math.ceil(minutesInHour - 29);
                 html = `
                     <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
-                        <span style="color: var(--warning-text); font-weight: bold;">Target Elevated (+6 Tickets)</span><br>
-                        Add <strong>${reduceNeeded} min</strong> Call Time to drop back
+                        <span style="color: var(--warning-text); font-weight: bold;">${COPY.BUFFER.SPIKE_TITLE}</span><br>
+                        ${COPY.BUFFER.SPIKE_ACTION(reduceNeeded)}
                     </div>
                 `;
             } else {
@@ -331,7 +373,7 @@ function initializePage() {
                 html = `
                     <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 6px; background: rgba(0,0,0,0.05); border-radius: 4px;">
                         <span style="${colorStyle} font-weight: bold; font-size: 1.1rem;">${buffer} min</span><br>
-                        <span style="font-size: 0.75rem; opacity: 0.8;">work time until Target Increases (+6)</span>
+                        <span style="font-size: 0.75rem; opacity: 0.8;">${COPY.BUFFER.SAFE_LABEL}</span>
                     </div>
                 `;
             }
@@ -355,8 +397,8 @@ function initializePage() {
             if (isRoundedUp && (minutesInHour - 29) <= 20) {
                  analysis = {
                     type: 'optimization',
-                    title: '📉 Easy Win',
-                    text: `You are only <strong>${Math.ceil(minutesInHour - 29)} min</strong> over the threshold. Adding this small amount of Call Time will lower your ticket goal by 6.`
+                    title: COPY.STRATEGY.QUICK_FIX_TITLE,
+                    text: COPY.STRATEGY.QUICK_FIX_BODY(Math.ceil(minutesInHour - 29))
                  };
             }
 
@@ -387,7 +429,7 @@ function initializePage() {
             const endMinutes = DateUtils.parseTimeToMinutes(DOMElements.shiftEnd.value);
             const breakTimeMinutes = parseInt(DOMElements.breakTime.value, 10) || 0;
             
-            if (endMinutes <= startMinutes) return { error: "Check Shift Times" };
+            if (endMinutes <= startMinutes) return { error: COPY.ERRORS.CHECK_TIMES };
 
             const totalShiftMinutes = endMinutes - startMinutes;
             const postBreak = totalShiftMinutes - breakTimeMinutes;
@@ -415,7 +457,7 @@ function initializePage() {
             const { totalProductiveMinutes, shiftStartMinutes, error } = getScheduleInfo(now);
 
             if (error || totalProductiveMinutes <= 0) {
-                 DOMElements.targetsGrid.innerHTML = `<div class="info-box info-box-danger" style="grid-column:1/-1">${error || "Invalid Config"}</div>`;
+                 DOMElements.targetsGrid.innerHTML = `<div class="info-box info-box-danger" style="grid-column:1/-1">${error || COPY.ERRORS.INVALID}</div>`;
                  return;
             }
 
@@ -538,7 +580,14 @@ function initializePage() {
         });
         
         DOMElements.btnResetData.addEventListener('click', () => {
-             SafeUI.showModal('Clear All?', 'Clear all data?', [{label:'Cancel'}, {label:'Clear All', class:'button-danger', callback: handleResetData}]);
+             SafeUI.showModal(
+                 COPY.MODALS.RESET_TITLE,
+                 COPY.MODALS.RESET_BODY,
+                 [
+                     {label: COPY.MODALS.CANCEL},
+                     {label: COPY.MODALS.CONFIRM_RESET, class:'button-danger', callback: handleResetData}
+                 ]
+             );
         });
         
         /**
@@ -621,7 +670,7 @@ function initializePage() {
                     DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(cur + mins);
                     localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
                     debouncedCalculateAndSave();
-                    SafeUI.showToast(`Imported ${mins} mins`);
+                    SafeUI.showToast(COPY.TOASTS.RESTORED(mins));
                 }
             } catch (e) { console.warn(e); }
         }
