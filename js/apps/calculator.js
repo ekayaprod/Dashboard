@@ -87,9 +87,9 @@ function initializePage() {
                 MIN_SUFFIX: 'm',
             },
             BUFFER: {
-                SPIKE_TITLE: 'Target Spiked! (+6 Tickets)',
-                SPIKE_ACTION: (mins) => `Add <strong>${mins} min</strong> Call Time to fix it.`,
-                SAFE_LABEL: 'Safe work time before target jump (+6)',
+                SPIKE_TITLE: 'Target Jump (+6)',
+                SPIKE_ACTION: (mins) => `Add <strong>${mins} min</strong> to reduce target.`,
+                SAFE_LABEL: 'Safe buffer until target increase',
             },
             STRATEGY: {
                 QUICK_FIX_TITLE: '📉 Quick Fix',
@@ -110,7 +110,7 @@ function initializePage() {
             }
         };
 
-        const CHECK_ICON = `<svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        const CHECK_ICON = `<svg aria-hidden="true" focusable="false" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
         const gradeBoundaries = {
             [COPY.TARGETS.OUTSTANDING]: { name: COPY.TARGETS.OUTSTANDING, min: 7, max: Infinity },

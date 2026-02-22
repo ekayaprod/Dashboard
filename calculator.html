@@ -83,6 +83,25 @@
             .btn:active, .btn-icon:active, .icon-btn:active { transform: none; }
             .target-value { transition: none; }
             .pulse-success { animation: none !important; }
+            .accordion-content { transition: none !important; }
+        }
+
+        /* Accordion Polish */
+        .accordion-content {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.3s ease-out;
+            padding: 0 !important; /* Override style.css padding */
+        }
+        .accordion.expanded .accordion-content {
+            display: grid; /* Override style.css block */
+            grid-template-rows: 1fr;
+            padding: 0 !important;
+        }
+        .accordion-inner {
+            overflow: hidden;
+            padding: 0.5rem; /* Apply padding here */
+            min-height: 0; /* Required for grid transition */
         }
     </style>
 </head>
@@ -98,7 +117,7 @@
                     <div class="accordion-header" id="schedule-header">
                         <div style="display: flex; align-items: center;">
                             <span id="schedule-collapse-icon" class="accordion-icon">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                             </span>
@@ -106,17 +125,18 @@
                         </div>
                     </div>
                     <div class="accordion-content" id="schedule-content">
-                        <div class="compact-grid-2">
-                            <div>
-                                <label for="shiftStart" class="sidebar-label">Shift Start</label>
+                        <div class="accordion-inner">
+                            <div class="compact-grid-2">
+                                <div>
+                                    <label for="shiftStart" class="sidebar-label">Start Time</label>
                                 <select id="shiftStart" class="form-control"></select>
                             </div>
                             <div>
-                                <label for="shiftEnd" class="sidebar-label">Shift End</label>
+                                <label for="shiftEnd" class="sidebar-label">End Time</label>
                                 <select id="shiftEnd" class="form-control"></select>
                             </div>
                             <div>
-                                <label for="breakTime" class="sidebar-label">Break</label>
+                                <label for="breakTime" class="sidebar-label">Break Duration</label>
                                 <select id="breakTime" class="form-control">
                                     <option value="0">None</option>
                                     <option value="15">15m</option>
@@ -129,7 +149,8 @@
                                     <option value="120">2h</option>
                                 </select>
                             </div>
-                            <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Clear All</button>
+                            <button id="btnResetData" class="btn" style="padding: 0.4rem 0.6rem;">Reset Calculator</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -139,7 +160,7 @@
                     <div class="accordion-header">
                          <div style="display: flex; align-items: center;">
                             <span class="accordion-icon">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                             </span>
@@ -147,26 +168,28 @@
                         </div>
                     </div>
                     <div class="accordion-content">
-                         <div class="compact-grid-2">
-                             <div>
-                                 <label for="currentCallTime" class="sidebar-label" title="Call Time">Call Time</label>
+                        <div class="accordion-inner">
+                             <div class="compact-grid-2">
+                                 <div>
+                                     <label for="currentCallTime" class="sidebar-label" title="Call Duration">Call Duration</label>
                                  <input type="text" id="currentCallTime" class="form-control" placeholder="0:00" value="0">
                              </div>
                              <div>
-                                 <label for="currentTickets" class="sidebar-label">Tickets Done</label>
+                                 <label for="currentTickets" class="sidebar-label">Tickets Completed</label>
                                  <input type="number" id="currentTickets" class="form-control" value="0">
                              </div>
                          </div>
                          <!-- Add Call Row -->
                          <div class="compact-grid-row" style="margin-top: 0.5rem;">
                              <div>
-                                 <label for="addCallTime" class="sidebar-label">Add Minutes</label>
+                                 <label for="addCallTime" class="sidebar-label">Add Time (m)</label>
                                  <input type="number" id="addCallTime" class="form-control" placeholder="mins">
                              </div>
                              <div>
                                  <button id="btnAddCallTime" class="btn btn-primary" style="height: 32px; width: 32px; padding: 0;">+</button>
                              </div>
                          </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -188,8 +211,8 @@
 
                     <!-- Subtle Footer for technical stats -->
                     <div class="subtle-footer-stats">
-                        <span title="Net Work Time">Net Work Time: <strong id="totalWorkTimeEOD">00:00</strong></span>
-                        <span title="Net Work Time rounded to nearest hour * 6">Rounded Goal: <strong id="baseTargetDisplay">0</strong></span>
+                        <span title="Active Time">Active Time: <strong id="totalWorkTimeEOD">00:00</strong></span>
+                        <span title="Active Time rounded to nearest hour * 6">Target Base: <strong id="baseTargetDisplay">0</strong></span>
                     </div>
                 </div>
         
