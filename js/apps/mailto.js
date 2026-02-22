@@ -1,8 +1,18 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
+ *
+ * This module handles the "Mailto Generator" application, allowing users to:
+ * 1. Create mailto links with Subject, Body, CC, BCC.
+ * 2. Upload .MSG files to extract content (via a background worker).
+ * 3. Save templates to a folder-based library structure.
+ * 4. Export/Import templates via CSV.
  */
 
+/**
+ * Application configuration constants.
+ * @constant
+ */
 const APP_CONFIG = {
     NAME: 'mailto_library',
     VERSION: '2.3.3',
@@ -10,8 +20,16 @@ const APP_CONFIG = {
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
 
+/**
+ * List of query parameters supported in a mailto link (excluding body/to).
+ * @constant
+ */
 const MAILTO_PARAM_KEYS = ['cc', 'bcc', 'subject']; 
 
+/**
+ * Default initial state for the application.
+ * @constant
+ */
 const defaultState = {
     library: [],
     ui: {
@@ -20,11 +38,23 @@ const defaultState = {
     }
 };
 
+/** @type {Object} Holds references to DOM elements */
 let DOMElements;
+/** @type {Object} The application state object */
 let state;
+/** @type {Function} Callback to persist state changes */
 let saveState;
+/** @type {string} ID of the currently viewed folder in the library */
 let currentFolderId = 'root';
 
+/**
+ * Populates a `<select>` element with the folder structure from the library.
+ * Used for moving items or saving templates to specific folders.
+ *
+ * @param {HTMLSelectElement} selectEl - The select element to populate.
+ * @param {string|null} [excludeId=null] - ID of a folder to exclude (e.g., prevent moving a folder into itself).
+ * @param {boolean} [includeCreateNew=false] - Whether to add a "Create New Folder" option at the top.
+ */
 function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = false) {
     const folders = TreeUtils.getAllFolders(state.library);
     selectEl.innerHTML = '';
@@ -45,6 +75,12 @@ function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = fal
     });
 }
 
+/**
+ * Switches the visible section between 'library' and 'editor'.
+ * Manages accessibility attributes (aria-expanded) and updates state.
+ *
+ * @param {string} sectionName - The name of the section to show ('library' or 'editor').
+ */
 function setActiveSection(sectionName) {
     const libSec = document.getElementById('library-section');
     const editSec = document.getElementById('editor-section');
@@ -77,6 +113,10 @@ function setActiveSection(sectionName) {
     if (state.ui) { state.ui.activeSection = sectionName; saveState(); }
 }
 
+/**
+ * Updates the live preview link and the generated mailto string based on current input values.
+ * Toggles the 'disabled' state of the result link if no content exists.
+ */
 function updateLivePreview() {
     const d = {
         to: DOMElements.resultTo.value,
@@ -97,6 +137,10 @@ function updateLivePreview() {
     }
 }
 
+/**
+ * Clears all input fields in the editor and resets the file upload input.
+ * Triggered by the "Clear" or "Reset" actions.
+ */
 function clearEditorFields() {
     ['result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', 'result-mailto', 'save-template-name'].forEach(id => {
         const el = document.getElementById(id);
@@ -110,6 +154,13 @@ function clearEditorFields() {
     SafeUI.showToast("Form reset");
 }
 
+/**
+ * Parses a mailto string into its constituent parts.
+ * Handles URL decoding and query parameter extraction.
+ *
+ * @param {string} str - The raw mailto string.
+ * @returns {Object} An object containing {to, cc, bcc, subject, body}.
+ */
 function parseMailto(str) {
     const data = {to:'', cc:'', bcc:'', subject:'', body:''};
     if (!str || !str.startsWith('mailto:')) return data;
@@ -129,6 +180,13 @@ function parseMailto(str) {
     } catch (e) { return data; }
 }
 
+/**
+ * Constructs a mailto string from data objects.
+ * Handles URI encoding of parameters and body content (including newline normalization).
+ *
+ * @param {Object} data - Object containing {to, cc, bcc, subject, body}.
+ * @returns {string} The formatted mailto string.
+ */
 function buildMailto(data) {
     try {
         let params = [];
@@ -140,6 +198,12 @@ function buildMailto(data) {
 
 let msgWorker = null;
 
+/**
+ * Handles messages received from the MSG parsing worker.
+ * Updates the UI with extracted email data or displays errors.
+ *
+ * @param {MessageEvent} e - The message event from the worker.
+ */
 function handleWorkerMessage(e) {
     const response = e.data;
     const uploadWrapper = document.getElementById('upload-wrapper');
@@ -173,6 +237,8 @@ function handleWorkerMessage(e) {
 
 /**
  * Initializes the background worker for parsing MSG files.
+ * Uses a singleton pattern to reuse the worker instance.
+ *
  * @returns {Worker} The initialized MSG worker instance.
  */
 function initWorker() {
@@ -192,6 +258,12 @@ function initWorker() {
     return msgWorker;
 }
 
+/**
+ * Processes a file upload (drag & drop or selection).
+ * Reads the file as an ArrayBuffer and sends it to the worker for parsing.
+ *
+ * @param {File} file - The file object to process.
+ */
 function handleFile(file) {
     const uploadWrapper = document.getElementById('upload-wrapper');
     if (uploadWrapper) {
@@ -216,6 +288,12 @@ function handleFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
+/**
+ * Retrieves the list of items (folders and templates) in the currently active folder.
+ * Defaults to returning the root library if the folder ID is invalid.
+ *
+ * @returns {Array} The array of child items in the current folder.
+ */
 function getItemsInCurrentFolder() {
     if (currentFolderId === 'root') return state.library;
     const f = TreeUtils.findItemById(state.library, currentFolderId);
@@ -223,6 +301,11 @@ function getItemsInCurrentFolder() {
     return f ? f.children : [];
 }
 
+/**
+ * Renders the library catalogue list and breadcrumbs.
+ * Sorts items so folders appear first, followed by templates alphabetically.
+ * Uses `ListRenderer` to update the DOM.
+ */
 function renderCatalogue() {
     const path = TreeUtils.getBreadcrumbPath(state.library, currentFolderId);
     DOMElements.breadcrumbContainer.innerHTML = path.map((p, i) => 
@@ -264,6 +347,12 @@ function renderCatalogue() {
     });
 }
 
+/**
+ * Opens a modal to move a library item to a different folder.
+ * Handless the logic for re-parenting items in the tree structure.
+ *
+ * @param {string} itemId - The ID of the item to move.
+ */
 function openMoveModal(itemId) {
     const item = TreeUtils.findItemById(state.library, itemId);
     if(!item) return;
@@ -310,6 +399,11 @@ function openMoveModal(itemId) {
     }, 50);
 }
 
+/**
+ * Main initialization function for the Mailto application.
+ * Sets up state, event listeners, and renders initial UI.
+ * Called by AppLifecycle.onBootstrap.
+ */
 async function init() {
     
     if (typeof SafeUI === 'undefined') { return; }
@@ -602,6 +696,7 @@ async function init() {
         buttonId: 'btn-settings', appName: APP_CONFIG.NAME, state,
         pageSpecificDataHtml: `<button id=\"exp\" class=\"btn\">Export CSV</button><button id=\"imp\" class=\"btn\">Import CSV</button>`,
         onModalOpen: () => {
+            // CsvManager is used to handle export/import of the library
             CsvManager.setupExport({exportBtn: document.getElementById('exp'), headers: APP_CONFIG.CSV_HEADERS, dataGetter: ()=>[], filename:'export.csv'});
             CsvManager.setupImport({
                 importBtn: document.getElementById('imp'), 
