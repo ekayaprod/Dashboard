@@ -235,4 +235,58 @@ describe('app-core.js', () => {
         expect(loadedState).toEqual({ ...DEFAULTS, version: VERSION })
     })
   })
+
+  describe('UIUtils.getRandomInt', () => {
+    it('should handle crypto errors gracefully by falling back to Math.random', () => {
+      const consoleSpy = vi.spyOn(console, 'warn')
+
+      // Mock crypto.getRandomValues to throw
+      const originalCrypto = window.crypto
+
+      // Ensure crypto exists on window
+      if (!window.crypto) {
+        Object.defineProperty(window, 'crypto', {
+          value: {},
+          writable: true
+        })
+      }
+
+      const throwingCrypto = {
+        getRandomValues: vi.fn().mockImplementation(() => {
+          throw new Error('Quota exceeded')
+        }),
+        randomUUID: () => 'uuid'
+      }
+
+      // Overwrite window.crypto
+      Object.defineProperty(window, 'crypto', {
+        value: throwingCrypto,
+        writable: true,
+        configurable: true
+      })
+
+      // Call the function
+      const result = window.UIUtils.getRandomInt(100)
+
+      // Assertions
+      expect(typeof result).toBe('number')
+      expect(result).toBeGreaterThanOrEqual(0)
+      expect(result).toBeLessThan(100)
+
+      // Check that it warned
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('UIUtils: crypto.getRandomValues failed'),
+        expect.any(Error)
+      )
+
+      // Restore window.crypto
+      if (originalCrypto) {
+        Object.defineProperty(window, 'crypto', {
+          value: originalCrypto,
+          writable: true,
+          configurable: true
+        })
+      }
+    })
+  })
 })
