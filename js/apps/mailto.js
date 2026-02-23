@@ -1,8 +1,20 @@
 /**
  * mailto-app.js
  * MailTo Generator Application Logic (ES6 Module / Hybrid)
+ *
+ * This module manages the MailTo Link Generator application, which allows users to:
+ * 1. Create and edit mailto links with Subject, Body, CC, and BCC.
+ * 2. Parse existing mailto links or uploaded .msg files.
+ * 3. Organize templates in a folder structure (Library).
+ * 4. Export/Import templates via CSV.
+ *
+ * It relies on global utilities like `AppLifecycle` for initialization and `SafeUI` for DOM manipulation.
  */
 
+/**
+ * Application configuration constants.
+ * @constant {Object}
+ */
 const APP_CONFIG = {
     NAME: 'mailto_library',
     VERSION: '2.3.3',
@@ -10,21 +22,45 @@ const APP_CONFIG = {
     CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
 };
 
+/**
+ * List of query parameters supported in a mailto link (excluding body).
+ * @constant {string[]}
+ */
 const MAILTO_PARAM_KEYS = ['cc', 'bcc', 'subject']; 
 
+/**
+ * Default initial state for the application.
+ * @constant {Object}
+ */
 const defaultState = {
-    library: [],
+    library: [], // Array of folder/item objects
     ui: {
         currentFolderId: 'root',
         activeSection: 'editor' 
     }
 };
 
+/** @type {Object<string, HTMLElement>} Cached DOM elements map. */
 let DOMElements;
+
+/** @type {Object} The current application state (reactive). */
 let state;
+
+/** @type {Function} Function to persist the current state to localStorage. */
 let saveState;
+
+/** @type {string} ID of the currently selected folder in the library view. */
 let currentFolderId = 'root';
 
+/**
+ * Populates a `<select>` element with the folder structure.
+ *
+ * Uses `TreeUtils.getAllFolders` to flatten the structure for the dropdown.
+ *
+ * @param {HTMLSelectElement} selectEl - The select element to populate.
+ * @param {string|null} [excludeId=null] - ID of a folder to exclude (e.g., to prevent moving a folder into itself).
+ * @param {boolean} [includeCreateNew=false] - Whether to prepend a "Create New Folder" option.
+ */
 function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = false) {
     const folders = TreeUtils.getAllFolders(state.library);
     selectEl.innerHTML = '';
@@ -45,6 +81,14 @@ function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = fal
     });
 }
 
+/**
+ * Switches the visible application section (Editor vs Library).
+ *
+ * Manages ARIA attributes (`aria-expanded`) for accessibility and
+ * persists the active section to state.
+ *
+ * @param {string} sectionName - The section to show ('library' or 'editor').
+ */
 function setActiveSection(sectionName) {
     const libSec = document.getElementById('library-section');
     const editSec = document.getElementById('editor-section');
@@ -77,6 +121,12 @@ function setActiveSection(sectionName) {
     if (state.ui) { state.ui.activeSection = sectionName; saveState(); }
 }
 
+/**
+ * Updates the mailto link preview based on current form inputs.
+ *
+ * Rebuilds the `mailto:` string and updates the "Test Link" button state.
+ * Disables the link if no content is present.
+ */
 function updateLivePreview() {
     const d = {
         to: DOMElements.resultTo.value,
@@ -97,6 +147,11 @@ function updateLivePreview() {
     }
 }
 
+/**
+ * Resets all editor fields to their default state.
+ *
+ * Clears inputs, file uploads, and updates the preview.
+ */
 function clearEditorFields() {
     ['result-to', 'result-cc', 'result-bcc', 'result-subject', 'result-body', 'result-mailto', 'save-template-name'].forEach(id => {
         const el = document.getElementById(id);
@@ -110,6 +165,14 @@ function clearEditorFields() {
     SafeUI.showToast("Form reset");
 }
 
+/**
+ * Parses a mailto string into its components.
+ *
+ * Handles URL decoding and extracting query parameters (subject, body, cc, bcc).
+ *
+ * @param {string} str - The mailto string (e.g., "mailto:a@b.com?subject=Hi").
+ * @returns {{to:string, cc:string, bcc:string, subject:string, body:string}} The parsed data components.
+ */
 function parseMailto(str) {
     const data = {to:'', cc:'', bcc:'', subject:'', body:''};
     if (!str || !str.startsWith('mailto:')) return data;
@@ -129,6 +192,20 @@ function parseMailto(str) {
     } catch (e) { return data; }
 }
 
+/**
+ * Constructs a valid mailto string from data components.
+ *
+ * Properly encodes URI components and ensures line breaks in the body
+ * are encoded as `%0D%0A` for compatibility.
+ *
+ * @param {Object} data - The data object.
+ * @param {string} data.to - Primary recipient.
+ * @param {string} [data.cc] - Carbon copy recipients.
+ * @param {string} [data.bcc] - Blind carbon copy recipients.
+ * @param {string} [data.subject] - Email subject.
+ * @param {string} [data.body] - Email body content.
+ * @returns {string} The formatted mailto string.
+ */
 function buildMailto(data) {
     try {
         let params = [];
@@ -138,8 +215,17 @@ function buildMailto(data) {
     } catch (e) { return ''; }
 }
 
+/** @type {Worker|null} Singleton instance of the background worker. */
 let msgWorker = null;
 
+/**
+ * Handles messages received from the background worker.
+ *
+ * Updates the UI with parsed email data (Subject, Body, Recipients)
+ * or displays an error modal.
+ *
+ * @param {MessageEvent} e - The worker message event.
+ */
 function handleWorkerMessage(e) {
     const response = e.data;
     const uploadWrapper = document.getElementById('upload-wrapper');
@@ -172,7 +258,8 @@ function handleWorkerMessage(e) {
 }
 
 /**
- * Initializes the background worker for parsing MSG files.
+ * Initializes the background worker for parsing MSG files (Lazy Load).
+ *
  * @returns {Worker} The initialized MSG worker instance.
  */
 function initWorker() {
@@ -192,6 +279,14 @@ function initWorker() {
     return msgWorker;
 }
 
+/**
+ * Processes an uploaded file (MSG or EML).
+ *
+ * Uses `FileReader` to read the file as an ArrayBuffer and transfers
+ * it to the worker for zero-copy parsing.
+ *
+ * @param {File} file - The file object from the input or drop event.
+ */
 function handleFile(file) {
     const uploadWrapper = document.getElementById('upload-wrapper');
     if (uploadWrapper) {
@@ -216,6 +311,11 @@ function handleFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
+/**
+ * Retrieves the contents of the currently active folder.
+ *
+ * @returns {Array} List of child items (folders or templates). Returns root library if current folder is invalid.
+ */
 function getItemsInCurrentFolder() {
     if (currentFolderId === 'root') return state.library;
     const f = TreeUtils.findItemById(state.library, currentFolderId);
@@ -223,6 +323,14 @@ function getItemsInCurrentFolder() {
     return f ? f.children : [];
 }
 
+/**
+ * Renders the file explorer view (Catalogue).
+ *
+ * 1. Generates and renders breadcrumbs for navigation.
+ * 2. Fetches items for the current folder.
+ * 3. Sorts items (Folders first, then alphabetical).
+ * 4. Uses `ListRenderer` to render the DOM elements.
+ */
 function renderCatalogue() {
     const path = TreeUtils.getBreadcrumbPath(state.library, currentFolderId);
     DOMElements.breadcrumbContainer.innerHTML = path.map((p, i) => 
@@ -264,6 +372,16 @@ function renderCatalogue() {
     });
 }
 
+/**
+ * Opens a modal to move an item (folder or template) to a different folder.
+ *
+ * Handles the logic for:
+ * - Filtering the target list (preventing invalid moves).
+ * - Updating the parent pointers in the data structure.
+ * - Refreshing the view upon success.
+ *
+ * @param {string} itemId - The ID of the item to move.
+ */
 function openMoveModal(itemId) {
     const item = TreeUtils.findItemById(state.library, itemId);
     if(!item) return;
@@ -310,6 +428,15 @@ function openMoveModal(itemId) {
     }, 50);
 }
 
+/**
+ * Main initialization function.
+ *
+ * 1. Checks for required global dependencies (`SafeUI`).
+ * 2. Initializes the page context via `AppLifecycle.initPage`.
+ * 3. Sets up event listeners for UI interactions (Drag & Drop, Modals, Buttons).
+ * 4. Initializes the `SharedSettingsModal` for CSV import/export.
+ * 5. Renders the initial view.
+ */
 async function init() {
     
     if (typeof SafeUI === 'undefined') { return; }
@@ -614,8 +741,12 @@ async function init() {
     });
 }
 
-// MailTo uses ES modules so we need to be careful about scope,
-// but AppLifecycle should be available globally via bootstrap.
+// ============================================================================
+// BOOTSTRAP LOGIC
+// ============================================================================
+
+// Register the init function with the AppLifecycle.
+// Handles race conditions where the script might load before or after the bootstrap event.
 if (typeof AppLifecycle !== 'undefined') {
     AppLifecycle.onBootstrap(init);
 } else {
