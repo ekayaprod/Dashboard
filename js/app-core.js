@@ -517,6 +517,25 @@ const DOMHelpers = (() => {
             }
             return { elements, allFound };
         },
+        /**
+         * Enables automatic height resizing for a textarea element based on its content.
+         *
+         * Attaches an input event listener that adjusts the height using `requestAnimationFrame`
+         * to prevent layout thrashing. It also attaches a `_autoResize` method to the element
+         * for manual triggering.
+         *
+         * @param {HTMLTextAreaElement} textarea - The textarea element to enhance.
+         * @param {number} [maxHeight=300] - The maximum height in pixels before scrolling occurs.
+         * @returns {void}
+         *
+         * @example
+         * const myTextarea = document.getElementById('note-input');
+         * DOMHelpers.setupTextareaAutoResize(myTextarea, 500);
+         *
+         * // Manually trigger resize after setting value programmatically
+         * myTextarea.value = "New content...";
+         * DOMHelpers.triggerTextareaResize(myTextarea);
+         */
         setupTextareaAutoResize: (textarea, maxHeight = 300) => {
             if (!textarea) return;
             let rafId;

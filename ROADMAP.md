@@ -34,7 +34,7 @@
 - **Accessibility**: Added `aria-label` to icon-only buttons in `dashboard.html`.
 
 ## 🚧 In Progress
-<!-- No active tasks -->
+- **Architectural Refactoring**: Modularize `js/apps/lookup.js` as it approaches 50KB size limit.
 
 ## 📅 Planned
 - **Accessibility Improvements**:
@@ -42,5 +42,4 @@
 
 ## 🧊 Backlog
 - **Future Optimizations**: Further performance tuning and code consolidation.
-- **Architectural Refactoring**: Modularize `js/apps/lookup.js` as it approaches 50KB size limit.
 - **Mobile Responsiveness Enhancements**: Improve layout stacking and touch targets for mobile devices.

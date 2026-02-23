@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cleanup:** Removed debug logging across the codebase.
 - **Documentation:** Overhauled Calculator app documentation.
 - **Documentation:** Added comprehensive JSDoc to `ListRenderer`.
+- **Documentation:** Updated Mailto documentation.
 
 ## [1.2.0] - 2026-02-19
 
