@@ -84,18 +84,43 @@ const LookupHelpers = {
     }
 };
 
+const LOOKUP_ICONS = {
+    search: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>',
+    clear: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>',
+    empty: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>'
+};
+
 const LookupRenderer = {
+    renderSkeletons: (container, count = 3) => {
+        container.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < count; i++) {
+            const li = document.createElement('li');
+            li.className = 'skeleton-item';
+            li.setAttribute('aria-hidden', 'true');
+            li.innerHTML = `
+                <div class="skeleton skeleton-block short"></div>
+                <div class="skeleton skeleton-block medium"></div>
+                <div class="skeleton skeleton-block"></div>
+            `;
+            fragment.appendChild(li);
+        }
+        container.appendChild(fragment);
+    },
+
     getEmptyMessage: (lowerTerm, isEditMode) => {
-        if (isEditMode) return 'No entries. Create one?';
+        if (isEditMode) return 'No entries. Add one?';
 
         if (lowerTerm) {
             const escapedTerm = SafeUI.escapeHTML(lowerTerm);
             return `
                 <div class="empty-search-state" style="text-align: center; padding: 2rem 1rem;">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;">🔍</div>
-                    <h3 style="margin: 0 0 1rem 0; font-weight: 500;">No matches for "${escapedTerm}"</h3>
+                    <div style="width: 48px; height: 48px; margin: 0 auto 0.5rem; opacity: 0.5; color: var(--subtle-text);">
+                        ${LOOKUP_ICONS.search.replace('width="16" height="16"', 'width="48" height="48"')}
+                    </div>
+                    <h3 style="margin: 0 0 1rem 0; font-weight: 500;">No entries found for "${escapedTerm}"</h3>
                     <button class="btn btn-primary" data-action="create-from-search">
-                        + Create "${escapedTerm}"
+                        + Add "${escapedTerm}"
                     </button>
                 </div>
             `;
@@ -103,8 +128,12 @@ const LookupRenderer = {
 
         return `
             <div style="text-align: center; padding: 2rem 1rem; opacity: 0.7;">
-                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⌨️</div>
-                <p style="margin: 0;">Search entries...</p>
+                <div style="width: 48px; height: 48px; margin: 0 auto 0.5rem; color: var(--subtle-text);">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4h-4v-4H8m13-4V7a1 1 0 00-1-1H4a1 1 0 00-1 1v11a1 1 0 001 1h6" />
+                    </svg>
+                </div>
+                <p style="margin: 0;">Start typing to search...</p>
             </div>
         `;
     },
@@ -200,7 +229,7 @@ const LookupSettings = {
                         ${errorList}${moreErrors}
                     </ul>`;
         }
-        summaryHtml += `<p>This is permanent.</p>`;
+        summaryHtml += `<p>This action cannot be undone.</p>`;
 
         SafeUI.showModal("Confirm Import", summaryHtml,
             LookupHelpers.modalActions.cancelAndConfirm('Import Data', () => {
@@ -368,7 +397,7 @@ const LookupSettings = {
             renderAll();
 
             const isEditMode = state.ui.isEditMode || false;
-            domElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
+                domElements.btnEditMode.textContent = isEditMode ? 'Exit Edit' : 'Edit';
             domElements.btnEditMode.classList.toggle('btn-primary', isEditMode);
             if (setEditMode) setEditMode(isEditMode);
 
@@ -494,16 +523,19 @@ function initializePage() {
             let currentSearchId = 0;
 
             const setLoading = (isLoading) => {
-                if (DOMElements.searchSpinner) {
-                    DOMElements.searchSpinner.classList.toggle('hidden', !isLoading);
-                }
                 if (DOMElements.localResults) {
                     DOMElements.localResults.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+
                     if (isLoading) {
-                         DOMElements.localResults.classList.add('results-fading');
-                    } else {
-                         DOMElements.localResults.classList.remove('results-fading');
+                        // Palette+: Show skeleton loader immediately
+                        LookupRenderer.renderSkeletons(DOMElements.localResults, 4);
+                        DOMElements.localResults.classList.remove('results-fading'); // Ensure opacity is full
                     }
+                }
+
+                // Curator: Hide spinner as we use skeletons now
+                if (DOMElements.searchSpinner) {
+                    DOMElements.searchSpinner.classList.add('hidden');
                 }
             };
 
@@ -1031,7 +1063,7 @@ function initializePage() {
                     saveState();
                 }
 
-                DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit Mode' : 'Edit Mode';
+                DOMElements.btnEditMode.textContent = isEditMode ? 'Exit Edit' : 'Edit';
                 DOMElements.btnEditMode.classList.toggle('btn-primary', isEditMode);
                 clearEditStateAndRender();
             }
@@ -1047,7 +1079,7 @@ function initializePage() {
 
                     if (state.ui.isEditMode) {
                         isEditMode = true;
-                        DOMElements.btnEditMode.textContent = 'Exit Edit Mode';
+                        DOMElements.btnEditMode.textContent = 'Exit Edit';
                         DOMElements.btnEditMode.classList.add('btn-primary');
                     }
 
