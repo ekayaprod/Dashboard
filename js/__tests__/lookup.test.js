@@ -154,12 +154,12 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
 
     it('getEmptyMessage should return "No entries" in edit mode', () => {
         const msg = window.LookupRenderer.getEmptyMessage('foo', true)
-        expect(msg).toBe('No entries. Create one?')
+        expect(msg).toBe('No entries. Add one?')
     })
 
     it('getEmptyMessage should return search suggestion if not edit mode and no term', () => {
         const msg = window.LookupRenderer.getEmptyMessage('', false)
-        expect(msg).toContain('Search entries...')
+        expect(msg).toContain('Start typing to search...')
     })
 
     it('createItemElement should create li with correct classes', () => {

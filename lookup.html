@@ -18,15 +18,18 @@
                         <h3 class="section-header">Lookup</h3>
                         <div class="header-actions button-group">
                             <button id="btn-settings" class="btn-icon" title="Settings"></button>
-                            <button id="btn-edit-mode" class="btn" title="Toggle Edit Mode">Edit Mode</button>
+                            <button id="btn-edit-mode" class="btn" title="Toggle Edit Mode">Edit</button>
                         </div>
                     </header>
                     <div class="search-controls" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
                         <div class="search-wrapper">
-                            <input type="text" id="search-input" class="form-control" placeholder="Search database..." style="flex: 1;">
+                            <input type="text" id="search-input" class="form-control" placeholder="Search entries..." style="flex: 1;">
                             <div id="search-spinner" class="spinner hidden" aria-hidden="true"></div>
                         </div>
-                        <button id="btn-clear-search" class="btn hidden" style="padding: 0.35rem 0.6rem;">✕ Clear</button>
+                        <button id="btn-clear-search" class="btn-clear hidden" title="Clear Search">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            Clear
+                        </button>
                     </div>
                     <div id="results-status" aria-live="polite"></div>
                 </div>
@@ -38,8 +41,8 @@
                 <main class="results-container generator-section">
                     <section class="column" id="local-column">
                         <div class="local-header section-header-wrapper">
-                            <h3 class="section-header">Local Results</h3>
-                            <button id="btn-add-new-entry" class="btn btn-primary hidden" title="Create new entry">+ Create Entry</button>
+                            <h3 class="section-header">Entries</h3>
+                            <button id="btn-add-new-entry" class="btn btn-primary hidden" title="Add new entry">+ Add Entry</button>
                         </div>
                         <ul id="local-results" class="result-list"></ul>
                     </section>
