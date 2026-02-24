@@ -187,6 +187,30 @@ const LookupRenderer = {
 };
 
 const LookupCSV = {
+    /**
+     * Validates a row from a CSV import against existing items.
+     * Checks for data validity and duplicates.
+     *
+     * @param {Object} row - The row data from the CSV.
+     * @param {number} index - The zero-based index of the row in the CSV.
+     * @param {Array<Object>} existingItems - The list of current items in the state.
+     * @returns {{action: string, entry: Object}|{error: string}} Result object with an action ('add', 'overwrite') or an error message.
+     *
+     * @example
+     * // 1. Mock dependencies
+     * globalThis.LookupHelpers = {
+     *     createEntry: (p) => ({ ...p, id: 'new-id' }),
+     *     validateEntry: () => ({ valid: true, errors: [] })
+     * };
+     *
+     * // 2. Define input data
+     * const row = { keyword: 'test', assignmentGroup: 'Group A' };
+     * const existing = [{ id: '1', keyword: 'test', assignmentGroup: 'Group B' }];
+     *
+     * // 3. Usage (assuming LookupCSV is defined)
+     * const result = LookupCSV.validateRow(row, 0, existing);
+     * console.log(result); // Expected: { action: 'add', entry: { ... } }
+     */
     validateRow: (row, index, existingItems) => {
         const entry = LookupHelpers.createEntry(row);
         const validation = LookupHelpers.validateEntry(entry);
