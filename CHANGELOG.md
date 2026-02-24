@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✅ New
+- **Lookup:** Polished interface with premium interactions.
+- **Wordbanks:** Expanded seasonal word lists for Passwords app.
 - **Dashboard:** Polished interface with premium interactions.
 - **Mailto:** Polished interface with premium interactions and clearer copy.
 
