@@ -159,7 +159,7 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
 
     it('getEmptyMessage should return search suggestion if not edit mode and no term', () => {
         const msg = window.LookupRenderer.getEmptyMessage('', false)
-        expect(msg).toContain('Start typing to search...')
+        expect(msg).toContain('Enter a keyword to start searching.')
     })
 
     it('createItemElement should create li with correct classes', () => {
