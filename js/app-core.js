@@ -21,6 +21,14 @@ const SVGIcons = Object.freeze({
 // MODULE: CoreValidators
 // ============================================================================
 const CoreValidators = Object.freeze({
+    /**
+     * Internal validation logic router.
+     * @param {any} value - The value to validate.
+     * @param {string} type - The type of validation ('url', 'notEmpty', 'maxLength').
+     * @param {Object} [options] - Additional validation options (e.g., {max: 10}).
+     * @returns {boolean} True if valid, false otherwise.
+     * @private
+     */
     _validate: (value, type, options = {}) => {
         if (value == null) return false;
         const str = String(value).trim();
@@ -45,8 +53,31 @@ const CoreValidators = Object.freeze({
                 return false;
         }
     },
+
+    /**
+     * Validates if a string is a valid URL.
+     * Handles standard URLs and localhost, optionally prepending http:// if missing.
+     *
+     * @param {string} value - The URL string to test.
+     * @returns {boolean} True if valid.
+     */
     url: function(value) { return this._validate(value, 'url'); },
+
+    /**
+     * Validates that a value is not empty or whitespace only.
+     *
+     * @param {string} value - The string to test.
+     * @returns {boolean} True if the string contains non-whitespace characters.
+     */
     notEmpty: function(value) { return this._validate(value, 'notEmpty'); },
+
+    /**
+     * Validates that a string does not exceed a maximum length.
+     *
+     * @param {string} value - The string to test.
+     * @param {number} max - The maximum allowed characters.
+     * @returns {boolean} True if length is <= max.
+     */
     maxLength: function(value, max) { return this._validate(value, 'maxLength', { max }); }
 });
 
@@ -54,12 +85,37 @@ const CoreValidators = Object.freeze({
 // MODULE: DataHelpers
 // ============================================================================
 const DataHelpers = Object.freeze({
+    /**
+     * Safely retrieves an array from the state object.
+     * Returns an empty array if the property doesn't exist or isn't an array.
+     *
+     * @param {Object} state - The application state object.
+     * @param {string} type - The key of the collection to retrieve.
+     * @returns {Array} The requested array or an empty array.
+     */
     getCollection: (state, type) => {
         return (state && Array.isArray(state[type])) ? state[type] : [];
     },
+
+    /**
+     * Checks if a collection in the state has any items.
+     *
+     * @param {Object} state - The application state object.
+     * @param {string} type - The key of the collection to check.
+     * @returns {boolean} True if the collection exists and has length > 0.
+     */
     hasItems: (state, type) => {
         return (state && Array.isArray(state[type])) ? state[type].length > 0 : false;
     },
+
+    /**
+     * Finds an item by ID within a specific collection in the state.
+     *
+     * @param {Object} state - The application state object.
+     * @param {string} collectionType - The key of the collection to search.
+     * @param {string|number} id - The ID to search for.
+     * @returns {Object|null} The found item or null.
+     */
     findById: (state, collectionType, id) => {
         if (!id || !state || !Array.isArray(state[collectionType])) {
             return null;
@@ -96,6 +152,12 @@ const UIUtils = (() => {
             .replaceAll("'", '&#039;');
     };
 
+    /**
+     * Generates a unique identifier.
+     * Uses `crypto.randomUUID` if available, otherwise falls back to a timestamp-based ID.
+     *
+     * @returns {string} A unique string ID (UUID v4 or timestamp-random hybrid).
+     */
     const generateId = () => {
         try {
             if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -107,6 +169,14 @@ const UIUtils = (() => {
         return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     };
 
+    /**
+     * Creates a debounced function that delays invoking `func` until after `delay` ms have elapsed.
+     * Useful for resizing, scrolling, or search input events.
+     *
+     * @param {Function} func - The function to debounce.
+     * @param {number} delay - The number of milliseconds to delay.
+     * @returns {Function} A new function that wraps the original.
+     */
     const debounce = (func, delay) => {
         let timeout;
         return (...args) => {
@@ -115,11 +185,24 @@ const UIUtils = (() => {
         };
     };
 
+    /**
+     * Capitalizes the first letter of a string and lowercases the rest.
+     *
+     * @param {string} str - The string to capitalize.
+     * @returns {string} The capitalized string.
+     */
     const capitalize = (str) => {
         if (!str) return '';
         return String(str).charAt(0).toUpperCase() + String(str).slice(1).toLowerCase();
     };
 
+    /**
+     * Generates a cryptographically strong random integer between 0 and max (exclusive).
+     * Falls back to `Math.random` if `crypto` is unavailable or fails.
+     *
+     * @param {number} max - The upper bound (exclusive).
+     * @returns {number} A random integer.
+     */
     const getRandomInt = (max) => {
         if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
             try {
@@ -138,6 +221,13 @@ const UIUtils = (() => {
         return Math.floor(Math.random() * max);
     };
 
+    /**
+     * Copies the provided text to the system clipboard.
+     * Checks for clipboard API availability before attempting.
+     *
+     * @param {string} text - The text to copy.
+     * @returns {Promise<boolean>} True if successful, false otherwise.
+     */
     const copyToClipboard = async (text) => {
         if (!navigator.clipboard) {
             console.error('Clipboard API not available');
@@ -194,6 +284,12 @@ const UIUtils = (() => {
         }
     };
 
+    /**
+     * Opens a native file picker dialog for file selection.
+     *
+     * @param {Function} callback - Function called with the selected File object.
+     * @param {string} [accept="application/json,.json"] - The file types to accept (MIME types or extensions).
+     */
     const openFilePicker = (callback, accept = "application/json,.json") => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -219,6 +315,14 @@ const UIUtils = (() => {
         });
     };
 
+    /**
+     * Parses a JSON string safely, executing callbacks on success or error.
+     * Shows a modal error by default if no onError callback is provided.
+     *
+     * @param {string} jsonString - The JSON string to parse.
+     * @param {Function} onSuccess - Callback receiving the parsed object.
+     * @param {Function} [onError] - Callback receiving the error message.
+     */
     const parseJSON = (jsonString, onSuccess, onError) => {
         try {
             const parsed = JSON.parse(jsonString);
@@ -302,6 +406,13 @@ const UIUtils = (() => {
         throw lastError;
     };
 
+    /**
+     * Reads and parses a JSON file.
+     * Chains `readTextFile` and `parseJSON`.
+     *
+     * @param {File} file - The file to read.
+     * @returns {Promise<Object>} A promise resolving to the parsed JSON object.
+     */
     const readJSONFile = (file) => {
         return readTextFile(file)
             .then(text => {
@@ -381,12 +492,24 @@ const UIUtils = (() => {
         return { load, save };
     };
 
+    /**
+     * Hides the global modal overlay.
+     * @private
+     */
     const _hideModal = () => {
         const modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) modalOverlay.style.display = 'none';
         document.body.classList.remove('modal-open');
     };
 
+    /**
+     * Shows a modal with the specified title, content, and action buttons.
+     *
+     * @param {string} title - The modal title.
+     * @param {string} contentHtml - The HTML content for the body.
+     * @param {Array<{label: string, class?: string, callback?: Function}>} actions - Action buttons configuration.
+     * @private
+     */
     const _showModal = function(title, contentHtml, actions) {
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
@@ -411,6 +534,13 @@ const UIUtils = (() => {
         modalOverlay.style.display = 'flex';
     };
 
+    /**
+     * Displays a validation error modal and optionally focuses an invalid element.
+     *
+     * @param {string} title - The error title.
+     * @param {string} message - The error message.
+     * @param {string} [focusElementId] - The ID of the element to focus after closing.
+     */
     const showValidationError = function(title, message, focusElementId) {
         _showModal(title, `<p>${escapeHTML(message)}</p>`, [{ label: 'OK' }]);
         if (focusElementId) {
@@ -418,6 +548,12 @@ const UIUtils = (() => {
         }
     };
 
+    /**
+     * Displays a temporary toast notification.
+     * Automatically dismisses after 3 seconds.
+     *
+     * @param {string} message - The message to display.
+     */
     const showToast = (function() {
         let activeTimer = null;
         return function(message) {
@@ -460,6 +596,12 @@ const UIUtils = (() => {
 // ============================================================================
 // MODULE: SafeUI (Proxy layer)
 // ============================================================================
+/**
+ * Public API for UI utilities.
+ * Acts as a proxy to `UIUtils` to provide a stable interface for applications.
+ *
+ * @namespace SafeUI
+ */
 const SafeUI = (() => {
     const getSVGIcons = () => {
         if (UIUtils.SVGIcons) return UIUtils.SVGIcons;
@@ -467,8 +609,19 @@ const SafeUI = (() => {
     };
 
     return {
+        /**
+         * Flag indicating the module is loaded.
+         * @type {boolean}
+         */
         isReady: true,
+
+        /**
+         * Collection of SVG icon strings or text fallbacks.
+         * @type {Object<string, string>}
+         */
         SVGIcons: getSVGIcons(),
+
+        // Proxy methods - see UIUtils for documentation
         showModal: (title, content, actions) => UIUtils.showModal(title, content, actions),
         showValidationError: (title, msg, elId) => UIUtils.showValidationError(title, msg, elId),
         hideModal: () => UIUtils.hideModal(),
@@ -517,6 +670,13 @@ const DOMHelpers = (() => {
             }
             return { elements, allFound };
         },
+        /**
+         * Initializes auto-resizing behavior for a textarea.
+         * Attaches an input event listener and an internal `_autoResize` method.
+         *
+         * @param {HTMLTextAreaElement} textarea - The textarea element.
+         * @param {number} [maxHeight=300] - The maximum height in pixels.
+         */
         setupTextareaAutoResize: (textarea, maxHeight = 300) => {
             if (!textarea) return;
             let rafId;
@@ -531,6 +691,13 @@ const DOMHelpers = (() => {
             textarea._autoResize = resize;
             resize();
         },
+
+        /**
+         * Manually triggers the auto-resize logic for a textarea.
+         * Useful when setting value programmatically.
+         *
+         * @param {HTMLTextAreaElement} textarea - The textarea element.
+         */
         triggerTextareaResize: (textarea) => {
             if (textarea && typeof textarea._autoResize === 'function') textarea._autoResize();
         }
@@ -578,6 +745,14 @@ const DateUtils = {
         return 0;
     },
 
+    /**
+     * Internal helper to format minutes into HH:MM string.
+     * @param {number} m - Total minutes.
+     * @param {Object} [opts] - Formatting options.
+     * @param {boolean} [opts.signed] - If true, preserves negative sign.
+     * @returns {string} Formatted time string.
+     * @private
+     */
     _format(m, opts = {}) {
         if (isNaN(m) || (m < 0 && !opts.signed)) return '00:00';
 
@@ -590,7 +765,21 @@ const DateUtils = {
         return `${sign}${pad(hrs)}:${pad(mins)}`;
     },
 
+    /**
+     * Formats minutes into "HH:MM".
+     * Returns "00:00" for negative values or NaNs.
+     *
+     * @param {number} m - Total minutes.
+     * @returns {string} Time string (e.g. "01:30").
+     */
     formatMinutesToHHMM(m) { return this._format(m); },
+
+    /**
+     * Formats minutes into "(-)HH:MM", supporting negative values.
+     *
+     * @param {number} m - Total minutes.
+     * @returns {string} Time string (e.g. "-01:30").
+     */
     formatMinutesToHHMM_Signed(m) { return this._format(m, { signed: true }); },
 };
 
@@ -670,6 +859,10 @@ const AppLifecycle = (() => {
             }, 5000);
         },
 
+        /**
+         * Checks if the application bootstrap process is complete.
+         * @returns {boolean} True if ready.
+         */
         isReady: () => window.__BOOTSTRAP_READY === true,
 
         /**
@@ -742,14 +935,31 @@ const AppLifecycle = (() => {
             return { elements, state, saveState };
         },
         
+        /**
+         * Registers a function to be called when the user leaves the page.
+         * Useful for saving state or cleanup.
+         *
+         * @param {Function} saveFunction - The function to execute.
+         */
         registerSaveOnExit: (saveFunction) => {
             if (typeof saveFunction === 'function') onExitSaveFunctions.push(saveFunction);
         },
 
+        /**
+         * Registers a function to potentially block page exit with a prompt.
+         *
+         * @param {Function} promptFunction - Returns a string message if exit should be blocked, or null.
+         */
         registerPromptOnExit: (promptFunction) => {
             if (typeof promptFunction === 'function') beforeUnloadPrompt = promptFunction;
         },
         
+        /**
+         * Displays a critical startup error banner at the top of the page.
+         *
+         * @param {string} title - The error title.
+         * @param {string} message - The error message.
+         */
         showStartupError: _showErrorBanner,
         _showErrorBanner
     };

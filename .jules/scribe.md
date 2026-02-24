@@ -26,7 +26,15 @@
   - **Action:** Added file-level JSDoc, documented constants, state, UI helpers, core logic (`parseMailto`, `buildMailto`), worker integration, and tree management functions.
   - Explanations for `excludeId` in recursion and zero-copy transfer in worker handling were added.
 
+### js/app-core.js
+- **Date:** [Current Date]
+- **Status:** COMPLETED
+- **Details:**
+  - Found extensive missing JSDoc in core utility modules (`CoreValidators`, `DataHelpers`, `UIUtils`, `SafeUI`, `DOMHelpers`, `DateUtils`, `AppLifecycle`).
+  - **Action:** Added comprehensive JSDoc to all exported and internal functions.
+  - Documented resilience patterns (e.g., `getRandomInt` fallback), async logic (`fetchJSON` retries), and safe DOM manipulations.
+
 ## Action Plan
 - [x] Document `js/apps/dashboard.js`
 - [x] Document `js/apps/mailto.js`
-- [ ] Scan `js/app-core.js` for missing utility documentation.
+- [x] Scan `js/app-core.js` and add missing utility documentation.
