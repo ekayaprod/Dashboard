@@ -44,3 +44,9 @@
 - **Future Optimizations**: Further performance tuning and code consolidation.
 - **Architectural Refactoring**: Modularize `js/apps/lookup.js` as it approaches 50KB size limit.
 - **Mobile Responsiveness Enhancements**: Improve layout stacking and touch targets for mobile devices.
+
+## 💡 Innovation Backlog
+- **[Architecture] Migrate to `nanoid` for ID Generation**:
+  - **The Problem (Stagnation)**: The application relies on a brittle, custom ID generator (`UIUtils.generateId`) using `Date.now()` and `Math.random()`. This fallback strategy invites collision risks in high-frequency operations or across tabs, and is an unnecessary reinvented wheel.
+  - **The Solution (The Next-Gen Pattern)**: Adopt the `nanoid` library for unified, cryptographically secure string generation across the ecosystem.
+  - **The Benefit (Performance/DX Metric)**: Guarantees zero-collision UUIDs at blazing speeds, shrinks custom helper codebase by removing manual entropy logic, and standardizes behavior across environments.
