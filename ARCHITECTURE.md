@@ -120,3 +120,58 @@ graph LR
     Worker -->|postMessage(JSON)| App
     App -->|Updates| UI[Editor UI]
 ```
+
+## 🧱 Component Diagrams
+
+### Dashboard Data Flow
+```mermaid
+C4Component
+    title Dashboard Sub-System Component Map
+
+    Container_Boundary(dashboard_app, "Dashboard Application") {
+        Component(dash_logic, "dashboard.js", "Javascript", "Manages local applications, shortcuts, and notepad state")
+        Component(dash_ui, "dashboard.html", "HTML", "Dashboard user interface")
+
+        Component(core_lifecycle, "AppLifecycle", "JS Module", "Page initialization and auto-save")
+        Component(ui_notepad, "NotepadManager", "JS Module", "Reusable scratchpad UI component")
+        Component(ui_quicklist, "QuickListManager", "JS Module", "Reusable fast-access list rendering")
+    }
+
+    ContainerDb(local_storage, "localStorage", "Browser Storage", "Stores dashboard state")
+
+    Rel(dash_logic, dash_ui, "Renders to")
+    Rel(dash_logic, core_lifecycle, "Initializes via")
+    Rel(dash_logic, ui_notepad, "Instantiates")
+    Rel(dash_logic, ui_quicklist, "Instantiates")
+    Rel(core_lifecycle, local_storage, "Reads/Writes JSON")
+    Rel(ui_notepad, local_storage, "Auto-saves to")
+```
+
+### MailTo Architecture
+```mermaid
+C4Component
+    title MailTo App Component Map
+
+    Container_Boundary(mailto_app, "MailTo Application") {
+        Component(mail_logic, "mailto.js", "Javascript", "Handles email templates and .msg processing")
+        Component(mail_ui, "mailto.html", "HTML", "MailTo editor and library interface")
+
+        Component(worker_interface, "MsgWorker", "Web Worker", "Offloads .msg parsing")
+
+        Component(tree_utils, "TreeUtils", "JS Module", "Manages folder hierarchy logic")
+        Component(data_converter, "DataConverter", "JS Module", "CSV import/export")
+    }
+
+    System_Ext(default_email, "Default Mail Client", "OS Level", "Handles mailto: links")
+
+    Rel(mail_logic, mail_ui, "Updates DOM")
+    Rel(mail_ui, mail_logic, "Events (Click/DragDrop)")
+
+    Rel(mail_logic, worker_interface, "Posts binary data")
+    Rel(worker_interface, mail_logic, "Returns JSON")
+
+    Rel(mail_logic, tree_utils, "Navigates structure")
+    Rel(mail_logic, data_converter, "Exports Library")
+
+    Rel(mail_logic, default_email, "Opens mailto: URLs")
+```
