@@ -2,7 +2,7 @@
 // PAGE-SPECIFIC LOGIC: Calculator (calculator.html)
 // ============================================================================
 
-AppLifecycle.onBootstrap(initializePage);
+
 
 /**
  * Initializes the Calculator application.
@@ -675,4 +675,23 @@ function initializePage() {
             } catch (e) { console.warn(e); }
         }
     })();
+}
+
+// ============================================================================
+// BOOTSTRAP LOGIC
+// ============================================================================
+if (typeof AppLifecycle !== 'undefined') {
+    AppLifecycle.onBootstrap(initializePage);
+} else {
+    if (window.__BOOTSTRAP_READY) {
+        initializePage();
+    } else {
+        document.addEventListener('bootstrap:ready', () => {
+            if (typeof AppLifecycle !== 'undefined') {
+                AppLifecycle.onBootstrap(initializePage);
+            } else {
+                initializePage();
+            }
+        });
+    }
 }
