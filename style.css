@@ -10,6 +10,7 @@
     --danger-color: #ef4444; 
     --danger-hover: #dc2626;
     --success-color: #22c55e; 
+    --success-hover: #16a34a;
     --info-bg: #f8fafc;
 
     --warning-bg: #fff3cd;
@@ -51,6 +52,7 @@
         --subtle-text: #9ca3af;
         --primary-color: #60a5fa;
         --primary-hover: #3b82f6;
+        --success-hover: #15803d;
 
         --info-bg: #1f2937; 
         
@@ -132,8 +134,10 @@ body {
 /* Typography */
 h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 600; color: var(--text-color); }
 p { margin: 0; }
-a { color: var(--primary-color); text-decoration: none; }
+a { color: var(--primary-color); text-decoration: none; transition: all 0.2s; }
 a:hover { text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 2px; }
+a:active { opacity: 0.8; }
 
 /* Section Headers */
 .section-header-wrapper {
@@ -173,11 +177,15 @@ a:hover { text-decoration: underline; }
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 .form-control::placeholder { color: var(--subtle-text); opacity: 0.8; }
-.form-control:focus {
+.form-control:focus-visible {
     outline: none;
     border-color: var(--primary-color);
     background-color: var(--input-focus-bg);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+.form-control:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 textarea.form-control {
     resize: none;
@@ -218,7 +226,8 @@ textarea.form-control {
     opacity: 0.6;
     cursor: not-allowed; 
 }
-.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--primary-color); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--primary-color); outline-offset: 2px; }
+.btn:active { transform: scale(0.98); }
 
 .btn-primary {
     background-color: var(--primary-color); 
@@ -239,6 +248,7 @@ textarea.form-control {
     color: white; 
     border-color: var(--success-color); 
 }
+.btn-success:hover { background-color: var(--success-hover); }
 
 .btn-icon, .icon-btn {
     background: none;
@@ -253,6 +263,8 @@ textarea.form-control {
     justify-content: center;
 }
 .btn-icon:hover, .icon-btn:hover { background-color: var(--info-bg); color: var(--text-color); }
+.btn-icon:active, .icon-btn:active { transform: scale(0.95); }
+.btn-icon:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
 .btn-icon svg, .icon-btn svg { width: 16px; height: 16px; }
 
 .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
@@ -344,6 +356,8 @@ textarea.form-control {
     transition: background 0.2s, color 0.2s;
 }
 .nav-link:hover { background-color: var(--info-bg); color: var(--text-color); }
+.nav-link:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+.nav-link:active { transform: scale(0.98); }
 .nav-link.active { background-color: var(--primary-color); color: white; }
 
 /* Modals */
