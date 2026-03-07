@@ -1,5 +1,14 @@
 # Sidebar Productivity Suite - Technical Documentation
 
+## Quick Start
+1. Clone the repository: `git clone <repo-url>`
+2. Navigate to the project directory: `cd sidebar-productivity-suite`
+3. Install development dependencies (for testing): `npm install`
+4. Start a local static server to serve the application: `python3 -m http.server 8000` (or your preferred static server).
+5. Open a web browser and navigate to `http://localhost:8000/index.html`.
+6. Run the test suite: `npm test`
+7. Generate a test coverage report: `npm run test:coverage`
+
 ## 1. Overview
 The Sidebar Productivity Suite is a modular, browser-based application collection designed for execution within restricted environments such as the Microsoft Edge Sidebar. The suite operates entirely client-side, utilizing `localStorage` for data persistence, and requires no external build process or backend infrastructure.
 
