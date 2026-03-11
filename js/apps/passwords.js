@@ -591,6 +591,7 @@ function initializePage() {
         let availableStructures = {};
 
         const loadWordBank = async () => {
+            if (memoryWordBank !== null) return true;
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -611,6 +612,31 @@ function initializePage() {
             }
         };
 
+        const loadSeasonalBank = async (seasonKey) => {
+            if (seasonKey === 'standard') return null;
+            if (seasonalCache[seasonKey]) return seasonalCache[seasonKey];
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+                const seasonalBankData = await SafeUI.fetchJSON(
+                    `wordbanks/wordbank-${seasonKey}.json`,
+                    { signal: controller.signal },
+                    (d) => d && typeof d.wordBank === 'object'
+                );
+
+                clearTimeout(timeoutId);
+
+                // Cache and use
+                seasonalCache[seasonKey] = seasonalBankData.wordBank;
+                return seasonalBankData.wordBank;
+            } catch (err) {
+                console.error(`[loadSeasonalBank] Failed to load seasonal wordbank "${seasonKey}":`, err);
+                SafeUI.showToast(`Error loading ${seasonKey} wordbank. Using base words only.`);
+                return null;
+            }
+        };
+
         const analyzeWordBank = async () => {
             const selectedSeason = DOMElements.seasonalBankSelect.value;
 
@@ -625,40 +651,22 @@ function initializePage() {
             // Optimistic UI: Show loading
             SafeUI.showToast("Loading theme data...", 1000);
 
-            const loaded = await loadWordBank();
-            if (!loaded) return;
+            // ⚡ ACCELERATE: Concurrent execution for fetching word banks
+            const [baseLoaded, seasonalBank] = await Promise.all([
+                loadWordBank(),
+                loadSeasonalBank(activeSeasonKey)
+            ]);
+
+            if (!baseLoaded) return false;
 
             // Start with Base Bank (Standard)
             activeWordBank = JSON.parse(JSON.stringify(memoryWordBank));
 
-            // Load Seasonal Data if applicable
-            if (activeSeasonKey !== 'standard') {
-                if (seasonalCache[activeSeasonKey]) {
-                    // Use cached data
-                    activeWordBank = seasonalCache[activeSeasonKey];
-                } else {
-                    try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-                        const seasonalBankData = await SafeUI.fetchJSON(
-                            `wordbanks/wordbank-${activeSeasonKey}.json`,
-                            { signal: controller.signal },
-                            (d) => d && typeof d.wordBank === 'object'
-                        );
-
-                        clearTimeout(timeoutId);
-
-                        // Cache and use
-                        seasonalCache[activeSeasonKey] = seasonalBankData.wordBank;
-                        activeWordBank = seasonalBankData.wordBank;
-
-                    } catch (err) {
-                        console.error(`[analyzeWordBank] Failed to load seasonal wordbank "${activeSeasonKey}":`, err);
-                        SafeUI.showToast(`Error loading ${activeSeasonKey} wordbank. Using base words only.`);
-                        activeSeasonKey = 'standard';
-                    }
-                }
+            // Apply Seasonal Data if loaded successfully
+            if (seasonalBank) {
+                activeWordBank = seasonalBank;
+            } else if (activeSeasonKey !== 'standard') {
+                activeSeasonKey = 'standard'; // Revert to standard if seasonal failed
             }
 
             // Logic: Get Available Structures
@@ -666,6 +674,7 @@ function initializePage() {
 
             // UI: Update Structure Options
             PasswordUI.updateStructureOptions(DOMElements, availableStructures);
+            return true;
         };
 
         const handleGenerate = async (configObj) => {
@@ -852,13 +861,11 @@ function initializePage() {
 
             PasswordUI.initAccordion(DOMElements);
 
-            const loaded = await loadWordBank();
+            const loaded = await analyzeWordBank();
             if (!loaded) {
                 PasswordUI.disableAllControls(DOMElements);
                 return;
             }
-
-            await analyzeWordBank();
 
             attachEventListeners();
             initQuickActions();
