@@ -91,7 +91,7 @@ const ListRenderer = (() => {
             }
 
             if ((!items || items.length === 0) && !append) {
-                container.innerHTML = `<div class="empty-state-message">${emptyMessage}</div>`;
+                container.innerHTML = `<div class="empty-state-container"><div class="empty-state-text">${emptyMessage}</div></div>`;
                 return;
             }
 
