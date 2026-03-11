@@ -704,9 +704,6 @@ async function init() {
                 DOMElements.resultSubject.value = parsed.subject || '';
                 DOMElements.resultBody.value = parsed.body || '';
 
-                // Note: saveTemplateName is hidden/deprecated in UI but we update it in state if needed
-                if(DOMElements.saveTemplateName) DOMElements.saveTemplateName.value = item.name;
-
                 updateLivePreview(); // Trigger preview update
                 setActiveSection('editor');
                 SafeUI.showToast("Loaded");
