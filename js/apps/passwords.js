@@ -11,12 +11,10 @@ const APP_CONFIG = {
 const CHECK_ICON_SVG = '<svg aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
 const EMPTY_STATE_HTML = `
-    <div class="empty-state-container">
-        <svg class="empty-state-icon" aria-hidden="true" role="img" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        <p class="empty-state-text">Hit Generate to create passwords.</p>
-    </div>
+    <svg class="empty-state-icon" aria-hidden="true" role="img" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+    Hit Generate to create passwords.
 `;
 
 const FETCH_TIMEOUT_MS = 10000;

@@ -9,3 +9,7 @@ This journal tracks critical UX and accessibility learnings for the Sidebar Prod
 ## 2024-10-24 - Accessible Accordions
 **Learning:** Accordions in this project were implemented as raw `div`s with click handlers, making them inaccessible to keyboard users.
 **Action:** Standardized pattern: `role="button"`, `tabindex="0"`, `aria-expanded`, and `keydown` listener for Enter/Space. Added `.accordion-header:focus-visible` style for visual feedback.
+
+## 2026-03-11 - Unified Empty States
+**Learning:** Empty states across different applications (e.g. Dashboard, Passwords, etc) were inconsistent and unguided, some using inline styles and diverse classes like `.empty-state-message`.
+**Action:** Standardized all empty states to use the unified `.empty-state-container` and `.empty-state-text` global CSS classes defined in `style.css` to ensure consistent spacing, layout, and visual flow.
