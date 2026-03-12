@@ -10,3 +10,7 @@
 **Title**: Millisecond Optimization Audit
 **Learning**: Codebase is a Vanilla JavaScript application using native DOM APIs without React. No React component trees, `useCallback`, `useMemo`, or inline React style props exist to optimize.
 **Action**: [Skip] React render optimizations as they are incompatible with the native stack architecture.
+
+## 2026-03-12 - 🌌 Singularity - Native DOM Accessibility Enforcement
+**Learning:** The repository uses a raw Vanilla JS / native DOM architecture (no React or JSX). Consequently, there are no build-time JSX accessibility linters.
+**Action:** All future accessibility enhancements must inject direct HTML/DOM attributes (`aria-label`, `aria-hidden`) into raw template strings or `.html` files, never bootstrapping foreign linters.
