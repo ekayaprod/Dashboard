@@ -1,0 +1,3 @@
+## 2024-05-18 - 🧬 Helix - [Deduplicated Logic: Option Rendering & Test Setup]
+**Learning:** Found WET, domain-agnostic `document.createElement('option')` creation across `mailto.js`, `calculator.js`, and `passwords.js`. This violated the Rendering/UI Wrappers domain rules. Also found an exact setup logic clone in `js/__tests__/list-renderer.test.js`.
+**Action:** `[Safe Merge]` Centralized `DOMHelpers.createOption` utility into the global `js/app-core.js` and parameterized it with a single configuration object to maintain a pure UI wrapper. Updated the test suite to use a parameterized local helper to clean up duplicate boilerplate setup code.

@@ -75,6 +75,16 @@ describe('js/apps/passwords.js', () => {
                      elements[key] = document.getElementById(id);
                  });
                  return { elements, allFound: true };
+             },
+             createOption: (value, text, { disabled = false, selected = false, title = "", isHTML = false } = {}) => {
+                 const opt = document.createElement('option');
+                 opt.value = value;
+                 if (isHTML) opt.innerHTML = text;
+                 else opt.textContent = text;
+                 if (disabled) opt.disabled = true;
+                 if (selected) opt.selected = true;
+                 if (title) opt.title = title;
+                 return opt;
              }
         };
 

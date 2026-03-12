@@ -66,18 +66,15 @@ function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = fal
     selectEl.innerHTML = '';
 
     if (includeCreateNew) {
-        const createOpt = document.createElement('option');
-        createOpt.value = '__CREATE_NEW__';
-        createOpt.innerHTML = '➕ &lt; Create New Folder &gt;';
-        selectEl.appendChild(createOpt);
+        selectEl.appendChild(DOMHelpers.createOption('__CREATE_NEW__', '➕ &lt; Create New Folder &gt;', { isHTML: true }));
     }
 
     folders.forEach(f => {
         if (f.id === excludeId) return; 
-        const opt = document.createElement('option');
-        opt.value = f.id;
-        opt.innerHTML = '&nbsp;'.repeat(f.level * 2) + (f.level > 0 ? '📂 ' : '') + SafeUI.escapeHTML(f.name);
-        selectEl.appendChild(opt);
+        const indent = '&nbsp;'.repeat(f.level * 2);
+        const icon = f.level > 0 ? '📂 ' : '';
+        const name = SafeUI.escapeHTML(f.name);
+        selectEl.appendChild(DOMHelpers.createOption(f.id, `${indent}${icon}${name}`, { isHTML: true }));
     });
 }
 

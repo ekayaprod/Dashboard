@@ -389,27 +389,18 @@ const PasswordUI = {
         const currentVal = parseInt(select.value, 10);
         select.innerHTML = ''; // Clear
 
-        const randomOpt = document.createElement('option');
-        randomOpt.value = "-1";
-        randomOpt.textContent = "Random Chain";
-        select.appendChild(randomOpt);
+        select.appendChild(DOMHelpers.createOption("-1", "Random Chain"));
 
         const options = availableStructures[numWords];
 
         if (options && options.length > 0) {
             options.forEach((structObj, index) => {
-                const opt = document.createElement('option');
-                opt.value = index;
                 const catStr = structObj.categories.join(' + ');
-                opt.textContent = `${structObj.label || 'Chain'} (${catStr})`;
-                opt.title = structObj.description || "";
-                select.appendChild(opt);
+                const text = `${structObj.label || 'Chain'} (${catStr})`;
+                select.appendChild(DOMHelpers.createOption(index, text, { title: structObj.description || "" }));
             });
         } else {
-             const opt = document.createElement('option');
-             opt.disabled = true;
-             opt.textContent = "(No structures available)";
-             select.appendChild(opt);
+             select.appendChild(DOMHelpers.createOption("", "(No structures available)", { disabled: true }));
         }
 
         if (currentVal >= 0 && currentVal < (options ? options.length : 0)) {
