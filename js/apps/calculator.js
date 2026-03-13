@@ -54,13 +54,28 @@ function initializePage() {
                 'totalWorkTimeEOD', 'baseTargetDisplay',
                 'targets-grid', 'btnResetData', 'calc-info-content',
                 'schedule-header', 'schedule-content', 'schedule-collapse-icon',
-                'target-stats-bar'
+                'target-stats-bar', 'btn-settings'
             ]
         });
 
         if (!ctx) return;
 
         const { elements: DOMElements, state, saveState } = ctx;
+
+        if (window.SharedSettingsModal) {
+            window.SharedSettingsModal.init({
+                buttonId: 'btn-settings',
+                appName: APP_CONFIG.NAME,
+                state: state,
+                onRestoreCallback: (restoredData) => {
+                    Object.assign(state, restoredData);
+                    saveState();
+                    updateInputsFromState();
+                    calculateDailyRatings();
+                    SafeUI.showToast('Calculator settings restored successfully.');
+                }
+            });
+        }
 
         // --- CONSTANTS ---
         const CONSTANTS = {
