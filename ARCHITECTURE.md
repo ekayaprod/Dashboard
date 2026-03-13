@@ -33,7 +33,7 @@ graph TD
 
     subgraph "Workers & Libs"
         Worker[MsgWorker]
-        Msg[MsgReader.js]
+        Msg[msg-reader.js]
     end
 
     User -->|Interacts| Shell
@@ -112,7 +112,7 @@ graph LR
     App -->|postMessage(ArrayBuffer)| Worker[MsgWorker]
 
     subgraph "Background Thread"
-        Worker -->|Imports| Reader[MsgReader.js]
+        Worker -->|Imports| Reader[msg-reader.js]
         Reader -->|Parses| Buffer[Binary Data]
         Buffer -->|Returns| JSON[Clean JSON]
     end

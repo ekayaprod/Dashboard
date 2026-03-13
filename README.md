@@ -93,7 +93,7 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
 *   **Function**: Generates `mailto:` links and manages a library of email templates.
 *   **Architecture**:
     *   **Recursive Data Structure**: Supports nested folders for template organization.
-    *   **MSG Parsing**: Integrates `js/msgreader.js` to parse binary Outlook files (`.msg`) and extract recipients, subject, and body content.
+    *   **MSG Parsing**: Integrates `js/msg-reader.js` to parse binary Outlook files (`.msg`) and extract recipients, subject, and body content.
 *   **Navigation**: Implements a breadcrumb-based traversal system for the folder hierarchy.
 
 ### 4.5. Passwords (`passwords.html`)
