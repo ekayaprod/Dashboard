@@ -700,6 +700,32 @@ const DOMHelpers = (() => {
          */
         triggerTextareaResize: (textarea) => {
             if (textarea && typeof textarea._autoResize === 'function') textarea._autoResize();
+        },
+
+        /**
+         * Creates an HTMLOptionElement with the specified properties.
+         *
+         * @param {string|number} value - The value of the option.
+         * @param {string} text - The text content (or HTML if isHTML is true).
+         * @param {Object} [options] - Additional attributes.
+         * @param {boolean} [options.disabled=false] - If true, disables the option.
+         * @param {boolean} [options.selected=false] - If true, selects the option.
+         * @param {string} [options.title=""] - Title attribute.
+         * @param {boolean} [options.isHTML=false] - If true, sets innerHTML instead of textContent.
+         * @returns {HTMLOptionElement} The created option element.
+         */
+        createOption: (value, text, { disabled = false, selected = false, title = "", isHTML = false } = {}) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            if (isHTML) {
+                opt.innerHTML = text;
+            } else {
+                opt.textContent = text;
+            }
+            if (disabled) opt.disabled = true;
+            if (selected) opt.selected = true;
+            if (title) opt.title = title;
+            return opt;
         }
     };
 })();

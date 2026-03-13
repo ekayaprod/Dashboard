@@ -46,7 +46,7 @@ describe('app-ui.js - ListRenderer', () => {
         expect(container.children[2].textContent).toBe('c-2');
     });
 
-    it('should clear container if append is false', () => {
+    const renderWithAppend = (appendFlag) => {
         const container = document.getElementById('list-container');
         container.innerHTML = '<li>Existing</li>';
 
@@ -54,23 +54,16 @@ describe('app-ui.js - ListRenderer', () => {
             container,
             items: ['new'],
             createItemElement: (item) => document.createElement('li'),
-            append: false
+            append: appendFlag
         });
+        return container.children.length;
+    };
 
-        expect(container.children.length).toBe(1);
+    it('should clear container if append is false', () => {
+        expect(renderWithAppend(false)).toBe(1);
     });
 
     it('should append to container if append is true', () => {
-        const container = document.getElementById('list-container');
-        container.innerHTML = '<li>Existing</li>';
-
-        window.ListRenderer.renderList({
-            container,
-            items: ['new'],
-            createItemElement: (item) => document.createElement('li'),
-            append: true
-        });
-
-        expect(container.children.length).toBe(2);
+        expect(renderWithAppend(true)).toBe(2);
     });
 });
