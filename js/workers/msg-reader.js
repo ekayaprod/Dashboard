@@ -1,5 +1,5 @@
 /**
- * js/workers/msgreader.js
+ * js/workers/msg-reader.js
  * Version 2.0.23 (ES6 Module - Fix: Robust Text Decoding & Type Checks)
  * Core parser for extracting metadata and text from OLE .msg streams.
  * @see README.md#Execution-Architecture for the full parsing flow and constraints.

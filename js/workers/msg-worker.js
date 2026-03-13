@@ -3,7 +3,7 @@
  * Web Worker for offloading binary .msg parsing.
  * @see README.md#Execution-Architecture for the full background parsing lifecycle.
  */
-import { MsgReader } from './msgreader.js';
+import { MsgReader } from './msg-reader.js';
 
 /**
  * Handles incoming ArrayBuffer messages from the main thread, parses the .msg file,
