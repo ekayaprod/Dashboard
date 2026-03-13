@@ -110,16 +110,22 @@ const LookupRenderer = {
     },
 
     getEmptyMessage: (lowerTerm, isEditMode) => {
-        if (isEditMode) return 'No entries. Add one?';
+        if (isEditMode) {
+            return `
+                <div class="empty-state-container" aria-live="polite">
+                    <div class="empty-state-text">No entries. Add one?</div>
+                </div>
+            `;
+        }
 
         if (lowerTerm) {
             const escapedTerm = SafeUI.escapeHTML(lowerTerm);
             return `
-                <div class="empty-search-state" style="text-align: center; padding: 2rem 1rem;">
-                    <div style="width: 48px; height: 48px; margin: 0 auto 0.5rem; opacity: 0.5; color: var(--subtle-text);">
+                <div class="empty-state-container" aria-live="polite">
+                    <div class="empty-state-icon">
                         ${LOOKUP_ICONS.search.replace('width="16" height="16"', 'width="48" height="48"')}
                     </div>
-                    <h3 style="margin: 0 0 1rem 0; font-weight: 500;">No entries found for "${escapedTerm}"</h3>
+                    <h3 class="empty-state-text" style="font-weight: 500;">No entries found for "${escapedTerm}"</h3>
                     <button class="btn btn-primary" data-action="create-from-search">
                         + Add "${escapedTerm}"
                     </button>
@@ -128,11 +134,11 @@ const LookupRenderer = {
         }
 
         return `
-            <div style="text-align: center; padding: 2rem 1rem; opacity: 0.7;">
-                <div style="width: 48px; height: 48px; margin: 0 auto 0.5rem; color: var(--subtle-text);">
+            <div class="empty-state-container" aria-live="polite">
+                <div class="empty-state-icon">
                     ${LOOKUP_ICONS.empty}
                 </div>
-                <p style="margin: 0;">Enter a keyword to start searching.</p>
+                <p class="empty-state-text">Enter a keyword to start searching.</p>
             </div>
         `;
     },
@@ -290,7 +296,11 @@ const LookupSettings = {
             `).join('');
 
             if (searchesHtml.length === 0) {
-                searchesHtml = '<p class="form-help" style="text-align: center; margin: 0.5rem 0;">No custom searches added yet.</p>';
+                searchesHtml = `
+                    <div class="empty-state-container" aria-live="polite">
+                        <p class="empty-state-text">No custom searches added yet.</p>
+                    </div>
+                `;
             }
 
             return `
@@ -372,7 +382,11 @@ const LookupSettings = {
                 if (deleteBtn) {
                     deleteBtn.closest('.custom-search-item').remove();
                     if (listContainer.children.length === 0) {
-                        listContainer.innerHTML = '<p class="form-help" style="text-align: center; margin: 0.5rem 0;">No custom searches added yet.</p>';
+                        listContainer.innerHTML = `
+                            <div class="empty-state-container" aria-live="polite">
+                                <p class="empty-state-text">No custom searches added yet.</p>
+                            </div>
+                        `;
                     }
                 }
             });
