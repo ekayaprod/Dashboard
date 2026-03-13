@@ -254,5 +254,44 @@ describe('js/apps/passwords.js', () => {
             warnSpy.mockRestore();
             setItemSpy.mockRestore();
         });
+
+        // 🕵️ INTERROGATE: Concurrency stress and partial degradation
+        it('prevents application crash and falls back to base bank when seasonal bank fails during Promise.all concurrent execution', async () => {
+            // Mock the select value to "winter" so it attempts to load the seasonal bank
+            const seasonSelect = document.getElementById('seasonal-bank-select');
+            const option = document.createElement('option');
+            option.value = 'winter';
+            seasonSelect.appendChild(option);
+            seasonSelect.value = 'winter';
+
+            const originalFetchJSON = window.SafeUI.fetchJSON;
+            const toastSpy = vi.spyOn(window.SafeUI, 'showToast');
+
+            // Force the winter bank fetch to reject, simulating a partial network failure
+            window.SafeUI.fetchJSON = vi.fn().mockImplementation((url, options, validator) => {
+                if (url.includes('winter')) {
+                    return Promise.reject(new Error('Network Timeout'));
+                }
+                return Promise.resolve({ wordBank: { "LongWord": ["test"], "Object": ["obj"] } });
+            });
+
+            // Execute the initial setup which will fire analyzeWordBank
+            await window._initPage();
+
+            // Wait for async promises to settle
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Verify that the fallback mechanism handled the error and the application didn't crash
+            // SafeUI.showToast should have been called with the error message
+            expect(toastSpy).toHaveBeenCalledWith('Error loading winter wordbank. Using base words only.');
+
+            // Generate button should still work and produce results instead of failing open
+            const btnGenerate = document.getElementById('btn-generate');
+            expect(btnGenerate.disabled).toBe(false);
+
+            // Clean up
+            window.SafeUI.fetchJSON = originalFetchJSON;
+            toastSpy.mockRestore();
+        });
     });
 });
