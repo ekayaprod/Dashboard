@@ -1,11 +1,8 @@
 /**
- * js/msgreader.js
+ * js/workers/msgreader.js
  * Version 2.0.23 (ES6 Module - Fix: Robust Text Decoding & Type Checks)
- * * CHANGE LOG:
- * - Consolidated text decoding logic into `_robustDecode` helper.
- * - Replaced fragile `try/catch` blocks in `parseMime` and `_scanBufferForMimeText` with `_robustDecode`.
- * - Fixed `MsgReaderParser` constructor to use safer type checking for ArrayBuffer/Uint8Array.
- * - Unified 8-bit fallback encoding to 'windows-1252'.
+ * Core parser for extracting metadata and text from OLE .msg streams.
+ * @see README.md#Execution-Architecture for the full parsing flow and constraints.
  */
 
 'use strict';
@@ -772,22 +769,7 @@ const MsgReader = {
      *                   The returned object will have a `subject`, `body`, `recipients` array,
      *                   and a `getFieldValue(name)` method.
      * @throws {Error} If the input is not a valid ArrayBuffer or if OLE parsing fails.
-     *
-     * @example
-     * // Example usage:
-     * const fileInput = document.getElementById('file-input');
-     * fileInput.addEventListener('change', async (e) => {
-     *   const file = e.target.files[0];
-     *   const buffer = await file.arrayBuffer();
-     *   try {
-     *     const msg = MsgReader.read(buffer);
-     *     console.log('Subject:', msg.subject);
-     *     console.log('Body:', msg.body);
-     *     console.log('Recipients:', msg.recipients);
-     *   } catch (err) {
-     *     console.error('Failed to read message:', err);
-     *   }
-     * });
+     * @see README.md#Usage-Blueprint for usage instructions regarding main thread integration.
      */
     read: function(arrayBuffer) {
         let reader = new MsgReaderParser(arrayBuffer);
