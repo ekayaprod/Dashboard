@@ -119,60 +119,6 @@ const BackupRestore = (() => {
                     SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
                 }
             });
-        },
-
-        /**
-         * Sets up event listeners for backup and restore buttons.
-         *
-         * @param {Object} config - Configuration object.
-         * @param {Object} config.state - The current application state.
-         * @param {string} config.appName - The application name.
-         * @param {HTMLElement} [config.backupBtn] - The button element to trigger backup.
-         * @param {HTMLElement} [config.restoreBtn] - The button element to trigger restore.
-         * @param {Object} config.itemValidators - Validators for restore verification.
-         * @param {string} [config.restoreConfirmMessage] - Custom confirmation message.
-         * @param {Function} config.onRestoreCallback - Callback to execute the actual state update.
-         */
-        setupBackupRestoreHandlers: (config) => {
-            const {
-                state,
-                appName,
-                backupBtn,
-                restoreBtn,
-                itemValidators,
-                restoreConfirmMessage,
-                onRestoreCallback
-            } = config;
-
-            if (backupBtn) {
-                backupBtn.addEventListener('click', () => {
-                    BackupRestore.createBackup(state, appName);
-                });
-            }
-
-            if (restoreBtn) {
-                restoreBtn.addEventListener('click', () => {
-                    BackupRestore.handleRestoreUpload({
-                        appName: appName,
-                        itemValidators: itemValidators,
-                        onRestore: (dataToRestore) => {
-                            SafeUI.showModal("Confirm Restore (JSON)",
-                                `<p>${SafeUI.escapeHTML(restoreConfirmMessage || 'Overwrite all data?')}</p>`,
-                                [
-                                    { label: 'Cancel' },
-                                    {
-                                        label: 'Restore',
-                                        class: 'button-danger',
-                                        callback: () => {
-                                            onRestoreCallback(dataToRestore);
-                                        }
-                                    }
-                                ]
-                            );
-                        }
-                    });
-                });
-            }
         }
     };
 })();
