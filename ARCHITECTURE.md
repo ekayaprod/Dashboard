@@ -175,3 +175,64 @@ C4Component
 
     Rel(mail_logic, default_email, "Opens mailto: URLs")
 ```
+
+### Lookup Architecture
+```mermaid
+C4Component
+    title Lookup App Component Map
+
+    Container_Boundary(lookup_app, "Lookup Application") {
+        Component(lookup_logic, "lookup.js", "Javascript", "Manages local entries and external custom searches")
+        Component(lookup_ui, "lookup.html", "HTML", "Search interface and results display")
+
+        Component(lookup_helpers, "LookupHelpers", "JS Object", "Entry validation, creation, and keyword parsing")
+        Component(lookup_renderer, "LookupRenderer", "JS Object", "DOM generation for search results and skeletons")
+        Component(lookup_csv, "LookupCSV", "JS Object", "Validates CSV rows during import")
+
+        Component(search_helper, "SearchHelper", "JS Module (Shared)", "Asynchronous indexed keyword search")
+    }
+
+    ContainerDb(local_storage, "localStorage", "Browser Storage", "Stores entry database and custom searches")
+    System_Ext(external_kb, "External Knowledge Base", "Web Service", "Target for custom URL templates")
+
+    Rel(lookup_logic, lookup_ui, "Updates DOM via Renderer")
+    Rel(lookup_ui, lookup_logic, "Events (Input/Click)")
+
+    Rel(lookup_logic, search_helper, "Queries index")
+    Rel(lookup_logic, lookup_helpers, "Validates data")
+    Rel(lookup_logic, lookup_csv, "Validates imports")
+    Rel(lookup_logic, lookup_renderer, "Generates HTML fragments")
+
+    Rel(lookup_logic, local_storage, "Reads/Writes JSON")
+    Rel(lookup_logic, external_kb, "Opens templated URLs")
+```
+
+### Passwords Architecture
+```mermaid
+C4Component
+    title Passwords App Component Map
+
+    Container_Boundary(passwords_app, "Passwords Application") {
+        Component(passwords_logic, "passwords.js", "Javascript", "Handles passphrase generation and UI state")
+        Component(passwords_ui, "passwords.html", "HTML", "Password generator interface")
+
+        Component(password_logic_obj, "PasswordLogic", "JS Object", "Generates phrases, seasonal logic, entropy mapping")
+        Component(password_ui_obj, "PasswordUI", "JS Object", "Updates DOM elements and accordion states")
+        Component(password_settings_obj, "PasswordSettings", "JS Object", "Initializes the settings modal")
+    }
+
+    ContainerDb(local_storage, "localStorage", "Browser Storage", "Stores generation presets and quick copies")
+    System_Ext(crypto_api, "window.crypto", "Browser API", "Cryptographically secure random value generation")
+    System_Ext(static_json, "Wordbanks (JSON)", "Static Assets", "Base and seasonal phrase dictionaries")
+
+    Rel(passwords_logic, passwords_ui, "Coordinates")
+    Rel(passwords_ui, passwords_logic, "Events (Generate/Save)")
+
+    Rel(passwords_logic, password_logic_obj, "Calls generation logic")
+    Rel(passwords_logic, password_ui_obj, "Calls UI updates")
+    Rel(passwords_logic, password_settings_obj, "Initializes modal")
+
+    Rel(password_logic_obj, crypto_api, "Requests entropy")
+    Rel(passwords_logic, static_json, "Fetches asynchronously")
+    Rel(passwords_logic, local_storage, "Reads/Writes JSON")
+```
