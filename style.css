@@ -1,29 +1,28 @@
 :root {
     /* Colors */
     --bg-color: #f4f7fa; 
-    --panel-bg: #ffffff; 
     --border-color: #e2e8f0;
-    --text-color: #1e293b; 
-    --subtle-text: #64748b; 
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
     --danger-color: #ef4444; 
     --danger-hover: #dc2626;
+    --info-bg: #f8fafc;
+    --panel-bg: #ffffff;
+    --primary-color: #3b82f6;
+    --primary-hover: #2563eb;
+    --subtle-text: #64748b;
     --success-color: #22c55e; 
     --success-hover: #16a34a;
-    --info-bg: #f8fafc;
-
+    --text-color: #1e293b;
     --warning-bg: #fff3cd;
-    --warning-text: #856404;
     --warning-border: #ffeeba;
+    --warning-text: #856404;
     
     /* Semantic Colors */
-    --input-bg: var(--info-bg);
-    --input-border: var(--border-color);
-    --input-focus-bg: #ffffff;
     --button-bg: #ffffff;
     --button-border: var(--border-color);
     --button-hover-bg: #f8fafc;
+    --input-bg: var(--info-bg);
+    --input-border: var(--border-color);
+    --input-focus-bg: #ffffff;
     --menu-bg: var(--panel-bg);
     --menu-border: var(--border-color);
     --menu-item-hover: var(--bg-color);
@@ -46,31 +45,27 @@
 @media (prefers-color-scheme: dark) {
     :root, [data-theme="dark"] {
         --bg-color: #111827;
-        --panel-bg: #1f2937;
         --border-color: #374151;
-        --text-color: #f9fafb;
-        --subtle-text: #9ca3af;
+        --info-bg: #1f2937;
+        --panel-bg: #1f2937;
         --primary-color: #60a5fa;
         --primary-hover: #3b82f6;
+        --subtle-text: #9ca3af;
         --success-hover: #15803d;
-
-        --info-bg: #1f2937; 
-        
-        --input-bg: #374151;
-        --input-border: #4b5563;
-        --input-focus-bg: #1f2937;
+        --text-color: #f9fafb;
+        --warning-bg: #422006;
+        --warning-border: #854d0e;
+        --warning-text: #fde047;
 
         --button-bg: #374151;
         --button-border: #4b5563;
         --button-hover-bg: #4b5563;
-
+        --input-bg: #374151;
+        --input-border: #4b5563;
+        --input-focus-bg: #1f2937;
         --menu-bg: #1f2937;
         --menu-border: #4b5563;
         --menu-item-hover: #374151;
-
-        --warning-bg: #422006;
-        --warning-text: #fde047;
-        --warning-border: #854d0e;
     }
 }
 
