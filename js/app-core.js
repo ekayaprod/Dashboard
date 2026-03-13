@@ -154,9 +154,10 @@ const UIUtils = (() => {
 
     /**
      * Generates a unique identifier.
-     * Uses `crypto.randomUUID` if available, otherwise falls back to a timestamp-based ID.
+     * Uses `crypto.randomUUID` if available, otherwise falls back to a `nanoid` implementation
+     * for unified, cryptographically secure string generation across the ecosystem.
      *
-     * @returns {string} A unique string ID (UUID v4 or timestamp-random hybrid).
+     * @returns {string} A unique string ID (UUID v4 or 21-character nanoid).
      */
     const generateId = () => {
         try {
@@ -164,9 +165,30 @@ const UIUtils = (() => {
                 return crypto.randomUUID();
             }
         } catch (e) {
-            console.warn('crypto.randomUUID not available, falling back to Date.now()');
+            console.warn('crypto.randomUUID not available, falling back to nanoid');
         }
-        return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+        let size = 21;
+        let id = '';
+        const urlAlphabet = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict';
+
+        try {
+            if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+                let bytes = crypto.getRandomValues(new Uint8Array(size));
+                while (size--) {
+                    id += urlAlphabet[bytes[size] & 63];
+                }
+                return id;
+            }
+        } catch (e) {
+            console.warn('crypto.getRandomValues not available, falling back to Math.random() nanoid');
+        }
+
+        // Non-secure fallback if crypto is unavailable
+        while (size--) {
+            id += urlAlphabet[(Math.random() * 64) | 0];
+        }
+        return id;
     };
 
     /**
