@@ -1,5 +1,15 @@
+/**
+ * msg-worker.js
+ * Web Worker for offloading binary .msg parsing.
+ * @see README.md#Execution-Architecture for the full background parsing lifecycle.
+ */
 import { MsgReader } from './msgreader.js';
 
+/**
+ * Handles incoming ArrayBuffer messages from the main thread, parses the .msg file,
+ * and posts the sanitized result back.
+ * @param {MessageEvent<ArrayBuffer>} e - The message event containing the file buffer.
+ */
 self.onmessage = function(e) {
     try {
         const buffer = e.data;

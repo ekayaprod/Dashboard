@@ -10,3 +10,8 @@
 **Title**: Millisecond Optimization Audit
 **Learning**: Codebase is a Vanilla JavaScript application using native DOM APIs without React. No React component trees, `useCallback`, `useMemo`, or inline React style props exist to optimize.
 **Action**: [Skip] React render optimizations as they are incompatible with the native stack architecture.
+
+2024-05-29
+**Title**: Worker Context Documentation
+**Learning**: The Web Worker (`msg-worker.js`) executing the `MsgReader` logic cannot be directly imported or instantiated on the main UI thread. Previous inline examples erroneously suggested synchronous execution, causing confusion.
+**Action**: Synthesized a dedicated macro `README.md` for `js/workers/` mapping the execution architecture and cross-linked the worker files strictly via `@see` to enforce the async messaging contract.
