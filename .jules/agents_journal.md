@@ -10,3 +10,7 @@
 **Title**: Millisecond Optimization Audit
 **Learning**: Codebase is a Vanilla JavaScript application using native DOM APIs without React. No React component trees, `useCallback`, `useMemo`, or inline React style props exist to optimize.
 **Action**: [Skip] React render optimizations as they are incompatible with the native stack architecture.
+
+## 2026-03-13 - 🎧 Vibe - [SharedSettingsModal Integration]
+**Learning:** The application architecture uses `SharedSettingsModal` as a standard pattern across its internal apps (Dashboard, Lookup, Passwords, MailTo) for data export and persistence. If an app lacks this (like the Calculator did), its state persistence is effectively isolated and missing a core platform feature.
+**Action:** When inspecting an app's UI elements and initialization flow (`AppLifecycle.initPage`), verify if `window.SharedSettingsModal.init` is missing, and if so, materialize the missing settings button in the DOM and wire the initialization block.
