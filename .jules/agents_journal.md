@@ -15,3 +15,6 @@
 **Title**: Worker Context Documentation
 **Learning**: The Web Worker (`msg-worker.js`) executing the `MsgReader` logic cannot be directly imported or instantiated on the main UI thread. Previous inline examples erroneously suggested synchronous execution, causing confusion.
 **Action**: Synthesized a dedicated macro `README.md` for `js/workers/` mapping the execution architecture and cross-linked the worker files strictly via `@see` to enforce the async messaging contract.
+## 2026-03-13 - 🎧 Vibe - [SharedSettingsModal Integration]
+**Learning:** The application architecture uses `SharedSettingsModal` as a standard pattern across its internal apps (Dashboard, Lookup, Passwords, MailTo) for data export and persistence. If an app lacks this (like the Calculator did), its state persistence is effectively isolated and missing a core platform feature.
+**Action:** When inspecting an app's UI elements and initialization flow (`AppLifecycle.initPage`), verify if `window.SharedSettingsModal.init` is missing, and if so, materialize the missing settings button in the DOM and wire the initialization block.
