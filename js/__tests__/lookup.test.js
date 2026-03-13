@@ -154,7 +154,8 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
 
     it('getEmptyMessage should return "No entries" in edit mode', () => {
         const msg = window.LookupRenderer.getEmptyMessage('foo', true)
-        expect(msg).toBe('No entries. Add one?')
+        expect(msg).toContain('No entries. Add one?')
+        expect(msg).toContain('empty-state-container')
     })
 
     it('getEmptyMessage should return search suggestion if not edit mode and no term', () => {
