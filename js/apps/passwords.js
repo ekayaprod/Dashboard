@@ -669,7 +669,9 @@ function initializePage() {
         };
 
         const handleGenerate = async (configObj) => {
-            const { type, config } = configObj || PasswordUI.getConfigFromUI(DOMElements);
+            const finalConfig = configObj || PasswordUI.getConfigFromUI(DOMElements);
+            if (!finalConfig) return;
+            const { type, config } = finalConfig;
             generatedPasswords = [];
 
             const context = {
@@ -774,7 +776,9 @@ function initializePage() {
         };
 
         const handleAddPreset = () => {
-            const { type, config } = PasswordUI.getConfigFromUI(DOMElements);
+            const finalConfig = PasswordUI.getConfigFromUI(DOMElements);
+            if (!finalConfig) return;
+            const { type, config } = finalConfig;
             SafeUI.showModal('Save Settings Preset', '<input id="preset-name" class="form-control" placeholder="e.g., 4-Word TitleCase">', [
                 { label: 'Cancel' },
                 {
