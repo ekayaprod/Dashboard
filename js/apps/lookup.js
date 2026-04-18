@@ -1152,10 +1152,8 @@ function initializePage() {
             init();
         } catch (err) {
             console.error("Unhandled exception during initialization:", err);
-            const banner = document.getElementById('app-startup-error');
-            if (banner) {
-                banner.innerHTML = `<strong>Application Error</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">Unexpected error: ${err.message}</p>`;
-                banner.classList.remove('hidden');
+            if (typeof AppLifecycle !== 'undefined' && AppLifecycle.showStartupError) {
+                AppLifecycle.showStartupError("Application Error", `Unexpected error: ${err.message}`);
             }
         }
     })();

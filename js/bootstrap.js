@@ -34,6 +34,14 @@
         }
     }
 
+    window.showAppStartupError = function(title, message) {
+        const banner = document.getElementById('app-startup-error');
+        if (banner) {
+            banner.innerHTML = `<strong>${escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${escapeHTML(message)}</p>`;
+            banner.classList.remove('hidden');
+        }
+    };
+
     function loadScript(config) {
         return new Promise((resolve, reject) => {
             if (config.dependsOn) {
