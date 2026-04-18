@@ -911,7 +911,7 @@ const AppLifecycle = (() => {
          * Checks if the application bootstrap process is complete.
          * @returns {boolean} True if ready.
          */
-        isReady: () => window.__BOOTSTRAP_READY === true,
+        isReady: () => !!window.__BOOTSTRAP_READY,
 
         /**
          * Initializes a page by loading state, caching DOM elements, and setting up auto-save.

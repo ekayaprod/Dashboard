@@ -6,3 +6,7 @@
 **Title**: Dead CSS Classes Eradication
 **Learning**: Discovered significant CSS bloat in `style.css` including classes related to old "Pacing Reports" (`pacing-row`, etc) and unused layout components. Verified their unreachability mathematically across HTML and JS files via multiple string inclusion sweeps.
 **Action**: [Eradicate] Cleaned the CSS carcass by surgically deleting the unused CSS blocks, keeping the project's payload lean without affecting active runtime code.
+2025-05-26
+**Title**: Semantic Tautology Eradication
+**Learning**: Discovered redundant boolean tautologies (`=== true`) used in `app-ui.js` and `app-core.js` during a sonar sweep. These explicit checks were semantic dust adding cognitive load but no structural value since the conditions evaluate cleanly through truthiness.
+**Action**: [Eradicate] Surgically collapsed `if (config.onModalSave() === true)` to `if (config.onModalSave())` and `window.__BOOTSTRAP_READY === true` to `!!window.__BOOTSTRAP_READY` without altering runtime stability.
