@@ -7,10 +7,10 @@
     "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@testing-library/dom": "^10.4.1",
-    "@vitest/coverage-v8": "^4.1.0",
-    "jsdom": "^24.1.3",
-    "vitest": "^4.1.0"
+    "@testing-library/dom": "~10.4.1",
+    "@vitest/coverage-v8": "~4.1.0",
+    "jsdom": "~24.1.3",
+    "vitest": "~4.1.0"
   },
   "author": "",
   "license": "ISC"
