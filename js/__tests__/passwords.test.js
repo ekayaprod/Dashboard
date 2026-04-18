@@ -288,7 +288,7 @@ describe('js/apps/passwords.js', () => {
 
             // Generate button should still work and produce results instead of failing open
             const btnGenerate = screen.getByRole('button', { name: /generate new passwords based on current settings/i });
-            expect(btnGenerate).toHaveProperty('disabled', false);
+            expect(btnGenerate.disabled).toBe(false);
 
             // Clean up
             window.SafeUI.fetchJSON = originalFetchJSON;
