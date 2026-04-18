@@ -1,0 +1,1 @@
+**Axiom 1:** The `msg-reader.js` worker, responsible for parsing OLE and MIME payloads, historically relied on `.indexOf` >= 0 checks and verbose ternary fallbacks. Modernizing these constructs with `.includes()`, `.startsWith()`, `?.`, and `??` simplifies AST resolution and significantly bolsters cognitive velocity without compromising the underlying buffer inspection routines.
