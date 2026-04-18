@@ -1,5 +1,4 @@
-import { screen } from '@testing-library/dom';
-import userEvent from '@testing-library/user-event';
+import { screen, fireEvent } from '@testing-library/dom';
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -248,7 +247,7 @@ describe('js/apps/passwords.js', () => {
 
             // Trigger click
             const toggleBtn = screen.getByRole('button', { name: /Toggle generator configuration/i });
-            await userEvent.click(toggleBtn);
+            fireEvent.click(toggleBtn);
 
             expect(setItemSpy).toHaveBeenCalled();
             expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('accordion state'), expect.any(Error));
