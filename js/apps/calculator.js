@@ -209,7 +209,7 @@ function initializePage() {
         function buildTargetCardHTML(label, ticketText, callTimeText, isMet) {
             if (isMet) {
                 return `
-                <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap: 4px;">
+                <div class="target-card-success-state">
                     <span class="target-label" style="font-weight:700;">${label}</span>
                     <span class="target-icon">${CHECK_ICON}</span>
                     <span style="font-size:0.8rem; opacity:0.9;">${COPY.STATUS.MET}</span>
@@ -220,20 +220,20 @@ function initializePage() {
 
             // Note: target-alt-metric class is used for high-contrast overrides in CSS (White Text)
             return `
-                <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap: 1px;">
+                <div class="target-card-unmet-state">
                     <span class="target-label">${label}</span>
                     
                     <!-- Path 1: Tickets -->
-                    <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
+                    <div class="target-path">
                         <span class="target-value" style="font-size:1.1rem;">${ticketText}</span>
                         <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">${COPY.STATUS.TICKETS_REMAINING}</span>
                     </div>
 
                     <!-- Divider -->
-                    <div style="font-size:0.6rem; opacity:0.5; text-align:center; margin:1px 0;">${COPY.STATUS.OR}</div>
+                    <div class="target-divider">${COPY.STATUS.OR}</div>
 
                     <!-- Path 2: Call Time -->
-                    <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
+                    <div class="target-path">
                          <span class="target-value target-alt-metric" style="font-size:1.0rem;">${callTimeText}</span>
                          <span style="font-size:0.65rem; text-transform:uppercase; opacity:0.7;">${COPY.STATUS.CALL_TIME}</span>
                     </div>

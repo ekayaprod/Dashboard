@@ -125,7 +125,7 @@ const LookupRenderer = {
                     <div class="empty-state-icon">
                         ${LOOKUP_ICONS.search.replace('width="16" height="16"', 'width="48" height="48"')}
                     </div>
-                    <h3 class="empty-state-text" style="font-weight: 500;">No entries found for "${escapedTerm}"</h3>
+                    <h3 class="empty-state-text empty-state-text-bold">No entries found for "${escapedTerm}"</h3>
                     <button class="btn btn-primary" data-action="create-from-search">
                         + Add "${escapedTerm}"
                     </button>
