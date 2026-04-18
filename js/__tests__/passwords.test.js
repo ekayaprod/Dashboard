@@ -1,3 +1,5 @@
+import { screen } from '@testing-library/dom';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -15,7 +17,7 @@ describe('js/apps/passwords.js', () => {
             <div id="tab-content-passphrase"></div>
             <input id="passNumWords" value="4" />
             <input id="passSeparator" />
-            <select id="seasonal-bank-select"><option value="standard">Standard</option></select>
+            <label for="seasonal-bank-select">Theme</label><select id="seasonal-bank-select"><option value="standard">Standard</option></select>
             <input id="passNumDigits" value="0" />
             <input id="passNumSymbols" value="0" />
             <select id="passNumPlacement"><option value="end">End</option></select>
@@ -24,7 +26,7 @@ describe('js/apps/passwords.js', () => {
             <input id="passMaxLength" value="20" />
             <input id="passPadToMin" type="checkbox" />
             <select id="passStructure"><option value="-1">Random</option></select>
-            <button id="btn-generate"></button>
+            <button id="btn-generate" class="btn btn-primary" aria-label="Generate new passwords based on current settings">Generate Passwords</button>
             <div id="results-list"></div>
             <button id="btn-settings"></button>
             <div id="toast"></div>
@@ -32,7 +34,7 @@ describe('js/apps/passwords.js', () => {
             <div id="modal-content"></div>
             <div class="accordion">
                 <button id="custom-gen-header"></button>
-                <button id="accordion-toggle"></button>
+                <button id="accordion-toggle" class="btn-icon" title="Toggle settings" tabindex="-1" aria-label="Toggle generator configuration"><span class="accordion-icon">▼</span></button>
                 <div id="custom-generator-config"></div>
             </div>
             <div id="active-season-display"></div>
@@ -245,8 +247,8 @@ describe('js/apps/passwords.js', () => {
             });
 
             // Trigger click
-            const toggleBtn = document.getElementById('accordion-toggle');
-            toggleBtn.click();
+            const toggleBtn = screen.getByRole('button', { name: /Toggle generator configuration/i });
+            await userEvent.click(toggleBtn);
 
             expect(setItemSpy).toHaveBeenCalled();
             expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('accordion state'), expect.any(Error));
@@ -258,7 +260,7 @@ describe('js/apps/passwords.js', () => {
         // 🕵️ INTERROGATE: Concurrency stress and partial degradation
         it('prevents application crash and falls back to base bank when seasonal bank fails during Promise.all concurrent execution', async () => {
             // Mock the select value to "winter" so it attempts to load the seasonal bank
-            const seasonSelect = document.getElementById('seasonal-bank-select');
+            const seasonSelect = screen.getByRole('combobox', { name: /Theme/i });
             const option = document.createElement('option');
             option.value = 'winter';
             seasonSelect.appendChild(option);
@@ -286,8 +288,8 @@ describe('js/apps/passwords.js', () => {
             expect(toastSpy).toHaveBeenCalledWith('Error loading winter wordbank. Using base words only.');
 
             // Generate button should still work and produce results instead of failing open
-            const btnGenerate = document.getElementById('btn-generate');
-            expect(btnGenerate.disabled).toBe(false);
+            const btnGenerate = screen.getByRole('button', { name: /generate new passwords based on current settings/i });
+            expect(btnGenerate).toHaveProperty('disabled', false);
 
             // Clean up
             window.SafeUI.fetchJSON = originalFetchJSON;
