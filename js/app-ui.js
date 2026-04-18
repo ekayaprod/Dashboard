@@ -580,7 +580,7 @@ const SharedSettingsModal = (() => {
                             label: 'Save', 
                             class: 'button-primary', 
                             callback: () => {
-                                if (config.onModalSave() === true) {
+                                if (config.onModalSave()) {
                                     SafeUI.hideModal();
                                 } else {
                                     return false; 
