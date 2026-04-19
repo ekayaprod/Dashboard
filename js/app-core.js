@@ -846,8 +846,12 @@ const AppLifecycle = (() => {
                 if (document.body) document.body.prepend(banner);
                 else document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
             }
-            banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
-            banner.classList.remove('hidden');
+            if (typeof window.showAppStartupError === 'function') {
+                window.showAppStartupError(title, message);
+            } else {
+                banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
+                banner.classList.remove('hidden');
+            }
         } catch (e) {
             console.error("Failed to show error banner:", e);
         }
