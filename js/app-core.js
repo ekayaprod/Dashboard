@@ -301,7 +301,7 @@ const UIUtils = (() => {
             return true;
         } catch (error) {
             console.error("Failed to trigger file download:", error);
-            _showModal("Download Error", "<p>Failed to create download.</p>", [{ label: "OK" }]);
+            _showModal("Download Error", "<p>Unable to generate your download. Please try again.</p>", [{ label: "OK" }]);
             return false;
         }
     };
@@ -507,7 +507,7 @@ const UIUtils = (() => {
                 }
             } catch (err) {
                 console.error("Failed to save state:", err);
-                _showModal("Save Error", `<p>Failed to save data: ${escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                _showModal("Save Error", `<p>Unable to save your changes: ${escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
             }
         };
 
@@ -906,7 +906,7 @@ const AppLifecycle = (() => {
             setTimeout(() => {
                 if (!bootstrapReady && !window.__BOOTSTRAP_READY) {
                     console.error('Bootstrap did not complete within 5 seconds');
-                    _showErrorBanner("Application Startup Timeout", "The application failed to load within 5 seconds. Check the browser console for errors.");
+                    _showErrorBanner("Application Startup Timeout", "The application was unable to load within 5 seconds. Please review the browser console for details.");
                 }
             }, 5000);
         },
@@ -936,19 +936,19 @@ const AppLifecycle = (() => {
             const { storageKey, defaultState, requiredElements, onCorruption, version } = config;
             
             if (!storageKey || !defaultState) {
-                _showErrorBanner("Application Failed to Start", "Invalid configuration: Missing storageKey or defaultState.");
+                _showErrorBanner("Application Unable to Start", "Invalid configuration: Missing storageKey or defaultState.");
                 return null;
             }
 
             const { elements, allFound } = DOMHelpers.cacheElements(requiredElements);
             if (!allFound) {
-                _showErrorBanner("Application Failed to Start", "Missing critical DOM elements.");
+                _showErrorBanner("Application Unable to Start", "Missing critical DOM elements.");
                 return null;
             }
 
             const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
             if (!stateManager) {
-                _showErrorBanner("Application Failed to Start", "StateManager failed to initialize.");
+                _showErrorBanner("Application Unable to Start", "StateManager failed to initialize.");
                 return null;
             }
 
