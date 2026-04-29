@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core:** Resolved swallowed error in state manager corruption handling.
 
 ### 🔧 Chores
-- **Refactor:** Extracted settings logic in `lookup.js` and reduced cognitive complexity in `passwords.js`.
+- **Refactor:** Extracted settings logic in `lookup/index.js` and reduced cognitive complexity in `passwords.js`.
 - **Performance:** Optimized system cache and asynchronous handling.
 - **Cleanup:** Removed debug logging across the codebase.
 - **Documentation:** Overhauled Calculator app documentation.
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mailto:** Improved error logging in worker threads for better debugging.
 
 ### 🔧 Chores
-- **Refactor:** Extracted magic numbers and flattened `lookup.js` logic.
+- **Refactor:** Extracted magic numbers and flattened `lookup/index.js` logic.
 - **Cleanup:** Removed dead code from `bootstrap.js` and performed structural cleanup.
 - **Documentation:** Updated roadmap and internal reports.
 

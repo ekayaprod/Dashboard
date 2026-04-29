@@ -16,4 +16,4 @@ This journal tracks critical UX and accessibility learnings for the Sidebar Prod
 
 ## 2026-03-13 - Harmonized Lookup Empty States
 **Learning:** The Lookup application used complex string interpolation and unguided inline styles to render varied empty states, leading to an inconsistent visual hierarchy and poor accessibility without polite live-region updates.
-**Action:** Replaced disparate HTML structural components in `js/apps/lookup.js` empty states with the global `.empty-state-container`, `.empty-state-icon`, and `.empty-state-text` classes, while injecting `aria-live="polite"` for accessible announcements.
+**Action:** Replaced disparate HTML structural components in `js/apps/lookup/index.js` empty states with the global `.empty-state-container`, `.empty-state-icon`, and `.empty-state-text` classes, while injecting `aria-live="polite"` for accessible announcements.

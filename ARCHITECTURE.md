@@ -182,7 +182,7 @@ C4Component
     title Lookup App Component Map
 
     Container_Boundary(lookup_app, "Lookup Application") {
-        Component(lookup_logic, "lookup.js", "Javascript", "Manages local entries and external custom searches")
+        Component(lookup_logic, "lookup/index.js", "Javascript", "Manages local entries and external custom searches")
         Component(lookup_ui, "lookup.html", "HTML", "Search interface and results display")
 
         Component(lookup_helpers, "LookupHelpers", "JS Object", "Entry validation, creation, and keyword parsing")

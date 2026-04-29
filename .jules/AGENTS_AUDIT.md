@@ -2,7 +2,7 @@
 
 ## ⚡ Performance Bottlenecks
 
-- [ ] `js/apps/lookup.js` exceeds 1100 lines and is approaching 50KB size limit.
+- [ ] `js/apps/lookup/index.js` exceeds 1100 lines and is approaching 50KB size limit.
 - [ ] `js/app-core.js` and `js/apps/passwords.js` exceed 800 lines.
 
 ## 🛡️ Security Radar

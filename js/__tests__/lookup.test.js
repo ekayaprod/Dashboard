@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 
-describe('js/apps/lookup.js - LookupHelpers', () => {
+describe('js/apps/lookup/index.js - LookupHelpers', () => {
   beforeAll(() => {
     // 1. Load app-core.js to get SafeUI and other globals
     const coreScriptPath = path.resolve(__dirname, '../app-core.js')
@@ -23,9 +23,15 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
       isReady: () => true
     }
 
-    // 3. Load lookup.js and expose LookupHelpers
-    const lookupScriptPath = path.resolve(__dirname, '../apps/lookup.js')
-    let lookupScriptContent = fs.readFileSync(lookupScriptPath, 'utf8')
+    // 3. Load lookup/index.js and expose LookupHelpers
+    const lookupScriptPath = path.resolve(__dirname, '../apps/lookup/index.js')
+    let lookupScriptContent = ''
+    lookupScriptContent += fs.readFileSync(path.resolve(__dirname, '../apps/lookup/icons.js'), 'utf8')
+    lookupScriptContent += fs.readFileSync(path.resolve(__dirname, '../apps/lookup/helpers.js'), 'utf8')
+    lookupScriptContent += fs.readFileSync(path.resolve(__dirname, '../apps/lookup/renderer.js'), 'utf8')
+    lookupScriptContent += fs.readFileSync(path.resolve(__dirname, '../apps/lookup/csv.js'), 'utf8')
+    lookupScriptContent += fs.readFileSync(path.resolve(__dirname, '../apps/lookup/settings.js'), 'utf8')
+    lookupScriptContent += fs.readFileSync(path.resolve(__dirname, '../apps/lookup/index.js'), 'utf8')
 
     // Append code to expose the local const LookupHelpers to window
     lookupScriptContent += '; window.LookupHelpers = LookupHelpers;'

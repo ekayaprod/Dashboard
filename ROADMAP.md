@@ -32,7 +32,7 @@
 
 - **Passwords Polish**: Enhanced UI with accessibility, motion, and optimistic feedback.
 - **Calculator Polish**: Elevated UI to Premium status.
-- **Lookup Optimization**: Refactored `js/apps/lookup.js` to flatten logic and extract helpers.
+- **Lookup Optimization**: Refactored `js/apps/lookup/index.js` to flatten logic and extract helpers.
 - **Mailto Debugging**: Enriched worker error logs.
 - **Code Hygiene**: Removed dead code in `bootstrap.js`.
 
@@ -51,7 +51,7 @@
 ## 🧊 Backlog
 
 - **Future Optimizations**: Further performance tuning and code consolidation.
-- **Architectural Refactoring**: Modularize `js/apps/lookup.js` as it approaches 50KB size limit.
+- **Architectural Refactoring**: Modularize `js/apps/lookup/index.js` as it approaches 50KB size limit.
 - **Mobile Responsiveness Enhancements**: Improve layout stacking and touch targets for mobile devices.
 
 ## 💡 Innovation Backlog

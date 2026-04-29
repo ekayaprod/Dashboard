@@ -11,7 +11,7 @@
 - **Status:** Stable
 - **Observations:**
     - The "Shell" architecture (`index.html` + `iframe`) is functioning as designed, providing effective isolation.
-    - `js/apps/lookup.js` (43KB) is the largest application logic file. It is approaching a size where further modularization might be beneficial.
+    - `js/apps/lookup/index.js` (43KB) is the largest application logic file. It is approaching a size where further modularization might be beneficial.
     - `NotepadManager` in `js/app-ui.js` utilizes a mix of closure scope and configuration object injection, which complicates testing.
 
 ### ⚡ Bolt+ (Performance & Build)
@@ -54,4 +54,4 @@
 ## 3. Executive Orders
 1.  **Scavenger:** execute a cleanup pass to remove all `console.log` statements identified above.
 2.  **Modernizer:** update `dashboard.html` buttons with `aria-label` attributes corresponding to their titles.
-3.  **Architect:** Monitor `js/apps/lookup.js` size and plan for potential refactoring if it exceeds 50KB.
+3.  **Architect:** Monitor `js/apps/lookup/index.js` size and plan for potential refactoring if it exceeds 50KB.
