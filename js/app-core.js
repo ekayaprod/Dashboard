@@ -630,39 +630,10 @@ const SafeUI = (() => {
         return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋' };
     };
 
-    return {
-        /**
-         * Flag indicating the module is loaded.
-         * @type {boolean}
-         */
+    return Object.assign({}, UIUtils, {
         isReady: true,
-
-        /**
-         * Collection of SVG icon strings or text fallbacks.
-         * @type {Object<string, string>}
-         */
-        SVGIcons: getSVGIcons(),
-
-        // Proxy methods - see UIUtils for documentation
-        showModal: (title, content, actions) => UIUtils.showModal(title, content, actions),
-        showValidationError: (title, msg, elId) => UIUtils.showValidationError(title, msg, elId),
-        hideModal: () => UIUtils.hideModal(),
-        showToast: (msg) => UIUtils.showToast(msg),
-        escapeHTML: (str) => UIUtils.escapeHTML(str),
-        generateId: () => UIUtils.generateId(),
-        debounce: (func, delay) => UIUtils.debounce(func, delay),
-        capitalize: (str) => UIUtils.capitalize(str),
-        getRandomInt: (max) => UIUtils.getRandomInt(max),
-        copyToClipboard: (text) => UIUtils.copyToClipboard(text),
-        downloadJSON: (data, filename, mimeType) => UIUtils.downloadJSON(data, filename, mimeType),
-        openFilePicker: (cb, accept) => UIUtils.openFilePicker(cb, accept),
-        readJSONFile: (file) => UIUtils.readJSONFile(file),
-        readTextFile: (file) => UIUtils.readTextFile(file),
-        parseJSON: (str, success, error) => UIUtils.parseJSON(str, success, error),
-        fetchJSON: (url, options, validator) => UIUtils.fetchJSON(url, options, validator),
-        createStateManager: (key, defaults, version, onCorruption) => UIUtils.createStateManager(key, defaults, version, onCorruption),
-        validators: UIUtils.validators
-    };
+        SVGIcons: getSVGIcons()
+    });
 })();
 
 // ============================================================================
@@ -836,21 +807,17 @@ const DateUtils = {
 // ============================================================================
 const AppLifecycle = (() => {
     const _showErrorBanner = (title, message) => {
-        try {
-            const bannerId = 'app-startup-error';
-            let banner = document.getElementById(bannerId);
-            if (!banner) {
-                banner = document.createElement('div');
-                banner.id = bannerId;
-                banner.className = 'app-startup-banner';
-                if (document.body) document.body.prepend(banner);
-                else document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
-            }
-            banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
-            banner.classList.remove('hidden');
-        } catch (e) {
-            console.error("Failed to show error banner:", e);
+        const bannerId = 'app-startup-error';
+        let banner = document.getElementById(bannerId);
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = bannerId;
+            banner.className = 'app-startup-banner';
+            if (document.body) document.body.prepend(banner);
+            else document.addEventListener('DOMContentLoaded', () => document.body.prepend(banner));
         }
+        banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
+        banner.classList.remove('hidden');
     };
 
     const onExitSaveFunctions = [];
