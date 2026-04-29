@@ -1,0 +1,2 @@
+**Trauma:** [SILENT FAILURE] In `js/apps/lookup.js`, within the async function inside `renderAll`, there is no `try/catch/finally` block. If `renderLocalList` or any subsequent code throws, the UI freezes with `setLoading(true)` and the error is completely swallowed as an unhandled promise rejection.
+**Treatment:** [RESUSCITATE] Wrap the async execution block inside `renderAll` in a `try...catch...finally` block. The `catch` block should log the error explicitly with contextual info and the `finally` block must execute `setLoading(false)` to restore the UI state.

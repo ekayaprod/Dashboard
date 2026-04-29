@@ -771,18 +771,24 @@ function initializePage() {
                 // Wrap heavy rendering in requestAnimationFrame to allow UI (spinner) to update first.
                 requestAnimationFrame(() => {
                     requestAnimationFrame(async () => {
-                        // Ensure loading state is visible during async search
-                        setLoading(true);
+                        try {
+                            // Ensure loading state is visible during async search
+                            setLoading(true);
 
-                        await renderLocalList(searchTerm, mySearchId);
+                            await renderLocalList(searchTerm, mySearchId);
 
-                        // Check if we are still the active search
-                        if (mySearchId === currentSearchId) {
-                            renderCustomSearches(searchTerm);
-                            DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
-
-                            // Hide spinner after render is done
-                            setLoading(false);
+                            // Check if we are still the active search
+                            if (mySearchId === currentSearchId) {
+                                renderCustomSearches(searchTerm);
+                                DOMElements.btnClearSearch.classList.toggle('hidden', searchTerm.length === 0);
+                            }
+                        } catch (err) {
+                            console.error("Error during search rendering", { err, searchTerm, mySearchId });
+                        } finally {
+                            // Hide spinner only if we are still the active search
+                            if (mySearchId === currentSearchId) {
+                                setLoading(false);
+                            }
                         }
                     });
                 });
