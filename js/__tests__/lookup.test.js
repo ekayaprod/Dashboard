@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { screen } from '@testing-library/dom'
 import fs from 'fs'
 import path from 'path'
 
@@ -153,14 +154,14 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
     })
 
     it('getEmptyMessage should return "No entries" in edit mode', () => {
-        const msg = window.LookupRenderer.getEmptyMessage('foo', true)
-        expect(msg).toContain('No entries. Add one?')
-        expect(msg).toContain('empty-state-container')
+        document.body.innerHTML = window.LookupRenderer.getEmptyMessage('foo', true)
+        expect(screen.getByText('No entries. Add one?')).not.toBeNull()
+        expect(screen.getByText('No entries. Add one?').parentElement.getAttribute('aria-live')).toBe('polite')
     })
 
     it('getEmptyMessage should return search suggestion if not edit mode and no term', () => {
-        const msg = window.LookupRenderer.getEmptyMessage('', false)
-        expect(msg).toContain('Enter a keyword to start searching.')
+        document.body.innerHTML = window.LookupRenderer.getEmptyMessage('', false)
+        expect(screen.getByText('Enter a keyword to start searching.')).not.toBeNull()
     })
 
     it('createItemElement should create li with correct classes', () => {
@@ -169,7 +170,7 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
         expect(li.tagName).toBe('LI')
         expect(li.className).toBe('result-item')
         expect(li.dataset.id).toBe('1')
-        expect(li.innerHTML).toContain('key')
+        expect(li.textContent).toContain('key')
     })
   })
 
