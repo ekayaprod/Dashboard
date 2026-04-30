@@ -1,3 +1,7 @@
-## 2026-04-18 - 📯 Dispatch
-**Learning:** Bootstrapping CI/CD pipelines requires sequential dependencies to ensure valid actions syntax and functional npm caches over native codebases.
-**Action:** Use native validators (yaml-lint) prior to suite execution to ensure robust GitHub pipeline setups.
+# Dispatch Journal
+
+## Abstract Axioms
+- Structural integrity of YAML files must always be verified via `yamllint`.
+- Workflow indentation and line lengths must adhere to strict YAML standards.
+- Document start `---` is required for all YAML manifests to prevent parse ambiguities.
+- Quoted strings for boolean-like keys (e.g., `"on"`) prevent unexpected structural evaluation.

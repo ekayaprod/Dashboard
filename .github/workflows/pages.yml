@@ -1,6 +1,8 @@
-# 📯 THE SECURE DISPATCH: A net-new, heavily cached GitHub Pages deployment pipeline for a static site.
+---
+# 📯 THE SECURE DISPATCH: A net-new, heavily cached GitHub Pages deployment
+# pipeline for a static site.
 name: Deploy static content to Pages
-on:
+"on":
   push:
     branches: ["main"]
 jobs:
