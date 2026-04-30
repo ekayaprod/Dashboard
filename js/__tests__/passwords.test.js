@@ -231,10 +231,13 @@ describe('js/apps/passwords.js', () => {
 
     describe('Integration', () => {
         it('should initialize correctly', async () => {
+            // ⏱️ OVERCLOCK: Time is bent. The 100ms asynchronous delay executes instantly.
+            vi.useFakeTimers();
             await window._initPage();
             // Wait for async IIFE
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await vi.advanceTimersByTimeAsync(100);
             expect(renderListMock).toHaveBeenCalled();
+            vi.useRealTimers();
         });
 
         it('should log a warning when localStorage fails during accordion toggle', async () => {
@@ -277,10 +280,12 @@ describe('js/apps/passwords.js', () => {
             });
 
             // Execute the initial setup which will fire analyzeWordBank
+            // ⏱️ OVERCLOCK: Time is bent. The 100ms asynchronous delay executes instantly.
+            vi.useFakeTimers();
             await window._initPage();
 
             // Wait for async promises to settle
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await vi.advanceTimersByTimeAsync(100);
 
             // Verify that the fallback mechanism handled the error and the application didn't crash
             // SafeUI.showToast should have been called with the error message
@@ -293,6 +298,7 @@ describe('js/apps/passwords.js', () => {
             // Clean up
             window.SafeUI.fetchJSON = originalFetchJSON;
             toastSpy.mockRestore();
+            vi.useRealTimers();
         });
     });
 });
