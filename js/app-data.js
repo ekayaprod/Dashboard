@@ -92,7 +92,7 @@ const BackupRestore = (() => {
             BackupRestore.restoreBackup((restoredData) => {
                 try {
                     const dataToValidate = restoredData.data ? restoredData.data : restoredData;
-                    const isNewBackup = !!restoredData.data;
+                    const isNewBackup = Boolean(restoredData.data);
                     const appName = restoredData.appName;
 
                     const isCorrectApp = appName === config.appName;

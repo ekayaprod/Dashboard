@@ -177,7 +177,7 @@ function initializePage() {
             saveState();
         }
 
-        const isVisible = !!appId;
+        const isVisible = Boolean(appId);
 
         DOMElements.editAppName.value = '';
         DOMElements.editAppUrls.value = '';
