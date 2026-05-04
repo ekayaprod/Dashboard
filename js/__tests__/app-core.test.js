@@ -180,7 +180,7 @@ describe('app-core.js', () => {
             status: 200
         })
 
-        const validator = (d) => d.valid === true
+        const validator = (d) => d.valid
 
         await expect(fetchJSON('http://test.com', {}, validator)).rejects.toThrow('Response validation failed')
     })

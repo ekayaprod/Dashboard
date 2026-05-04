@@ -547,7 +547,7 @@ const UIUtils = (() => {
             btn.textContent = action.label;
             btn.onclick = () => {
                 if (action.callback) {
-                    if (action.callback() === false) return;
+                    if (!action.callback()) return;
                 }
                 _hideModal();
             };
