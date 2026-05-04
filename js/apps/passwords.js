@@ -165,11 +165,6 @@ const PasswordLogic = {
         if (C.minLength > C.maxLength) return "[Min length > Max length]";
         if (!C.passNumWords && !C.passNumDigits && !C.passNumSymbols) return "[No content selected]";
 
-        // Seasonal logic handled by caller passing correct wordbank/structures
-        // but we verify season for sanity check if needed, or remove it as it is unused here now
-        // let resolvedSeason = C.seasonalBank;
-        // if (C.seasonalBank === 'auto') resolvedSeason = PasswordLogic.getCurrentSeason();
-
         let minEstimate = C.passNumDigits + C.passNumSymbols + (C.passNumWords * 4);
         if (C.passNumWords > 1) minEstimate += (C.passNumWords - 1) * C.passSeparator.length;
         if (minEstimate > C.maxLength) return "[Settings exceed Max Length]";
