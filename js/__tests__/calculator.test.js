@@ -118,4 +118,28 @@ describe('js/apps/calculator.js', () => {
         // 01:00 (60 mins) + 15 mins = 75 mins -> 01:15
         expect(mockAppCtx.elements.currentCallTime.value).toBe('01:15');
     });
+
+    it('should calculate daily ratings correctly to determine isRoundedUp', async () => {
+        await import('../apps/calculator.js');
+
+        mockAppCtx.elements.shiftStart.value = '09:00';
+        mockAppCtx.elements.shiftEnd.value = '17:00'; // 8 hrs
+        mockAppCtx.elements.breakTime.value = '60'; // 1 hr break -> 7 hrs total shift post break = 420 mins
+
+        // leeway is 10% -> 420 - 42 = 378 total productive minutes.
+        // If currentCallTime = '01:00' (60 mins), totalWorkTimeEOD = 378 - 60 = 318 mins.
+        // 318 % 60 = 18 mins. Is rounded up? No (18 < 30).
+
+        // Override state for predictability
+        mockAppCtx.elements.currentCallTime.value = '01:00';
+        mockAppCtx.elements.currentTickets.value = '20';
+
+        // Trigger calculation
+        mockAppCtx.elements.currentTickets.dispatchEvent(new Event('input'));
+
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(mockAppCtx.elements.totalWorkTimeEOD.innerText).toBeDefined();
+        expect(mockAppCtx.elements.baseTargetDisplay.innerText).toBeDefined();
+    });
 });

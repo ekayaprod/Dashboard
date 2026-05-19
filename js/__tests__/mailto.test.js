@@ -13,7 +13,7 @@ describe('js/apps/mailto.js', () => {
         vi.resetModules();
         vi.clearAllMocks();
 
-        window.SafeUI = { showToast: vi.fn(), showModal: vi.fn(), escapeHTML: (s) => s, SVGIcons: { folder: '', link: '', copy: '', drag: '', close: '' }, debounce: (fn) => fn };
+        window.SafeUI = { showToast: vi.fn(), showModal: vi.fn(), escapeHTML: (s) => s, SVGIcons: { folder: '', link: '', copy: '', drag: '', close: '' } };
         window.DOMHelpers = {
             createElement: (tag, className) => {
                 const el = document.createElement(tag);
@@ -90,14 +90,7 @@ describe('js/apps/mailto.js', () => {
                 treeListContainer: document.createElement('div'),
                 btnBackToParent: document.createElement('button'),
                 currentFolderName: document.createElement('div'),
-                breadcrumbContainer: document.createElement('div'),
-                resultTo: document.createElement('input'),
-                resultCc: document.createElement('input'),
-                resultBcc: document.createElement('input'),
-                resultSubject: document.createElement('input'),
-                resultBody: document.createElement('textarea'),
-                saveTemplateName: document.createElement('input'),
-                resultLink: document.createElement('a')
+                breadcrumbContainer: document.createElement('div')
             }
         };
 
@@ -108,7 +101,7 @@ describe('js/apps/mailto.js', () => {
 
         window.UIPatterns = {
             copyToClipboard: vi.fn(),
-            confirmAction: vi.fn((title, msg, cb) => cb())
+            confirmAction: vi.fn()
         };
 
         // Mock global functionality
