@@ -5,6 +5,13 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    server: {
+      deps: {
+        inline: [
+          /@exodus\/bytes/
+        ]
+      }
+    },
     alias: {
       '@': path.resolve(__dirname, './js')
     },
