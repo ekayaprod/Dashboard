@@ -1,8 +1,15 @@
-2024-05-28
-**Title**: Minor Dependency Bump: vitest ecosystem
-**Learning**: Routine maintenance is crucial to maintain alignment with the latest testing ecosystem improvements without requiring manual code refactoring.
-**Action**: Maintained `vitest` and `@vitest/coverage-v8` by applying non-breaking minor/patch updates, followed immediately by running `npm test`.
+# Superintendent Log
 
-**Title**: Foundation Constraint Enforcement & Trash Sweep
-**Learning**: Implicit wildcards (like `^`) are leaky pipes that compromise the deterministic build environment over time. Leftover repository scratch files silently pollute the root index.
-**Action**: Explicitly bind top-level dependencies with pinned minor constraints (`~`) and routinely execute physical filesystem sweeps of `.*tmp`, `server_pid`, and orphaned test files.
+## Executed Sweeps
+- Enforced baseline EOF newline for missing source files:
+  - `./js/app-data.js`
+  - `./js/app-ui.js`
+  - `./js/app-core.js`
+  - `./wordbanks/wordbank-summer.json`
+  - `./wordbanks/wordbank-spring.json`
+  - `./wordbanks/wordbank-autumn.json`
+  - `./wordbanks/wordbank-base.json`
+  - `./wordbanks/wordbank-winter.json`
+
+## Status
+Repository structural integrity maintained. OS caches and duplicate configurations swept. No dangling conflict markers or environment file drift found.
