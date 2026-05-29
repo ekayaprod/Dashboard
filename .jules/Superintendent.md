@@ -15,3 +15,4 @@
 Repository structural integrity maintained. OS caches and duplicate configurations swept. No dangling conflict markers or environment file drift found.
 - Natively repaired EOF newline in `.jules/agent_tasks.md`.
 - Appended secret signature warning to `.jules/agent_tasks.md` for `[INSTRUMENTER]` queue regarding `NUM_PASSWORDS_TO_GENERATE` in `js/apps/passwords.js`.
+- Relayed package vs lockfile drift to `.jules/agent_tasks.md` for the `[OPERATOR]` queue.
