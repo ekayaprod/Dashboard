@@ -1,0 +1,59 @@
+<<<<<<< SEARCH
+        let sectorsRead = 0;
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
+            let offset = 512 + sector * sectorSize;
+            for (let i = 0; i < sectorSize / 4; i++) {
+                if (offset + i * 4 + 4 <= this.buffer.byteLength) this.miniFat.push(this.dataView.getUint32(offset + i * 4, true));
+            }
+            if (sector >= this.fat.length) break;
+            sector = this.fat[sector];
+            sectorsRead++;
+        }
+    }
+
+    readDirectory() {
+        let sector = this.header.directoryFirstSector, sectorSize = this.header.sectorSize, entrySize = 128;
+        let sectorsRead = 0;
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
+            let offset = 512 + sector * sectorSize;
+            for (let i = 0; i < sectorSize / entrySize; i++) {
+                let entryOffset = offset + i * entrySize;
+                if (entryOffset + entrySize > this.buffer.byteLength) break;
+                let entry = this.readDirectoryEntry(entryOffset);
+                if (entry && entry.name) this.directoryEntries.push(entry);
+            }
+            if (sector >= this.fat.length) break;
+            sector = this.fat[sector];
+            sectorsRead++;
+        }
+        this.directoryEntries.forEach((de, idx) => de.id = idx);
+=======
+        let sectorsRead = 0;
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF && sectorsRead < this.header.miniFatTotalSectors) {
+            let offset = 512 + sector * sectorSize;
+            for (let i = 0; i < sectorSize / 4; i++) {
+                if (offset + i * 4 + 4 <= this.buffer.byteLength) this.miniFat.push(this.dataView.getUint32(offset + i * 4, true));
+            }
+            if (sector >= this.fat.length) break;
+            sector = this.fat[sector];
+            sectorsRead++;
+        }
+    }
+
+    readDirectory() {
+        let sector = this.header.directoryFirstSector, sectorSize = this.header.sectorSize, entrySize = 128;
+
+        while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
+            let offset = 512 + sector * sectorSize;
+            for (let i = 0; i < sectorSize / entrySize; i++) {
+                let entryOffset = offset + i * entrySize;
+                if (entryOffset + entrySize > this.buffer.byteLength) break;
+                let entry = this.readDirectoryEntry(entryOffset);
+                if (entry && entry.name) this.directoryEntries.push(entry);
+            }
+            if (sector >= this.fat.length) break;
+            sector = this.fat[sector];
+
+        }
+        this.directoryEntries.forEach((de, idx) => de.id = idx);
+>>>>>>> REPLACE

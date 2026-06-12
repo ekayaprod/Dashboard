@@ -389,7 +389,7 @@ class MsgReaderParser {
 
     readDirectory() {
         let sector = this.header.directoryFirstSector, sectorSize = this.header.sectorSize, entrySize = 128;
-        let sectorsRead = 0;
+
         while (sector !== 0xFFFFFFFE && sector !== 0xFFFFFFFF) {
             let offset = 512 + sector * sectorSize;
             for (let i = 0; i < sectorSize / entrySize; i++) {
@@ -400,7 +400,7 @@ class MsgReaderParser {
             }
             if (sector >= this.fat.length) break;
             sector = this.fat[sector];
-            sectorsRead++;
+
         }
         this.directoryEntries.forEach((de, idx) => de.id = idx);
     }

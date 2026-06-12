@@ -727,8 +727,7 @@ async function init() {
             CsvManager.setupImport({
                 importBtn: document.getElementById('imp'), 
                 headers: APP_CONFIG.CSV_HEADERS, 
-                onValidate: (r) => (r.name ? {entry: r} : null), 
-                onConfirm: (d)=>{}
+                onValidate: (r) => (r.name ? {entry: r} : null)
             });
         },
         onRestoreCallback: (d) => { state.library = d.library; saveState(); renderCatalogue(); refreshSaveDropdown(); }

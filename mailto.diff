@@ -1,0 +1,14 @@
+<<<<<<< SEARCH
+            CsvManager.setupImport({
+                importBtn: document.getElementById('imp'),
+                headers: APP_CONFIG.CSV_HEADERS,
+                onValidate: (r) => (r.name ? {entry: r} : null),
+                onConfirm: (d)=>{}
+            });
+=======
+            CsvManager.setupImport({
+                importBtn: document.getElementById('imp'),
+                headers: APP_CONFIG.CSV_HEADERS,
+                onValidate: (r) => (r.name ? {entry: r} : null)
+            });
+>>>>>>> REPLACE
