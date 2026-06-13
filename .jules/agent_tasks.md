@@ -4,3 +4,7 @@
 
 ## The [OPERATOR] Queue
 * 📦 `package.json` vs lockfile drift: Missing local dependencies detected in standard `npm ls` check (`@testing-library/dom`, `@vitest/coverage-v8`, `jsdom`, `vitest`).
+
+## The [PRUNER] Queue
+* 🗑️ `fix.diff`: Generated artifact improperly committed to source control. Deletion required.
+* 🗑️ `mailto.diff`: Generated artifact improperly committed to source control. Deletion required.
