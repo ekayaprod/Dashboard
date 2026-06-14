@@ -80,7 +80,7 @@ function _robustDecode(buffer) {
         try {
             const decoder = getTextDecoder('windows-1252');
             if (decoder) return decoder.decode(buffer);
-        } catch (e2) { }
+        } catch (e2) { /* ignored */ }
     }
 
     // Manual fallback (Binary/ASCII)
@@ -181,7 +181,7 @@ function dataViewToString(view, encoding) {
                 const nullIdx = decoded.indexOf('\0');
                 return nullIdx !== -1 ? decoded.substring(0, nullIdx) : decoded;
             }
-        } catch (e) { }
+        } catch (e) { /* ignored */ }
 
         // Manual UTF-16LE Fallback
         let result = '';
