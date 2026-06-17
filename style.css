@@ -28,16 +28,16 @@
     --menu-item-hover: var(--bg-color);
 
     /* Dimensions */
-    --border-radius: 0.75rem; /* 12px / rounded-xl */
-    --border-radius-sm: 0.25rem; /* 4px */
+    --border-radius: 1rem; /* 16px / rounded-2xl for softened borders */
+    --border-radius-sm: 0.5rem; /* 8px */
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.5rem;
     --spacing-md: 0.75rem;
     --spacing-lg: 1rem;
 
     /* Shadows */
-    --box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --box-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
     --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -118,7 +118,7 @@ body {
 }
 
 .main-content {
-    padding: var(--spacing-sm);
+    padding: var(--spacing-lg);
     overflow-y: auto; 
     flex-grow: 1;
     display: flex; 
@@ -201,7 +201,9 @@ textarea.form-control {
 
 /* Buttons (Consolidated) */
 .btn {
-    padding: 0.3rem 0.5rem;
+    padding: 0.5rem 1rem;
+    min-height: 44px;
+    min-width: 44px;
     font-size: 0.8rem; 
     border: 1px solid var(--button-border);
     border-radius: var(--border-radius);
@@ -311,6 +313,10 @@ textarea.form-control {
     cursor: pointer;
     user-select: none;
     border-bottom: 1px solid transparent;
+    transition: all 0.3s ease-in-out;
+}
+.accordion-header:active {
+    transform: scale(0.98);
 }
 .accordion.expanded .accordion-header {
     border-bottom-color: var(--border-color);
@@ -556,6 +562,11 @@ textarea.form-control {
 .result-item {
     border: 1px solid var(--border-color); padding: 0.5rem; margin-bottom: 0.5rem;
     border-radius: var(--border-radius); background: var(--panel-bg);
+    transition: all 0.2s ease-in-out;
+}
+.result-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--box-shadow-lg);
 }
 .item-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; margin-bottom: 0.25rem; }
 .item-keyword { font-weight: bold; color: var(--primary-color); }
@@ -912,6 +923,15 @@ textarea.form-control {
 
 @media (prefers-reduced-motion: reduce) {
     .result-item:active { transform: none; }
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+}
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Clear Button Polish */
