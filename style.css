@@ -779,10 +779,20 @@ textarea.form-control {
 
 /* Sidebar Specific Overrides */
 @media (max-width: 480px) {
+    :root {
+        --border-radius: 0.5rem;
+        --spacing-lg: 0.5rem;
+    }
+
     body { font-size: 13px; }
     .navbar { padding: 0.25rem 0.5rem; }
 
-    .nav-link { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+    .nav-link { padding: 0.2rem 0.4rem; font-size: 0.75rem; min-height: 32px; }
+
+    .btn { padding: 0.25rem 0.5rem; min-height: 32px; min-width: 32px; }
+    .btn-icon, .icon-btn { padding: 0.2rem; min-height: 32px; min-width: 32px; }
+
+    .target-card { min-height: auto; padding: 0.25rem; }
 
     .panel { border-radius: 0; border: none; box-shadow: none; }
     .app-container { padding: 0; }
