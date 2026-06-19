@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .panel { backdrop-filter: blur(8px); background-color: rgba(255, 255, 255, 0.95); }
+        @media (prefers-color-scheme: dark) { .panel { background-color: rgba(31, 41, 55, 0.95); } }
+        .result-item { transition: all 0.3s ease-in-out; }
+        .result-item:hover { transform: translateY(-2px) scale(1.01); }
+    </style>
 </head>
 <body class="lookup-page">
 
