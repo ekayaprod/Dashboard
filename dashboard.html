@@ -10,6 +10,54 @@
             .btn:active, .btn-icon:active { transform: scale(0.95); }
             #app-details-container:not(.hidden) { animation: slideInUp 0.3s ease-out; }
         }
+
+        /* 🎨 THE FLUID CANVAS: Button & Form Control Interpolation */
+        .btn, .btn-icon, .form-control {
+            transition: all 0.3s ease-in-out;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .btn:hover:not(:disabled), .btn-icon:hover:not(:disabled) {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+        }
+
+        /* 🎨 THE FLUID CANVAS: Focus Ring Elevation */
+        .btn:focus-visible, .btn-icon:focus-visible, .form-control:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        /* 🎨 THE FLUID CANVAS: Panel Depth */
+        .panel {
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        .panel:hover {
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        /* 🎨 THE FLUID CANVAS: Empty State Polish */
+        #app-empty-state {
+            background: linear-gradient(to bottom right, var(--bg-color), var(--panel-bg));
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            transition: all 0.3s ease-in-out;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            #app-empty-state:hover {
+                border-color: var(--primary-color);
+                box-shadow: var(--box-shadow);
+            }
+            #app-empty-state:hover .empty-state-icon {
+                transform: scale(1.1);
+                color: var(--primary-color);
+                opacity: 0.8;
+                transition: all 0.3s ease-in-out;
+            }
+        }
     </style>
 </head>
 <body>

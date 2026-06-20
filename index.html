@@ -27,6 +27,24 @@
             height: 100%;
             display: block;
         }
+
+        /* 🎨 THE FLUID CANVAS: Enhanced Nav Links */
+        .nav-link {
+            transition: all 0.3s ease-in-out;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .nav-link:hover {
+                transform: translateY(-2px);
+                color: var(--primary-color);
+            }
+        }
+
+        .nav-link:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--primary-color);
+            border-radius: var(--border-radius-sm);
+        }
     </style>
 </head>
 <body>
