@@ -6,9 +6,15 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        .form-control {
+            min-height: 44px;
+        }
         @media (prefers-reduced-motion: no-preference) {
             .btn:active, .btn-icon:active { transform: scale(0.95); }
             #app-details-container:not(.hidden) { animation: slideInUp 0.3s ease-out; }
+            .modal-content {
+                animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
         }
     </style>
 </head>
