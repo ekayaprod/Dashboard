@@ -782,7 +782,8 @@ textarea.form-control {
     body { font-size: 13px; }
     .navbar { padding: 0.25rem 0.5rem; }
 
-    .nav-link { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+    .nav-link { padding: 0.2rem 0.4rem; font-size: 0.75rem; min-height: 32px; }
+    .btn, .btn-icon, .icon-btn { min-height: 32px; min-width: 32px; padding: 0.2rem 0.4rem; }
 
     .panel { border-radius: 0; border: none; box-shadow: none; }
     .app-container { padding: 0; }
