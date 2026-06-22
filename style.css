@@ -202,8 +202,8 @@ textarea.form-control {
 /* Buttons (Consolidated) */
 .btn {
     padding: 0.5rem 1rem;
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 32px;
+    min-width: 32px;
     font-size: 0.8rem; 
     border: 1px solid var(--button-border);
     border-radius: var(--border-radius);
@@ -259,8 +259,8 @@ textarea.form-control {
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 32px;
+    min-width: 32px;
 }
 .btn-icon:hover, .icon-btn:hover { background-color: var(--info-bg); color: var(--text-color); }
 .btn-icon:active, .icon-btn:active { transform: scale(0.95); }
@@ -355,7 +355,7 @@ textarea.form-control {
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     transition: all 0.3s ease-in-out;
-    min-height: 44px;
+    min-height: 32px;
     display: inline-flex;
     align-items: center;
 }
@@ -783,6 +783,7 @@ textarea.form-control {
     .navbar { padding: 0.25rem 0.5rem; }
 
     .nav-link { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+    .btn, .btn-icon, .icon-btn { padding: 0.2rem 0.4rem; }
 
     .panel { border-radius: 0; border: none; box-shadow: none; }
     .app-container { padding: 0; }
