@@ -6,6 +6,7 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Edge Sidebar Guard: Do not increase form-control or btn sizing to 44px. They must remain compact for the sidebar layout. */
         .form-control {
             min-height: 32px;
         }
@@ -26,6 +27,9 @@
                 min-width: 32px;
             }
         }
+            .shortcut-item { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+        .shortcut-item:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08); border-color: var(--primary-color); }
+        .shortcut-item:active { transform: translateY(0) scale(0.99); }
     </style>
 </head>
 <body>
@@ -48,7 +52,7 @@
                     <label for="app-select">Manage Application</label>
                     <select id="app-select" class="form-control"></select>
                 </div>
-                <div id="app-empty-state" class="empty-state-container hidden">
+                <div id="app-empty-state" class="empty-state-container hidden" style="animation: fadeIn 0.3s ease-out forwards;">
                     <svg class="empty-state-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                     </svg>
