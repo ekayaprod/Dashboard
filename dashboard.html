@@ -6,9 +6,10 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        .form-control { min-height: 44px;
+        /* Edge Sidebar Guard: Do not increase form-control or btn sizing to 44px. They must remain compact for the sidebar layout. */
+        .form-control {
+            min-height: 32px;
         }
-        .btn, .btn-icon { min-height: 44px; min-width: 44px; }
         @media (prefers-reduced-motion: no-preference) {
             .btn:active, .btn-icon:active { transform: scale(0.95); }
             #app-details-container:not(.hidden) { animation: slideInUp 0.3s ease-out; }
