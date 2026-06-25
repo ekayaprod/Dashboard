@@ -6,12 +6,37 @@
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        #search-input {
+        /* Accessibility & Fluid UX Enhancements */
+        /* Edge Sidebar Guard overrides standard 44px targets to 32px for compact layout. */
+        .form-control, .btn, .btn-icon, .icon-btn, select, input, textarea {
             min-height: 32px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .btn-icon, .icon-btn {
+            min-width: 32px;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 480px) {
+            .form-control, .btn, .btn-icon, .icon-btn, select, input, textarea {
+                min-height: 32px;
+            }
+            .btn-icon, .icon-btn {
+                min-width: 32px;
+            }
+            #search-input {
+                min-height: 32px;
+            }
         }
         @media (prefers-reduced-motion: no-preference) {
             .result-list li {
-                transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+                transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
             }
             .result-list li:hover {
                 transform: translateY(-1px);
