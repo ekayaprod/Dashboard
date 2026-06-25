@@ -26,7 +26,6 @@
     function init() {
         // Defensive check for SafeUI (Mode A)
         if (typeof SafeUI === 'undefined' || !SafeUI.isReady) {
-            console.warn('[Shell] SafeUI not ready, proceeding with caution.');
         }
 
         setupNavigation();

@@ -123,7 +123,6 @@ function _decodeQuotedPrintable(str, charset = 'utf-8') {
         if (decoder) return decoder.decode(bytes);
         return decoded;
     } catch (e) { 
-        console.warn(`QP Decode Error for charset ${charset}:`, e);
         return decoded; 
     }
 }

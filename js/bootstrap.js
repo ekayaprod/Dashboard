@@ -131,7 +131,6 @@
                             path: window.location.pathname
                         }, '*');
                     } catch (e) {
-                        console.warn('[Bootstrap] Failed to notify shell:', e);
                     }
                 };
 

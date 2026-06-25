@@ -327,7 +327,6 @@ function initializePage() {
          * @param {Object} dataToRestore - The parsed backup object.
          */
         const onRestore = (dataToRestore) => {
-            console.warn('FULL RESTORE: Overwriting all localStorage data');
             try { localStorage.removeItem('dashboard_state_v5'); } catch (e) { console.error('Failed to clear localStorage:', e); }
 
             let regeneratedCount = 0;
