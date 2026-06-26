@@ -523,7 +523,6 @@ function initializePage() {
 
             try {
                 if (state.settings.kbBaseUrl) {
-                    console.warn("Migrating old kbBaseUrl to new customSearches format...");
                     if (state.settings.kbBaseUrl.includes('{query}')) {
                         state.settings.customSearches = [{
                             id: SafeUI.generateId(),
