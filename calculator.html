@@ -7,6 +7,32 @@
     <link rel="stylesheet" href="style.css">
     
     <style>
+        /* Accessibility & Fluid UX Enhancements */
+        /* Edge Sidebar Guard overrides standard 44px targets to 32px for compact layout. */
+        .form-control, .btn, .btn-icon, .icon-btn, select, input, textarea {
+            min-height: 32px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .btn-icon, .icon-btn {
+            min-width: 32px;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 480px) {
+            .form-control, .btn, .btn-icon, .icon-btn, select, input, textarea {
+                min-height: 32px;
+            }
+            .btn-icon, .icon-btn {
+                min-width: 32px;
+            }
+        }
+
         .app-container {
             padding: 0;
             gap: 0;
