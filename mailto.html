@@ -6,6 +6,14 @@
     <title>MailTo Generator</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        .btn, .btn-icon, .form-control {
+            transition: all 0.3s ease-in-out;
+        }
+        .btn:focus-visible, .btn-icon:focus-visible, .form-control:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
         /* Drag & Drop Polish */
         #upload-wrapper.drag-active {
             border-color: var(--primary-color);
@@ -14,6 +22,7 @@
         }
 
         @media (prefers-reduced-motion: no-preference) {
+            .btn:active, .btn-icon:active { transform: scale(0.95); }
             #upload-wrapper {
                 transition: transform 0.2s, border-color 0.2s, background-color 0.2s;
             }

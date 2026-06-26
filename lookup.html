@@ -6,10 +6,20 @@
     <title>Lookup</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        .btn, .btn-icon, .form-control, .btn-clear {
+            transition: all 0.3s ease-in-out;
+        }
+        .btn:focus-visible, .btn-icon:focus-visible, .form-control:focus-visible, .btn-clear:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
         #search-input {
             min-height: 32px;
         }
         @media (prefers-reduced-motion: no-preference) {
+            .btn:active, .btn-icon:active, .btn-clear:active {
+                transform: scale(0.95);
+            }
             .result-list li {
                 transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             }

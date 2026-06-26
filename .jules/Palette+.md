@@ -13,3 +13,6 @@
 
 ## dashboard.html (Revision)
 - **Touch Target Revert / Sidebar Constraint:** Reversed the standard 44px minimum touch target enforcement on `.btn` and `.form-control` elements. Inserted an explicit CSS `Edge Sidebar Guard` comment instructing agents not to violate the compact 32px standard required by the sidebar host environment.
+- Injected `focus-visible` styling with offset primary color rings to interactive elements (`.btn`, `.btn-icon`, `.form-control`, `.btn-clear`) across `lookup.html`, `passwords.html`, and `mailto.html` to enhance keyboard accessibility.
+- Implemented fluid transitions (`transition: all 0.3s ease-in-out`) for hover, active, and focus states on interactive elements to soften rigid state swaps.
+- Added tactile `:active` state transforms (`transform: scale(0.95)`) wrapped in `@media (prefers-reduced-motion: no-preference)` to improve micro-interaction feedback.
