@@ -18,3 +18,6 @@
 - **Lookup (`lookup.html`)**: Addressed "The Inaccessible Touch Target" and "The Rigid State" by injecting scoped CSS. Elevated `focus-visible` rings with a 2px offset. Respected the `Edge Sidebar Guard` layout constraint, maintaining 32px targets. Added `transition-all 0.3s ease-in-out` for fluid interactions.
 - **MailTo (`mailto.html`)**: Addressed "The Inaccessible Touch Target" and "The Rigid State" by injecting scoped CSS. Elevated `focus-visible` rings with a 2px offset. Respected the `Edge Sidebar Guard` layout constraint, maintaining 32px targets. Added `transition-all 0.3s ease-in-out` for fluid interactions.
 - **Passwords (`passwords.html`)**: Addressed "The Inaccessible Touch Target" and "The Rigid State" by injecting scoped CSS. Elevated `focus-visible` rings with a 2px offset. Respected the `Edge Sidebar Guard` layout constraint, maintaining 32px targets. Added `transition-all 0.3s ease-in-out` for fluid interactions.
+- dashboard.html: Enhanced .shortcut-item hover/active with cubic-bezier, deeper shadow, scale(0.95).
+- calculator.html: Added premium hover state and depth to .target-card.
+- passwords.html: Injected floating animation to empty state icon.
