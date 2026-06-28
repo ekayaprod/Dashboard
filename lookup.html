@@ -48,6 +48,21 @@
                 box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             }
         }
+
+        .search-wrapper {
+            transition: box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+
+        .search-wrapper:focus-within {
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* Ensuring the glassmorphism aesthetic if search control container has background */
+        .search-controls {
+            padding: var(--spacing-sm) 0;
+            margin-bottom: var(--spacing-sm);
+        }
     </style>
 </head>
 <body class="lookup-page">

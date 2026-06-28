@@ -21,3 +21,4 @@
 - dashboard.html: Enhanced .shortcut-item hover/active with cubic-bezier, deeper shadow, scale(0.95).
 - calculator.html: Added premium hover state and depth to .target-card.
 - passwords.html: Injected floating animation to empty state icon.
+Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith to a premium error state with gradient background and shadow. Targeted 'lookup.html' to stylize the '.search-wrapper' with a focus-within drop-shadow and transform, breaking the rigid state. Targeted 'index.html' to add fluid hover scale transformations to '.nav-link'.

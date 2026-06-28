@@ -28,6 +28,19 @@
             display: block;
         }
 
+        .nav-link {
+            transition: all 0.3s ease-in-out;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .nav-link:hover {
+                transform: scale(1.02);
+            }
+            .nav-link:active {
+                transform: scale(0.95);
+            }
+        }
+
         @media (max-width: 480px) {
             .nav-link {
                 min-height: 32px;
