@@ -22,3 +22,6 @@
 - calculator.html: Added premium hover state and depth to .target-card.
 - passwords.html: Injected floating animation to empty state icon.
 Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith to a premium error state with gradient background and shadow. Targeted 'lookup.html' to stylize the '.search-wrapper' with a focus-within drop-shadow and transform, breaking the rigid state. Targeted 'index.html' to add fluid hover scale transformations to '.nav-link'.
+\n- **Generic App UI ()**: Replaced flat text `empty-state-container` with a premium animated SVG component to address 'The Flat Monolith' and 'The Invisible Failure'.\n- **Mailto ()**: Enhanced `emptyMessage` property in ListRenderer implementation from 'Empty folder.' to 'This folder is empty. Drag and drop a template here.' to offer an actionable recovery path, addressing 'The Invisible Failure'.
+- **Generic App UI**: Replaced flat text empty-state-container with a premium animated SVG component to address 'The Flat Monolith' and 'The Invisible Failure'.
+- **Mailto**: Enhanced emptyMessage property in ListRenderer implementation from 'Empty folder.' to 'This folder is empty. Drag and drop a template here.' to offer an actionable recovery path, addressing 'The Invisible Failure'.

@@ -345,7 +345,7 @@ function renderCatalogue() {
     ListRenderer.renderList({
         container: DOMElements.treeListContainer,
         items: items,
-        emptyMessage: "Empty folder.",
+        emptyMessage: "This folder is empty. Drag and drop a template here.",
         createItemElement: (item) => {
             const div = document.createElement('div');
             div.className = 'list-item';
