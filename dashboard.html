@@ -23,7 +23,12 @@
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .btn:active, .btn-icon:active { transform: scale(0.95); }
+            .btn:active, .btn-icon:active, .icon-btn:active { transform: scale(0.95); }
+            @keyframes float {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-5px); }
+            }
+            .empty-state-icon { animation: float 3s ease-in-out infinite; }
             #app-details-container:not(.hidden) { animation: slideInUp 0.3s ease-out; }
             .modal-content {
                 animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
