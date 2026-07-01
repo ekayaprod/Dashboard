@@ -4,21 +4,17 @@
 
 Welcome aboard! To boot the application locally:
 
-```bash
-git clone <repo-url>
-cd sidebar-productivity-suite
-npm ci # Install development dependencies
-python3 -m http.server 8000 # Or your preferred static server
-```
+1. `git clone <repo-url>`
+2. `cd sidebar-productivity-suite`
+3. `npm ci` (Install development dependencies).
+4. `python3 -m http.server 8000` (Or your preferred static server).
 
 Open a web browser and navigate to `http://localhost:8000/index.html`.
 
 To run the test suite:
 
-```bash
-npm test
-npm run test:coverage # Generate a test coverage report
-```
+1. `npm test` (Run the test suite).
+2. `npm run test:coverage` (Generate a test coverage report).
 
 ## 1. Overview
 
@@ -26,11 +22,11 @@ The Sidebar Productivity Suite is a modular, browser-based application collectio
 
 The project consists of a central dashboard and four specialized utilities:
 
-* **Dashboard**: Application launcher, scratchpad, and shortcut manager.
-* **Calculator**: Shift pacing and productivity metrics calculator.
-* **Lookup**: Knowledge base search aggregator and local reference database.
-* **MailTo**: Email template generator with support for `.msg` file parsing and folder organization.
-* **Passwords**: Configurable passphrase generator with seasonal word bank support.
+* **Dashboard**: Application launcher, quick actions, scratchpad.
+* **Calculator**: Shift pacing calculator with visual targets and optimization strategy engine.
+* **Lookup**: Local knowledge base search.
+* **MailTo**: Email template generator with `.msg` parsing.
+* **Passwords**: Secure passphrase generator with seasonal word banks and presets.
 
 ## 2. System Architecture
 
@@ -99,6 +95,8 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
   * Dynamic application registry.
   * "Quick Actions" shortcut system.
   * Integrated multi-note scratchpad.
+* **Benefit**: Centralizes workspace applications and notes.
+* **Use Case**: Using quick actions and the scratchpad for daily tasks.
 
 ### 4.2. Calculator (`calculator.html`)
 
@@ -106,12 +104,16 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
 * **Logic**: Implements a time-based algorithm that accounts for breaks, shift start/end times, and leeway factors to project required output ("pacing") in real-time.
 * **Visualization**: Renders color-coded status cards indicating progress against defined grade boundaries.
 * **Strategy Engine**: Analyzes current pacing to provide actionable recommendations (e.g., "Easy Win" opportunities) to optimize end-of-day results.
+* **Benefit**: Provides real-time pacing projections and optimization strategies.
+* **Use Case**: Calculating shift productivity metrics and actionable recommendations.
 
 ### 4.3. Lookup (`lookup.html`)
 
 * **Function**: Database for quick retrieval of assignment groups and procedural notes.
 * **Search**: Features a hybrid search engine that queries the local database and constructs URLs for external knowledge base searches.
 * **Data Structure**: Flat-file database optimized for client-side keyword filtering.
+* **Benefit**: Enables fast client-side keyword filtering across local databases.
+* **Use Case**: Retrieving assignment groups and procedural notes via a hybrid search engine.
 
 ### 4.4. MailTo (`mailto.html`)
 
@@ -120,6 +122,8 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
   * **Recursive Data Structure**: Supports nested folders for template organization.
   * **MSG Parsing**: Integrates `js/msg-reader.js` to parse binary Outlook files (`.msg`) and extract recipients, subject, and body content.
 * **Navigation**: Implements a breadcrumb-based traversal system for the folder hierarchy.
+* **Benefit**: Automates the extraction of recipients, subjects, and bodies from binary Outlook files.
+* **Use Case**: Managing a library of email templates organized in nested folders.
 
 ### 4.5. Passwords (`passwords.html`)
 
@@ -128,6 +132,8 @@ Data persistence is handled via the `localStorage` API. The `AppLifecycle` modul
   * **Entropy**: Utilizes `window.crypto.getRandomValues` for cryptographically secure random number generation.
   * **Structure**: Supports configurable sentence structures (e.g., Adjective-Noun-Verb) and seasonal word banks that can be dynamically loaded.
   * **Presets**: Allows saving and loading of custom generator configurations for quick access.
+* **Benefit**: Generates cryptographically secure random values using configured sentence structures.
+* **Use Case**: Generating passphrases dynamically using seasonal word banks.
 
 ## 5. Development Guidelines
 
