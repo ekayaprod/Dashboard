@@ -39,11 +39,16 @@ The suite operates on a strict **Shell Architecture**, eliminating the need for 
 
 ## 🧰 The Applications
 
-1. **Dashboard (`dashboard.html`)**: The command center. Features a dynamic app registry, quick shortcuts, and a multi-note persistent scratchpad.
-2. **Calculator (`calculator.html`)**: A ruthless shift pacing engine. Computes real-time progress against defined grade boundaries to optimize end-of-day metrics.
-3. **Lookup (`lookup.html`)**: A flat-file local reference database optimized for instant client-side keyword filtering.
-4. **MailTo (`mailto.html`)**: Generates nested `mailto:` templates. Crucially, it offloads binary parsing of `.msg` files to a dedicated web worker (`js/workers/msg-reader.js`) to keep the main thread unblocked.
-5. **Passwords (`passwords.html`)**: A cryptographically secure passphrase generator utilizing `window.crypto`. Supports seasonal word banks and configurable constraints via environment configurations (e.g., `NUM_PASSWORDS_TO_GENERATE`).
+1. **Dashboard (`dashboard.html`)**
+   The command center. It features a dynamic app registry, a `QuickListManager` shortcut subsystem, and an integrated `NotepadManager` for persistent multi-note scratchpad capabilities.
+2. **Calculator (`calculator.html`)**
+   A ruthless shift pacing engine (v3.8.2). It computes real-time progress against defined grade boundaries using a Safe Zone Countdown. A proprietary Strategy Engine actively assesses total productive minutes versus breakpoints to optimize end-of-day metrics via actionable 'Quick Fix' suggestions.
+3. **Lookup (`lookup.html`)**
+   A flat-file local reference database. It leverages a custom `SearchHelper` for hybrid, async-optimized client-side keyword indexing. It also supports custom search URL templates (e.g., `https://my-kb.com/search?q={query}`) to bridge local records with external knowledge bases.
+4. **MailTo (`mailto.html`)**
+   Generates nested `mailto:` templates. The application utilizes a recursive `TreeUtils` architecture to manage a comprehensive template library structure. Crucially, it offloads binary parsing of `.msg` files to a dedicated web worker (`js/workers/msg-reader.js`) to keep the main thread entirely unblocked.
+5. **Passwords (`passwords.html`)**
+   A cryptographically secure passphrase generator utilizing `window.crypto` (with robust fallbacks to `Math.random`). It supports configurable structures (e.g., Adjective-Noun-Verb) and intelligently maps temporal offsets to dynamic seasonal word banks (e.g., Winter, Spring, Summer, Autumn) fetched asynchronously via `Promise.all`.
 
 ## 💾 State Management
 
