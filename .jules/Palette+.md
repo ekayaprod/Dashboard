@@ -27,3 +27,8 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 - **Mailto**: Enhanced emptyMessage property in ListRenderer implementation from 'Empty folder.' to 'This folder is empty. Drag and drop a template here.' to offer an actionable recovery path, addressing 'The Invisible Failure'.
 * Injected tactile feedback for interactive elements across applications.
 * Added float animation to empty state illustrations.
+
+## Design Decision Ledger - Current Cycle
+* `index.html` (`.navbar`): Injected glassmorphism effect (`backdrop-filter: blur`, semi-transparent background) and soft drop-shadow for premium depth.
+* `mailto.html` (`#upload-wrapper`): Replaced flat background with smooth linear gradient, added lifted hover state (`translateY(-2px)`, `box-shadow`), and inner shadow on drag-active. Preserved `prefers-reduced-motion` guards.
+* `passwords.html` (`#btn-quick-generate-temp`, `#btn-generate`): Enhanced primary CTAs with `box-shadow` elevation, increased `font-weight`, and `letter-spacing`. Applied `translateY(-1px)` lift on hover, scoped within `prefers-reduced-motion` block.
