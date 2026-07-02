@@ -421,7 +421,6 @@ const UIUtils = (() => {
                     throw new Error('Request aborted');
                 }
 
-                console.warn(`[fetchJSON] Attempt ${attempt + 1} failed. Retrying in ${delay}ms...`, error);
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
@@ -474,7 +473,6 @@ const UIUtils = (() => {
                 (parsed) => {
                     data = parsed;
                     if (data.version !== version) {
-                        console.warn(`State version mismatch. Loading state anyway.`);
                     }
                 },
                 (err) => {
@@ -958,7 +956,6 @@ const AppLifecycle = (() => {
             
             let stateWasMigrated = false;
             if (Array.isArray(state)) {
-                console.warn(`[AppLifecycle] Migrating legacy array state for ${storageKey}`);
                 const oldData = state;
                 state = JSON.parse(JSON.stringify(defaultState));
                 
