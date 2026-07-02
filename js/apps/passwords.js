@@ -313,7 +313,6 @@ const PasswordUI = {
             const savedState = localStorage.getItem(ACCORDION_STATE_KEY);
             if (savedState !== null) expanded = savedState === 'true';
         } catch (err) {
-            console.warn('Failed to load accordion state:', err);
         }
 
         const accordion = domElements.customGenHeader.closest('.accordion');
