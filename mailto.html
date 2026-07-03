@@ -35,12 +35,28 @@
         /* Drag & Drop Polish */
         #upload-wrapper {
             background: linear-gradient(to bottom right, var(--info-bg), rgba(255,255,255,0.02));
+            border-radius: 1rem;
+            padding: 2rem 1rem;
+            gap: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         #upload-wrapper.drag-active {
             border-color: var(--primary-color);
             background-color: rgba(59, 130, 246, 0.08);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .form-control {
+            transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        }
+
+        .form-control:focus-visible {
+            box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color);
+            border-color: transparent;
         }
 
         @media (prefers-reduced-motion: no-preference) {
