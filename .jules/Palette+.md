@@ -32,3 +32,15 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 * `index.html` (`.navbar`): Injected glassmorphism effect (`backdrop-filter: blur`, semi-transparent background) and soft drop-shadow for premium depth.
 * `mailto.html` (`#upload-wrapper`): Replaced flat background with smooth linear gradient, added lifted hover state (`translateY(-2px)`, `box-shadow`), and inner shadow on drag-active. Preserved `prefers-reduced-motion` guards.
 * `passwords.html` (`#btn-quick-generate-temp`, `#btn-generate`): Enhanced primary CTAs with `box-shadow` elevation, increased `font-weight`, and `letter-spacing`. Applied `translateY(-1px)` lift on hover, scoped within `prefers-reduced-motion` block.
+
+### Dashboard (`dashboard.html`)
+- **Target:** `.shortcut-item` (The Flat Monolith, The Harsh Border)
+- **Injection:** Softened `border-radius` to `0.75rem` (`rounded-xl`), elevated box shadows for idle and hover states to enhance tactile feedback.
+
+### Calculator (`calculator.html`)
+- **Target:** `.target-card` (The Flat Monolith, The Harsh Border)
+- **Injection:** Injected `0.75rem` radius, subtle 145deg `linear-gradient`, and a refined shadow drop to separate the target component from the canvas.
+
+### Lookup (`lookup.html`)
+- **Target:** `.search-controls` (The Flat Monolith)
+- **Injection:** Enclosed search inputs inside a glassmorphism container using `backdrop-filter: blur(8px)`, light translucency, and `0.75rem` rounded boundaries, establishing visual hierarchy.

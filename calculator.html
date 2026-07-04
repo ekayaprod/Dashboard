@@ -131,10 +131,14 @@
         }
         .target-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0.75rem;
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255,255,255,0.05); /* Soften the border context */
         }
         .target-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
         @media (max-width: 480px) {
             .target-card {
