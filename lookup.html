@@ -61,8 +61,21 @@
 
         /* Ensuring the glassmorphism aesthetic if search control container has background */
         .search-controls {
-            padding: var(--spacing-sm) 0;
+            padding: var(--spacing-sm);
             margin-bottom: var(--spacing-sm);
+            background-color: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .search-controls {
+                background-color: rgba(31, 41, 55, 0.4);
+                border-color: rgba(75, 85, 99, 0.5);
+            }
         }
     </style>
 </head>
