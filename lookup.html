@@ -77,6 +77,19 @@
                 border-color: rgba(75, 85, 99, 0.5);
             }
         }
+
+        /* Target 4: Scroll-to-Top fluid transitions */
+        @media (prefers-reduced-motion: no-preference) {
+            #scroll-to-top {
+                transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out, background-color 0.3s ease-in-out;
+            }
+            #scroll-to-top.visible:hover {
+                transform: translateY(-2px);
+            }
+            #scroll-to-top.visible:active {
+                transform: translateY(0) scale(0.95);
+            }
+        }
     </style>
 </head>
 <body class="lookup-page">

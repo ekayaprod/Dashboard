@@ -44,3 +44,9 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 ### Lookup (`lookup.html`)
 - **Target:** `.search-controls` (The Flat Monolith)
 - **Injection:** Enclosed search inputs inside a glassmorphism container using `backdrop-filter: blur(8px)`, light translucency, and `0.75rem` rounded boundaries, establishing visual hierarchy.
+
+## Execution 1
+- `index.html`: Injected `focus-visible` styling to `.nav-link` to ensure keyboard navigation is distinct and accessible.
+- `dashboard.html`: Applied glassmorphism (`backdrop-filter`, subtle gradients, rounded borders, soft shadow) to `.empty-state-container`.
+- `passwords.html`: Applied glassmorphism (`backdrop-filter`, subtle gradients, rounded borders, soft shadow) to `.empty-state-container`.
+- `lookup.html`: Injected fluid transforms (`translateY(-2px)` on hover, `scale(0.95)` on active) to `#scroll-to-top` within a `prefers-reduced-motion` guard.
