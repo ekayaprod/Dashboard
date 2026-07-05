@@ -44,6 +44,12 @@
             transition: all 0.3s ease-in-out;
         }
 
+        .nav-link:focus-visible {
+            outline: 2px solid var(--primary-color, #3b82f6);
+            outline-offset: 4px;
+            border-radius: 4px;
+        }
+
         @media (prefers-reduced-motion: no-preference) {
             .nav-link:hover {
                 transform: scale(1.02);
