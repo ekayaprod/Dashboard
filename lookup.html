@@ -90,6 +90,35 @@
                 transform: translateY(0) scale(0.95);
             }
         }
+
+        .empty-state-container {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.6);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease-in-out;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .empty-state-container {
+                background: linear-gradient(145deg, rgba(31, 41, 55, 0.4), rgba(31, 41, 55, 0.1));
+                border-color: rgba(75, 85, 99, 0.6);
+            }
+        }
+
+
+        #app-startup-error {
+            background: linear-gradient(to right, #fef2f2, #fee2e2);
+            border: 1px solid #fca5a5;
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1);
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-bottom: var(--spacing-sm);
+        }
+
     </style>
 </head>
 <body class="lookup-page">
