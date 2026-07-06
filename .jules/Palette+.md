@@ -50,3 +50,10 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 - `dashboard.html`: Applied glassmorphism (`backdrop-filter`, subtle gradients, rounded borders, soft shadow) to `.empty-state-container`.
 - `passwords.html`: Applied glassmorphism (`backdrop-filter`, subtle gradients, rounded borders, soft shadow) to `.empty-state-container`.
 - `lookup.html`: Injected fluid transforms (`translateY(-2px)` on hover, `scale(0.95)` on active) to `#scroll-to-top` within a `prefers-reduced-motion` guard.
+
+## 2026-07-06 - Palette+ - Inject Empty State and Error Banner Aesthetics
+- **Dashboard (`dashboard.html`)**: The `#app-startup-error` and `.empty-state-container` CSS were already correctly scoped inline.
+- **Lookup (`lookup.html`)**: Added `.empty-state-container` and `#app-startup-error` scoped CSS into inline `<style>` block to style dynamic error banners and list rendering states.
+- **MailTo (`mailto.html`)**: Added `.empty-state-container` and `#app-startup-error` scoped CSS into inline `<style>` block to style dynamic error banners and list rendering states.
+- **Passwords (`passwords.html`)**: The `.empty-state-container` CSS was already scoped inline. Added `#app-startup-error` scoped CSS.
+- **Calculator (`calculator.html`)**: Added `#app-startup-error` scoped CSS. Does not utilize `.empty-state-container`.
