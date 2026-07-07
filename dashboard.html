@@ -59,6 +59,11 @@
             border-radius: var(--border-radius);
             margin-bottom: var(--spacing-sm);
         }
+        @media (prefers-reduced-motion: no-preference) {
+            #app-startup-error:not(.hidden) {
+                animation: slideInUp 0.3s ease-out forwards;
+            }
+        }
 
         .empty-state-container {
             background: linear-gradient(145deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));

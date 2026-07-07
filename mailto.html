@@ -90,6 +90,11 @@
             border-radius: var(--border-radius);
             margin-bottom: var(--spacing-sm);
         }
+        @media (prefers-reduced-motion: no-preference) {
+            #app-startup-error:not(.hidden) {
+                animation: slideInUp 0.3s ease-out forwards;
+            }
+        }
 
     </style>
 </head>
