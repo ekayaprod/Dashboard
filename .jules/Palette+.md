@@ -57,3 +57,9 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 - **MailTo (`mailto.html`)**: Added `.empty-state-container` and `#app-startup-error` scoped CSS into inline `<style>` block to style dynamic error banners and list rendering states.
 - **Passwords (`passwords.html`)**: The `.empty-state-container` CSS was already scoped inline. Added `#app-startup-error` scoped CSS.
 - **Calculator (`calculator.html`)**: Added `#app-startup-error` scoped CSS. Does not utilize `.empty-state-container`.
+
+## [$(date +"%Y-%m-%d")] Design Decision Ledger: Lifeless Transitions (Error Banners)
+- **Target:** `#app-startup-error` banner across all primary apps (`dashboard.html`, `lookup.html`, `mailto.html`, `passwords.html`, `calculator.html`).
+- **Defect:** 'The Lifeless Transition'. Banners snapped into the DOM instantly without choreography when unhidden.
+- **Resolution:** Injected `slideInUp` entrance choreography (`animation: slideInUp 0.3s ease-out forwards;`) bounded by a `@media (prefers-reduced-motion: no-preference)` guard.
+- **Constraints Maintained:** Kept mutations strictly scoped to inline `<style>` tags per 'The Style Scope Guard'. Global `style.css` untouched.
