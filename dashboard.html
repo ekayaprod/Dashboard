@@ -50,6 +50,23 @@
         .shortcut-item:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); border-color: var(--primary-color); }
         .shortcut-item:active { transform: translateY(0) scale(0.95); }
 
+        .generator-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out;
+            margin-bottom: var(--spacing-md);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .generator-section:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            }
+        }
+
         #app-startup-error {
             background: linear-gradient(to right, #fef2f2, #fee2e2);
             border: 1px solid #fca5a5;
