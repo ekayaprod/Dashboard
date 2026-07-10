@@ -16,6 +16,33 @@
             min-width: 32px;
         }
 
+        /* Target buttons and inputs above text editor */
+        .actions-menu-wrapper .btn-icon,
+        #app-select,
+        #app-empty-state .btn,
+        #edit-app-name,
+        #save-changes-btn,
+        #delete-app-btn,
+        #notepad-header .btn-icon,
+        #note-select {
+            min-height: 24px;
+            height: 24px;
+            padding: 2px 4px;
+            font-size: 0.75rem;
+        }
+
+        #edit-app-urls,
+        #edit-app-escalation {
+            min-height: 40px;
+            height: 40px;
+            padding: 2px 4px;
+            font-size: 0.75rem;
+        }
+
+        #notepad-header {
+            margin-bottom: 4px;
+        }
+
         :focus-visible {
             outline: 2px solid var(--primary-color);
             outline-offset: 2px;
@@ -23,7 +50,7 @@
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .btn:active, .btn-icon:active, .icon-btn:active { transform: scale(0.95); }
+            .btn:active, .btn-icon:active, .icon-btn:active { transform: scale(0.95); transition: transform 0.15s ease-in-out; }
             @keyframes float {
                 0%, 100% { transform: translateY(0); }
                 50% { transform: translateY(-5px); }
@@ -85,7 +112,7 @@
 </head>
 <body>
     <div class="app-container">
-        <div class="panel">
+        <div class="panel" style="box-shadow: var(--box-shadow-lg);">
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
