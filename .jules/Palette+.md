@@ -63,3 +63,6 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 - **Defect:** 'The Lifeless Transition'. Banners snapped into the DOM instantly without choreography when unhidden.
 - **Resolution:** Injected `slideInUp` entrance choreography (`animation: slideInUp 0.3s ease-out forwards;`) bounded by a `@media (prefers-reduced-motion: no-preference)` guard.
 - **Constraints Maintained:** Kept mutations strictly scoped to inline `<style>` tags per 'The Style Scope Guard'. Global `style.css` untouched.
+- Injected `box-shadow: var(--box-shadow-lg)` to `.panel` in `dashboard.html` to add depth.
+- Injected `transition: transform 0.15s ease-in-out` to button hover states in `dashboard.html` inside `@media (prefers-reduced-motion: no-preference)` to close "The Rigid State" gap.
+- Injected `box-shadow: var(--box-shadow-lg)` to `.empty-state-container` in `passwords.html` to elevate empty states.

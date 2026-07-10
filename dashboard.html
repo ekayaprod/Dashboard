@@ -23,7 +23,7 @@
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .btn:active, .btn-icon:active, .icon-btn:active { transform: scale(0.95); }
+            .btn:active, .btn-icon:active, .icon-btn:active { transform: scale(0.95); transition: transform 0.15s ease-in-out; }
             @keyframes float {
                 0%, 100% { transform: translateY(0); }
                 50% { transform: translateY(-5px); }
@@ -85,7 +85,7 @@
 </head>
 <body>
     <div class="app-container">
-        <div class="panel">
+        <div class="panel" style="box-shadow: var(--box-shadow-lg);">
             <div class="main-content">
                 <div id="app-startup-error" class="hidden app-startup-banner"></div>
 
