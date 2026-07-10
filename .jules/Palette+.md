@@ -68,3 +68,6 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 * **Target 1: calculator.html** - Modified `.results-section` to inject a soft drop-shadow, increased padding to `1rem` for better typographic rhythm, set `border-radius: 1rem`, and added fluid hover elevation.
 * **Target 2: passwords.html** - Styled `.config-section` to provide depth with a soft box-shadow, visual hierarchy with background and border coloring, `padding: 1.25rem`, softened `border-radius: 1rem`, and fluid hover elevation.
 * **Target 3: dashboard.html** - Added `.generator-section` styling to give the app editor and notepad sections a refined card appearance with box-shadow, `border-radius: 1rem`, `padding: 1rem`, background coloring, and fluid hover elevation.
+- Injected `box-shadow: var(--box-shadow-lg)` to `.panel` in `dashboard.html` to add depth.
+- Injected `transition: transform 0.15s ease-in-out` to button hover states in `dashboard.html` inside `@media (prefers-reduced-motion: no-preference)` to close "The Rigid State" gap.
+- Injected `box-shadow: var(--box-shadow-lg)` to `.empty-state-container` in `passwords.html` to elevate empty states.
