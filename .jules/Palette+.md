@@ -71,3 +71,11 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 - Injected `box-shadow: var(--box-shadow-lg)` to `.panel` in `dashboard.html` to add depth.
 - Injected `transition: transform 0.15s ease-in-out` to button hover states in `dashboard.html` inside `@media (prefers-reduced-motion: no-preference)` to close "The Rigid State" gap.
 - Injected `box-shadow: var(--box-shadow-lg)` to `.empty-state-container` in `passwords.html` to elevate empty states.
+
+## Design Decision Ledger - Current Cycle
+* **Target: Global `style.css` empty state (`.empty-state-container`)**
+  - **Defect:** 'The Flat Monolith', 'The Rigid State'. Empty states were scattered across multiple HTML files with duplicated inline styles, and lacked responsive dark mode context.
+  - **Resolution:** Centralized the premium glassmorphism styling (`linear-gradient(145deg...)`, `backdrop-filter: blur(10px)`, `border-radius: 1rem`) into `style.css`'s `.empty-state-container`. Added `@keyframes float` to `.empty-state-icon` bounded by a `@media (prefers-reduced-motion: no-preference)` guard. Cleaned up redundant `<style>` blocks and inline `style="..."` attributes in `dashboard.html`, `passwords.html`, and `lookup.html`. Also removed inline styles from `ListRenderer`'s dynamic empty state markup in `js/app-ui.js`.
+* **Target: Interactive Lists (`.shortcut-item`, `.list-item`)**
+  - **Defect:** 'The Rigid State'.
+  - **Resolution:** Injected fluid transitions (`transition: all 0.2s ease`) and gentle hover states (`transform: translateY(-1px)`, `transform: translateX(2px)`) to list and shortcut items in `style.css` to add tactile feedback.

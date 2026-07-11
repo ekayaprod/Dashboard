@@ -91,7 +91,16 @@ const ListRenderer = (() => {
             }
 
             if ((!items || items.length === 0) && !append) {
-                container.innerHTML = `<div class="empty-state-container" style="animation: fadeIn 0.3s ease-out forwards; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; text-align: center; gap: 0.5rem;"><svg class="empty-state-icon" style="width: 48px; height: 48px; color: var(--border-color); margin-bottom: 0.5rem; opacity: 0.6;" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-.999.43-1.563A6 6 0 1121.75 8.25z" /></svg><span class="empty-state-text" style="font-size: 0.9rem; font-weight: 500; color: var(--subtle-text);">${emptyMessage}</span></div>`;
+                container.innerHTML = `<style>
+                    @keyframes float-icon {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-3px); }
+                    }
+                    @media (prefers-reduced-motion: no-preference) {
+                        .empty-state-icon-anim { animation: float-icon 3s ease-in-out infinite; }
+                    }
+                </style>
+                <div class="empty-state-container" style="animation: fadeIn 0.3s ease-out forwards; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; text-align: center; gap: 0.5rem; background: linear-gradient(145deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 0.6); border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); transition: all 0.3s ease-in-out;"><svg class="empty-state-icon empty-state-icon-anim" style="width: 48px; height: 48px; color: var(--border-color); margin-bottom: 0.5rem; opacity: 0.6;" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-.999.43-1.563A6 6 0 1121.75 8.25z" /></svg><span class="empty-state-text" style="font-size: 0.9rem; font-weight: 500; color: var(--subtle-text);">${emptyMessage}</span></div>`;
                 return;
             }
 
@@ -428,6 +437,19 @@ const QuickListManager = (() => {
             nameElement.style.fontSize = '0.9rem';
             nameElement.style.cursor = 'pointer';
         }
+
+        div.style.transition = 'all 0.2s ease-in-out';
+        div.style.cursor = 'pointer';
+        div.addEventListener('mouseenter', () => {
+            div.style.transform = 'translateY(-1px)';
+            div.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+            div.style.borderColor = 'var(--primary-color)';
+        });
+        div.addEventListener('mouseleave', () => {
+            div.style.transform = 'none';
+            div.style.boxShadow = 'none';
+            div.style.borderColor = 'var(--border-color)';
+        });
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'icon-btn delete-btn';
