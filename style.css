@@ -315,6 +315,9 @@ textarea.form-control {
     border-bottom: 1px solid transparent;
     transition: all 0.3s ease-in-out;
 }
+.accordion-header:hover {
+    background-color: var(--panel-bg);
+}
 .accordion-header:active {
     transform: scale(0.98);
 }
@@ -404,6 +407,14 @@ textarea.form-control {
 .shortcut-item {
     display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem;
     background-color: var(--info-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius);
+    transition: all 0.2s ease-in-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .shortcut-item:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--box-shadow-lg);
+    }
 }
 .shortcut-item:last-child:nth-child(odd) { grid-column: span 2; }
 
@@ -455,7 +466,14 @@ textarea.form-control {
     text-align: center; display: flex; flex-direction: column;
     justify-content: center; height: auto; min-height: 65px; /* Adaptive height */
     box-sizing: border-box;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .target-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--box-shadow-lg);
+    }
 }
 
 @keyframes pulse-success {
