@@ -147,6 +147,30 @@
                 border-color: rgba(75, 85, 99, 0.6);
             }
         }
+
+        #save-changes-btn {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            font-weight: 600;
+            letter-spacing: 0.025em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #save-changes-btn:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        #save-changes-btn:active {
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            #save-changes-btn:hover {
+                transform: translateY(-1px);
+            }
+            #save-changes-btn:active {
+                transform: translateY(0) scale(0.98);
+            }
+        }
     </style>
 </head>
 <body>
