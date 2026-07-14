@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✅ New
+- **UI/UX:** Comprehensive suite-wide aesthetic overhaul injecting fluid motion, glassmorphism depth tokens, and accessible focus states.
+- **Responsive Design:** Reconfigured Edge Sidebar layout and standardized 32px touch target exceptions for mobile constraints.
 - **Lookup:** Polished interface with premium interactions.
 - **Wordbanks:** Expanded seasonal word lists for Passwords app.
 - **Dashboard:** Polished interface with premium interactions.
@@ -18,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core:** Resolved swallowed error in state manager corruption handling.
 
 ### 🔧 Chores
+- **Maintenance:** Superintendent executed baseline enforcements and Python cache sweeps.
+- **Cleanup:** Scavenger purged hollow carapaces, diagnostic droppings, and dead code.
+- **Dependencies:** Bumped vitest and @vitest/coverage-v8 from 4.1.9 to 4.1.10.
 - **Refactor:** Extracted settings logic in `lookup.js` and reduced cognitive complexity in `passwords.js`.
 - **Performance:** Optimized system cache and asynchronous handling.
 - **Cleanup:** Removed debug logging across the codebase.
