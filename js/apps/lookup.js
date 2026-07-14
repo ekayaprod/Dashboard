@@ -113,7 +113,7 @@ const LookupRenderer = {
         if (isEditMode) {
             return `
                 <div class="empty-state-container" aria-live="polite">
-                    <div class="empty-state-text">No entries. Add one?</div>
+                    <div class="empty-state-text">You haven't added any local entries yet. Click 'New Entry' to get started.</div>
                 </div>
             `;
         }
@@ -125,7 +125,7 @@ const LookupRenderer = {
                     <div class="empty-state-icon">
                         ${LOOKUP_ICONS.search.replace('width="16" height="16"', 'width="48" height="48"')}
                     </div>
-                    <h3 class="empty-state-text empty-state-text-bold">No entries found for "${escapedTerm}"</h3>
+                    <h3 class="empty-state-text empty-state-text-bold">We couldn't find any entries matching "${escapedTerm}". Try a different keyword.</h3>
                     <button class="btn btn-primary" data-action="create-from-search">
                         + Add "${escapedTerm}"
                     </button>
@@ -138,7 +138,7 @@ const LookupRenderer = {
                 <div class="empty-state-icon">
                     ${LOOKUP_ICONS.empty}
                 </div>
-                <p class="empty-state-text">Enter a keyword to start searching.</p>
+                <p class="empty-state-text">Ready to search? Enter a keyword above to find local entries or query external databases.</p>
             </div>
         `;
     },
@@ -298,7 +298,7 @@ const LookupSettings = {
             if (searchesHtml.length === 0) {
                 searchesHtml = `
                     <div class="empty-state-container" aria-live="polite">
-                        <p class="empty-state-text">No custom searches added yet.</p>
+                        <p class="empty-state-text">You haven't configured any custom searches yet. Open Settings to add one.</p>
                     </div>
                 `;
             }
@@ -384,7 +384,7 @@ const LookupSettings = {
                     if (listContainer.children.length === 0) {
                         listContainer.innerHTML = `
                             <div class="empty-state-container" aria-live="polite">
-                                <p class="empty-state-text">No custom searches added yet.</p>
+                                <p class="empty-state-text">You haven't configured any custom searches yet. Open Settings to add one.</p>
                             </div>
                         `;
                     }
@@ -818,7 +818,7 @@ function initializePage() {
                     <div class="edit-form-actions">
                         <button type="button" class="btn-delete btn btn-danger">Delete</button>
                         <button type="button" class="btn-cancel btn">Cancel</button>
-                        <button type="submit" class="btn-save btn btn-primary">Save</button>
+                        <button type="submit" class="btn-save btn btn-primary">Save Entry</button>
                     </div>
                 `;
 

@@ -155,13 +155,13 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
 
     it('getEmptyMessage should return "No entries" in edit mode', () => {
         document.body.innerHTML = window.LookupRenderer.getEmptyMessage('foo', true)
-        expect(screen.getByText('No entries. Add one?')).not.toBeNull()
-        expect(screen.getByText('No entries. Add one?').parentElement.getAttribute('aria-live')).toBe('polite')
+        expect(screen.getByText("You haven't added any local entries yet. Click 'New Entry' to get started.")).not.toBeNull()
+        expect(screen.getByText("You haven't added any local entries yet. Click 'New Entry' to get started.").parentElement.getAttribute('aria-live')).toBe('polite')
     })
 
     it('getEmptyMessage should return search suggestion if not edit mode and no term', () => {
         document.body.innerHTML = window.LookupRenderer.getEmptyMessage('', false)
-        expect(screen.getByText('Enter a keyword to start searching.')).not.toBeNull()
+        expect(screen.getByText('Ready to search? Enter a keyword above to find local entries or query external databases.')).not.toBeNull()
     })
 
     it('createItemElement should create li with correct classes', () => {
