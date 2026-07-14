@@ -46,3 +46,14 @@ By developing this personal tool, the impact on my individual workflow has been 
 * **Velocity:** Condensed highly repetitive 12-minute manual reporting and drafting processes into automated 3-second executions.
 * **Accuracy:** Achieved a near 100% reduction in data entry errors and manual transcription mistakes through aggressive input validation and zero-touch template generation.
 * **Throughput:** Yielded an estimated 400% increase in my personal throughput for shift pacing and rapid lookups, effectively eliminating context-switch fatigue.
+
+## 7. 🚀 Quick Start
+
+Welcome aboard! To boot the application locally:
+
+1. Open `index.html` directly in your browser.
+
+To run the local test suite:
+
+1. `npm ci`
+2. `npx vitest run`
