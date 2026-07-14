@@ -77,3 +77,6 @@ Targeted 'dashboard.html' to elevate '#app-startup-error' from a flat monolith t
 - **Target:** Action buttons across `mailto.html` (`#btn-save-to-library`, `#result-link`, `#btn-clear-all`), `dashboard.html` (`#save-changes-btn`), and `lookup.html` (`#btn-edit-mode`, `#btn-add-new-entry`).
 - **Defect:** 'The Flat Monolith' and 'The Rigid State'. Flat CTAs lacking depth and tactile feedback.
 - **Resolution:** Injected custom scoped CSS blocks. Added `box-shadow` depth, `font-weight: 600`, and `letter-spacing: 0.025em`. Orchestrated hover/active state choreography using `transition: all 0.3s cubic-bezier(...)`, applying `translateY(-1px)` and `scale(0.98)` within `@media (prefers-reduced-motion: no-preference)` constraints to provide frictionless interactive feedback without global side-effects.
+* ✨ **The Flat Monolith:** Elevated `calculator.html` `.results-section` panel with a premium `shadow-md` box-shadow.
+* ✨ **The Rigid State:** Softened the harsh hover state interpolation on `.result-list li:hover` in `lookup.html` to a deeper, more organic `shadow-md`.
+* ✨ **The Harsh Border:** Replaced the rigid, generic outline on `:focus-visible` in `mailto.html` with a tailored, double-layered focus ring, elevating the accessible interaction.
