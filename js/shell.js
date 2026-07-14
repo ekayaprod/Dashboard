@@ -34,7 +34,11 @@
         setupFrameListeners();
     }
 
-    // Determine which page to load based on URL query param or default
+    /**
+     * Determines which page to load based on URL query parameters or falls back to the default app.
+     * Parses the `?page=` param, attempts to match it against PAGE_MAP, and triggers an iframe navigation.
+     * Note: Consolidated routing logic from PR #266 to handle both keys and raw filenames.
+     */
     function loadInitialRoute() {
         const urlParams = new URLSearchParams(window.location.search);
         const pageKey = urlParams.get('page');

@@ -34,7 +34,23 @@
   - **Action:** Added comprehensive JSDoc to all exported and internal functions.
   - Documented resilience patterns (e.g., `getRandomInt` fallback), async logic (`fetchJSON` retries), and safe DOM manipulations.
 
+### js/shell.js
+- **Date:** [Current Date]
+- **Status:** COMPLETED
+- **Details:**
+  - `loadInitialRoute` contained undocumented routing logic and historical intent.
+  - **Action:** Injected AST-compliant JSDoc linking its fallback mechanism to PR #266.
+
+### CHANGELOG.md
+- **Date:** [Current Date]
+- **Status:** COMPLETED
+- **Details:**
+  - Identified massive chaotic commit stream lacking aggregation.
+  - **Action:** Aggregated Palette+, Scavenger, and Superintendent commits into user-facing `[Unreleased]` release notes to prevent duplicate aggregation sweeps.
+
 ## Action Plan
 - [x] Document `js/apps/dashboard.js`
 - [x] Document `js/apps/mailto.js`
 - [x] Scan `js/app-core.js` and add missing utility documentation.
+- [x] Document `js/shell.js` core routing functions.
+- [x] Aggregate chaotic commit streams into `CHANGELOG.md`.
