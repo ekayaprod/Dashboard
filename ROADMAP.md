@@ -7,6 +7,18 @@
 - 📅 **Planned**: Prioritized for future release.
 - 🧊 **Backlog**: Ideas for consideration.
 
+## ✅ Completed (v1.2)
+
+- **Passwords Polish**: Enhanced UI with accessibility, motion, and optimistic feedback.
+- **Calculator Polish**: Elevated UI to Premium status.
+- **Lookup Optimization**: Refactored `js/apps/lookup.js` to flatten logic and extract helpers.
+- **Mailto Debugging**: Enriched worker error logs.
+- **Code Hygiene**: Removed dead code in `bootstrap.js`.
+
+## ✅ Completed (v1.1)
+
+- **Accessibility**: Added `aria-label` to icon-only buttons in `dashboard.html`.
+
 ## ✅ Completed (v1.0)
 
 ### Core Architecture
@@ -27,18 +39,6 @@
 
 - **Documentation & Alignment**: Syncing roadmap, clarifying core functions, and establishing the Chronicler's journal.
 - **Navigator Setup**: Established Navigator persona and process.
-
-## ✅ Completed (v1.2)
-
-- **Passwords Polish**: Enhanced UI with accessibility, motion, and optimistic feedback.
-- **Calculator Polish**: Elevated UI to Premium status.
-- **Lookup Optimization**: Refactored `js/apps/lookup.js` to flatten logic and extract helpers.
-- **Mailto Debugging**: Enriched worker error logs.
-- **Code Hygiene**: Removed dead code in `bootstrap.js`.
-
-## ✅ Completed (v1.1)
-
-- **Accessibility**: Added `aria-label` to icon-only buttons in `dashboard.html`.
 
 ## 🚧 In Progress
 <!-- No active tasks -->
@@ -64,3 +64,7 @@
   - **The Problem (Stagnation)**: The application relies exclusively on synchronous `localStorage` for all state persistence (`createStateManager` in `js/app-core.js`), which blocks the main UI thread during read/write operations and enforces a rigid 5MB storage limit, bottlenecking data-heavy utilities like Lookup and Notepad.
   - **The Solution (The Next-Gen Pattern)**: Adopt a lightweight, promise-based wrapper like `idb` or `localforage` to transition to asynchronous IndexedDB storage.
   - **The Benefit (Performance/DX Metric)**: Eliminates main thread blocking for a smoother, jank-free UI (especially during large JSON serialization) and massively expands the available storage quota, enabling future scalability for knowledge bases and user files.
+- **[Architecture] Migrate Custom `DateUtils` to `date-fns`**:
+  - **The Problem (Stagnation)**: The repository contains messy, reinvented wheel date formatting and math logic within `js/app-core.js` (`DateUtils`). This custom utility bloat is brittle and hard to maintain.
+  - **The Solution (The Next-Gen Pattern)**: Adopt the mature, community-standard `date-fns` library to standardize all time-based logic.
+  - **The Benefit (Performance/DX Metric)**: Replaces brittle custom logic with a robust, well-tested standard, reducing boilerplate and preventing edge-case bugs in time-based calculations.
