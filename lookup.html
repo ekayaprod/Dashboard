@@ -59,6 +59,22 @@
             transform: translateY(-1px);
         }
 
+        /* .btn-clear interactions */
+        .btn-clear {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .btn-clear:hover {
+                transform: translateY(-1px) scale(1.02);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            .btn-clear:active {
+                transform: translateY(0) scale(0.95);
+                box-shadow: none;
+            }
+        }
+
         /* Ensuring the glassmorphism aesthetic if search control container has background */
         .search-controls {
             padding: var(--spacing-sm);
