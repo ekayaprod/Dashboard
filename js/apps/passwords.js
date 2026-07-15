@@ -18,6 +18,10 @@ const EMPTY_STATE_HTML = `
 `;
 
 const FETCH_TIMEOUT_MS = 10000;
+/**
+ * Defines the batch size for password generation.
+ * Historical context: Extracted in PR #272 ('Palette+: Aesthetic & UX Enhancements') to centralize the default batch size.
+ */
 const NUM_PASSWORDS_TO_GENERATE = 5;
 const ACCORDION_STATE_KEY = 'password_generator_accordion_expanded';
 

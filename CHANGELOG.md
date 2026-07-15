@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core:** Resolved swallowed error in state manager corruption handling.
 
 ### 🔧 Chores
+- **Security:** Dispatch injected CodeQL SAST Scanner for automated vulnerability detection.
 - **Maintenance:** Superintendent executed baseline enforcements and Python cache sweeps.
 - **Cleanup:** Scavenger purged hollow carapaces, diagnostic droppings, and dead code.
 - **Dependencies:** Bumped vitest and @vitest/coverage-v8 from 4.1.9 to 4.1.10.
