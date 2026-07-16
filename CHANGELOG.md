@@ -10,12 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### ✅ New
 - **UI/UX:** Comprehensive suite-wide aesthetic overhaul injecting fluid motion, glassmorphism depth tokens, and accessible focus states.
 - **Responsive Design:** Reconfigured Edge Sidebar layout and standardized 32px touch target exceptions for mobile constraints.
+- **Lookup:** Rewrote empty states and save actions to active voice.
 - **Lookup:** Polished interface with premium interactions.
 - **Wordbanks:** Expanded seasonal word lists for Passwords app.
 - **Dashboard:** Polished interface with premium interactions.
 - **Mailto:** Polished interface with premium interactions and clearer copy.
 
 ### 🐛 Fixed
+- **Core:** Fixed amnesiac state loops across applications.
 - **Passwords:** Fixed silent failures in local storage persistence.
 - **Core:** Resolved swallowed error in state manager corruption handling.
 
