@@ -1,3 +1,6 @@
 * **index.html (.nav-link)**: Injected soft background highlight (`rgba(59, 130, 246, 0.1)`) and `border-radius: 4px` on hover to replace a rigid binary state with a fluid, accessible interaction footprint.
 * **lookup.html (.btn-clear)**: Orchestrated smooth choreography using `transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)` alongside dynamic `translateY` transforms and subtle `box-shadow` elevation to provide clear tactile feedback on hover and active states.
 * **mailto.html (#upload-wrapper)**: Elevated the drag-and-drop zone out of the 'Flat Monolith' state by injecting a deep, layered `box-shadow` (`0 10px 15px -3px ...`) on hover, creating immediate depth and indicating interactivity.
+* **js/apps/calculator.js (Strategy Card)**: Elevated the inline generated Strategy Card out of the 'Flat Monolith' state by increasing its drop shadow to 'shadow-md' equivalent and softening the border radius to 0.5rem.
+* **js/apps/calculator.js (Safe Zone Buffer)**: Softened border radii and added depth to the inline Calculator Buffer stat panels to eliminate the 'Claustrophobic Canvas' and flat UI appearance.
+* **calculator.html (.target-card)**: Injected active-scale choreography (transform: scale(0.95)) to provide immediate tactile feedback when users tap or click the target cards, resolving 'The Rigid State' interaction defect.

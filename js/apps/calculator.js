@@ -369,7 +369,7 @@ function initializePage() {
                 // Action: Add Call Time to reduce Net Work Time below XX:30.
                 const reduceNeeded = Math.ceil(minutesInHour - 29);
                 html = `
-                    <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                    <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
                         <span style="color: var(--warning-text); font-weight: bold;">${COPY.BUFFER.SPIKE_TITLE}</span><br>
                         ${COPY.BUFFER.SPIKE_ACTION(reduceNeeded)}
                     </div>
@@ -386,7 +386,7 @@ function initializePage() {
                 else if (buffer <= 10) colorStyle = 'color: var(--warning-text);';
 
                 html = `
-                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 6px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 6px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
                         <span style="${colorStyle} font-weight: bold; font-size: 1.1rem;">${buffer} min</span><br>
                         <span style="font-size: 0.75rem; opacity: 0.8;">${COPY.BUFFER.SAFE_LABEL}</span>
                     </div>
@@ -419,7 +419,7 @@ function initializePage() {
 
             if (analysis) {
                  const html = `
-                    <div class="strategy-card strategy-success" style="margin:0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <div class="strategy-card strategy-success" style="margin:0; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                         <div class="strategy-title">${analysis.title}</div>
                         <div class="strategy-text">${analysis.text}</div>
                     </div>
