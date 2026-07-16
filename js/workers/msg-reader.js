@@ -134,7 +134,7 @@ function _stripHtml(html) {
     let text = html
         .replace(/<head[\s\S]*?<\/head>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<script\b[\s\S]*?<\/script(?:\s[^>]*)?\s*>/gi, '')
         .replace(/<!--[\s\S]*?-->/g, '')
         .replace(/<\?xml[^>]*\?>/gi, '');
 
