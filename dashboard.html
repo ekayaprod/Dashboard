@@ -6,6 +6,16 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        html, body {
+            height: 100%;
+            overflow: hidden !important;
+        }
+        .app-container, .panel {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden !important;
+        }
         /* Edge Sidebar Guard: Do not increase form-control or btn sizing to 44px. They must remain compact for the sidebar layout. */
         .form-control, .btn, .btn-icon, .icon-btn, select, input, textarea {
             min-height: 32px;
@@ -65,6 +75,9 @@
         .main-content {
             padding: 0.25rem !important;
             gap: 0.25rem !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
         .form-group {
             margin-bottom: 0.25rem !important;
@@ -80,7 +93,15 @@
             gap: 0.25rem !important;
         }
         .notepad-wrapper {
-            min-height: 50vh !important;
+            min-height: 33.33vh !important;
+            flex-grow: 1 !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        .notepad-editor {
+            flex-grow: 1 !important;
+            height: 100% !important;
+            resize: none !important;
         }
 
         @media (max-width: 480px) {
@@ -103,7 +124,7 @@
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 1rem;
-            padding: 0.5rem;
+            padding: 0.25rem !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             transition: box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out;
             margin-bottom: 0.25rem;
