@@ -621,6 +621,7 @@ async function init() {
                         saveState();
                         renderCatalogue();
                         SafeUI.showToast("Template saved");
+                        setActiveSection('library');
                         return true;
                     } else {
                         SafeUI.showToast("Error: Target folder not found.");

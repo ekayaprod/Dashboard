@@ -682,11 +682,6 @@ function initializePage() {
                 generatedPasswords.push(PasswordLogic.generatePassphrase(config, context));
             }
             PasswordUI.renderResults(DOMElements.resultsList, generatedPasswords);
-
-            const accordion = DOMElements.customGenHeader.closest('.accordion');
-            if (accordion && accordion.classList.contains('expanded')) {
-                PasswordUI.toggleAccordion(null, DOMElements);
-            }
         };
 
         const initQuickActions = () => {

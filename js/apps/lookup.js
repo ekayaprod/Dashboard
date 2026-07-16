@@ -864,11 +864,6 @@ function initializePage() {
                 state.items.unshift(newItem);
 
                 currentEditState = { id: newItem.id, type: 'local' };
-                DOMElements.searchInput.value = '';
-                if(state.ui) {
-                    state.ui.searchTerm = '';
-                    saveState();
-                }
 
                 renderAll();
                 focusAndScroll(`edit-keyword-${newItem.id}`);
