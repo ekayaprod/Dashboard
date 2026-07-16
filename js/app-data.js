@@ -200,6 +200,10 @@ const DataValidator = (() => {
 })();
 
 const DataConverter = (() => {
+    /**
+     * Limits the number of errors displayed to the user during CSV parsing to prevent UI freezing or overload.
+     * Historical context: Introduced in PR #274 (Palette+: Visual Depth & Interaction Elevate).
+     */
     const MAX_DISPLAY_ERRORS = 10;
 
     const _parseCsvLine = (line) => {

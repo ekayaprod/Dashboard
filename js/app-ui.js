@@ -153,6 +153,8 @@ const SearchHelper = (() => {
 
         /**
          * Asynchronous search that yields to the main thread to prevent UI freezing.
+         * The default chunk size (1000) was established in PR #274 (Palette+: Visual Depth & Interaction Elevate)
+         * to balance processing speed with main thread responsiveness during large lookups.
          * @param {Array} items
          * @param {string} term
          * @param {number} [chunkSize=1000]
