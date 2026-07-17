@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✅ New
+- **Accessibility:** Added missing aria-label attributes to icon-only buttons for improved screen reader support.
 - **UI/UX:** Comprehensive suite-wide aesthetic overhaul injecting fluid motion, glassmorphism depth tokens, and accessible focus states.
 - **Responsive Design:** Reconfigured Edge Sidebar layout and standardized 32px touch target exceptions for mobile constraints.
 - **Lookup:** Rewrote empty states and save actions to active voice.
@@ -17,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mailto:** Polished interface with premium interactions and clearer copy.
 
 ### 🐛 Fixed
+- **UI:** Enforced strict flex layout and minimum sizing for dashboard text editor.
+- **Security:** Resolved code scanning alert regarding a bad HTML filtering regex.
 - **Core:** Fixed amnesiac state loops across applications.
 - **Passwords:** Fixed silent failures in local storage persistence.
 - **Core:** Resolved swallowed error in state manager corruption handling.

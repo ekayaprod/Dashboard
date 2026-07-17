@@ -81,6 +81,7 @@ function initializePage() {
         const CONSTANTS = {
             TICKETS_PER_HOUR_RATE: 6,
             PHONE_CLOSE_MINUTES: 15 * 60 + 30, // 15:30
+            // Mathematical multiplier for a ~14.2% downtime buffer based on legacy business rules
             LEEWAY_RATIO: 1 / 7
         };
 
