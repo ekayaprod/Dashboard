@@ -230,6 +230,15 @@ function _shouldStoreProperty(propId, newPropType, existingProp) {
     return false;
 }
 
+/**
+ * Parses a display string into name and email components.
+ * Employs regex matching to safely extract addresses from chaotic, unstandardized MIME headers.
+ * - Group 1 `^(.*)`: Lazily matches the display name prefix (e.g., "John Doe")
+ * - Group 2 `<([^>]+)>$`: Extracts the literal email string bound within angle brackets
+ *
+ * @param {string} addr - The raw header string to parse.
+ * @returns {{name: string, email: string|null}}
+ */
 function parseAddress(addr) {
     if (!addr) return { name: '', email: null };
     addr = addr.trim();
