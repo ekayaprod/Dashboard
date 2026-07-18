@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core:** Resolved swallowed error in state manager corruption handling.
 
 ### 🔧 Chores
+- **Documentation:** Illuminated structural logic with AST-reasoned JSDoc in `app-ui.js`, `msg-reader.js`, and `passwords.js`.
+- **Dependencies:** Bumped github/codeql-action from 3 to 4.
+- **Dependencies:** Bumped actions/setup-node from 6 to 7.
+- **Dependencies:** Bumped actions/checkout from 4 to 7.
 - **Security:** Dispatch injected CodeQL SAST Scanner for automated vulnerability detection.
 - **Maintenance:** Superintendent executed baseline enforcements and Python cache sweeps.
 - **Cleanup:** Scavenger purged hollow carapaces, diagnostic droppings, and dead code.

@@ -96,6 +96,11 @@ const PHRASE_STRUCTURE_CONFIG = {
     }
 };
 
+/**
+ * Defines the structural insertion rules for symbol characters.
+ * Extracted during the password generator logic refactor (PR #f8a24e3)
+ * to strictly decouple semantic punctuation from random generation.
+ */
 const DEFAULT_SYMBOL_RULES = {"beforeNum":["$","#","*"],"afterNum":["%","+"],"junction":["=","@",".","-"],"end":["!","?"]};
 
 const DEFAULT_STATE = {

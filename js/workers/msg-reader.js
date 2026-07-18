@@ -485,6 +485,10 @@ class MsgReaderParser {
         let result = { subject: null, to: null, cc: null, body: null };
 
         const findField = (name) => {
+            /**
+             * Extracts metadata fields from the raw email header block by matching
+             * the field name boundary and capturing everything until the next line break.
+             */
             const search = new RegExp(`\\b${name}:\\s*([^\\r\\n]+)`, 'i');
             const match = rawText.match(search);
             return match ? match[1].trim() : null;
