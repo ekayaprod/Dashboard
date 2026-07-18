@@ -42,6 +42,10 @@ const UIPatterns = (() => {
         highlightSearchTerm: (text, term) => {
             if (!term) return SafeUI.escapeHTML(text);
             const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+            /**
+             * Dynamically constructs a case-insensitive regular expression to wrap
+             * the user's raw search input in semantic <mark> highlighting tags.
+             */
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
             return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
         },
