@@ -95,7 +95,7 @@ const ListRenderer = (() => {
             }
 
             if ((!items || items.length === 0) && !append) {
-                container.innerHTML = `<div class="empty-state-container" style="animation: fadeIn 0.3s ease-out forwards; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; text-align: center; gap: 0.5rem;"><svg class="empty-state-icon" style="width: 48px; height: 48px; color: var(--border-color); margin-bottom: 0.5rem; opacity: 0.6;" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-.999.43-1.563A6 6 0 1121.75 8.25z" /></svg><span class="empty-state-text" style="font-size: 0.9rem; font-weight: 500; color: var(--subtle-text);">${emptyMessage}</span></div>`;
+                container.innerHTML = `<div class="empty-state-container fade-in"><svg class="empty-state-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-.999.43-1.563A6 6 0 1121.75 8.25z" /></svg><span class="empty-state-text">${emptyMessage}</span></div>`;
                 return;
             }
 
