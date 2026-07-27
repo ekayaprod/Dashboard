@@ -19,7 +19,8 @@
         'lookup': 'lookup.html',
         'passwords': 'passwords.html',
         'mailto': 'mailto.html',
-        'calculator': 'calculator.html'
+        'calculator': 'calculator.html',
+        'pdfpea': 'https://ekayaprod.github.io/pdfpea/index.html'
     };
 
     // Initialize Shell
@@ -119,7 +120,7 @@
         });
     }
 
-    // Keyboard shortcuts (Ctrl + 1-5)
+    // Keyboard shortcuts (Ctrl + 1-6)
     function setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
@@ -129,7 +130,8 @@
                     '2': 'lookup.html',
                     '3': 'passwords.html',
                     '4': 'mailto.html',
-                    '5': 'calculator.html'
+                    '5': 'calculator.html',
+                    '6': 'https://ekayaprod.github.io/pdfpea/index.html'
                 };
 
                 if (shortcuts[key]) {
