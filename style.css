@@ -218,7 +218,12 @@ textarea.form-control {
     gap: 0.25rem;
     text-decoration: none;
 }
-.btn:hover { background-color: var(--button-hover-bg); text-decoration: none; }
+.btn:hover {
+    background-color: var(--button-hover-bg);
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed; 
@@ -231,7 +236,11 @@ textarea.form-control {
     color: white; 
     border-color: var(--primary-color); 
 }
-.btn-primary:hover { background-color: var(--primary-hover); }
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4), 0 2px 4px -1px rgba(59, 130, 246, 0.2);
+}
 
 .btn-danger {
     background-color: var(--danger-color); 
@@ -262,7 +271,11 @@ textarea.form-control {
     min-height: 32px;
     min-width: 32px;
 }
-.btn-icon:hover, .icon-btn:hover { background-color: var(--info-bg); color: var(--text-color); }
+.btn-icon:hover, .icon-btn:hover {
+    background-color: var(--info-bg);
+    color: var(--text-color);
+    transform: translateY(-1px);
+}
 .btn-icon:active, .icon-btn:active { transform: scale(0.95); }
 .btn-icon:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
 .btn-icon svg, .icon-btn svg { width: 16px; height: 16px; }
@@ -513,12 +526,16 @@ textarea.form-control {
 .list-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 #upload-wrapper {
-    padding: 0.5rem; border: 2px dashed var(--border-color);
+    padding: 1.5rem; border: 2px dashed var(--border-color);
     border-radius: var(--border-radius); text-align: center;
     background-color: var(--info-bg); position: relative;
-    transition: border-color 0.2s;
+    transition: all 0.3s ease-in-out;
     cursor: pointer;
     margin-bottom: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.5rem;
 }
 #upload-wrapper:hover { border-color: var(--primary-color); }
 
@@ -734,6 +751,10 @@ textarea.form-control {
     color: var(--subtle-text);
     text-align: center;
     gap: 0.5rem;
+    background-color: var(--panel-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .empty-state-icon {
