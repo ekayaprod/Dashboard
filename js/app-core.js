@@ -35,6 +35,10 @@ const CoreValidators = Object.freeze({
 
         switch (type) {
             case 'url':
+                /**
+                 * Validates HTTP(S) and localhost URLs.
+                 * Extracted to centralize regex logic and improve maintainability across the UI palette (PR #302).
+                 */
                 const urlRegex = /^(https?:\/\/)?(localhost|[\w-]+)(\.[\w-]+)*(:[0-9]{1,5})?(\/.*)?$/i;
                 if (!urlRegex.test(str)) return false;
                 try {
@@ -365,7 +369,15 @@ const UIUtils = (() => {
      * @returns {Promise<any>} The parsed JSON response.
      */
     const fetchJSON = async (url, options = {}, validator = null) => {
+        /**
+         * Maximum number of retry attempts for failed requests.
+         * Introduced in PR #302 to handle network resilience.
+         */
         const MAX_RETRIES = 3;
+        /**
+         * Initial delay before retrying a failed request (in milliseconds).
+         * Introduced in PR #302 to handle network resilience.
+         */
         const INITIAL_DELAY = 1000;
 
         let lastError;

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✅ New
+- **Dashboard:** Added PDFPea tab to dashboard menu.
 - **Accessibility:** Added missing aria-label attributes to icon-only buttons for improved screen reader support.
 - **UI/UX:** Comprehensive suite-wide aesthetic overhaul injecting fluid motion, glassmorphism depth tokens, and accessible focus states.
 - **Responsive Design:** Reconfigured Edge Sidebar layout and standardized 32px touch target exceptions for mobile constraints.
@@ -18,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mailto:** Polished interface with premium interactions and clearer copy.
 
 ### 🐛 Fixed
+- **CI:** Downgraded jsdom to fix Node 20.x CI compatibility.
+- **UI:** Fixed Empty State Containers and extracted redundant inline styles.
 - **UI:** Enforced strict flex layout and minimum sizing for dashboard text editor.
 - **Security:** Resolved code scanning alert regarding a bad HTML filtering regex.
 - **Core:** Fixed amnesiac state loops across applications.
@@ -25,7 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core:** Resolved swallowed error in state manager corruption handling.
 
 ### 🔧 Chores
+- **Documentation:** Documented structural logic (`urlRegex` and network resilience magic numbers) in `app-core.js`.
 - **Documentation:** Illuminated structural logic with AST-reasoned JSDoc in `app-ui.js`, `msg-reader.js`, and `passwords.js`.
+- **Dependencies:** Bumped vitest and @vitest/coverage-v8 from 4.1.11 to 5.0.0.
+- **Dependencies:** Bumped github/codeql-action from 4.37.9 to 4.38.0.
 - **Dependencies:** Bumped github/codeql-action from 3 to 4.
 - **Dependencies:** Bumped actions/setup-node from 6 to 7.
 - **Dependencies:** Bumped actions/checkout from 4 to 7.
