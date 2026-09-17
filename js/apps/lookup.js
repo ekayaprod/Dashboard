@@ -215,7 +215,7 @@ const LookupCSV = {
      *
      * // 3. Usage (assuming LookupCSV is defined)
      * const result = LookupCSV.validateRow(row, 0, existing);
-     * console.log(result); // Expected: { action: 'add', entry: { ... } }
+     * // Expected: { action: 'add', entry: { ... } }
      */
     validateRow: (row, index, existingItems) => {
         const entry = LookupHelpers.createEntry(row);
