@@ -63,23 +63,6 @@
         /* Icon Polish */
         .btn-icon svg, .accordion-icon svg { width: 16px; height: 16px; }
 
-        .empty-state-container {
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1)) !important;
-            backdrop-filter: blur(10px) !important;
-            -webkit-backdrop-filter: blur(10px) !important;
-            border: 1px solid rgba(226, 232, 240, 0.6) !important;
-            border-radius: 1rem !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
-            transition: all 0.3s ease-in-out !important;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .empty-state-container {
-                background: linear-gradient(145deg, rgba(31, 41, 55, 0.4), rgba(31, 41, 55, 0.1)) !important;
-                border-color: rgba(75, 85, 99, 0.6) !important;
-            }
-        }
-
 
         #app-startup-error {
             background: linear-gradient(to right, #fef2f2, #fee2e2);
@@ -149,8 +132,10 @@
                     </div>
                     
                     <div class="accordion-content">
-                        <div id="breadcrumb-container" class="breadcrumb-container"></div>
-                        <div id="tree-list-container" class="tree-list-container"></div>
+                        <div class="accordion-inner">
+                            <div id="breadcrumb-container" class="breadcrumb-container"></div>
+                            <div id="tree-list-container" class="tree-list-container"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -167,6 +152,7 @@
                     </div>
                     
                     <div class="accordion-content">
+                        <div class="accordion-inner">
                         <div class="editor-container">
                             <!-- Compact Upload Zone -->
                             <div id="upload-wrapper">
@@ -223,6 +209,7 @@
                                     <a href="#" id="result-link" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="width:100%; text-align:center;">Launch Email Client</a>
                                 </div>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>

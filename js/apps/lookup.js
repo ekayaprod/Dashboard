@@ -291,7 +291,7 @@ const LookupSettings = {
                 <div class="custom-search-item" data-id="${search.id}">
                     <input type="text" class="form-control search-name" value="${SafeUI.escapeHTML(search.name)}" placeholder="Search Name">
                     <input type="text" class="form-control search-url" value="${SafeUI.escapeHTML(search.urlTemplate)}" placeholder="https://my-kb.com/search?q={query}">
-                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search">${SafeUI.SVGIcons.trash}</button>
+                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search" aria-label="Delete Search">${SafeUI.SVGIcons.trash}</button>
                 </div>
             `).join('');
 
@@ -369,7 +369,7 @@ const LookupSettings = {
                 newItem.innerHTML = `
                     <input type="text" id="search-name-${newId}" class="form-control search-name" value="" placeholder="Search Name">
                     <input type="text" id="search-url-${newId}" class="form-control search-url" value="" placeholder="https://my-kb.com/search?q={query}">
-                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search">${SafeUI.SVGIcons.trash}</button>
+                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search" aria-label="Delete Search">${SafeUI.SVGIcons.trash}</button>
                 `;
                 const emptyMsg = listContainer.querySelector('p');
                 if (emptyMsg) emptyMsg.remove();

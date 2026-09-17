@@ -342,10 +342,21 @@ textarea.form-control {
 .accordion-icon { transition: transform 0.3s; font-size: 0.8rem; margin-right: 0.5rem; }
 .accordion.expanded .accordion-icon { transform: rotate(180deg); }
 .accordion-content {
-    display: none;
-    padding: 0.5rem;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease-out;
+    padding: 0;
 }
-.accordion.expanded .accordion-content { display: block; }
+.accordion.expanded .accordion-content {
+    display: grid;
+    grid-template-rows: 1fr;
+    padding: 0;
+}
+.accordion-inner {
+    overflow: hidden;
+    padding: 0.5rem;
+    min-height: 0;
+}
 
 #custom-generator-config {
     max-height: 300px;
@@ -395,6 +406,12 @@ textarea.form-control {
     width: 90%;
     box-shadow: var(--box-shadow-lg);
     border: 1px solid var(--border-color);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .modal-content {
+        animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
 }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
 
@@ -741,8 +758,16 @@ textarea.form-control {
     animation: slideInUp 0.3s ease-out forwards;
 }
 
-/* Empty State */
+
+/* Global Empty State Glassmorphism */
 .empty-state-container {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s ease-in-out;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -751,10 +776,13 @@ textarea.form-control {
     color: var(--subtle-text);
     text-align: center;
     gap: 0.5rem;
-    background-color: var(--panel-bg);
-    border: 1px dashed var(--border-color);
-    border-radius: var(--border-radius);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+    .empty-state-container {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.4), rgba(31, 41, 55, 0.1));
+        border-color: rgba(75, 85, 99, 0.6);
+    }
 }
 
 .empty-state-icon {
@@ -773,6 +801,7 @@ textarea.form-control {
 .empty-state-text-bold {
     font-weight: 500;
 }
+
 
 /* Search Wrapper & Spinner */
 .search-controls { margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center; }

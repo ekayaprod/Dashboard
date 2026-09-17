@@ -359,10 +359,10 @@ function renderCatalogue() {
                     : `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name">${SafeUI.escapeHTML(item.name)}</a>`
                  }
                  <div class="list-item-actions">
-                    ${!isFolder ? `<button class="icon-btn copy-btn" title="Copy Link">${SafeUI.SVGIcons.copy}</button>` : ''}
-                    <button class="icon-btn move-btn" title="Move">${SafeUI.SVGIcons.move}</button>
-                    <button class="icon-btn edit-btn" title="${isFolder?'Rename':'Edit'}">${SafeUI.SVGIcons.pencil}</button>
-                    <button class="icon-btn delete-btn" title="Delete">${SafeUI.SVGIcons.trash}</button>
+                    ${!isFolder ? `<button class="icon-btn copy-btn" title="Copy Link" aria-label="Copy Link">${SafeUI.SVGIcons.copy}</button>` : ''}
+                    <button class="icon-btn move-btn" title="Move" aria-label="Move Item">${SafeUI.SVGIcons.move}</button>
+                    <button class="icon-btn edit-btn" title="${isFolder?'Rename':'Edit'}" aria-label="${isFolder?'Rename Folder':'Edit Template'}">${SafeUI.SVGIcons.pencil}</button>
+                    <button class="icon-btn delete-btn" title="Delete" aria-label="Delete Item">${SafeUI.SVGIcons.trash}</button>
                  </div>`;
             return div;
         }
