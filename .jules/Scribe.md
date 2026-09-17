@@ -16,7 +16,9 @@
 * **AST-Compliant Injection:** Documented `const regex` in `js/app-ui.js` (highlightSearchTerm logic).
 * **AST-Compliant Injection:** Documented `const search` in `js/workers/msg-reader.js` (raw email header extraction logic).
 * **AST-Compliant Injection:** Documented `DEFAULT_SYMBOL_RULES` magic constant in `js/apps/passwords.js`.
-* **Changelog Aggregation:** Distilled un-summarized commits and aggregated JSDoc illumination and core dependency bumps into `CHANGELOG.md` under `[Unreleased]`.
+* **AST-Compliant Injection:** Documented `urlRegex` in `js/app-core.js` (URL validation logic).
+* **AST-Compliant Injection:** Documented `MAX_RETRIES` and `INITIAL_DELAY` magic constants in `js/app-core.js` (network resilience logic).
+* **Changelog Aggregation:** Distilled un-summarized commits (PDFPea menu addition, CI fixes, empty state container refactors, dependency bumps) and aggregated into `CHANGELOG.md` under `[Unreleased]`. Commits processed: `fd22d64`, `6ac2f52`, `b6d1cea`, `b7ed918`, `dac86eb`, `2164750`, `ec30d6a`.
 
 **Verification:**
 * `npm install && npx vitest run` executed cleanly. No test regressions observed. Structural parsing intact.
