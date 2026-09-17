@@ -63,7 +63,7 @@ describe('js/apps/passwords.js', () => {
             SVGIcons: { plus: '+', copy: 'c', settings: 's' }
         };
 
-        renderListMock = vi.fn().mockImplementation(() => console.log('ListRenderer.renderList called'));
+        renderListMock = vi.fn().mockImplementation(() => {});
         window.ListRenderer = {
             renderList: renderListMock
         };
