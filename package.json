@@ -4,9 +4,11 @@
   "description": "Sidebar Productivity Suite - Browser-based utilities",
   "scripts": {
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "10.4.1",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^24.1.1",
