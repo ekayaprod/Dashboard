@@ -121,23 +121,7 @@
             .accordion-content { transition: none !important; }
         }
 
-        /* Accordion Polish */
-        .accordion-content {
-            display: grid;
-            grid-template-rows: 0fr;
-            transition: grid-template-rows 0.3s ease-out;
-            padding: 0 !important; /* Override style.css padding */
-        }
-        .accordion.expanded .accordion-content {
-            display: grid; /* Override style.css block */
-            grid-template-rows: 1fr;
-            padding: 0 !important;
-        }
-        .accordion-inner {
-            overflow: hidden;
-            padding: 0.5rem; /* Apply padding here */
-            min-height: 0; /* Required for grid transition */
-        }
+
         .target-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 0.75rem;
