@@ -143,10 +143,12 @@ const LookupRenderer = {
         `;
     },
 
-    createItemElement: (item, searchTerm) => {
+    createItemElement: (item, searchTerm, index) => {
         const li = document.createElement('li');
-        li.className = 'result-item';
+        li.className = 'result-item animate-in';
+        li.style.animationDelay = `${(index || 0) * 50}ms`;
         li.dataset.id = item.id;
+        li.tabIndex = 0;
 
         const createDataRow = (label, value, highlightTerm) => {
             if (!value) return '';
@@ -643,7 +645,7 @@ function initializePage() {
                 const createAnimatedItemElement = (item, index) => {
                      const el = (isEditMode || (currentEditState.id === item.id)) ?
                         createEditForm(item) :
-                        LookupRenderer.createItemElement(item, searchTerm);
+                        LookupRenderer.createItemElement(item, searchTerm, index);
 
                      if (append) el.classList.add('fade-in');
 

@@ -404,10 +404,12 @@ const QuickListManager = (() => {
     let config;
     let container;
 
-    const createItemElement = (item) => {
+    const createItemElement = (item, index) => {
         const div = document.createElement('div');
-        div.className = 'shortcut-item';
+        div.className = 'shortcut-item animate-in';
+        div.style.animationDelay = `${(index || 0) * 50}ms`;
         div.dataset.id = item.id;
+        div.tabIndex = 0;
         
         const rawName = config.getItemName(item);
         const name = SafeUI.escapeHTML(rawName);

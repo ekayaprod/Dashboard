@@ -422,6 +422,7 @@ const PasswordUI = {
                 const li = document.createElement('li');
                 li.className = 'result-item animate-in';
                 li.style.animationDelay = `${index * 50}ms`;
+                li.tabIndex = 0;
 
                 const text = document.createElement('span');
                 text.textContent = pass;

@@ -168,7 +168,7 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
         const item = { id: '1', keyword: 'key', assignmentGroup: 'grp', notes: 'note', phoneLogPath: 'path' }
         const li = window.LookupRenderer.createItemElement(item, '')
         expect(li.tagName).toBe('LI')
-        expect(li.className).toBe('result-item')
+        expect(li.className).toBe('result-item animate-in')
         expect(li.dataset.id).toBe('1')
         expect(li.textContent).toContain('key')
     })

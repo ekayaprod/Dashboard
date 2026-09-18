@@ -430,6 +430,15 @@ textarea.form-control {
 
 /* Utilities / Specifics */
 .hidden { display: none !important; }
+
+/* Focus Styling for Interactive List Elements */
+.list-item:focus-visible,
+.shortcut-item:focus-visible,
+.result-item:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+    border-radius: 2px;
+}
 .divider { border-top: 1px solid var(--border-color); margin: var(--spacing-sm) 0; }
 
 /* Dashboard Specifics */
@@ -754,7 +763,8 @@ textarea.form-control {
     to { opacity: 1; transform: translateY(0); }
 }
 
-.result-item.animate-in {
+.animate-in {
+    opacity: 0;
     animation: slideInUp 0.3s ease-out forwards;
 }
 

@@ -346,10 +346,12 @@ function renderCatalogue() {
         container: DOMElements.treeListContainer,
         items: items,
         emptyMessage: "This folder is empty. Drag and drop a template here.",
-        createItemElement: (item) => {
+        createItemElement: (item, index) => {
             const div = document.createElement('div');
-            div.className = 'list-item';
+            div.className = 'list-item animate-in';
+            div.style.animationDelay = `${(index || 0) * 50}ms`;
             div.dataset.id = item.id;
+            div.tabIndex = 0;
             const isFolder = item.type === 'folder';
             
             div.innerHTML = `
