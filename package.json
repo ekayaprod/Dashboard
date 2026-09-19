@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "@testing-library/dom": "10.4.1",
+    "@testing-library/dom": "10.4.2",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^24.1.1",
     "vitest": "^4.1.11"
