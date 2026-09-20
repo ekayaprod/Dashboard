@@ -1,0 +1,20 @@
+name: Greenlight Gate - Bootstrap Script Location
+on:
+  pull_request:
+    paths:
+      - '*.html'
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: node .greenlight/rules/bootstrap-script-location.js
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: greenlight-report
+          path: .greenlight/report.json
