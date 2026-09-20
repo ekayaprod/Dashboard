@@ -406,10 +406,21 @@ textarea.form-control {
     display: none; align-items: center; justify-content: center;
     z-index: 2000; backdrop-filter: blur(2px);
 }
+@keyframes modalScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
 .modal-content {
     background: var(--panel-bg);
     padding: 1rem;
-    border-radius: 0.75rem;
+    border-radius: var(--border-radius);
     max-width: 400px;
     width: 90%;
     box-shadow: var(--box-shadow-lg);
@@ -418,7 +429,7 @@ textarea.form-control {
 
 @media (prefers-reduced-motion: no-preference) {
     .modal-content {
-        animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
@@ -426,7 +437,10 @@ textarea.form-control {
 /* Toasts */
 .toast {
     position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%);
-    background-color: #334155; color: white;
+    background-color: rgba(51, 65, 85, 0.95); color: white;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: var(--box-shadow-lg);
     padding: 0.5rem 0.8rem; border-radius: 0.5rem;
     display: flex; align-items: center; gap: 0.5rem; z-index: 3000;
     opacity: 0; transition: opacity 0.3s, bottom 0.3s ease-out;
@@ -1002,6 +1016,34 @@ textarea.form-control {
 
 @media (prefers-reduced-motion: reduce) {
     .result-item:active { transform: none; }
+}
+
+/* App Startup Error Banner */
+.app-startup-banner,
+#app-startup-error {
+    background: linear-gradient(to right, #fef2f2, #fee2e2);
+    border: 1px solid #fca5a5;
+    box-shadow: var(--box-shadow);
+    color: #991b1b;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-sm);
+}
+
+@media (prefers-color-scheme: dark) {
+    .app-startup-banner,
+    #app-startup-error {
+        background: linear-gradient(to right, rgba(153, 27, 27, 0.2), rgba(127, 29, 29, 0.1));
+        border: 1px solid rgba(248, 113, 113, 0.4);
+        color: #fca5a5;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .app-startup-banner:not(.hidden),
+    #app-startup-error:not(.hidden) {
+        animation: slideInUp 0.3s ease-out forwards;
+    }
 }
 
 /* Animations */
