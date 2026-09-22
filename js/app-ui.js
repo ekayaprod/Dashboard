@@ -558,7 +558,7 @@ const SharedSettingsModal = (() => {
                             "Restore",
                             () => {
                                 config.onRestoreCallback(dataToRestore);
-                                SafeUI.showToast('Data restored successfully.');
+                                SafeUI.showToast('We restored your data successfully.');
                                 SafeUI.hideModal();
                             }
                         );
