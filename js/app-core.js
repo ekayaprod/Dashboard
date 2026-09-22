@@ -916,7 +916,7 @@ const AppLifecycle = (() => {
             setTimeout(() => {
                 if (!bootstrapReady && !window.__BOOTSTRAP_READY) {
                     console.error('Bootstrap did not complete within 5 seconds');
-                    _showErrorBanner("Application Startup Timeout", "The application was unable to load within 5 seconds. Please review the browser console for details.");
+                    _showErrorBanner("Application Startup Timeout", "We couldn't load the application within 5 seconds. Please review the browser console for details.");
                 }
             }, 5000);
         },

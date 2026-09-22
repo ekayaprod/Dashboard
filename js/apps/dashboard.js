@@ -288,7 +288,7 @@ function initializePage() {
                     const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
                     let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
                     if (importErrors.length > 0) {
-                        summaryHtml += `<p>The following ${importErrors.length} rows had errors and were skipped:</p><ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">${errorList}${moreErrors}</ul>`;
+                        summaryHtml += `<p>We skipped ${importErrors.length} rows due to the following errors:</p><ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">${errorList}${moreErrors}</ul>`;
                     }
                     summaryHtml += `<p>Apply changes? This is permanent.</p>`;
 

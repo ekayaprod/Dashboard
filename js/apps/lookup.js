@@ -225,7 +225,7 @@ const LookupCSV = {
         const contentKey = `${entry.keyword.toLowerCase()}|${entry.assignmentGroup.toLowerCase()}`;
         if (entry.id && existingItems.some(item => item.id === entry.id)) return { action: 'overwrite', entry: entry };
         if (existingItems.some(item => `${item.keyword.toLowerCase()}|${item.assignmentGroup.toLowerCase()}` === contentKey)) {
-            return { error: `Row ${index + 2}: A identical entry (Keyword + Group) already exists. Row skipped.` };
+            return { error: `Row ${index + 2}: An identical entry (Keyword + Group) already exists. We skipped this row.` };
         }
         return { action: 'add', entry: entry };
     }
@@ -253,7 +253,7 @@ const LookupSettings = {
             </ul>`;
 
         if (importErrors.length > 0) {
-            summaryHtml += `<p><strong>${importErrors.length} rows had errors and were skipped:</strong></p>
+            summaryHtml += `<p><strong>We skipped ${importErrors.length} rows due to the following errors:</strong></p>
                     <ul style="font-size: 0.8rem; max-height: 150px; overflow-y: auto; text-align: left;">
                         ${errorList}${moreErrors}
                     </ul>`;
