@@ -21,7 +21,12 @@ The suite is composed of several specialized micro-applications, each engineered
 
 ## 3. The Operational Catalyst
 
-Every day, I faced a manual nightmare of context-switching between bloated enterprise systems, disjointed reference documents, and repetitive email drafting. Parsing binary `.msg` files, recalculating pacing metrics against strict breakpoints, and manually assembling nested templates created unacceptable technical friction. Human error was inevitable when manually transcribing data. The bottleneck wasn't a lack of tools; it was the latency and friction of disjointed tools. I needed a consolidated, localized dashboard that bypassed these inefficiencies, condensing repetitive 12-minute administrative tasks into 3-second, zero-touch executions.
+Every day, I faced a manual nightmare of context-switching between bloated enterprise systems, disjointed reference documents, and repetitive email drafting:
+
+* **Technical Friction:** Parsing binary `.msg` files, recalculating pacing metrics against strict breakpoints, and manually assembling nested templates created unacceptable technical friction.
+* **Human Error:** Human error was inevitable when manually transcribing data.
+* **The Bottleneck:** The bottleneck wasn't a lack of tools; it was the latency and friction of disjointed tools.
+* **The Solution:** I needed a consolidated, localized dashboard that bypassed these inefficiencies, condensing repetitive 12-minute administrative tasks into 3-second, zero-touch executions.
 
 ## 4. Under the Hood (Technical Architecture)
 
@@ -56,4 +61,6 @@ Welcome aboard! To boot the application locally:
 To run the local test suite:
 
 1. `npm ci`
-2. `npx vitest run`
+2. `npm run test`
+3. `npm run test:coverage`
+4. `npm run test:e2e`
