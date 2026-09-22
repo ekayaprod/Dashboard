@@ -630,6 +630,14 @@ class MsgReaderParser {
             let u16 = dataViewToString(view, 'utf16le');
             let u8 = dataViewToString(view, 'utf-8');
 
+            /**
+             * Heuristic to determine if a decoded string is likely correct text.
+             * A threshold of > 0.7 (70% printable characters) is used as the baseline
+             * for robust text decoding verification across varied encodings.
+             *
+             * @param {string} s - The decoded string to analyze.
+             * @returns {boolean} True if the string meets the > 0.7 printable threshold.
+             */
             let isPrintable = (s) => {
                 if (!s || s.length === 0) return false;
                 let printableCount = s.replace(/[^\x20-\x7E\n\r\t\u00A0-\u00FF]/g, '').length;

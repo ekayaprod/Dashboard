@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✅ New
+- **CI:** Added Playwright E2E Workflow.
+- **CI:** Added markdown linting workflow and configuration.
+- **Core:** Added greenlight gate for bootstrap script comment.
 - **Dashboard:** Added PDFPea tab to dashboard menu.
 - **Accessibility:** Added missing aria-label attributes to icon-only buttons for improved screen reader support.
 - **UI/UX:** Comprehensive suite-wide aesthetic overhaul injecting fluid motion, glassmorphism depth tokens, and accessible focus states.
@@ -28,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core:** Resolved swallowed error in state manager corruption handling.
 
 ### 🔧 Chores
+- **Documentation:** Refactored README and Added CONTRIBUTING guide.
 - **Documentation:** Documented structural logic (`urlRegex` and network resilience magic numbers) in `app-core.js`.
 - **Documentation:** Illuminated structural logic with AST-reasoned JSDoc in `app-ui.js`, `msg-reader.js`, and `passwords.js`.
 - **Dependencies:** Bumped vitest and @vitest/coverage-v8 from 4.1.11 to 5.0.0.
