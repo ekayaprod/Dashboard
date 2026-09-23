@@ -443,7 +443,7 @@ textarea.form-control {
     box-shadow: var(--box-shadow-lg);
     padding: 0.5rem 0.8rem; border-radius: 0.5rem;
     display: flex; align-items: center; gap: 0.5rem; z-index: 3000;
-    opacity: 0; transition: opacity 0.3s, bottom 0.3s ease-out;
+    opacity: 0; transition: opacity 0.3s, bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     font-size: 0.85rem;
     width: max-content;
     max-width: 90%;
@@ -560,6 +560,7 @@ textarea.form-control {
 .list-item {
     padding: 0.4rem; border-bottom: 1px solid var(--border-color);
     display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
 }
 .list-item:hover { background-color: var(--info-bg); }
 .list-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -664,7 +665,7 @@ textarea.form-control {
     font-size: 1rem;
     opacity: 0;
     transform: translateY(20px);
-    transition: opacity 0.3s, transform 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
     z-index: 100;
 }
@@ -679,15 +680,20 @@ textarea.form-control {
     background-color: var(--primary-hover);
 }
 
+.scroll-to-top-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
 /* Strategic Advice Tips */
 
 .strategy-card {
     padding: 6px;
-    border-radius: 4px;
+    border-radius: var(--border-radius-sm);
     margin-bottom: 4px;
     font-size: 0.8rem;
     border-left-width: 3px;
     border-left-style: solid;
+    animation: slideInUp 0.3s ease-out forwards;
 }
 
 .strategy-card .strategy-title { font-weight: bold; margin-bottom: 2px; }
@@ -744,6 +750,11 @@ textarea.form-control {
     to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes emptyStateIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 @keyframes fadeOut {
     0% {
         opacity: 1;
@@ -798,7 +809,7 @@ textarea.form-control {
     color: var(--subtle-text);
     text-align: center;
     gap: 0.75rem;
-    animation: fadeIn 0.4s ease-out forwards;
+    animation: emptyStateIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @media (prefers-color-scheme: dark) {
