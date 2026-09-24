@@ -1,20 +1,11 @@
 ---
-# 📯 THE SECURE DISPATCH: A net-new, heavily cached GitHub Pages deployment
-# pipeline for a static site.
 name: Deploy static content to Pages
-"on":
-  push:
-    branches: ["main"]
+"on": { push: { branches: [main] } }
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    environment: { name: github-pages, url: "${{ steps.deployment.outputs.page_url }}" }
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    permissions: { contents: read, pages: write, id-token: write }
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -22,8 +13,7 @@ jobs:
         uses: actions/configure-pages@v6
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
-        with:
-          path: '.'
+        with: { path: '.' }
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
