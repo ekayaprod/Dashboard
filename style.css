@@ -386,11 +386,12 @@ textarea.form-control {
 .nav-link {
     color: var(--subtle-text);
     text-decoration: none;
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 1rem;
     border-radius: var(--border-radius);
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     transition: all 0.3s ease-in-out;
-    min-height: 32px;
+    min-height: 44px;
+    min-width: 44px;
     display: inline-flex;
     align-items: center;
 }
@@ -514,11 +515,14 @@ textarea.form-control {
 }
 
 .target-card {
-    padding: 0.5rem; border-radius: var(--border-radius);
+    padding: 0.5rem; border-radius: 1rem;
     text-align: center; display: flex; flex-direction: column;
     justify-content: center; height: auto; min-height: 65px; /* Adaptive height */
     box-sizing: border-box;
     transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -567,8 +571,11 @@ textarea.form-control {
 
 #upload-wrapper {
     padding: 1.5rem; border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius); text-align: center;
-    background-color: var(--info-bg); position: relative;
+    border-radius: 1rem; text-align: center;
+    background-color: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    position: relative;
     transition: all 0.3s ease-in-out;
     cursor: pointer;
     margin-bottom: 0.5rem;
@@ -577,7 +584,17 @@ textarea.form-control {
     justify-content: center;
     gap: 0.5rem;
 }
-#upload-wrapper:hover { border-color: var(--primary-color); }
+@media (prefers-color-scheme: dark) {
+    #upload-wrapper {
+        background-color: rgba(31, 41, 55, 0.4);
+    }
+}
+@media (prefers-reduced-motion: no-preference) {
+    #upload-wrapper:hover {
+        border-color: var(--primary-color);
+        transform: scale(1.02);
+    }
+}
 
 /* Loading State for Upload */
 #upload-wrapper.loading {
@@ -819,13 +836,25 @@ textarea.form-control {
     }
 }
 
+@keyframes softPulse {
+    0% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 0.9; }
+    100% { transform: scale(1); opacity: 0.7; }
+}
+
 .empty-state-icon {
     width: 56px;
     height: 56px;
     color: var(--border-color);
     margin-bottom: 0.75rem;
     opacity: 0.7;
-    animation: slideInUp 0.5s ease-out forwards;
+    animation: slideInUp 0.5s ease-out forwards, softPulse 3s ease-in-out infinite 0.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .empty-state-icon {
+        animation: none;
+    }
 }
 
 .empty-state-text {
@@ -885,7 +914,7 @@ textarea.form-control {
     body { font-size: 13px; }
     .navbar { padding: 0.25rem 0.5rem; }
 
-    .nav-link { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+    .nav-link { min-height: 44px; min-width: 44px; padding: 0.5rem; font-size: 0.75rem; }
     .btn, .btn-icon, .icon-btn { padding: 0.2rem 0.4rem; }
 
     .panel { border-radius: 0; border: none; box-shadow: none; }
@@ -1102,3 +1131,22 @@ textarea.form-control {
         transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 }
+
+@keyframes staggeredFadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.result-list li {
+    opacity: 0; /* Ensure hidden before animation */
+    animation: staggeredFadeInUp 0.3s ease-out forwards;
+}
+.result-list li:nth-child(1) { animation-delay: 0.05s; }
+.result-list li:nth-child(2) { animation-delay: 0.1s; }
+.result-list li:nth-child(3) { animation-delay: 0.15s; }
+.result-list li:nth-child(4) { animation-delay: 0.2s; }
+.result-list li:nth-child(5) { animation-delay: 0.25s; }
+.result-list li:nth-child(6) { animation-delay: 0.3s; }
+.result-list li:nth-child(7) { animation-delay: 0.35s; }
+.result-list li:nth-child(8) { animation-delay: 0.4s; }
+.result-list li:nth-child(9) { animation-delay: 0.45s; }
+.result-list li:nth-child(10) { animation-delay: 0.5s; }
