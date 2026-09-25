@@ -24,7 +24,7 @@ jobs:
       - name: Playwright Cache
         if: matrix.type == 'e2e'
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-pw-${{ hashFiles('package-lock.json') }}
