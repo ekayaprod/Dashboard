@@ -768,9 +768,32 @@ const DOMHelpers = (() => {
 const MINUTES_IN_HOUR = 60;
 const PAD_LENGTH = 2;
 
+/**
+ * Matches whole number strings containing only digits (e.g. "42").
+ * Used to detect integer minute inputs.
+ * Introduced in PR #333 for time input parsing.
+ */
 const REGEX_DIGITS = /^\d+$/;
+
+/**
+ * Matches decimal number strings (e.g. "1.5").
+ * Used to detect decimal hour inputs which are subsequently multiplied by 60.
+ * Introduced in PR #333 for time input parsing.
+ */
 const REGEX_DECIMAL = /^\d+\.\d+$/;
+
+/**
+ * Matches standard time string inputs in "HH:MM" format.
+ * Capture groups via split(':') provide explicit hours and minutes for minutes conversion.
+ * Introduced in PR #333 for time input parsing.
+ */
 const REGEX_TIME_MM = /^\d{1,2}:\d{2}$/;
+
+/**
+ * Matches extended time string inputs in "HH:MM:SS" format.
+ * Capture groups via split(':') provide hours, minutes, and seconds to calculate total minutes (including fractional from seconds).
+ * Introduced in PR #333 for time input parsing.
+ */
 const REGEX_TIME_MMSS = /^\d{1,2}:\d{2}:\d{2}$/;
 
 const DateUtils = {
