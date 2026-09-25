@@ -6,7 +6,7 @@ import path from 'path'
 describe('js/apps/lookup.js - LookupHelpers', () => {
   beforeAll(() => {
     // 1. Load app-core.js to get SafeUI and other globals
-    const coreScriptPath = path.resolve(__dirname, '../app-core.js')
+    const coreScriptPath = path.resolve(__dirname, '../core/app-core.js')
     const coreScriptContent = fs.readFileSync(coreScriptPath, 'utf8')
     new Function(coreScriptContent)()
 
@@ -25,7 +25,7 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
     }
 
     // 3. Load lookup.js and expose LookupHelpers
-    const lookupScriptPath = path.resolve(__dirname, '../apps/lookup.js')
+    const lookupScriptPath = path.resolve(__dirname, './lookup.js')
     let lookupScriptContent = fs.readFileSync(lookupScriptPath, 'utf8')
 
     // Append code to expose the local const LookupHelpers to window

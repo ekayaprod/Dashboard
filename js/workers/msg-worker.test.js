@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../workers/msg-reader.js', () => {
+vi.mock('./msg-reader.js', () => {
     return {
         MsgReader: {
             read: vi.fn((buffer) => {
@@ -32,9 +32,9 @@ describe('js/workers/msg-worker.js', () => {
 
         // Use a static import, resetModules handles cache clearance in vitest
         vi.resetModules();
-        await import('../workers/msg-worker.js');
+        await import('./msg-worker.js');
 
-        const { MsgReader } = await import('../workers/msg-reader.js');
+        const { MsgReader } = await import('./msg-reader.js');
         MsgReaderMock = MsgReader;
         MsgReaderMock.read.mockClear();
     });

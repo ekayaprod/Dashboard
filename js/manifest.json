@@ -1,18 +1,18 @@
 {
     "core": [
         {
-            "url": "js/app-core.js",
+            "url": "js/core/app-core.js",
             "exports": ["UIUtils", "SafeUI", "DOMHelpers", "AppLifecycle", "DataHelpers", "DateUtils"],
             "required": true
         },
         {
-            "url": "js/app-ui.js",
+            "url": "js/core/app-ui.js",
             "exports": ["UIPatterns", "ListRenderer", "SearchHelper", "NotepadManager", "QuickListManager", "SharedSettingsModal"],
             "required": true,
             "dependsOn": ["SafeUI"]
         },
         {
-            "url": "js/app-data.js",
+            "url": "js/core/app-data.js",
             "exports": ["BackupRestore", "DataValidator", "DataConverter", "CsvManager", "TreeUtils"],
             "required": true,
             "dependsOn": ["SafeUI"]

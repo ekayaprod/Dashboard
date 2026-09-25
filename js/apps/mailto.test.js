@@ -111,7 +111,7 @@ describe('js/apps/mailto.js', () => {
     });
 
     it('should initialize successfully and load UI states', async () => {
-        await import('../apps/mailto.js');
+        await import('./mailto.js');
         await new Promise(r => setTimeout(r, 0));
         expect(mockAppCtx.elements.viewLibraryBtn).toBeDefined();
     });

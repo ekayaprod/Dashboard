@@ -101,7 +101,7 @@ describe('js/apps/dashboard.js', () => {
     });
 
     it('should initialize successfully', async () => {
-        await import('../apps/dashboard.js');
+        await import('./dashboard.js');
         // Let's create an app and call displayAppDetails implicitly
         mockAppCtx.state.apps.push({ id: '1', name: 'Test App', urls: 'http://test.com', escalationPath: 'Test Path' });
         expect(mockAppCtx.elements.newAppBtn).toBeDefined();

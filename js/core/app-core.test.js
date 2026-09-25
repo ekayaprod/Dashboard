@@ -5,7 +5,7 @@ import path from 'path'
 describe('app-core.js', () => {
   beforeAll(() => {
     // Load the script content
-    const scriptPath = path.resolve(__dirname, '../app-core.js')
+    const scriptPath = path.resolve(__dirname, './app-core.js')
     const scriptContent = fs.readFileSync(scriptPath, 'utf8')
 
     // Execute the script in the global context

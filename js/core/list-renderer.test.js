@@ -5,8 +5,8 @@ import path from 'path'
 describe('app-ui.js - ListRenderer', () => {
     beforeEach(() => {
         // Mock globals if needed, or load the file
-        const corePath = path.resolve(__dirname, '../app-core.js')
-        const uiPath = path.resolve(__dirname, '../app-ui.js')
+        const corePath = path.resolve(__dirname, './app-core.js')
+        const uiPath = path.resolve(__dirname, './app-ui.js')
 
         // Simple loading without `fs` overhead if we just want to test logic,
         // but since it's an IIFE assignment to window, we need to load it.

@@ -97,7 +97,7 @@ describe('js/apps/passwords.js', () => {
 
     beforeAll(() => {
         setupMocks();
-        const scriptPath = path.resolve(__dirname, '../apps/passwords.js');
+        const scriptPath = path.resolve(__dirname, './passwords.js');
         let scriptContent = fs.readFileSync(scriptPath, 'utf8');
         // Expose helpers
         scriptContent += '; window.PasswordLogic = PasswordLogic; window.PasswordUI = PasswordUI;';
