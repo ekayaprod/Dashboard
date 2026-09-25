@@ -243,6 +243,13 @@ function parseAddress(addr) {
     if (!addr) return { name: '', email: null };
     addr = addr.trim();
     let email = addr, name = addr;
+
+    /**
+     * Parses standard email address strings like "Display Name <email@example.com>".
+     * Capture Group 1: The raw display name string.
+     * Capture Group 2: The raw email address string.
+     * Introduced in PR #333.
+     */
     let match = addr.match(/^(.*)<([^>]+)>$/);
     if (match) { name = match[1].trim().replace(/^"|"$/g, ''); email = match[2].trim(); }
     let emailMatch = email.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i);
