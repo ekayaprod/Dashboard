@@ -32,7 +32,7 @@ Every day, I faced a manual nightmare of context-switching between bloated enter
 
 The system is built on a strict **Shell Architecture**, where a master `index.html` file hosts independent applications sandboxed inside `iframe` environments. It operates entirely client-side, running pure ES6+ JavaScript.
 
-* **Bootstrapping Sequence:** The custom `js/bootstrap.js` acts as a centralized dependency loader, injecting core libraries (`app-core.js`, `app-ui.js`, `app-data.js`) synchronously before triggering a `bootstrap:ready` event, ensuring a rigid execution order.
+* **Bootstrapping Sequence:** The custom `js/bootstrap.js` acts as a centralized dependency loader, injecting core libraries (`js/core/app-core.js`, `js/core/app-ui.js`, `js/core/app-data.js`) synchronously before triggering a `bootstrap:ready` event, ensuring a rigid execution order.
 * **Asynchronous Offloading:** To prevent the UI thread from hanging during computationally heavy tasks, the `MailTo` application utilizes a dedicated Web Worker (`js/workers/msg-reader.js`) to parse binary `.msg` files in the background, returning clean JSON to the main thread.
 * **Decoupled State Management:** Applications like `Lookup` leverage asynchronous indexed keyword searches via `SearchHelper`, seamlessly handling custom URL templates for rapid hybrid querying against external knowledge bases.
 

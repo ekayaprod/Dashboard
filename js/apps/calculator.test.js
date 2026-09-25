@@ -108,7 +108,7 @@ describe('js/apps/calculator.js', () => {
     });
 
     it('should evaluate calculateAdditionalCallTimeNeeded correctly for typical bounds', async () => {
-        await import('../apps/calculator.js');
+        await import('./calculator.js');
         // We're mainly validating that the JS doesn't crash on load and events can be triggered.
         const addCallBtn = mockAppCtx.elements.btnAddCallTime;
         mockAppCtx.elements.addCallTime.value = '15';
@@ -120,7 +120,7 @@ describe('js/apps/calculator.js', () => {
     });
 
     it('should calculate daily ratings correctly to determine isRoundedUp', async () => {
-        await import('../apps/calculator.js');
+        await import('./calculator.js');
 
         mockAppCtx.elements.shiftStart.value = '09:00';
         mockAppCtx.elements.shiftEnd.value = '17:00'; // 8 hrs

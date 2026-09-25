@@ -5,12 +5,12 @@ import path from 'path'
 describe('app-data.js Tests', () => {
   beforeAll(() => {
     // 1. Load Core (Dependency)
-    const corePath = path.resolve(__dirname, '../app-core.js')
+    const corePath = path.resolve(__dirname, './app-core.js')
     const coreContent = fs.readFileSync(corePath, 'utf8')
     new Function(coreContent)()
 
     // 2. Load Data (Target)
-    const dataPath = path.resolve(__dirname, '../app-data.js')
+    const dataPath = path.resolve(__dirname, './app-data.js')
     const dataContent = fs.readFileSync(dataPath, 'utf8')
     new Function(dataContent)()
 

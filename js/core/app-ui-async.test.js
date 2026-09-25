@@ -5,12 +5,12 @@ import path from 'path'
 describe('app-ui.js - Async Search', () => {
   beforeAll(() => {
     // 1. Load Core
-    const corePath = path.resolve(__dirname, '../app-core.js')
+    const corePath = path.resolve(__dirname, './app-core.js')
     const coreContent = fs.readFileSync(corePath, 'utf8')
     new Function(coreContent)()
 
     // 2. Load UI
-    const uiPath = path.resolve(__dirname, '../app-ui.js')
+    const uiPath = path.resolve(__dirname, './app-ui.js')
     const uiContent = fs.readFileSync(uiPath, 'utf8')
     new Function(uiContent)()
   })
