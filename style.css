@@ -37,7 +37,7 @@
 
     /* Shadows */
     --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-    --box-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --box-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
     --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -115,6 +115,7 @@ body {
     overflow: hidden; 
     flex-grow: 1;
     position: relative;
+    transition: box-shadow 0.3s ease-in-out;
 }
 
 .main-content {
@@ -131,7 +132,7 @@ h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 600; color: var(--text-color); 
 p { margin: 0; }
 a { color: var(--primary-color); text-decoration: none; transition: all 0.2s; }
 a:hover { text-decoration: underline; }
-a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 2px; }
+a:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color); border-radius: 2px; }
 a:active { opacity: 0.8; }
 
 /* Section Headers */
@@ -142,7 +143,10 @@ a:active { opacity: 0.8; }
     margin-bottom: var(--spacing-sm);
 }
 .section-header {
-    font-size: 1rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.4;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -176,7 +180,7 @@ a:active { opacity: 0.8; }
     outline: none;
     border-color: var(--primary-color);
     background-color: var(--input-focus-bg);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px rgba(59, 130, 246, 0.5);
 }
 .form-control:disabled {
     opacity: 0.6;
@@ -197,6 +201,8 @@ textarea.form-control {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-weight: 500;
+    letter-spacing: 0.025em;
 }
 
 /* Buttons (Consolidated) */
@@ -228,8 +234,8 @@ textarea.form-control {
     opacity: 0.6;
     cursor: not-allowed; 
 }
-.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--primary-color); outline-offset: 2px; }
-.btn:active { transform: scale(0.95); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color); }
+.btn:active { transform: scale(0.95); transition: transform 0.15s ease-in-out; }
 
 .btn-primary {
     background-color: var(--primary-color); 
@@ -285,7 +291,7 @@ textarea.form-control {
     transform: translateY(-1px);
 }
 .btn-icon:active, .icon-btn:active { transform: scale(0.95); }
-.btn-icon:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+.btn-icon:focus-visible, .icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color); border-radius: 2px; }
 .btn-icon svg, .icon-btn svg { width: 16px; height: 16px; }
 
 .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
@@ -396,8 +402,8 @@ textarea.form-control {
     align-items: center;
 }
 .nav-link:hover { background-color: var(--info-bg); color: var(--text-color); }
-.nav-link:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
-.nav-link:active { transform: scale(0.95); }
+.nav-link:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color); border-radius: 4px; }
+.nav-link:active { transform: scale(0.95); transition: transform 0.15s ease-in-out; }
 .nav-link.active { background-color: var(--primary-color); color: white; }
 
 /* Modals */
@@ -991,8 +997,9 @@ textarea.form-control {
 
 /* Accessibility Enhancements */
 .accordion-header:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: -2px;
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--primary-color);
+    border-radius: var(--border-radius-sm);
 }
 
 /* Lookup Polish Extensions */
