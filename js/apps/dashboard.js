@@ -88,7 +88,7 @@ function initializePage() {
                             const name = nameInput.value;
                             const url = urlInput.value;
                             if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
-                                DataHelpers.getCollection(state, 'shortcuts').push({ id: SafeUI.generateId(), name, url });
+                                DataHelpers.getCollection(state, 'shortcuts').push({ id: crypto.randomUUID(), name, url });
                                 saveState();
                                 renderCallback();
                             } else {
@@ -264,7 +264,7 @@ function initializePage() {
                 headers: APP_CONFIG.APP_CSV_HEADERS,
                 onValidate: (row, index) => {
                     const entry = {
-                        id: row.id || SafeUI.generateId(),
+                        id: row.id || crypto.randomUUID(),
                         name: (row.name || '').trim(),
                         urls: (row.urls || '').trim(),
                         escalation: (row.escalation || '').trim()
@@ -300,7 +300,7 @@ function initializePage() {
                             callback: () => {
                                 let importedCount = 0;
                                 newEntries.forEach(entry => {
-                                    if (state.apps.some(app => app.id === entry.id)) { entry.id = SafeUI.generateId(); }
+                                    if (state.apps.some(app => app.id === entry.id)) { entry.id = crypto.randomUUID(); }
                                     state.apps.push(entry);
                                     importedCount++;
                                 });
@@ -334,7 +334,7 @@ function initializePage() {
             ['apps', 'notes', 'shortcuts'].forEach(key => {
                 (dataToRestore[key] || []).forEach(item => {
                     if (item.id && item.id.length < 20) {
-                        item.id = SafeUI.generateId();
+                        item.id = crypto.randomUUID();
                         regeneratedCount++;
                     }
                 });
@@ -462,7 +462,7 @@ function initializePage() {
             };
 
             if (isNewApp) {
-                appData.id = SafeUI.generateId();
+                appData.id = crypto.randomUUID();
                 DataHelpers.getCollection(state, 'apps').push(appData);
                 SafeUI.showToast('Application successfully created.');
             } else {

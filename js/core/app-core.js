@@ -157,45 +157,6 @@ const UIUtils = (() => {
     };
 
     /**
-     * Generates a unique identifier.
-     * Uses `crypto.randomUUID` if available, otherwise falls back to a `nanoid` implementation
-     * for unified, cryptographically secure string generation across the ecosystem.
-     *
-     * @returns {string} A unique string ID (UUID v4 or 21-character nanoid).
-     */
-    const generateId = () => {
-        try {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                return crypto.randomUUID();
-            }
-        } catch (e) {
-            console.warn('crypto.randomUUID not available, falling back to nanoid');
-        }
-
-        let size = 21;
-        let id = '';
-        const urlAlphabet = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict';
-
-        try {
-            if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-                let bytes = crypto.getRandomValues(new Uint8Array(size));
-                while (size--) {
-                    id += urlAlphabet[bytes[size] & 63];
-                }
-                return id;
-            }
-        } catch (e) {
-            console.warn('crypto.getRandomValues not available, falling back to Math.random() nanoid');
-        }
-
-        // Non-secure fallback if crypto is unavailable
-        while (size--) {
-            id += urlAlphabet[(Math.random() * 64) | 0];
-        }
-        return id;
-    };
-
-    /**
      * Creates a debounced function that delays invoking `func` until after `delay` ms have elapsed.
      * Useful for resizing, scrolling, or search input events.
      *
@@ -606,7 +567,6 @@ const UIUtils = (() => {
         SVGIcons,
         validators: CoreValidators,
         escapeHTML,
-        generateId,
         debounce,
         capitalize,
         getRandomInt,
@@ -659,7 +619,6 @@ const SafeUI = (() => {
         hideModal: () => UIUtils.hideModal(),
         showToast: (msg) => UIUtils.showToast(msg),
         escapeHTML: (str) => UIUtils.escapeHTML(str),
-        generateId: () => UIUtils.generateId(),
         debounce: (func, delay) => UIUtils.debounce(func, delay),
         capitalize: (str) => UIUtils.capitalize(str),
         getRandomInt: (max) => UIUtils.getRandomInt(max),
