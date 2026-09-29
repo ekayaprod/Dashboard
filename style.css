@@ -128,8 +128,8 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 600; color: var(--text-color); }
-p { margin: 0; }
+h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 600; color: var(--text-color); line-height: 1.2; letter-spacing: -0.02em; }
+p { margin: 0; line-height: 1.5; }
 a { color: var(--primary-color); text-decoration: none; transition: all 0.2s; }
 a:hover { text-decoration: underline; }
 a:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color); border-radius: 2px; }
@@ -173,6 +173,7 @@ a:active { opacity: 0.8; }
     background-color: var(--input-bg);
     color: var(--text-color);
     font-family: inherit;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
     transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out;
 }
 .form-control::placeholder { color: var(--subtle-text); opacity: 0.8; }
@@ -434,11 +435,17 @@ textarea.form-control {
 .nav-link.active { background-color: var(--primary-color); color: white; }
 
 /* Modals */
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.5);
     display: none; align-items: center; justify-content: center;
     z-index: 2000; backdrop-filter: blur(2px);
+    animation: overlayFadeIn 0.3s ease-out forwards;
 }
 @keyframes modalScaleIn {
     from {
@@ -594,12 +601,29 @@ textarea.form-control {
 
 /* MailTo Specifics */
 .tree-list-container { flex-grow: 1; overflow-y: auto; }
+@keyframes listItemFadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .list-item {
     padding: 0.4rem; border-bottom: 1px solid var(--border-color);
     display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
     transition: background-color 0.2s ease-in-out;
+    opacity: 0;
+    animation: listItemFadeInUp 0.3s ease-out forwards;
 }
-.list-item:hover { background-color: var(--info-bg); }
+.list-item:nth-child(1) { animation-delay: 0.05s; }
+.list-item:nth-child(2) { animation-delay: 0.1s; }
+.list-item:nth-child(3) { animation-delay: 0.15s; }
+.list-item:nth-child(4) { animation-delay: 0.2s; }
+.list-item:nth-child(5) { animation-delay: 0.25s; }
+.list-item:nth-child(n+6) { animation-delay: 0.3s; }
+.list-item:hover {
+    background-color: var(--info-bg);
+    transform: translateY(-2px);
+    box-shadow: var(--box-shadow-lg);
+}
 .list-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 #upload-wrapper {
@@ -630,10 +654,17 @@ textarea.form-control {
 }
 
 /* Loading State for Upload */
+@keyframes softPulseBg {
+    0% { background-color: rgba(255,255,255,0.4); }
+    50% { background-color: rgba(255,255,255,0.6); }
+    100% { background-color: rgba(255,255,255,0.4); }
+}
+
 #upload-wrapper.loading {
     opacity: 0.7;
     pointer-events: none;
     cursor: wait;
+    animation: softPulseBg 2s ease-in-out infinite;
 }
 
 #upload-wrapper.loading::after {
