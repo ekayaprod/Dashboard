@@ -446,13 +446,15 @@ const UIUtils = (() => {
      * @param {File} file - The file to read.
      * @returns {Promise<Object>} A promise resolving to the parsed JSON object.
      */
-    const readJSONFile = (file) => {
-        return readTextFile(file)
-            .then(text => {
-                return new Promise((resolve, reject) => {
-                    parseJSON(text, resolve, (err) => reject(new Error(err)));
-                });
+    const readJSONFile = async (file) => {
+        try {
+            const text = await readTextFile(file);
+            return await new Promise((resolve, reject) => {
+                parseJSON(text, resolve, (err) => reject(new Error(err)));
             });
+        } catch (error) {
+            throw error;
+        }
     };
 
     /**
