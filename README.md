@@ -64,3 +64,20 @@ To run the local test suite:
 2. `npm run test`
 3. `npm run test:coverage`
 4. `npm run test:e2e`
+
+## 8. Innovation Backlog
+
+### Proposal 1: Standardize Date & Time Manipulations
+* **The Problem:** The repository currently utilizes a custom-built utility module (`DateUtils` in `js/core/app-core.js`) for complex time calculations (e.g., parsing time strings to minutes, computing offsets). This reinvents the wheel, increases the maintenance burden, and introduces edge-case vulnerabilities in mission-critical applications like the shift calculator.
+* **The Solution:** Adopt the mature, widely-supported `date-fns` library to standardize all date and time logic across the codebase.
+* **The Benefit:** Decreases custom code bloat, improves testability, and offloads edge-case handling to a battle-tested open-source standard.
+
+### Proposal 2: Strict Schema Enforcement for Validation
+* **The Problem:** Input validation is currently handled by a bespoke, generalized engine (`DataValidator` in `js/core/app-data.js` and `CoreValidators` in `js/core/app-core.js`). This approach lacks strict type safety and requires manual maintenance of complex regex patterns (like URL validation) which are prone to subtle regressions.
+* **The Solution:** Integrate a robust schema validation library such as `Zod` or `Joi` to define and enforce strict, composable data contracts at runtime.
+* **The Benefit:** Eliminates manual validation boilerplate, inherently safeguards against malformed payload structures, and increases confidence in the data flowing between modules and local storage.
+
+### Proposal 3: Decentralized Application Architecture
+* **The Problem:** The current "Shell Architecture" leverages `iframe` environments tightly coupled to a master `index.html` orchestrator. This physical constraint severely limits interoperability between tools, creates rigid initialization sequences, and impedes rapid parallel development of individual features.
+* **The Solution:** Migrate the architecture toward a Micro-Frontend model utilizing Module Federation or Web Components (e.g., Lit).
+* **The Benefit:** Decouples the micro-applications into truly independent modules, enabling asynchronous loading, better state-sharing mechanisms, and significantly improving scalability for future feature additions.
