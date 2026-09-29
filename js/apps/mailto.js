@@ -19,7 +19,7 @@ const APP_CONFIG = {
     NAME: 'mailto_library',
     VERSION: '2.3.3',
     DATA_KEY: 'mailto_library_v1',
-    CSV_HEADERS: ['name', 'path', 'to', 'cc', 'bcc', 'subject', 'body']
+    CSV_HEADERS: ['name', 'subject', 'to', 'cc', 'bcc', 'body', 'mailto', 'path']
 };
 
 /**
@@ -724,11 +724,71 @@ async function init() {
         buttonId: 'btn-settings', appName: APP_CONFIG.NAME, state,
         pageSpecificDataHtml: `<button id=\"exp\" class=\"btn\">Export CSV</button><button id=\"imp\" class=\"btn\">Import CSV</button>`,
         onModalOpen: () => {
-            CsvManager.setupExport({exportBtn: document.getElementById('exp'), headers: APP_CONFIG.CSV_HEADERS, dataGetter: ()=>[], filename:'export.csv'});
+            CsvManager.setupExport({
+                exportBtn: document.getElementById('exp'),
+                headers: APP_CONFIG.CSV_HEADERS,
+                dataGetter: () => {
+                    const items = [];
+                    const traverse = (nodes, currentPath) => {
+                        nodes.forEach(node => {
+                            if (node.type === 'folder') {
+                                traverse(node.children, currentPath ? `${currentPath}/${node.name}` : node.name);
+                            } else if (node.type === 'item') {
+                                const parsed = parseMailto(node.mailto);
+                                items.push({
+                                    name: node.name,
+                                    subject: parsed.subject || '',
+                                    to: parsed.to || '',
+                                    cc: parsed.cc || '',
+                                    bcc: parsed.bcc || '',
+                                    body: parsed.body || '',
+                                    mailto: node.mailto,
+                                    path: currentPath
+                                });
+                            }
+                        });
+                    };
+                    traverse(state.library, '');
+                    return items;
+                },
+                filename: 'export.csv'
+            });
             CsvManager.setupImport({
                 importBtn: document.getElementById('imp'), 
                 headers: APP_CONFIG.CSV_HEADERS, 
-                onValidate: (r) => (r.name ? {entry: r} : null)
+                onValidate: (r) => {
+                    if (!r.name) return null;
+                    if (!r.mailto) {
+                        r.mailto = buildMailto(r.to || '', r.cc || '', r.bcc || '', r.subject || '', r.body || '');
+                    }
+                    return { entry: r };
+                },
+                onImport: (entries) => {
+                    entries.forEach(r => {
+                        const pathParts = r.entry.path ? r.entry.path.split('/').filter(p => p.trim()) : [];
+                        let currentFolder = state.library;
+
+                        pathParts.forEach(part => {
+                            let folder = currentFolder.find(f => f.type === 'folder' && f.name === part);
+                            if (!folder) {
+                                folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
+                                currentFolder.push(folder);
+                            }
+                            currentFolder = folder.children;
+                        });
+
+                        currentFolder.push({
+                            id: SafeUI.generateId(),
+                            type: 'item',
+                            name: r.entry.name,
+                            mailto: r.entry.mailto
+                        });
+                    });
+                    saveState();
+                    renderCatalogue();
+                    refreshSaveDropdown();
+                    SafeUI.showToast(`Imported ${entries.length} items`);
+                }
             });
         },
         onRestoreCallback: (d) => { state.library = d.library; saveState(); renderCatalogue(); refreshSaveDropdown(); }
