@@ -11,9 +11,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { type: unit, node: 20.x, cmd: 'npx vitest run --coverage' }
           - { type: unit, node: 22.x, cmd: 'npx vitest run --coverage' }
-          - { type: e2e,  node: 20.x, cmd: 'npm run test:e2e' }
+          - { type: unit, node: 24.x, cmd: 'npx vitest run --coverage' }
+          - { type: e2e,  node: 22.x, cmd: 'npm run test:e2e' }
     steps:
       - uses: actions/checkout@v7
       - name: Node ${{ matrix.node }}
