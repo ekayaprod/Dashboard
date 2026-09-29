@@ -506,7 +506,7 @@ async function init() {
             if(name) {
                 const f = TreeUtils.findItemById(state.library, currentFolderId);
                 if(f && f.children) { 
-                    f.children.push({id: SafeUI.generateId(), type:'folder', name, children:[]}); 
+                    f.children.push({id: crypto.randomUUID(), type:'folder', name, children:[]});
                     saveState(); 
                     renderCatalogue(); 
                     refreshSaveDropdown();
@@ -601,7 +601,7 @@ async function init() {
                         const parentFolder = TreeUtils.findItemById(state.library, parentId);
 
                         const newFolder = {
-                            id: SafeUI.generateId(),
+                            id: crypto.randomUUID(),
                             type: 'folder',
                             name: newFolderName,
                             children: []
@@ -613,7 +613,7 @@ async function init() {
                     const targetFolder = TreeUtils.findItemById(state.library, targetId);
                     if (targetFolder) {
                         targetFolder.children.push({
-                            id: SafeUI.generateId(),
+                            id: crypto.randomUUID(),
                             type: 'item',
                             name,
                             mailto: DOMElements.resultMailto.value
@@ -771,14 +771,14 @@ async function init() {
                         pathParts.forEach(part => {
                             let folder = currentFolder.find(f => f.type === 'folder' && f.name === part);
                             if (!folder) {
-                                folder = { id: SafeUI.generateId(), type: 'folder', name: part, children: [] };
+                                folder = { id: crypto.randomUUID(), type: 'folder', name: part, children: [] };
                                 currentFolder.push(folder);
                             }
                             currentFolder = folder.children;
                         });
 
                         currentFolder.push({
-                            id: SafeUI.generateId(),
+                            id: crypto.randomUUID(),
                             type: 'item',
                             name: r.entry.name,
                             mailto: r.entry.mailto

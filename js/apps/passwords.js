@@ -762,7 +762,7 @@ function initializePage() {
                                 SafeUI.showValidationError('Duplicate Name', 'Name exists.', 'qc-name');
                                 return false;
                             }
-                            const newItem = { id: SafeUI.generateId(), name: name, value: value };
+                            const newItem = { id: crypto.randomUUID(), name: name, value: value };
                             state.quickCopyItems.push(newItem);
                             saveState();
                             initQuickActions();
@@ -792,7 +792,7 @@ function initializePage() {
                             SafeUI.showValidationError('Duplicate Name', 'Name exists.', 'preset-name');
                             return false;
                         }
-                        const newPreset = { id: SafeUI.generateId(), name: name, config: config };
+                        const newPreset = { id: crypto.randomUUID(), name: name, config: config };
                         state.generatorPresets.push(newPreset);
                         saveState();
                         initQuickActions();
