@@ -18,6 +18,7 @@ The suite is composed of several specialized micro-applications, each engineered
 * **MailTo Generator** (`mailto.html`): A dynamic template engine that transforms repetitive communication into single-click executions. It incorporates a dedicated Web Worker to offload heavy binary `.msg` file parsing, ensuring the UI remains perfectly fluid while extracting critical payload data.
 * **Passwords Tool** (`passwords.html`): A cryptographically secure passphrase generator. Built for zero-trust environments, it leverages `window.crypto` to generate complex keys natively within the browser, avoiding reliance on external APIs or compromised clipboards.
 * **EOD Targets / Calculator** (`calculator.html`): A precision shift pacing calculator. It instantly recalibrates pacing metrics against strict operational breakpoints, mathematically eliminating the risk of human transcription errors during fast-paced calculations.
+* **PDFPea** (`https://ekayaprod.github.io/pdfpea/index.html`): An external utility seamlessly integrated into the navigation.
 
 ## 3. The Operational Catalyst
 
@@ -35,6 +36,16 @@ The system is built on a strict **Shell Architecture**, where a master `index.ht
 * **Bootstrapping Sequence:** The custom `js/bootstrap.js` acts as a centralized dependency loader, injecting core libraries (`js/core/app-core.js`, `js/core/app-ui.js`, `js/core/app-data.js`) synchronously before triggering a `bootstrap:ready` event, ensuring a rigid execution order.
 * **Asynchronous Offloading:** To prevent the UI thread from hanging during computationally heavy tasks, the `MailTo` application utilizes a dedicated Web Worker (`js/workers/msg-reader.js`) to parse binary `.msg` files in the background, returning clean JSON to the main thread.
 * **Decoupled State Management:** Applications like `Lookup` leverage asynchronous indexed keyword searches via `SearchHelper`, seamlessly handling custom URL templates for rapid hybrid querying against external knowledge bases.
+
+### Workspace Map
+
+| Directory | Structural Domain / Purpose |
+| :--- | :--- |
+| `js/apps/` | The isolated UI logic and controllers for the individual micro-applications. |
+| `js/core/` | Centralized system utilities, shared state management (`app-data.js`), and safe UI rendering wrappers (`app-ui.js`). |
+| `js/workers/` | Background processes, explicitly designed to offload heavy operations like parsing binary `.msg` files. |
+| `wordbanks/` | Localized JSON dictionaries containing phrase lists for passphrase generation. |
+| `e2e/` | The automated Playwright end-to-end test suite enforcing application stability. |
 
 ## 5. Robustness & Integrity
 
