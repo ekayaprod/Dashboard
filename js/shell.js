@@ -19,8 +19,7 @@
         'lookup': 'lookup.html',
         'passwords': 'passwords.html',
         'mailto': 'mailto.html',
-        'calculator': 'calculator.html',
-        'pdfpea': 'https://ekayaprod.github.io/pdfpea/index.html'
+        'calculator': 'calculator.html'
     };
 
     // Initialize Shell
@@ -42,14 +41,14 @@
      */
     function loadInitialRoute() {
         const urlParams = new URLSearchParams(window.location.search);
-        const pageKey = urlParams.get('page');
+        const pageKey = urlParams.get('page')?.toLowerCase();
         let targetPage = DEFAULT_APP;
 
         if (pageKey && PAGE_MAP[pageKey]) {
             targetPage = PAGE_MAP[pageKey];
         } else if (pageKey) {
             // Try to handle raw filenames if passed
-             const foundKey = Object.keys(PAGE_MAP).find(k => PAGE_MAP[k] === pageKey);
+             const foundKey = Object.keys(PAGE_MAP).find(k => PAGE_MAP[k].toLowerCase() === pageKey);
              if (foundKey) targetPage = PAGE_MAP[foundKey];
         }
 
@@ -130,8 +129,7 @@
                     '2': 'lookup.html',
                     '3': 'passwords.html',
                     '4': 'mailto.html',
-                    '5': 'calculator.html',
-                    '6': 'https://ekayaprod.github.io/pdfpea/index.html'
+                    '5': 'calculator.html'
                 };
 
                 if (shortcuts[key]) {
@@ -157,7 +155,7 @@
                 // Sync URL if needed (e.g., if app redirected itself)
                 if (path) {
                     const pageName = path.split('/').pop();
-                    const key = Object.keys(PAGE_MAP).find(k => PAGE_MAP[k] === pageName);
+                    const key = Object.keys(PAGE_MAP).find(k => PAGE_MAP[k].toLowerCase() === pageName.toLowerCase());
                     if (key) {
                          const currentParams = new URLSearchParams(window.location.search);
                          if (currentParams.get('page') !== key) {

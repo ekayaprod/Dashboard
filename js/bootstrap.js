@@ -107,7 +107,7 @@
                 throw new Error(`Scripts loaded but missing exports:\n${allMissingExports.join('\n')}`);
             }
             
-            const currentPage = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0];
+            const currentPage = (window.location.pathname.split('/').pop() || 'index.html').split('?')[0].toLowerCase();
             const pageScripts = PAGE_SCRIPTS[currentPage] || [];
             
             for (const config of pageScripts) {
