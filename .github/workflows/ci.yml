@@ -11,8 +11,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { type: unit, node: 22.x, cmd: 'npx vitest run --coverage' }
-          - { type: unit, node: 24.x, cmd: 'npx vitest run --coverage' }
+          - { type: unit, node: 22.x, cmd: 'npx --yes vitest run --coverage' }
+          - { type: unit, node: 24.x, cmd: 'npx --yes vitest run --coverage' }
           - { type: e2e,  node: 22.x, cmd: 'npm run test:e2e' }
     steps:
       - uses: actions/checkout@v7
@@ -32,8 +32,8 @@ jobs:
       - name: Install Playwright
         if: matrix.type == 'e2e'
         run: |
-          if [ "${{ steps.pw-cache.outputs.cache-hit }}" != 'true' ]; then npx playwright install chromium; fi
-          npx playwright install-deps chromium
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" != 'true' ]; then npx --yes playwright install chromium; fi
+          npx --yes playwright install-deps chromium
       - name: Run ${{ matrix.type }}
         run: ${{ matrix.cmd }}
       - name: Upload Report
