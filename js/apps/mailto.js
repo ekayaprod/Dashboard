@@ -8,7 +8,7 @@
  * 3. Organize templates in a folder structure (Library).
  * 4. Export/Import templates via CSV.
  *
- * It relies on global utilities like `AppLifecycle` for initialization and `SafeUI` for DOM manipulation.
+ * It relies on global utilities like `AppLifecycle` for initialization and `UIUtils` for DOM manipulation.
  */
 
 /**
@@ -73,7 +73,7 @@ function populateFolderSelect(selectEl, excludeId = null, includeCreateNew = fal
         if (f.id === excludeId) return; 
         const indent = '&nbsp;'.repeat(f.level * 2);
         const icon = f.level > 0 ? '📂 ' : '';
-        const name = SafeUI.escapeHTML(f.name);
+        const name = UIUtils.escapeHTML(f.name);
         selectEl.appendChild(DOMHelpers.createOption(f.id, `${indent}${icon}${name}`, { isHTML: true }));
     });
 }
@@ -159,7 +159,7 @@ function clearEditorFields() {
     if (fileInput) fileInput.value = '';
     
     updateLivePreview();
-    SafeUI.showToast("Form reset");
+    UIUtils.showToast("Form reset");
 }
 
 /**
@@ -248,9 +248,9 @@ function handleWorkerMessage(e) {
         if(DOMElements.resultBcc) DOMElements.resultBcc.value = map[3].join(', ');
 
         setActiveSection('editor');
-        SafeUI.showToast('File processed successfully');
+        UIUtils.showToast('File processed successfully');
     } else {
-        SafeUI.showModal("Error", `<p>${SafeUI.escapeHTML(response.error)}</p>`, [{label:'OK'}]);
+        UIUtils.showModal("Error", `<p>${UIUtils.escapeHTML(response.error)}</p>`, [{label:'OK'}]);
     }
 }
 
@@ -270,7 +270,7 @@ function initWorker() {
                 uploadWrapper.removeAttribute('aria-busy');
             }
             console.error(`Worker Error in ${e.filename} at line ${e.lineno}:`, e.message);
-            SafeUI.showModal("Error", `<p>An error occurred in the background worker.</p>`, [{label:'OK'}]);
+            UIUtils.showModal("Error", `<p>An error occurred in the background worker.</p>`, [{label:'OK'}]);
         };
     }
     return msgWorker;
@@ -302,7 +302,7 @@ function handleFile(file) {
                 uploadWrapper.classList.remove('loading');
                 uploadWrapper.removeAttribute('aria-busy');
             }
-            SafeUI.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]); 
+            UIUtils.showModal("Error", `<p>${err.message}</p>`, [{label:'OK'}]);
         }
     };
     reader.readAsArrayBuffer(file);
@@ -332,8 +332,8 @@ function renderCatalogue() {
     const path = TreeUtils.getBreadcrumbPath(state.library, currentFolderId);
     DOMElements.breadcrumbContainer.innerHTML = path.map((p, i) => 
         i === path.length - 1 
-        ? `<span class="breadcrumb-current">${SafeUI.escapeHTML(p.name)}</span>`
-        : `<a class="breadcrumb-link" data-id="${p.id}">${SafeUI.escapeHTML(p.name)}</a><span class="breadcrumb-separator">/</span>`
+        ? `<span class="breadcrumb-current">${UIUtils.escapeHTML(p.name)}</span>`
+        : `<a class="breadcrumb-link" data-id="${p.id}">${UIUtils.escapeHTML(p.name)}</a><span class="breadcrumb-separator">/</span>`
     ).join('');
 
     const items = getItemsInCurrentFolder().sort((a, b) => {
@@ -353,16 +353,16 @@ function renderCatalogue() {
             const isFolder = item.type === 'folder';
             
             div.innerHTML = `
-                 <div class="list-item-icon ${isFolder?'folder':'template'}">${isFolder ? SafeUI.SVGIcons.folder : SafeUI.SVGIcons.template}</div>
+                 <div class="list-item-icon ${isFolder?'folder':'template'}">${isFolder ? UIUtils.SVGIcons.folder : UIUtils.SVGIcons.template}</div>
                  ${isFolder 
-                    ? `<span class="list-item-name-folder">${SafeUI.escapeHTML(item.name)}</span>` 
-                    : `<a href="${SafeUI.escapeHTML(item.mailto)}" class="list-item-name">${SafeUI.escapeHTML(item.name)}</a>`
+                    ? `<span class="list-item-name-folder">${UIUtils.escapeHTML(item.name)}</span>`
+                    : `<a href="${UIUtils.escapeHTML(item.mailto)}" class="list-item-name">${UIUtils.escapeHTML(item.name)}</a>`
                  }
                  <div class="list-item-actions">
-                    ${!isFolder ? `<button class="icon-btn copy-btn" title="Copy Link" aria-label="Copy Link">${SafeUI.SVGIcons.copy}</button>` : ''}
-                    <button class="icon-btn move-btn" title="Move" aria-label="Move Item">${SafeUI.SVGIcons.move}</button>
-                    <button class="icon-btn edit-btn" title="${isFolder?'Rename':'Edit'}" aria-label="${isFolder?'Rename Folder':'Edit Template'}">${SafeUI.SVGIcons.pencil}</button>
-                    <button class="icon-btn delete-btn" title="Delete" aria-label="Delete Item">${SafeUI.SVGIcons.trash}</button>
+                    ${!isFolder ? `<button class="icon-btn copy-btn" title="Copy Link" aria-label="Copy Link">${UIUtils.SVGIcons.copy}</button>` : ''}
+                    <button class="icon-btn move-btn" title="Move" aria-label="Move Item">${UIUtils.SVGIcons.move}</button>
+                    <button class="icon-btn edit-btn" title="${isFolder?'Rename':'Edit'}" aria-label="${isFolder?'Rename Folder':'Edit Template'}">${UIUtils.SVGIcons.pencil}</button>
+                    <button class="icon-btn delete-btn" title="Delete" aria-label="Delete Item">${UIUtils.SVGIcons.trash}</button>
                  </div>`;
             return div;
         }
@@ -384,13 +384,13 @@ function openMoveModal(itemId) {
     if(!item) return;
 
     const content = `
-        <p>Move <strong>${SafeUI.escapeHTML(item.name)}</strong> to:</p>
+        <p>Move <strong>${UIUtils.escapeHTML(item.name)}</strong> to:</p>
         <div class="form-group">
             <select id="move-target-select" class="form-control"></select>
         </div>
     `;
 
-    SafeUI.showModal("Move Item", content, [
+    UIUtils.showModal("Move Item", content, [
         {
             label: 'Move',
             class: 'button-primary',
@@ -411,7 +411,7 @@ function openMoveModal(itemId) {
                         newParent.children.push(item);
                         saveState();
                         renderCatalogue();
-                        SafeUI.showToast("Item moved");
+                        UIUtils.showToast("Item moved");
                     }
                 }
             }
@@ -428,7 +428,7 @@ function openMoveModal(itemId) {
 /**
  * Main initialization function.
  *
- * 1. Checks for required global dependencies (`SafeUI`).
+ * 1. Checks for required global dependencies (`UIUtils`).
  * 2. Initializes the page context via `AppLifecycle.initPage`.
  * 3. Sets up event listeners for UI interactions (Drag & Drop, Modals, Buttons).
  * 4. Initializes the `SharedSettingsModal` for CSV import/export.
@@ -436,7 +436,7 @@ function openMoveModal(itemId) {
  */
 async function init() {
     
-    if (typeof SafeUI === 'undefined') { return; }
+    if (typeof UIUtils === 'undefined') { return; }
 
     const ctx = await AppLifecycle.initPage({
         storageKey: APP_CONFIG.DATA_KEY,
@@ -501,7 +501,7 @@ async function init() {
 
     DOMElements.btnNewFolder.addEventListener('click', (e) => {
         e.stopPropagation();
-        SafeUI.showModal('New Folder', '<input id="fn" class="form-control" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
+        UIUtils.showModal('New Folder', '<input id="fn" class="form-control" placeholder="Folder Name">', [{label:'Create', class:'button-primary', callback:()=>{
             const name = document.getElementById('fn').value.trim();
             if(name) {
                 const f = TreeUtils.findItemById(state.library, currentFolderId);
@@ -564,7 +564,7 @@ async function init() {
         const content = `
             <div class="form-group">
                 <label>Template Name</label>
-                <input id="modal-save-name" class="form-control" value="${SafeUI.escapeHTML(defaultName)}" placeholder="Template Name">
+                <input id="modal-save-name" class="form-control" value="${UIUtils.escapeHTML(defaultName)}" placeholder="Template Name">
             </div>
             <div class="form-group">
                 <label>Save To</label>
@@ -576,20 +576,20 @@ async function init() {
             </div>
         `;
 
-        SafeUI.showModal("Save Template", content, [
+        UIUtils.showModal("Save Template", content, [
             {
                 label: 'Save',
                 class: 'btn-primary',
                 callback: () => {
                     const name = document.getElementById('modal-save-name').value.trim();
-                    if (!name) return SafeUI.showValidationError("Invalid Name", "Template name is required", "modal-save-name");
+                    if (!name) return UIUtils.showValidationError("Invalid Name", "Template name is required", "modal-save-name");
 
                     const folderSelect = document.getElementById(folderSelectId);
                     let targetId = folderSelect.value;
 
                     if (targetId === '__CREATE_NEW__') {
                         const newFolderName = document.getElementById('modal-new-folder-name').value.trim();
-                        if (!newFolderName) return SafeUI.showValidationError("Invalid Folder", "Folder name is required", "modal-new-folder-name");
+                        if (!newFolderName) return UIUtils.showValidationError("Invalid Folder", "Folder name is required", "modal-new-folder-name");
 
                         // Create folder inside current context or root? Let's default to currentFolderId or root if context is confusing,
                         // but the dropdown implies a global selection.
@@ -620,11 +620,11 @@ async function init() {
                         });
                         saveState();
                         renderCatalogue();
-                        SafeUI.showToast("Template saved");
+                        UIUtils.showToast("Template saved");
                         setActiveSection('library');
                         return true;
                     } else {
-                        SafeUI.showToast("Error: Target folder not found.");
+                        UIUtils.showToast("Error: Target folder not found.");
                         return false;
                     }
                 }
@@ -690,7 +690,7 @@ async function init() {
 
         if(e.target.closest('.edit-btn')) {
             if (item.type === 'folder') {
-                SafeUI.showModal('Rename', `<input id="ren" class="form-control" value="${SafeUI.escapeHTML(item.name)}">`, [{label:'Save', class:'button-primary', callback:()=>{
+                UIUtils.showModal('Rename', `<input id="ren" class="form-control" value="${UIUtils.escapeHTML(item.name)}">`, [{label:'Save', class:'button-primary', callback:()=>{
                     const v = document.getElementById('ren').value.trim();
                     if(v) { item.name = v; saveState(); renderCatalogue(); refreshSaveDropdown(); }
                 }}, {label:'Cancel'}]);
@@ -704,7 +704,7 @@ async function init() {
 
                 updateLivePreview(); // Trigger preview update
                 setActiveSection('editor');
-                SafeUI.showToast("Loaded");
+                UIUtils.showToast("Loaded");
             }
         }
         
@@ -787,7 +787,7 @@ async function init() {
                     saveState();
                     renderCatalogue();
                     refreshSaveDropdown();
-                    SafeUI.showToast(`Imported ${entries.length} items`);
+                    UIUtils.showToast(`Imported ${entries.length} items`);
                 }
             });
         },

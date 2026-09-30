@@ -1,6 +1,6 @@
 /**
  * app-core.js
- * Core application initialization, SafeUI wrapper, and DOM utilities.
+ * Core application initialization, UI utilities, and DOM utilities.
  */
 
 // ============================================================================
@@ -587,54 +587,6 @@ const UIUtils = (() => {
     };
 })();
 
-// ============================================================================
-// MODULE: SafeUI (Proxy layer)
-// ============================================================================
-/**
- * Public API for UI utilities.
- * Acts as a proxy to `UIUtils` to provide a stable interface for applications.
- *
- * @namespace SafeUI
- */
-const SafeUI = (() => {
-    const getSVGIcons = () => {
-        if (UIUtils.SVGIcons) return UIUtils.SVGIcons;
-        return { plus: '+', pencil: '✎', trash: '🗑', settings: '⚙', copy: '📋' };
-    };
-
-    return {
-        /**
-         * Flag indicating the module is loaded.
-         * @type {boolean}
-         */
-        isReady: true,
-
-        /**
-         * Collection of SVG icon strings or text fallbacks.
-         * @type {Object<string, string>}
-         */
-        SVGIcons: getSVGIcons(),
-
-        // Proxy methods - see UIUtils for documentation
-        showModal: (title, content, actions) => UIUtils.showModal(title, content, actions),
-        showValidationError: (title, msg, elId) => UIUtils.showValidationError(title, msg, elId),
-        hideModal: () => UIUtils.hideModal(),
-        showToast: (msg) => UIUtils.showToast(msg),
-        escapeHTML: (str) => UIUtils.escapeHTML(str),
-        debounce: (func, delay) => UIUtils.debounce(func, delay),
-        capitalize: (str) => UIUtils.capitalize(str),
-        getRandomInt: (max) => UIUtils.getRandomInt(max),
-        copyToClipboard: (text) => UIUtils.copyToClipboard(text),
-        downloadJSON: (data, filename, mimeType) => UIUtils.downloadJSON(data, filename, mimeType),
-        openFilePicker: (cb, accept) => UIUtils.openFilePicker(cb, accept),
-        readJSONFile: (file) => UIUtils.readJSONFile(file),
-        readTextFile: (file) => UIUtils.readTextFile(file),
-        parseJSON: (str, success, error) => UIUtils.parseJSON(str, success, error),
-        fetchJSON: (url, options, validator) => UIUtils.fetchJSON(url, options, validator),
-        createStateManager: (key, defaults, version, onCorruption) => UIUtils.createStateManager(key, defaults, version, onCorruption),
-        validators: UIUtils.validators
-    };
-})();
 
 // ============================================================================
 // MODULE: DOMHelpers
@@ -843,7 +795,7 @@ const AppLifecycle = (() => {
             if (typeof window.showAppStartupError === 'function') {
                 window.showAppStartupError(title, message);
             } else {
-                banner.innerHTML = `<strong>${SafeUI.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${SafeUI.escapeHTML(message)}</p>`;
+                banner.innerHTML = `<strong>${UIUtils.escapeHTML(title)}</strong><p style="margin:0.25rem 0 0 0;font-weight:normal;">${UIUtils.escapeHTML(message)}</p>`;
                 banner.classList.remove('hidden');
             }
         } catch (e) {
@@ -940,13 +892,13 @@ const AppLifecycle = (() => {
                 return null;
             }
 
-            const stateManager = SafeUI.createStateManager(storageKey, defaultState, version, onCorruption);
+            const stateManager = UIUtils.createStateManager(storageKey, defaultState, version, onCorruption);
             if (!stateManager) {
                 _showErrorBanner("Application Unable to Start", "StateManager failed to initialize.");
                 return null;
             }
 
-            if (elements.btnSettings) elements.btnSettings.innerHTML = SafeUI.SVGIcons.settings;
+            if (elements.btnSettings) elements.btnSettings.innerHTML = UIUtils.SVGIcons.settings;
             
             let state = stateManager.load();
             
@@ -1011,7 +963,6 @@ const AppLifecycle = (() => {
 })();
 
 window.UIUtils = UIUtils;
-window.SafeUI = SafeUI;
 window.DOMHelpers = DOMHelpers;
 window.AppLifecycle = AppLifecycle;
 window.DataHelpers = DataHelpers;

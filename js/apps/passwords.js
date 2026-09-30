@@ -157,8 +157,8 @@ const PasswordLogic = {
 
     generatePassphrase: (config, context) => {
         const { structures, wordBank: W, symbolRules: SYMBOL_RULES } = context;
-        const R = (a) => a[SafeUI.getRandomInt(a.length)];
-        const Cap = (s) => SafeUI.capitalize(s);
+        const R = (a) => a[UIUtils.getRandomInt(a.length)];
+        const Cap = (s) => UIUtils.capitalize(s);
 
         const C = { ...config };
         C.passNumWords = Math.max(0, C.passNumWords || 0);
@@ -227,12 +227,12 @@ const PasswordLogic = {
             }
 
             let numberBlock = [];
-            for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
+            for (let j = 0; j < C.passNumDigits; j++) { numberBlock.push(UIUtils.getRandomInt(10)); }
 
             let preliminaryLength = wordStr.length + numberBlock.length + C.passNumSymbols;
             if (C.padToMin && preliminaryLength < C.minLength) {
                 const paddingNeeded = C.minLength - preliminaryLength;
-                for (let j = 0; j < paddingNeeded; j++) { numberBlock.push(SafeUI.getRandomInt(10)); }
+                for (let j = 0; j < paddingNeeded; j++) { numberBlock.push(UIUtils.getRandomInt(10)); }
                 preliminaryLength += paddingNeeded;
             }
 
@@ -252,7 +252,7 @@ const PasswordLogic = {
                 }
 
                 for (let k = availableTypes.length - 1; k > 0; k--) {
-                    const l = SafeUI.getRandomInt(k + 1);
+                    const l = UIUtils.getRandomInt(k + 1);
                     [availableTypes[k], availableTypes[l]] = [availableTypes[l], availableTypes[k]];
                 }
                 for (let j = 0; j < C.passNumSymbols; j++) {
@@ -274,7 +274,7 @@ const PasswordLogic = {
                 let placeAtStart = false;
                 if (C.passNumPlacement === 'start') placeAtStart = true;
                 else if (C.passNumPlacement === 'end') placeAtStart = false;
-                else placeAtStart = (SafeUI.getRandomInt(2) === 0);
+                else placeAtStart = (UIUtils.getRandomInt(2) === 0);
 
                 finalPass = (placeAtStart && numberPart.length > 0)
                     ? (numberPart + symbolsToUse.junction + wordStr)
@@ -430,13 +430,13 @@ const PasswordUI = {
                 copyBtn.className = 'copy-btn btn-icon';
                 copyBtn.title = 'Copy';
                 copyBtn.setAttribute('aria-label', 'Copy password to clipboard');
-                copyBtn.innerHTML = SafeUI.SVGIcons.copy;
+                copyBtn.innerHTML = UIUtils.SVGIcons.copy;
                 copyBtn.disabled = pass.startsWith('[');
                 copyBtn.onclick = async () => {
                     const success = await UIPatterns.copyToClipboard(pass, "Copied!");
                     if (success) {
                         copyBtn.innerHTML = CHECK_ICON_SVG;
-                        setTimeout(() => { copyBtn.innerHTML = SafeUI.SVGIcons.copy; }, 1000);
+                        setTimeout(() => { copyBtn.innerHTML = UIUtils.SVGIcons.copy; }, 1000);
                     }
                 };
                 li.appendChild(text);
@@ -590,7 +590,7 @@ function initializePage() {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-                const data = await SafeUI.fetchJSON(
+                const data = await UIUtils.fetchJSON(
                     'wordbanks/wordbank-base.json',
                     { signal: controller.signal },
                     (d) => d && typeof d.wordBank === 'object'
@@ -613,7 +613,7 @@ function initializePage() {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-                const seasonalBankData = await SafeUI.fetchJSON(
+                const seasonalBankData = await UIUtils.fetchJSON(
                     `wordbanks/wordbank-${seasonKey}.json`,
                     { signal: controller.signal },
                     (d) => d && typeof d.wordBank === 'object'
@@ -626,7 +626,7 @@ function initializePage() {
                 return seasonalBankData.wordBank;
             } catch (err) {
                 console.error(`[loadSeasonalBank] Failed to load seasonal wordbank "${seasonKey}":`, err);
-                SafeUI.showToast(`Error loading ${seasonKey} wordbank. Using base words only.`);
+                UIUtils.showToast(`Error loading ${seasonKey} wordbank. Using base words only.`);
                 return null;
             }
         };
@@ -643,7 +643,7 @@ function initializePage() {
             PasswordUI.updateSeasonDisplay(DOMElements, activeSeasonKey);
 
             // Optimistic UI: Show loading
-            SafeUI.showToast("Loading theme data...", 1000);
+            UIUtils.showToast("Loading theme data...", 1000);
 
             // ⚡ ACCELERATE: Concurrent execution for fetching word banks
             const [baseLoaded, seasonalBank] = await Promise.allSettled([
@@ -711,7 +711,7 @@ function initializePage() {
                             PasswordUI.toggleAccordion(null, DOMElements);
                         }
                         handleGenerate({ type: 'passphrase', config: item.config });
-                        SafeUI.showToast(`Generated using preset: ${item.name}`);
+                        UIUtils.showToast(`Generated using preset: ${item.name}`);
                     } else if (item.type === 'quickcopy') {
                         await UIPatterns.copyToClipboard(item.value, `Copied: ${item.name}`);
                     }
@@ -733,7 +733,7 @@ function initializePage() {
         };
 
         const handleAddQuickCopy = () => {
-            SafeUI.showModal('Add Static Password',
+            UIUtils.showModal('Add Static Password',
                 `<div class="form-group">
                     <label for="qc-name">Name (e.g., "Guest WiFi")</label>
                     <input id="qc-name" class="form-control" placeholder="Name">
@@ -750,23 +750,23 @@ function initializePage() {
                         callback: () => {
                             const name = document.getElementById('qc-name').value.trim();
                             const value = document.getElementById('qc-value').value;
-                            if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 50)) {
-                                SafeUI.showValidationError('Invalid Name', 'Name: 1-50 chars.', 'qc-name');
+                            if (!UIUtils.validators.notEmpty(name) || !UIUtils.validators.maxLength(name, 50)) {
+                                UIUtils.showValidationError('Invalid Name', 'Name: 1-50 chars.', 'qc-name');
                                 return false;
                             }
-                            if (!SafeUI.validators.notEmpty(value)) {
-                                SafeUI.showValidationError('Invalid Password', 'Value required.', 'qc-value');
+                            if (!UIUtils.validators.notEmpty(value)) {
+                                UIUtils.showValidationError('Invalid Password', 'Value required.', 'qc-value');
                                 return false;
                             }
                             if (DataValidator.hasDuplicate(state.quickCopyItems, 'name', name)) {
-                                SafeUI.showValidationError('Duplicate Name', 'Name exists.', 'qc-name');
+                                UIUtils.showValidationError('Duplicate Name', 'Name exists.', 'qc-name');
                                 return false;
                             }
                             const newItem = { id: crypto.randomUUID(), name: name, value: value };
                             state.quickCopyItems.push(newItem);
                             saveState();
                             initQuickActions();
-                            SafeUI.showToast('Saved.');
+                            UIUtils.showToast('Saved.');
                         }
                     }
                 ]
@@ -777,26 +777,26 @@ function initializePage() {
             const finalConfig = PasswordUI.getConfigFromUI(DOMElements);
             if (!finalConfig) return;
             const { type, config } = finalConfig;
-            SafeUI.showModal('Save Settings Preset', '<input id="preset-name" class="form-control" placeholder="e.g., 4-Word TitleCase">', [
+            UIUtils.showModal('Save Settings Preset', '<input id="preset-name" class="form-control" placeholder="e.g., 4-Word TitleCase">', [
                 { label: 'Cancel' },
                 {
                     label: 'Save',
                     class: 'btn-primary',
                     callback: () => {
                         const name = document.getElementById('preset-name').value.trim();
-                        if (!SafeUI.validators.notEmpty(name) || !SafeUI.validators.maxLength(name, 50)) {
-                            SafeUI.showValidationError('Invalid Name', 'Name: 1-50 chars.', 'preset-name');
+                        if (!UIUtils.validators.notEmpty(name) || !UIUtils.validators.maxLength(name, 50)) {
+                            UIUtils.showValidationError('Invalid Name', 'Name: 1-50 chars.', 'preset-name');
                             return false;
                         }
                         if (DataValidator.hasDuplicate(state.generatorPresets, 'name', name)) {
-                            SafeUI.showValidationError('Duplicate Name', 'Name exists.', 'preset-name');
+                            UIUtils.showValidationError('Duplicate Name', 'Name exists.', 'preset-name');
                             return false;
                         }
                         const newPreset = { id: crypto.randomUUID(), name: name, config: config };
                         state.generatorPresets.push(newPreset);
                         saveState();
                         initQuickActions();
-                        SafeUI.showToast('Saved.');
+                        UIUtils.showToast('Saved.');
                     }
                 }
             ]);
@@ -849,8 +849,8 @@ function initializePage() {
         }
 
         async function init() {
-            DOMElements.btnAddPreset.innerHTML = SafeUI.SVGIcons.plus + ' Save Settings';
-            DOMElements.btnAddQuickCopy.innerHTML = SafeUI.SVGIcons.plus + ' Add Static Password';
+            DOMElements.btnAddPreset.innerHTML = UIUtils.SVGIcons.plus + ' Save Settings';
+            DOMElements.btnAddQuickCopy.innerHTML = UIUtils.SVGIcons.plus + ' Add Static Password';
 
             PasswordUI.initAccordion(DOMElements);
 

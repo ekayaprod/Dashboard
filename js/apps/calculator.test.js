@@ -14,7 +14,7 @@ describe('js/apps/calculator.js', () => {
         vi.clearAllMocks();
 
         // Mock global dependencies
-        window.SafeUI = {
+        window.UIUtils = {
             showToast: vi.fn(),
             showModal: vi.fn((title, body, buttons) => {
                 // Find the confirmation button and trigger its callback immediately

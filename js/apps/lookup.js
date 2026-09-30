@@ -119,7 +119,7 @@ const LookupRenderer = {
         }
 
         if (lowerTerm) {
-            const escapedTerm = SafeUI.escapeHTML(lowerTerm);
+            const escapedTerm = UIUtils.escapeHTML(lowerTerm);
             return `
                 <div class="empty-state-container" aria-live="polite">
                     <div class="empty-state-icon">
@@ -150,14 +150,14 @@ const LookupRenderer = {
 
         const createDataRow = (label, value, highlightTerm) => {
             if (!value) return '';
-            const highlightedValue = highlightTerm ? UIPatterns.highlightSearchTerm(value, highlightTerm) : SafeUI.escapeHTML(value);
+            const highlightedValue = highlightTerm ? UIPatterns.highlightSearchTerm(value, highlightTerm) : UIUtils.escapeHTML(value);
             return `
                 <div class="item-row">
                     <strong>${label}:</strong>
                     <div class="item-value">
                         <span>${highlightedValue}</span>
-                        <button class="btn-copy btn-icon" title="Copy ${label}" aria-label="Copy ${label}" data-copy="${SafeUI.escapeHTML(value)}">
-                            ${SafeUI.SVGIcons.copy}
+                        <button class="btn-copy btn-icon" title="Copy ${label}" aria-label="Copy ${label}" data-copy="${UIUtils.escapeHTML(value)}">
+                            ${UIUtils.SVGIcons.copy}
                         </button>
                     </div>
                 </div>
@@ -169,7 +169,7 @@ const LookupRenderer = {
             return `
                 <div class="item-row-notes">
                     <strong>Notes:</strong>
-                    <span class="item-notes-text">${SafeUI.escapeHTML(notes)}</span>
+                    <span class="item-notes-text">${UIUtils.escapeHTML(notes)}</span>
                 </div>
             `;
         };
@@ -178,8 +178,8 @@ const LookupRenderer = {
             <div class="item-header">
                 <span class="item-keyword">${UIPatterns.highlightSearchTerm(item.keyword, searchTerm)}</span>
                 <div class="item-actions">
-                    <button class="btn-edit btn-icon" title="Edit" aria-label="Edit Entry">${SafeUI.SVGIcons.pencil}</button>
-                    <button class="btn-delete btn-icon" title="Delete" aria-label="Delete Entry">${SafeUI.SVGIcons.trash}</button>
+                    <button class="btn-edit btn-icon" title="Edit" aria-label="Edit Entry">${UIUtils.SVGIcons.pencil}</button>
+                    <button class="btn-delete btn-icon" title="Delete" aria-label="Delete Entry">${UIUtils.SVGIcons.trash}</button>
                 </div>
             </div>
             <div class="item-content">
@@ -243,7 +243,7 @@ const LookupSettings = {
         const toAdd = actions.filter(a => a.action === 'add').length;
         const toOverwrite = actions.filter(a => a.action === 'overwrite').length;
 
-        const errorList = importErrors.slice(0, MAX_IMPORT_ERRORS_DISPLAY).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+        const errorList = importErrors.slice(0, MAX_IMPORT_ERRORS_DISPLAY).map(e => `<li>${UIUtils.escapeHTML(e)}</li>`).join('');
         const moreErrors = importErrors.length > MAX_IMPORT_ERRORS_DISPLAY ? `<li>... and ${importErrors.length - MAX_IMPORT_ERRORS_DISPLAY} more errors.</li>` : '';
 
         let summaryHtml = `<p>CSV file processed:</p>
@@ -260,7 +260,7 @@ const LookupSettings = {
         }
         summaryHtml += `<p>This action cannot be undone.</p>`;
 
-        SafeUI.showModal("Confirm Import", summaryHtml,
+        UIUtils.showModal("Confirm Import", summaryHtml,
             LookupHelpers.modalActions.cancelAndConfirm('Import Data', () => {
                 actions.forEach(action => {
                     if (action.action === 'add') state.items.push(action.item);
@@ -276,8 +276,8 @@ const LookupSettings = {
 
                 sortAndSaveState();
                 renderAll();
-                SafeUI.showToast(`Imported ${toAdd + toOverwrite} entries.`);
-                SafeUI.hideModal();
+                UIUtils.showToast(`Imported ${toAdd + toOverwrite} entries.`);
+                UIUtils.hideModal();
             }, true)
         );
         return false;
@@ -289,9 +289,9 @@ const LookupSettings = {
         const getSettingsHtml = () => {
             let searchesHtml = state.settings.customSearches.map(search => `
                 <div class="custom-search-item" data-id="${search.id}">
-                    <input type="text" class="form-control search-name" value="${SafeUI.escapeHTML(search.name)}" placeholder="Search Name">
-                    <input type="text" class="form-control search-url" value="${SafeUI.escapeHTML(search.urlTemplate)}" placeholder="https://my-kb.com/search?q={query}">
-                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search" aria-label="Delete Search">${SafeUI.SVGIcons.trash}</button>
+                    <input type="text" class="form-control search-name" value="${UIUtils.escapeHTML(search.name)}" placeholder="Search Name">
+                    <input type="text" class="form-control search-url" value="${UIUtils.escapeHTML(search.urlTemplate)}" placeholder="https://my-kb.com/search?q={query}">
+                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search" aria-label="Delete Search">${UIUtils.SVGIcons.trash}</button>
                 </div>
             `).join('');
 
@@ -330,14 +330,14 @@ const LookupSettings = {
                 const urlTemplate = urlInput.value.trim();
 
                 if (!name) {
-                    SafeUI.showValidationError("Invalid Name", "Search Name cannot be empty.", nameInput.id);
+                    UIUtils.showValidationError("Invalid Name", "Search Name cannot be empty.", nameInput.id);
                     validationFailed = true;
                     return;
                 }
 
                 const validation = LookupHelpers.validateSearchUrl(urlTemplate);
                 if (!validation.valid) {
-                    SafeUI.showValidationError("Invalid URL", validation.message, urlInput.id);
+                    UIUtils.showValidationError("Invalid URL", validation.message, urlInput.id);
                     validationFailed = true;
                     return;
                 }
@@ -353,7 +353,7 @@ const LookupSettings = {
 
             state.settings.customSearches = newCustomSearches;
             saveState();
-            SafeUI.showToast("Settings saved.");
+            UIUtils.showToast("Settings saved.");
             renderAll();
             return true;
         };
@@ -369,7 +369,7 @@ const LookupSettings = {
                 newItem.innerHTML = `
                     <input type="text" id="search-name-${newId}" class="form-control search-name" value="" placeholder="Search Name">
                     <input type="text" id="search-url-${newId}" class="form-control search-url" value="" placeholder="https://my-kb.com/search?q={query}">
-                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search" aria-label="Delete Search">${SafeUI.SVGIcons.trash}</button>
+                    <button type="button" class="btn-icon delete-search-btn" title="Delete Search" aria-label="Delete Search">${UIUtils.SVGIcons.trash}</button>
                 `;
                 const emptyMsg = listContainer.querySelector('p');
                 if (emptyMsg) emptyMsg.remove();
@@ -438,8 +438,8 @@ const LookupSettings = {
             domElements.btnEditMode.classList.toggle('btn-primary', isEditMode);
             if (setEditMode) setEditMode(isEditMode);
 
-            SafeUI.hideModal();
-            SafeUI.showToast('Restored previous session');
+            UIUtils.hideModal();
+            UIUtils.showToast('Restored previous session');
         };
 
         window.SharedSettingsModal.init({
@@ -541,7 +541,7 @@ function initializePage() {
                 try { originalSaveState(); }
                 catch (e) {
                     console.error("Failed to save state:", e);
-                    SafeUI.showModal("Error", "<p>Failed to save data.</p>", [{label: 'OK'}]);
+                    UIUtils.showModal("Error", "<p>Failed to save data.</p>", [{label: 'OK'}]);
                 }
             };
 
@@ -618,7 +618,7 @@ function initializePage() {
             const clearEditStateAndRender = (message = null) => {
                 currentEditState = { id: null, type: null };
                 renderAll();
-                if (message) SafeUI.showToast(message);
+                if (message) UIUtils.showToast(message);
             };
 
             const getFormValues = (form, id) => {
@@ -730,7 +730,7 @@ function initializePage() {
                     button.target = '_blank';
                     button.rel = 'noopener noreferrer';
 
-                    const escapedName = SafeUI.escapeHTML(search.name);
+                    const escapedName = UIUtils.escapeHTML(search.name);
 
                     if (!term) {
                         button.textContent = `Search ${escapedName} (enter a term first)`;
@@ -744,7 +744,7 @@ function initializePage() {
                             button.removeAttribute('href');
                         } else {
                             const finalUrl = search.urlTemplate.replace(/\{query\}/ig, encodeURIComponent(term));
-                            button.textContent = `Search "${SafeUI.escapeHTML(term)}" in ${escapedName}`;
+                            button.textContent = `Search "${UIUtils.escapeHTML(term)}" in ${escapedName}`;
                             button.classList.remove('button-disabled-link');
                             button.href = finalUrl;
                         }
@@ -804,16 +804,16 @@ function initializePage() {
                 form.innerHTML = `
                     <div class="form-grid">
                         <label for="edit-keyword-${item.id}">Keyword(s)</label>
-                        <input type="text" id="edit-keyword-${item.id}" class="form-control" value="${SafeUI.escapeHTML(item.keyword)}" placeholder="Comma-separated keywords">
+                        <input type="text" id="edit-keyword-${item.id}" class="form-control" value="${UIUtils.escapeHTML(item.keyword)}" placeholder="Comma-separated keywords">
 
                         <label for="edit-group-${item.id}">Group</label>
-                        <input type="text" id="edit-group-${item.id}" class="form-control" value="${SafeUI.escapeHTML(item.assignmentGroup)}" placeholder="Group name">
+                        <input type="text" id="edit-group-${item.id}" class="form-control" value="${UIUtils.escapeHTML(item.assignmentGroup)}" placeholder="Group name">
 
                         <label for="edit-notes-${item.id}">Notes</label>
-                        <textarea id="edit-notes-${item.id}" class="form-control sidebar-textarea" placeholder="Add notes here...">${SafeUI.escapeHTML(item.notes)}</textarea>
+                        <textarea id="edit-notes-${item.id}" class="form-control sidebar-textarea" placeholder="Add notes here...">${UIUtils.escapeHTML(item.notes)}</textarea>
 
                         <label for="edit-path-${item.id}">Path</label>
-                        <input type="text" id="edit-path-${item.id}" class="form-control" value="${SafeUI.escapeHTML(item.phoneLogPath)}" placeholder="Cat > SubCat > Item">
+                        <input type="text" id="edit-path-${item.id}" class="form-control" value="${UIUtils.escapeHTML(item.phoneLogPath)}" placeholder="Cat > SubCat > Item">
                     </div>
                     <div class="edit-form-actions">
                         <button type="button" class="btn-delete btn btn-danger">Delete</button>
@@ -851,7 +851,7 @@ function initializePage() {
 
             function handleAddNewEntry() {
                 if (currentEditState.id) {
-                    SafeUI.showToast("Please save or cancel your current edit first.");
+                    UIUtils.showToast("Please save or cancel your current edit first.");
                     return;
                 }
 
@@ -871,7 +871,7 @@ function initializePage() {
 
             function handleEdit(id) {
                 if (currentEditState.id && currentEditState.id !== id) {
-                    SafeUI.showToast("Please save or cancel your current edit first.");
+                    UIUtils.showToast("Please save or cancel your current edit first.");
                     return;
                 }
                 currentEditState = { id: id, type: 'local' };
@@ -885,7 +885,7 @@ function initializePage() {
                 const validation = LookupHelpers.validateEntry({ keyword, assignmentGroup });
                 if (!validation.valid) {
                     const errorField = validation.errors[0].includes('Keyword') ? `edit-keyword-${id}` : `edit-group-${id}`;
-                    return SafeUI.showValidationError("Invalid Input", validation.errors.join('. '), errorField);
+                    return UIUtils.showValidationError("Invalid Input", validation.errors.join('. '), errorField);
                 }
 
                 const existingEntry = (assignmentGroup && state.items.find(item =>
@@ -909,8 +909,8 @@ function initializePage() {
                 };
 
                 if (existingEntry) {
-                    SafeUI.showModal("Duplicate Group",
-                        `<p>An entry for "<strong>${SafeUI.escapeHTML(existingEntry.assignmentGroup)}</strong>" already exists with keyword(s) "<strong>${SafeUI.escapeHTML(existingEntry.keyword)}</strong>".</p>`,
+                    UIUtils.showModal("Duplicate Group",
+                        `<p>An entry for "<strong>${UIUtils.escapeHTML(existingEntry.assignmentGroup)}</strong>" already exists with keyword(s) "<strong>${UIUtils.escapeHTML(existingEntry.keyword)}</strong>".</p>`,
                         LookupHelpers.modalActions.cancelAndMultiple([
                             { label: 'Continue (Create New)', class: 'btn-danger', callback: saveAction },
                             {
@@ -968,7 +968,7 @@ function initializePage() {
                             sortAndSaveState();
 
                             // 6. Feedback
-                            if (!skipConfirm) SafeUI.showToast("Deleted.");
+                            if (!skipConfirm) UIUtils.showToast("Deleted.");
 
                             // 7. Handle Empty/Edge Cases
                             if (currentMatches.length === 0) {
@@ -988,14 +988,14 @@ function initializePage() {
             }
 
             function attachEventListeners() {
-                const debouncedSearchSave = SafeUI.debounce(() => {
+                const debouncedSearchSave = UIUtils.debounce(() => {
                     if (state.ui) {
                         state.ui.searchTerm = DOMElements.searchInput.value.trim();
                         saveState();
                     }
                 }, ANIMATION_DURATION_MS);
 
-                const debouncedRender = SafeUI.debounce(renderAll, RENDER_DEBOUNCE_DELAY_MS);
+                const debouncedRender = UIUtils.debounce(renderAll, RENDER_DEBOUNCE_DELAY_MS);
 
                 DOMElements.searchInput.addEventListener('input', () => {
                     setLoading(true);
@@ -1091,7 +1091,7 @@ function initializePage() {
                     renderAll();
                 });
 
-                DOMElements.localResults.addEventListener('scroll', SafeUI.debounce(() => {
+                DOMElements.localResults.addEventListener('scroll', UIUtils.debounce(() => {
                     if (state.ui) {
                         state.ui.scrollTop = DOMElements.localResults.scrollTop;
                         saveState();
@@ -1100,7 +1100,7 @@ function initializePage() {
 
                 const scrollToTopBtn = document.getElementById('scroll-to-top');
                 if (scrollToTopBtn) {
-                    DOMElements.localResults.addEventListener('scroll', SafeUI.debounce(() => {
+                    DOMElements.localResults.addEventListener('scroll', UIUtils.debounce(() => {
                         scrollToTopBtn.classList.toggle('visible', DOMElements.localResults.scrollTop > SCROLL_TOP_VISIBILITY_THRESHOLD);
                     }, 200));
                     scrollToTopBtn.addEventListener('click', () => {
@@ -1128,7 +1128,7 @@ function initializePage() {
                 if (state.ui) {
                     if (state.ui.searchTerm) {
                         DOMElements.searchInput.value = state.ui.searchTerm;
-                        SafeUI.showToast('Restored previous search');
+                        UIUtils.showToast('Restored previous search');
                     }
 
                     if (state.ui.isEditMode) {

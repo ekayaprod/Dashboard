@@ -23,12 +23,12 @@ const BackupRestore = (() => {
                 const dataStr = JSON.stringify(backupData, null, 2);
                 const filename = `${appName}-backup-${new Date().toISOString().split('T')[0]}.json`;
 
-                SafeUI.downloadJSON(dataStr, filename, 'application/json');
-                SafeUI.showToast('Backup created successfully.');
+                UIUtils.downloadJSON(dataStr, filename, 'application/json');
+                UIUtils.showToast('Backup created successfully.');
 
             } catch (err) {
                 console.error("Backup failed:", err);
-                SafeUI.showModal('Backup Error', `<p>Failed to create backup: ${err.message}</p>`, [{ label: 'OK' }]);
+                UIUtils.showModal('Backup Error', `<p>Failed to create backup: ${err.message}</p>`, [{ label: 'OK' }]);
             }
         },
 
@@ -38,12 +38,12 @@ const BackupRestore = (() => {
          * @param {Function} onRestore - Callback function invoked with the parsed data upon success.
          */
         restoreBackup: (onRestore) => {
-            SafeUI.openFilePicker(async (file) => {
+            UIUtils.openFilePicker(async (file) => {
                 try {
-                    const parsedData = await SafeUI.readJSONFile(file);
+                    const parsedData = await UIUtils.readJSONFile(file);
                     onRestore(parsedData);
                 } catch (err) {
-                    SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                    UIUtils.showModal('Restore Failed', `<p>${UIUtils.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
                 }
             });
         },
@@ -116,7 +116,7 @@ const BackupRestore = (() => {
 
                 } catch (err) {
                     console.error("Restore failed:", err);
-                    SafeUI.showModal('Restore Failed', `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                    UIUtils.showModal('Restore Failed', `<p>${UIUtils.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
                 }
             });
         }
@@ -166,13 +166,13 @@ const DataValidator = (() => {
                 const fieldRules = rules[fieldName];
                 if (!fieldRules) continue;
 
-                // Optimization: Use CoreValidators via SafeUI for standard checks
-                if (fieldRules.required && !SafeUI.validators.notEmpty(value)) {
+                // Optimization: Use CoreValidators via UIUtils for standard checks
+                if (fieldRules.required && !UIUtils.validators.notEmpty(value)) {
                     errors.push(`${fieldName} is required`);
                     continue;
                 }
 
-                if (fieldRules.maxLength && !SafeUI.validators.maxLength(value, fieldRules.maxLength)) {
+                if (fieldRules.maxLength && !UIUtils.validators.maxLength(value, fieldRules.maxLength)) {
                     errors.push(`${fieldName} must be ${fieldRules.maxLength} characters or less`);
                 }
 
@@ -294,7 +294,7 @@ const DataConverter = (() => {
          * @throws {Error} If file reading fails or validation errors exceed threshold.
          */
         fromCSV: async (file, requiredHeaders) => {
-            const text = await SafeUI.readTextFile(file);
+            const text = await UIUtils.readTextFile(file);
             const lines = [];
                 let currentLine = '';
                 let inQuotes = false;
@@ -409,11 +409,11 @@ const CsvManager = (() => {
                     const timestamp = _getTimestamp();
                     const finalFilename = `${baseFilename}_${timestamp}.csv`;
 
-                    SafeUI.downloadJSON(csvString, finalFilename, 'text/csv');
+                    UIUtils.downloadJSON(csvString, finalFilename, 'text/csv');
 
                 } catch (err) {
                     console.error("Export failed:", err);
-                    SafeUI.showModal("Export Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                    UIUtils.showModal("Export Error", `<p>${UIUtils.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
                 }
             });
         },
@@ -432,7 +432,7 @@ const CsvManager = (() => {
             if (!config.importBtn) return;
 
             config.importBtn.addEventListener('click', () => {
-                SafeUI.openFilePicker(async (file) => {
+                UIUtils.openFilePicker(async (file) => {
                     try {
                         const { data, errors: parseErrors } = await DataConverter.fromCSV(file, config.headers);
 
@@ -453,7 +453,7 @@ const CsvManager = (() => {
                         });
 
                         if (validatedData.length === 0 && validationErrors.length === 0) {
-                            SafeUI.showModal("Import Failed", "<p>No valid data rows found in the CSV file.</p>", [{ label: 'OK' }]);
+                            UIUtils.showModal("Import Failed", "<p>No valid data rows found in the CSV file.</p>", [{ label: 'OK' }]);
                             return;
                         }
 
@@ -465,7 +465,7 @@ const CsvManager = (() => {
 
                     } catch (err) {
                         console.error("Import failed:", err);
-                        SafeUI.showModal("Import Error", `<p>${SafeUI.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
+                        UIUtils.showModal("Import Error", `<p>${UIUtils.escapeHTML(err.message)}</p>`, [{ label: 'OK' }]);
                     }
                 }, '.csv');
             });

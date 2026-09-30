@@ -47,8 +47,8 @@ describe('app-core.js', () => {
   })
 
   describe('CoreValidators', () => {
-    // Access validators via SafeUI as it's the public API wrapper
-    const validators = () => window.SafeUI.validators
+    // Access validators via UIUtils as it's the public API wrapper
+    const validators = () => window.UIUtils.validators
 
     it('should validate URLs correctly', () => {
       // Valid URLs
@@ -85,15 +85,15 @@ describe('app-core.js', () => {
 
   describe('SVGIcons', () => {
     it('should have aria-hidden="true" on all icons', () => {
-      const icons = window.SafeUI.SVGIcons
+      const icons = window.UIUtils.SVGIcons
       Object.values(icons).forEach((icon) => {
         expect(icon).toContain('aria-hidden="true"')
       })
     })
   })
 
-  describe('SafeUI.fetchJSON', () => {
-    const fetchJSON = (url, opts, validator) => window.SafeUI.fetchJSON(url, opts, validator)
+  describe('UIUtils.fetchJSON', () => {
+    const fetchJSON = (url, opts, validator) => window.UIUtils.fetchJSON(url, opts, validator)
 
     // Mock fetch
     const originalFetch = global.fetch
@@ -199,9 +199,9 @@ describe('app-core.js', () => {
   })
 
   describe('createStateManager', () => {
-    // We access via SafeUI which exposes createStateManager from UIUtils
+    // We access via UIUtils which exposes createStateManager from UIUtils
     const createStateManager = (key, defaults, version, onCorruption) =>
-        window.SafeUI.createStateManager(key, defaults, version, onCorruption)
+        window.UIUtils.createStateManager(key, defaults, version, onCorruption)
 
     const KEY = 'test_key'
     const DEFAULTS = { value: 0 }

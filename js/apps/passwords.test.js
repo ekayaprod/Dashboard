@@ -52,7 +52,7 @@ describe('js/apps/passwords.js', () => {
             showStartupError: vi.fn()
         };
 
-        window.SafeUI = {
+        window.UIUtils = {
             fetchJSON: vi.fn().mockResolvedValue({ wordBank: { "LongWord": ["test"], "Object": ["obj"] } }),
             getRandomInt: (max) => 0, // Deterministic for testing
             capitalize: (s) => s.charAt(0).toUpperCase() + s.slice(1),
@@ -156,7 +156,7 @@ describe('js/apps/passwords.js', () => {
                     maxLength: 20
                 };
                 // Mock getRandomInt to pick first item (index 0)
-                window.SafeUI.getRandomInt = () => 0;
+                window.UIUtils.getRandomInt = () => 0;
 
                 const result = window.PasswordLogic.generatePassphrase(config, context);
                 expect(result).toBe("testing");
@@ -192,12 +192,12 @@ describe('js/apps/passwords.js', () => {
                 // Symbols: ! (from symbolRules['end'])
                 // Placement: Suffix -> Testing00!
 
-                window.SafeUI.getRandomInt = () => 0;
+                window.UIUtils.getRandomInt = () => 0;
 
                 const result = window.PasswordLogic.generatePassphrase(config, context);
                 // Depending on placement logic (start vs end for digits), might vary.
                 // With random=0, passNumPlacement defaults to 'start' or 'end' or random.
-                // Logic says: if (C.passNumPlacement === 'start') ... else ... (SafeUI.getRandomInt(2) === 0)
+                // Logic says: if (C.passNumPlacement === 'start') ... else ... (UIUtils.getRandomInt(2) === 0)
                 // If random returns 0, it places at start if random choice.
 
                 // Let's just check it contains the parts
@@ -268,11 +268,11 @@ describe('js/apps/passwords.js', () => {
             seasonSelect.appendChild(option);
             seasonSelect.value = 'winter';
 
-            const originalFetchJSON = window.SafeUI.fetchJSON;
-            const toastSpy = vi.spyOn(window.SafeUI, 'showToast');
+            const originalFetchJSON = window.UIUtils.fetchJSON;
+            const toastSpy = vi.spyOn(window.UIUtils, 'showToast');
 
             // Force the winter bank fetch to reject, simulating a partial network failure
-            window.SafeUI.fetchJSON = vi.fn().mockImplementation((url, options, validator) => {
+            window.UIUtils.fetchJSON = vi.fn().mockImplementation((url, options, validator) => {
                 if (url.includes('winter')) {
                     return Promise.reject(new Error('Network Timeout'));
                 }
@@ -288,7 +288,7 @@ describe('js/apps/passwords.js', () => {
             await vi.advanceTimersByTimeAsync(100);
 
             // Verify that the fallback mechanism handled the error and the application didn't crash
-            // SafeUI.showToast should have been called with the error message
+            // UIUtils.showToast should have been called with the error message
             expect(toastSpy).toHaveBeenCalledWith('Error loading winter wordbank. Using base words only.');
 
             // Generate button should still work and produce results instead of failing open
@@ -296,7 +296,7 @@ describe('js/apps/passwords.js', () => {
             expect(btnGenerate).toHaveProperty('disabled', false);
 
             // Clean up
-            window.SafeUI.fetchJSON = originalFetchJSON;
+            window.UIUtils.fetchJSON = originalFetchJSON;
             toastSpy.mockRestore();
             vi.useRealTimers();
         });

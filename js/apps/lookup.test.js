@@ -5,15 +5,15 @@ import path from 'path'
 
 describe('js/apps/lookup.js - LookupHelpers', () => {
   beforeAll(() => {
-    // 1. Load app-core.js to get SafeUI and other globals
+    // 1. Load app-core.js to get UIUtils and other globals
     const coreScriptPath = path.resolve(__dirname, '../core/app-core.js')
     const coreScriptContent = fs.readFileSync(coreScriptPath, 'utf8')
     new Function(coreScriptContent)()
 
     // Overwrite with minimal mocks for unit testing if needed
-    window.SafeUI.SVGIcons = { copy: 'COPY_ICON', pencil: 'EDIT_ICON', trash: 'DELETE_ICON' };
+    window.UIUtils.SVGIcons = { copy: 'COPY_ICON', pencil: 'EDIT_ICON', trash: 'DELETE_ICON' };
     window.UIPatterns = {
-      highlightSearchTerm: (text, term) => term ? `HIGHLIGHT(${text})` : window.SafeUI.escapeHTML(text),
+      highlightSearchTerm: (text, term) => term ? `HIGHLIGHT(${text})` : window.UIUtils.escapeHTML(text),
       confirmDelete: vi.fn()
     };
 
