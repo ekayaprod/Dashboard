@@ -72,7 +72,7 @@ function initializePage() {
                     saveState();
                     updateInputsFromState();
                     calculateDailyRatings();
-                    SafeUI.showToast('Calculator settings restored successfully.');
+                    UIUtils.showToast('Calculator settings restored successfully.');
                 }
             });
         }
@@ -538,7 +538,7 @@ function initializePage() {
          * 2. Persists state to localStorage.
          * 3. Triggers calculation of daily ratings.
          */
-        const debouncedCalculateAndSave = SafeUI.debounce(() => {
+        const debouncedCalculateAndSave = UIUtils.debounce(() => {
             state.ui.shiftStart = DOMElements.shiftStart.value;
             state.ui.shiftEnd = DOMElements.shiftEnd.value;
             state.ui.breakTime = parseInt(DOMElements.breakTime.value, 10) || 0;
@@ -592,7 +592,7 @@ function initializePage() {
         });
         
         DOMElements.btnResetData.addEventListener('click', () => {
-             SafeUI.showModal(
+             UIUtils.showModal(
                  COPY.MODALS.RESET_TITLE,
                  COPY.MODALS.RESET_BODY,
                  [
@@ -682,7 +682,7 @@ function initializePage() {
                     DOMElements.currentCallTime.value = DateUtils.formatMinutesToHHMM(cur + mins);
                     localStorage.removeItem(APP_CONFIG.IMPORT_KEY);
                     debouncedCalculateAndSave();
-                    SafeUI.showToast(COPY.TOASTS.RESTORED(mins));
+                    UIUtils.showToast(COPY.TOASTS.RESTORED(mins));
                 }
             } catch (e) { console.warn(e); }
         }

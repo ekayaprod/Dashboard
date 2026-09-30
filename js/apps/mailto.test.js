@@ -13,7 +13,7 @@ describe('js/apps/mailto.js', () => {
         vi.resetModules();
         vi.clearAllMocks();
 
-        window.SafeUI = { showToast: vi.fn(), showModal: vi.fn(), escapeHTML: (s) => s, SVGIcons: { folder: '', link: '', copy: '', drag: '', close: '' } };
+        window.UIUtils = { showToast: vi.fn(), showModal: vi.fn(), escapeHTML: (s) => s, SVGIcons: { folder: '', link: '', copy: '', drag: '', close: '' } };
         window.DOMHelpers = {
             createElement: (tag, className) => {
                 const el = document.createElement(tag);

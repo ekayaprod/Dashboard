@@ -10,7 +10,7 @@ AppLifecycle.onBootstrap(initializePage);
  * Sets up state management, loads previous data, and binds event listeners.
  *
  * This function encapsulates the entire page logic to avoid polluting the global scope
- * and to ensure dependencies (AppLifecycle, SafeUI) are ready before execution.
+ * and to ensure dependencies (AppLifecycle, UIUtils) are ready before execution.
  */
 function initializePage() {
     const DEBOUNCE_DELAY = 300;
@@ -78,7 +78,7 @@ function initializePage() {
             },
             addNewButtonId: 'add-shortcut-btn-menu',
             onAddNewClick: (renderCallback) => {
-                SafeUI.showModal('Add Shortcut',
+                UIUtils.showModal('Add Shortcut',
                     `<input type="text" id="shortcut-name" placeholder="Name" class="form-control">
                         <input type="text" id="shortcut-url" placeholder="URL" class="form-control">`,
                     [{ label: 'Cancel' }, {
@@ -87,12 +87,12 @@ function initializePage() {
                             const urlInput = document.getElementById('shortcut-url');
                             const name = nameInput.value;
                             const url = urlInput.value;
-                            if (SafeUI.validators.notEmpty(name) && SafeUI.validators.maxLength(name, 50) && SafeUI.validators.url(url)) {
+                            if (UIUtils.validators.notEmpty(name) && UIUtils.validators.maxLength(name, 50) && UIUtils.validators.url(url)) {
                                 DataHelpers.getCollection(state, 'shortcuts').push({ id: crypto.randomUUID(), name, url });
                                 saveState();
                                 renderCallback();
                             } else {
-                                SafeUI.showToast('Please enter a valid name and URL.');
+                                UIUtils.showToast('Please enter a valid name and URL.');
                                 return false;
                             }
                         }
@@ -269,8 +269,8 @@ function initializePage() {
                         urls: (row.urls || '').trim(),
                         escalation: (row.escalation || '').trim()
                     };
-                    if (!SafeUI.validators.notEmpty(entry.name)) return { error: `Row ${index + 2}: 'name' is required.` };
-                    if (!SafeUI.validators.maxLength(entry.name, 100)) return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
+                    if (!UIUtils.validators.notEmpty(entry.name)) return { error: `Row ${index + 2}: 'name' is required.` };
+                    if (!UIUtils.validators.maxLength(entry.name, 100)) return { error: `Row ${index + 2}: 'name' must not exceed 100 characters.` };
                     // Check for duplicates in existing state
                     if (DataValidator.hasDuplicate(state.apps, 'name', entry.name, row.id)) return { error: `Row ${index + 2}: App name "${entry.name}" already exists.` };
                     return { entry: entry };
@@ -284,7 +284,7 @@ function initializePage() {
                         if (existingIds.has(entry.id)) { updatedEntries.push(entry); } else { newEntries.push(entry); }
                     });
 
-                    const errorList = importErrors.slice(0, 10).map(e => `<li>${SafeUI.escapeHTML(e)}</li>`).join('');
+                    const errorList = importErrors.slice(0, 10).map(e => `<li>${UIUtils.escapeHTML(e)}</li>`).join('');
                     const moreErrors = importErrors.length > 10 ? `<li>... and ${importErrors.length - 10} more errors.</li>` : '';
                     let summaryHtml = `<p>Found <strong>${newEntries.length} new</strong> applications and <strong>${updatedEntries.length} applications to overwrite</strong>.</p>`;
                     if (importErrors.length > 0) {
@@ -292,7 +292,7 @@ function initializePage() {
                     }
                     summaryHtml += `<p>Apply changes? This is permanent.</p>`;
 
-                    SafeUI.showModal("Confirm CSV Import", summaryHtml, [
+                    UIUtils.showModal("Confirm CSV Import", summaryHtml, [
                         { label: 'Cancel' },
                         {
                             label: 'Import and Overwrite',
@@ -310,8 +310,8 @@ function initializePage() {
                                 });
                                 saveState();
                                 renderAppData();
-                                SafeUI.showToast(`Successfully imported ${importedCount} applications.`);
-                                SafeUI.hideModal();
+                                UIUtils.showToast(`Successfully imported ${importedCount} applications.`);
+                                UIUtils.hideModal();
                             }
                         }
                     ]);
@@ -352,9 +352,9 @@ function initializePage() {
             setTimeout(() => {
                 const verification = localStorage.getItem('dashboard_state_v5');
                 if (!verification) {
-                    SafeUI.showModal('Restore Warning', '<p>Restore completed but verification failed. Please refresh the page.</p>', [{label: 'OK'}]);
+                    UIUtils.showModal('Restore Warning', '<p>Restore completed but verification failed. Please refresh the page.</p>', [{label: 'OK'}]);
                 } else if (regeneratedCount > 0) {
-                    SafeUI.showToast(`Successfully restored and updated legacy data.`);
+                    UIUtils.showToast(`Successfully restored and updated legacy data.`);
                 }
             }, 100);
 
@@ -408,9 +408,9 @@ function initializePage() {
         DOMHelpers.setupTextareaAutoResize(DOMElements.editAppEscalation);
 
         // Inject SVG Icons
-        DOMElements.addShortcutBtnMenu.innerHTML = SafeUI.SVGIcons.plus;
-        DOMElements.addNewAppBtnMenu.innerHTML = SafeUI.SVGIcons.plus + ' App';
-        DOMElements.deleteAppBtn.innerHTML = SafeUI.SVGIcons.trash;
+        DOMElements.addShortcutBtnMenu.innerHTML = UIUtils.SVGIcons.plus;
+        DOMElements.addNewAppBtnMenu.innerHTML = UIUtils.SVGIcons.plus + ' App';
+        DOMElements.deleteAppBtn.innerHTML = UIUtils.SVGIcons.trash;
 
         initQuickList();
 
@@ -435,7 +435,7 @@ function initializePage() {
         });
 
         // Auto-save logic (debounced)
-        const debouncedSave = SafeUI.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
+        const debouncedSave = UIUtils.debounce(updateSaveButtonState, DEBOUNCE_DELAY);
         DOMElements.editAppName.addEventListener('input', debouncedSave);
         DOMElements.editAppUrls.addEventListener('input', debouncedSave);
         DOMElements.editAppEscalation.addEventListener('input', debouncedSave);
@@ -443,8 +443,8 @@ function initializePage() {
         // Save Changes Button Logic
         DOMElements.saveChangesBtn.addEventListener('click', () => {
             const newName = DOMElements.editAppName.value.trim();
-            if (!SafeUI.validators.notEmpty(newName) || !SafeUI.validators.maxLength(newName, 100)) {
-                return SafeUI.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
+            if (!UIUtils.validators.notEmpty(newName) || !UIUtils.validators.maxLength(newName, 100)) {
+                return UIUtils.showValidationError('Invalid Name', 'App Name must be between 1 and 100 characters.', 'edit-app-name');
             }
 
             const isNewApp = initialAppData.id === null;
@@ -452,7 +452,7 @@ function initializePage() {
 
             // Duplicate Check
             if ((isNewApp || nameChanged) && DataValidator.hasDuplicate(state.apps, 'name', newName, isNewApp ? null : selectedAppId)) {
-                return SafeUI.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
+                return UIUtils.showValidationError('Duplicate Name', 'An application with this name already exists.', 'edit-app-name');
             }
 
             const appData = {
@@ -464,14 +464,14 @@ function initializePage() {
             if (isNewApp) {
                 appData.id = crypto.randomUUID();
                 DataHelpers.getCollection(state, 'apps').push(appData);
-                SafeUI.showToast('Application successfully created.');
+                UIUtils.showToast('Application successfully created.');
             } else {
                 const app = DataHelpers.findById(state, 'apps', selectedAppId);
                 if (app) {
                     app.name = appData.name;
                     app.urls = appData.urls;
                     app.escalation = appData.escalation;
-                    SafeUI.showToast('Application successfully updated.');
+                    UIUtils.showToast('Application successfully updated.');
                 }
             }
 
@@ -518,7 +518,7 @@ function initializePage() {
         setTimeout(() => {
             const notepadRestored = window.NotepadManager && window.NotepadManager.didRestore;
             if (restoredApp && !notepadRestored) {
-                    SafeUI.showToast('Session restored successfully.');
+                    UIUtils.showToast('Session restored successfully.');
             }
         }, 100);
     };

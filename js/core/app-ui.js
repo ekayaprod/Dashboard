@@ -7,9 +7,9 @@
 const UIPatterns = (() => {
     return {
         confirmDelete: (itemType, itemName, onConfirm) => {
-            SafeUI.showModal(
+            UIUtils.showModal(
                 `Delete`,
-                `<p>Delete "${SafeUI.escapeHTML(itemName)}"?</p><p>This is permanent.</p>`,
+                `<p>Delete "${UIUtils.escapeHTML(itemName)}"?</p><p>This is permanent.</p>`,
                 [
                     { label: 'Cancel' },
                     { label: 'Delete', class: 'button-danger', callback: onConfirm }
@@ -18,7 +18,7 @@ const UIPatterns = (() => {
         },
 
         confirmAction: (title, message, actionLabel, onConfirm) => {
-            SafeUI.showModal(
+            UIUtils.showModal(
                 title,
                 message,
                 [
@@ -29,7 +29,7 @@ const UIPatterns = (() => {
         },
 
         confirmUnsavedChanges: (onDiscard) => {
-            SafeUI.showModal(
+            UIUtils.showModal(
                 'Unsaved Changes',
                 '<p>Discard unsaved changes?</p>',
                 [
@@ -40,19 +40,19 @@ const UIPatterns = (() => {
         },
 
         highlightSearchTerm: (text, term) => {
-            if (!term) return SafeUI.escapeHTML(text);
+            if (!term) return UIUtils.escapeHTML(text);
             const escapedTerm = term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
             /**
              * Dynamically constructs a case-insensitive regular expression to wrap
              * the user's raw search input in semantic <mark> highlighting tags.
              */
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
-            return SafeUI.escapeHTML(text).replace(regex, '<mark>$1</mark>');
+            return UIUtils.escapeHTML(text).replace(regex, '<mark>$1</mark>');
         },
 
         copyToClipboard: async (text, successMessage = 'Copied!') => {
-            const success = await SafeUI.copyToClipboard(text);
-            SafeUI.showToast(success ? successMessage : 'Copy failed.');
+            const success = await UIUtils.copyToClipboard(text);
+            UIUtils.showToast(success ? successMessage : 'Copy failed.');
             return success;
         }
     };
@@ -196,7 +196,7 @@ const SearchHelper = (() => {
 
         setupDebouncedSearch: (inputElement, onSearch, delay = 300) => {
             if (!inputElement) return;
-            const debouncedSearch = SafeUI.debounce(onSearch, delay);
+            const debouncedSearch = UIUtils.debounce(onSearch, delay);
             inputElement.addEventListener('input', () => {
                 debouncedSearch(inputElement.value);
             });
@@ -292,7 +292,7 @@ const NotepadManager = (() => {
             DOMHelpers.triggerTextareaResize(DOMElements.notepadEditor);
         });
 
-        const debouncedUpdate = SafeUI.debounce(() => {
+        const debouncedUpdate = UIUtils.debounce(() => {
             if (!activeNoteId) return;
             
             const note = DataHelpers.findById(state, 'notes', activeNoteId);
@@ -306,7 +306,7 @@ const NotepadManager = (() => {
         }, 1000); 
 
         DOMElements.notepadEditor.addEventListener('input', debouncedUpdate);
-        DOMElements.notepadEditor.addEventListener('scroll', SafeUI.debounce(() => {
+        DOMElements.notepadEditor.addEventListener('scroll', UIUtils.debounce(() => {
             if (state.ui) {
                 state.ui.notepadScrollTop = DOMElements.notepadEditor.scrollTop;
                 saveState();
@@ -314,7 +314,7 @@ const NotepadManager = (() => {
         }, 500));
         
         DOMElements.newNoteBtn.addEventListener('click', () => {
-            SafeUI.showModal('New Note', '<input id="new-note-title" class="form-control" placeholder="Note title">', [
+            UIUtils.showModal('New Note', '<input id="new-note-title" class="form-control" placeholder="Note title">', [
                 {label: 'Cancel'},
                 {label: 'Create', class: 'button-primary', callback: () => {
                     const titleInput = document.getElementById('new-note-title');
@@ -336,7 +336,7 @@ const NotepadManager = (() => {
             const note = DataHelpers.findById(state, 'notes', activeNoteId);
             if (!note) return;
             
-            SafeUI.showModal('Rename Note', `<input id="rename-note-title" class="form-control" value="${SafeUI.escapeHTML(note.title)}">`, [
+            UIUtils.showModal('Rename Note', `<input id="rename-note-title" class="form-control" value="${UIUtils.escapeHTML(note.title)}">`, [
                 {label: 'Cancel'},
                 {label: 'Rename', class: 'button-primary', callback: () => {
                     const titleInput = document.getElementById('rename-note-title');
@@ -346,7 +346,7 @@ const NotepadManager = (() => {
                         saveState();
                         renderNotesData();
                     } else {
-                        return SafeUI.showValidationError('Invalid Title', 'Title cannot be empty.', 'rename-note-title');
+                        return UIUtils.showValidationError('Invalid Title', 'Title cannot be empty.', 'rename-note-title');
                     }
                 }}
             ]);
@@ -381,9 +381,9 @@ const NotepadManager = (() => {
 
             DOMHelpers.setupTextareaAutoResize(DOMElements.notepadEditor);
 
-            DOMElements.newNoteBtn.innerHTML = SafeUI.SVGIcons.plus;
-            DOMElements.renameNoteBtn.innerHTML = SafeUI.SVGIcons.pencil;
-            DOMElements.deleteNoteBtn.innerHTML = SafeUI.SVGIcons.trash;
+            DOMElements.newNoteBtn.innerHTML = UIUtils.SVGIcons.plus;
+            DOMElements.renameNoteBtn.innerHTML = UIUtils.SVGIcons.pencil;
+            DOMElements.deleteNoteBtn.innerHTML = UIUtils.SVGIcons.trash;
 
             attachListeners();
 
@@ -410,7 +410,7 @@ const QuickListManager = (() => {
         div.dataset.id = item.id;
         
         const rawName = config.getItemName(item);
-        const name = SafeUI.escapeHTML(rawName);
+        const name = UIUtils.escapeHTML(rawName);
         let nameElement;
 
         const href = config.getItemHref ? config.getItemHref(item) : null;
@@ -439,7 +439,7 @@ const QuickListManager = (() => {
         deleteBtn.className = 'icon-btn delete-btn';
         deleteBtn.title = 'Delete';
         deleteBtn.setAttribute('aria-label', `Delete ${rawName}`);
-        deleteBtn.innerHTML = SafeUI.SVGIcons.trash;
+        deleteBtn.innerHTML = UIUtils.SVGIcons.trash;
         deleteBtn.dataset.id = item.id;
 
         div.appendChild(nameElement);
@@ -558,8 +558,8 @@ const SharedSettingsModal = (() => {
                             "Restore",
                             () => {
                                 config.onRestoreCallback(dataToRestore);
-                                SafeUI.showToast('We restored your data successfully.');
-                                SafeUI.hideModal();
+                                UIUtils.showToast('We restored your data successfully.');
+                                UIUtils.hideModal();
                             }
                         );
                     }
@@ -573,7 +573,7 @@ const SharedSettingsModal = (() => {
             const settingsBtn = document.getElementById(config.buttonId);
             if (!settingsBtn) return;
 
-            settingsBtn.innerHTML = SafeUI.SVGIcons.settings;
+            settingsBtn.innerHTML = UIUtils.SVGIcons.settings;
 
             settingsBtn.addEventListener('click', () => {
                 const modalHtml = _createModalHtml(config.customSettingsHtml, config.pageSpecificDataHtml);
@@ -587,7 +587,7 @@ const SharedSettingsModal = (() => {
                             class: 'button-primary', 
                             callback: () => {
                                 if (config.onModalSave()) {
-                                    SafeUI.hideModal();
+                                    UIUtils.hideModal();
                                 } else {
                                     return false; 
                                 }
@@ -598,7 +598,7 @@ const SharedSettingsModal = (() => {
                     modalActions = [{ label: 'Close' }];
                 }
 
-                SafeUI.showModal("Settings", modalHtml, modalActions);
+                UIUtils.showModal("Settings", modalHtml, modalActions);
                 _attachStandardListeners(config);
 
                 if (config.onModalOpen) {

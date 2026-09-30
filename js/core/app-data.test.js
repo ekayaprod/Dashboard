@@ -14,12 +14,12 @@ describe('app-data.js Tests', () => {
     const dataContent = fs.readFileSync(dataPath, 'utf8')
     new Function(dataContent)()
 
-    // Mock SafeUI.readTextFile if not already mocked
-    // app-core.js defines SafeUI using a closure, so we can't easily spy on internal methods
+    // Mock UIUtils.readTextFile if not already mocked
+    // app-core.js defines UIUtils using a closure, so we can't easily spy on internal methods
     // but we can replace the method on the global object if exposed, or mock the underlying UIUtils
 
-    // SafeUI is exposed on window.SafeUI
-    // We can spy on window.SafeUI.readTextFile
+    // UIUtils is exposed on window.UIUtils
+    // We can spy on window.UIUtils.readTextFile
   })
 
   afterEach(() => {
@@ -86,8 +86,8 @@ describe('app-data.js Tests', () => {
         const csvContent = 'id,name,age\n1,Alice,30\n2,Bob,25'
         const file = new File([csvContent], 'test.csv', { type: 'text/csv' })
 
-        // Mock SafeUI.readTextFile
-        vi.spyOn(window.SafeUI, 'readTextFile').mockResolvedValue(csvContent)
+        // Mock UIUtils.readTextFile
+        vi.spyOn(window.UIUtils, 'readTextFile').mockResolvedValue(csvContent)
 
         const result = await window.DataConverter.fromCSV(file, ['id', 'name'])
 
@@ -101,7 +101,7 @@ describe('app-data.js Tests', () => {
         const csvContent = 'id,note\n1,"Hello, World"\n2,"Multi\nLine"'
         const file = new File([csvContent], 'test.csv', { type: 'text/csv' })
 
-        vi.spyOn(window.SafeUI, 'readTextFile').mockResolvedValue(csvContent)
+        vi.spyOn(window.UIUtils, 'readTextFile').mockResolvedValue(csvContent)
 
         const result = await window.DataConverter.fromCSV(file, ['id', 'note'])
 
@@ -115,7 +115,7 @@ describe('app-data.js Tests', () => {
         const csvContent = 'id,age\n1,30'
         const file = new File([csvContent], 'test.csv', { type: 'text/csv' })
 
-        vi.spyOn(window.SafeUI, 'readTextFile').mockResolvedValue(csvContent)
+        vi.spyOn(window.UIUtils, 'readTextFile').mockResolvedValue(csvContent)
 
         await expect(window.DataConverter.fromCSV(file, ['id', 'name']))
           .rejects.toThrow(/Missing required CSV header: "name"/)
@@ -125,7 +125,7 @@ describe('app-data.js Tests', () => {
          const csvContent = ''
          const file = new File([csvContent], 'empty.csv', { type: 'text/csv' })
 
-         vi.spyOn(window.SafeUI, 'readTextFile').mockResolvedValue(csvContent)
+         vi.spyOn(window.UIUtils, 'readTextFile').mockResolvedValue(csvContent)
 
          const result = await window.DataConverter.fromCSV(file, ['id'])
          // Implementation returns empty data and errors for empty file (or throws if headers missing?)

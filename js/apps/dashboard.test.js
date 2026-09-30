@@ -13,7 +13,7 @@ describe('js/apps/dashboard.js', () => {
         vi.resetModules();
         vi.clearAllMocks();
 
-        window.SafeUI = { showToast: vi.fn(), showModal: vi.fn(), escapeHTML: (s) => s, SVGIcons: { plus: '<svg></svg>', drag: '<svg></svg>', link: '<svg></svg>', trash: '<svg></svg>', add: '', remove: '', edit: '' }, debounce: (fn) => fn };
+        window.UIUtils = { showToast: vi.fn(), showModal: vi.fn(), escapeHTML: (s) => s, SVGIcons: { plus: '<svg></svg>', drag: '<svg></svg>', link: '<svg></svg>', trash: '<svg></svg>', add: '', remove: '', edit: '' }, debounce: (fn) => fn };
         window.DOMHelpers = {
             createElement: (tag, className) => {
                 const el = document.createElement(tag);
@@ -90,7 +90,7 @@ describe('js/apps/dashboard.js', () => {
             hasItems: vi.fn(() => false)
         };
 
-        window.SafeUI.validators = {
+        window.UIUtils.validators = {
             notEmpty: (val) => val && val.trim() !== '',
             maxLength: (val, len) => val && val.length <= len
         };
