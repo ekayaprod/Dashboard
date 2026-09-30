@@ -269,7 +269,7 @@ const DataConverter = (() => {
             }
 
             const escapeCell = (cell) => {
-                const str = String(cell == null ? '' : cell);
+                const str = String(cell === null || cell === undefined ? '' : cell);
                 if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
                     return `"${str.replace(/"/g, '""')}"`;
                 }

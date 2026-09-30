@@ -65,7 +65,7 @@ const ListRenderer = (() => {
          *
          * @param {Object} config - The configuration object.
          * @param {HTMLElement} config.container - The DOM element to render into.
-         * @param {Array<any>} [config.items] - The array of data items to render.
+         * @param {Array<Object>} [config.items] - The array of data items to render.
          * @param {string} [config.emptyMessage] - The message to display if no items are present.
          * @param {Function} config.createItemElement - Callback function that returns an HTMLElement for a given item.
          * @param {boolean} [config.append] - If true, appends to the container instead of clearing it.
@@ -120,7 +120,7 @@ const SearchHelper = (() => {
             return items.filter(item => {
                 return searchFields.some(field => {
                     const value = item[field];
-                    return value != null &&
+                    return value !== null && value !== undefined &&
                         typeof value !== 'object' &&
                         String(value).toLowerCase().includes(lowerTerm);
                 });
