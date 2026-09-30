@@ -23,14 +23,14 @@ const SVGIcons = Object.freeze({
 const CoreValidators = Object.freeze({
     /**
      * Internal validation logic router.
-     * @param {any} value - The value to validate.
+     * @param {unknown} value - The value to validate.
      * @param {string} type - The type of validation ('url', 'notEmpty', 'maxLength').
      * @param {Object} [options] - Additional validation options (e.g., {max: 10}).
      * @returns {boolean} True if valid, false otherwise.
      * @private
      */
     _validate: (value, type, options = {}) => {
-        if (value == null) return false;
+        if (value === null || value === undefined) return false;
         const str = String(value).trim();
 
         switch (type) {
@@ -147,7 +147,7 @@ const UIUtils = (() => {
      * @returns {string} The escaped string safe for HTML insertion.
      */
     const escapeHTML = (str) => {
-        if (str == null) return '';
+        if (str === null || str === undefined) return '';
         return String(str)
             .replaceAll('&', '&amp;')
             .replaceAll('<', '&lt;')
@@ -327,7 +327,7 @@ const UIUtils = (() => {
      * @param {string} url - The URL to fetch.
      * @param {Object} [options] - Fetch options.
      * @param {Function} [validator] - Optional validator function (data => boolean).
-     * @returns {Promise<any>} The parsed JSON response.
+     * @returns {Promise<unknown>} The parsed JSON response.
      */
     const fetchJSON = async (url, options = {}, validator = null) => {
         /**
