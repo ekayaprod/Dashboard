@@ -171,26 +171,7 @@ const SearchHelper = (() => {
                     return;
                 }
                 const lowerTerm = term.toLowerCase().trim();
-                const results = [];
-                let index = 0;
-
-                const processChunk = () => {
-                    const end = Math.min(index + chunkSize, items.length);
-                    for (let i = index; i < end; i++) {
-                        const item = items[i];
-                        if (item._searchContent && item._searchContent.includes(lowerTerm)) {
-                            results.push(item);
-                        }
-                    }
-                    index = end;
-                    if (index < items.length) {
-                        // Yield to main thread
-                        setTimeout(processChunk, 0);
-                    } else {
-                        resolve(results);
-                    }
-                };
-                processChunk();
+                resolve(items.filter(item => item._searchContent && item._searchContent.includes(lowerTerm)));
             });
         },
 
