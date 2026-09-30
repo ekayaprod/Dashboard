@@ -646,19 +646,19 @@ function initializePage() {
             SafeUI.showToast("Loading theme data...", 1000);
 
             // ⚡ ACCELERATE: Concurrent execution for fetching word banks
-            const [baseLoaded, seasonalBank] = await Promise.all([
+            const [baseLoaded, seasonalBank] = await Promise.allSettled([
                 loadWordBank(),
                 loadSeasonalBank(activeSeasonKey)
             ]);
 
-            if (!baseLoaded) return false;
+            if (baseLoaded.status === 'rejected' || !baseLoaded.value) return false;
 
             // Start with Base Bank (Standard)
             activeWordBank = JSON.parse(JSON.stringify(memoryWordBank));
 
             // Apply Seasonal Data if loaded successfully
-            if (seasonalBank) {
-                activeWordBank = seasonalBank;
+            if (seasonalBank.status === 'fulfilled' && seasonalBank.value) {
+                activeWordBank = seasonalBank.value;
             } else if (activeSeasonKey !== 'standard') {
                 activeSeasonKey = 'standard'; // Revert to standard if seasonal failed
             }
