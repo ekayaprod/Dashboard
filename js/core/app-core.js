@@ -23,14 +23,14 @@ const SVGIcons = Object.freeze({
 const CoreValidators = Object.freeze({
     /**
      * Internal validation logic router.
-     * @param {any} value - The value to validate.
+     * @param {unknown} value - The value to validate.
      * @param {string} type - The type of validation ('url', 'notEmpty', 'maxLength').
      * @param {Object} [options] - Additional validation options (e.g., {max: 10}).
      * @returns {boolean} True if valid, false otherwise.
      * @private
      */
     _validate: (value, type, options = {}) => {
-        if (value == null) return false;
+        if (value === null || value === undefined) return false;
         const str = String(value).trim();
 
         switch (type) {
@@ -147,52 +147,13 @@ const UIUtils = (() => {
      * @returns {string} The escaped string safe for HTML insertion.
      */
     const escapeHTML = (str) => {
-        if (str == null) return '';
+        if (str === null || str === undefined) return '';
         return String(str)
             .replaceAll('&', '&amp;')
             .replaceAll('<', '&lt;')
             .replaceAll('>', '&gt;')
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
-    };
-
-    /**
-     * Generates a unique identifier.
-     * Uses `crypto.randomUUID` if available, otherwise falls back to a `nanoid` implementation
-     * for unified, cryptographically secure string generation across the ecosystem.
-     *
-     * @returns {string} A unique string ID (UUID v4 or 21-character nanoid).
-     */
-    const generateId = () => {
-        try {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                return crypto.randomUUID();
-            }
-        } catch (e) {
-            console.warn('crypto.randomUUID not available, falling back to nanoid');
-        }
-
-        let size = 21;
-        let id = '';
-        const urlAlphabet = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict';
-
-        try {
-            if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-                let bytes = crypto.getRandomValues(new Uint8Array(size));
-                while (size--) {
-                    id += urlAlphabet[bytes[size] & 63];
-                }
-                return id;
-            }
-        } catch (e) {
-            console.warn('crypto.getRandomValues not available, falling back to Math.random() nanoid');
-        }
-
-        // Non-secure fallback if crypto is unavailable
-        while (size--) {
-            id += urlAlphabet[(Math.random() * 64) | 0];
-        }
-        return id;
     };
 
     /**
@@ -366,7 +327,7 @@ const UIUtils = (() => {
      * @param {string} url - The URL to fetch.
      * @param {Object} [options] - Fetch options.
      * @param {Function} [validator] - Optional validator function (data => boolean).
-     * @returns {Promise<any>} The parsed JSON response.
+     * @returns {Promise<unknown>} The parsed JSON response.
      */
     const fetchJSON = async (url, options = {}, validator = null) => {
         /**
@@ -446,13 +407,15 @@ const UIUtils = (() => {
      * @param {File} file - The file to read.
      * @returns {Promise<Object>} A promise resolving to the parsed JSON object.
      */
-    const readJSONFile = (file) => {
-        return readTextFile(file)
-            .then(text => {
-                return new Promise((resolve, reject) => {
-                    parseJSON(text, resolve, (err) => reject(new Error(err)));
-                });
+    const readJSONFile = async (file) => {
+        try {
+            const text = await readTextFile(file);
+            return await new Promise((resolve, reject) => {
+                parseJSON(text, resolve, (err) => reject(new Error(err)));
             });
+        } catch (error) {
+            throw error;
+        }
     };
 
     /**
@@ -606,7 +569,6 @@ const UIUtils = (() => {
         SVGIcons,
         validators: CoreValidators,
         escapeHTML,
-        generateId,
         debounce,
         capitalize,
         getRandomInt,
@@ -659,7 +621,6 @@ const SafeUI = (() => {
         hideModal: () => UIUtils.hideModal(),
         showToast: (msg) => UIUtils.showToast(msg),
         escapeHTML: (str) => UIUtils.escapeHTML(str),
-        generateId: () => UIUtils.generateId(),
         debounce: (func, delay) => UIUtils.debounce(func, delay),
         capitalize: (str) => UIUtils.capitalize(str),
         getRandomInt: (max) => UIUtils.getRandomInt(max),

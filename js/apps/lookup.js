@@ -9,7 +9,7 @@ const LookupHelpers = {
      * @returns {Object} A complete lookup entry object.
      */
     createEntry: (partial = {}) => ({
-        id: partial.id || SafeUI.generateId(),
+        id: partial.id || crypto.randomUUID(),
         keyword: (partial.keyword || '').trim(),
         assignmentGroup: (partial.assignmentGroup || '').trim(),
         notes: (partial.notes || '').trim(),
@@ -362,7 +362,7 @@ const LookupSettings = {
             const listContainer = document.getElementById('custom-search-list');
 
             document.getElementById('btn-add-search').addEventListener('click', () => {
-                const newId = SafeUI.generateId();
+                const newId = crypto.randomUUID();
                 const newItem = document.createElement('div');
                 newItem.className = 'custom-search-item';
                 newItem.dataset.id = newId;
@@ -416,7 +416,7 @@ const LookupSettings = {
 
             if (dataToRestore.settings?.kbBaseUrl) {
                 state.settings.customSearches = [{
-                    id: SafeUI.generateId(),
+                    id: crypto.randomUUID(),
                     name: 'KB Search (Restored)',
                     urlTemplate: dataToRestore.settings.kbBaseUrl
                 }];
@@ -525,7 +525,7 @@ function initializePage() {
                 if (state.settings.kbBaseUrl) {
                     if (state.settings.kbBaseUrl.includes('{query}')) {
                         state.settings.customSearches = [{
-                            id: SafeUI.generateId(),
+                            id: crypto.randomUUID(),
                             name: 'KB Search',
                             urlTemplate: state.settings.kbBaseUrl
                         }];

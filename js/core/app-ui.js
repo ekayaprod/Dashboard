@@ -65,7 +65,7 @@ const ListRenderer = (() => {
          *
          * @param {Object} config - The configuration object.
          * @param {HTMLElement} config.container - The DOM element to render into.
-         * @param {Array<any>} [config.items] - The array of data items to render.
+         * @param {Array<Object>} [config.items] - The array of data items to render.
          * @param {string} [config.emptyMessage] - The message to display if no items are present.
          * @param {Function} config.createItemElement - Callback function that returns an HTMLElement for a given item.
          * @param {boolean} [config.append] - If true, appends to the container instead of clearing it.
@@ -120,7 +120,7 @@ const SearchHelper = (() => {
             return items.filter(item => {
                 return searchFields.some(field => {
                     const value = item[field];
-                    return value != null &&
+                    return value !== null && value !== undefined &&
                         typeof value !== 'object' &&
                         String(value).toLowerCase().includes(lowerTerm);
                 });
@@ -218,7 +218,7 @@ const NotepadManager = (() => {
         const note = DataHelpers.findById(state, 'notes', activeNoteId);
         if (note && DOMElements.notepadEditor) {
             if (note.id.length < 20) {
-                const newId = SafeUI.generateId();
+                const newId = crypto.randomUUID();
                 note.id = newId;
                 activeNoteId = newId;
             }
@@ -319,7 +319,7 @@ const NotepadManager = (() => {
                 {label: 'Create', class: 'button-primary', callback: () => {
                     const titleInput = document.getElementById('new-note-title');
                     const title = titleInput.value.trim() || 'Untitled Note';
-                    const newNote = { id: SafeUI.generateId(), title, content: '' };
+                    const newNote = { id: crypto.randomUUID(), title, content: '' };
                     DataHelpers.getCollection(state, 'notes').push(newNote);
                     
                     if (state.ui) state.ui.activeNoteId = newNote.id;
@@ -388,7 +388,7 @@ const NotepadManager = (() => {
             attachListeners();
 
             if (!DataHelpers.hasItems(state, 'notes')) {
-                DataHelpers.getCollection(state, 'notes').push({ id: SafeUI.generateId(), title: 'My Scratchpad', content: '' });
+                DataHelpers.getCollection(state, 'notes').push({ id: crypto.randomUUID(), title: 'My Scratchpad', content: '' });
                 saveState();
             }
 

@@ -18,8 +18,8 @@
         }
 
         :focus-visible {
-            outline: 2px solid var(--primary-color);
-            outline-offset: 2px;
+            outline: none !important;
+            box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color) !important;
             border-radius: 2px;
         }
 
@@ -36,9 +36,26 @@
         }
         @media (prefers-reduced-motion: no-preference) {
             .btn:active, .btn-icon:active, .icon-btn:active { transform: scale(0.98); }
+
+            @keyframes slideInFade {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
             .result-list li {
                 transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+                opacity: 0;
+                animation: slideInFade 0.3s ease-out forwards;
             }
+
+            /* Staggering fade in for first few list items to fix The Lifeless Transition */
+            .result-list li:nth-child(1) { animation-delay: 0.05s; }
+            .result-list li:nth-child(2) { animation-delay: 0.1s; }
+            .result-list li:nth-child(3) { animation-delay: 0.15s; }
+            .result-list li:nth-child(4) { animation-delay: 0.2s; }
+            .result-list li:nth-child(5) { animation-delay: 0.25s; }
+            .result-list li:nth-child(n+6) { animation-delay: 0.3s; }
+
             .result-list li:hover {
                 transform: translateY(-1px);
                 box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
