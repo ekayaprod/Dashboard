@@ -592,14 +592,8 @@ function initializePage() {
         });
         
         DOMElements.btnResetData.addEventListener('click', () => {
-             UIUtils.showModal(
-                 COPY.MODALS.RESET_TITLE,
-                 COPY.MODALS.RESET_BODY,
-                 [
-                     {label: COPY.MODALS.CANCEL},
-                     {label: COPY.MODALS.CONFIRM_RESET, class:'button-danger', callback: handleResetData}
-                 ]
-             );
+             handleResetData();
+             UIUtils.showToast('Data reset.');
         });
         
         /**

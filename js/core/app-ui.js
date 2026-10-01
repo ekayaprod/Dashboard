@@ -7,36 +7,18 @@
 const UIPatterns = (() => {
     return {
         confirmDelete: (itemType, itemName, onConfirm) => {
-            UIUtils.showModal(
-                `Delete`,
-                `<p>Delete "${UIUtils.escapeHTML(itemName)}"?</p><p>This is permanent.</p>`,
-                [
-                    { label: 'Cancel' },
-                    { label: 'Delete', class: 'button-danger', callback: onConfirm }
-                ]
-            );
+            if (onConfirm) onConfirm();
+            UIUtils.showToast(`Deleted ${UIUtils.escapeHTML(itemName)}`);
         },
 
         confirmAction: (title, message, actionLabel, onConfirm) => {
-            UIUtils.showModal(
-                title,
-                message,
-                [
-                    { label: 'Cancel' },
-                    { label: actionLabel, class: 'button-danger', callback: onConfirm }
-                ]
-            );
+            if (onConfirm) onConfirm();
+            UIUtils.showToast('Action confirmed.');
         },
 
         confirmUnsavedChanges: (onDiscard) => {
-            UIUtils.showModal(
-                'Unsaved Changes',
-                '<p>Discard unsaved changes?</p>',
-                [
-                    { label: 'Cancel' },
-                    { label: 'Discard', class: 'button-danger', callback: onDiscard }
-                ]
-            );
+            if (onDiscard) onDiscard();
+            UIUtils.showToast('Discarded unsaved changes.');
         },
 
         highlightSearchTerm: (text, term) => {
