@@ -63,31 +63,6 @@
         /* Icon Polish */
         .btn-icon svg, .accordion-icon svg { width: 16px; height: 16px; }
 
-
-        #btn-save-to-library, #result-link, #btn-clear-all {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            font-weight: 600;
-            letter-spacing: 0.025em;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        #btn-save-to-library:hover, #result-link:hover, #btn-clear-all:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
-        #btn-save-to-library:active, #result-link:active, #btn-clear-all:active {
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        }
-
-        @media (prefers-reduced-motion: no-preference) {
-            #btn-save-to-library:hover, #result-link:hover, #btn-clear-all:hover {
-                transform: translateY(-1px);
-            }
-            #btn-save-to-library:active, #result-link:active, #btn-clear-all:active {
-                transform: translateY(0) scale(0.98);
-            }
-        }
-
     </style>
 </head>
 <body class="mailto-page">
@@ -129,7 +104,7 @@
                     <div class="accordion-header" id="editor-header">
                         <h3 class="section-header">Editor & Upload</h3>
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <button id="btn-clear-all" class="btn btn-danger" style="padding: 2px 8px; font-size: 0.75rem;">Reset Form</button>
+                            <button id="btn-clear-all" class="btn btn-danger btn-elevated" style="padding: 2px 8px; font-size: 0.75rem;">Reset Form</button>
                             <span class="accordion-icon">
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
                             </span>
@@ -185,13 +160,13 @@
                                     <label>Generated Link</label>
                                     <div style="display:flex; gap:5px;">
                                         <input type="text" id="result-mailto" class="form-control" readonly placeholder="mailto:...">
-                                        <button id="copy-mailto-btn" class="btn">Copy Link</button>
+                                        <button id="copy-mailto-btn" class="btn btn-elevated">Copy Link</button>
                                     </div>
                                 </div>
 
                                 <div class="grid-2">
-                                    <button id="btn-save-to-library" class="btn btn-success">Save Template</button>
-                                    <a href="#" id="result-link" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="width:100%; text-align:center;">Launch Email Client</a>
+                                    <button id="btn-save-to-library" class="btn btn-success btn-elevated">Save Template</button>
+                                    <a href="#" id="result-link" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-elevated" style="width:100%; text-align:center;">Launch Email Client</a>
                                 </div>
                             </div>
                         </div>
