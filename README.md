@@ -1,6 +1,6 @@
 # ⚡ Sidebar Productivity Suite
 
-[![node: >=20.0.0](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
+[![node: >=22.22.2](https://img.shields.io/badge/node-%3E%3D22.22.2-brightgreen)](https://nodejs.org/)
 [![build: zero-config](https://img.shields.io/badge/build-zero--config-blue)](https://github.com/)
 
 > **⚠️ Executive Disclaimer:** The Sidebar Productivity Suite is a localized, individual utility engineered solely to optimize my own daily workflow, eliminate manual bottlenecks, and prevent data entry errors. This is an independent, personal initiative and is **not** an officially approved, team-wide, or enterprise-level deployment.
@@ -56,7 +56,8 @@ By developing this personal tool, the impact on my individual workflow has been 
 
 Welcome aboard! To boot the application locally:
 
-1. Open `index.html` directly in your browser.
+1. `cp .env.example .env` (Populate optional configuration variables).
+2. Open `index.html` directly in your browser.
 
 To run the local test suite:
 
