@@ -1,2 +1,9 @@
-Target Acquired: The Tooling Deficit. Added @playwright/mcp to .mcp.json.
-- Bumped required Node version to >=22.22.2 and updated CI workflow matrix to node 22.x/24.x due to jsdom v30+ requirement.
+# Dispatch Journal
+
+## Action
+- **Wired Orphaned Linting:** Detected `.eslintrc.js` and `.markdownlint.json` not connected to the CI workflow. Successfully wired them into the `.github/workflows/main.yml` test matrix under a new `lint` type.
+
+## Unhandled Targets
+- Did not modify `.github/workflows/pipeline.yml` as it's out of scope for the single target limit, but it appears to be a duplicate or slightly modified pipeline that might be redundant.
+
+## End of log
