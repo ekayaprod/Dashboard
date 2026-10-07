@@ -410,7 +410,7 @@ textarea.form-control {
     }
 }
 .accordion-header h2, .accordion-header h3 { font-size: 0.9rem; margin: 0; } /* Smaller headers */
-.accordion-icon { transition: transform 0.3s; font-size: 0.8rem; margin-right: 0.5rem; }
+.accordion-icon { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); font-size: 0.8rem; margin-right: 0.5rem; }
 .accordion.expanded .accordion-icon { transform: rotate(180deg); }
 .accordion-content {
     display: grid;
@@ -489,6 +489,8 @@ textarea.form-control {
     width: 90%;
     box-shadow: var(--box-shadow-lg);
     border: 1px solid var(--border-color);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
