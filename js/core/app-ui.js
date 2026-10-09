@@ -379,6 +379,7 @@ const QuickListManager = (() => {
         const href = config.getItemHref ? config.getItemHref(item) : null;
         if (href) {
             nameElement = document.createElement('a');
+            nameElement.className = 'quick-action-link';
             nameElement.href = href;
             nameElement.target = '_blank';
             nameElement.rel = 'noopener noreferrer';
@@ -387,15 +388,6 @@ const QuickListManager = (() => {
             nameElement = document.createElement('button');
             nameElement.className = 'quick-action-btn';
             nameElement.textContent = name;
-            nameElement.style.all = 'unset';
-            nameElement.style.color = 'var(--primary-color)';
-            nameElement.style.textDecoration = 'none';
-            nameElement.style.whiteSpace = 'nowrap';
-            nameElement.style.overflow = 'hidden';
-            nameElement.style.textOverflow = 'ellipsis';
-            nameElement.style.flexGrow = '1';
-            nameElement.style.fontSize = '0.9rem';
-            nameElement.style.cursor = 'pointer';
         }
 
         const deleteBtn = document.createElement('button');
