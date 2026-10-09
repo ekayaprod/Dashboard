@@ -235,6 +235,33 @@ textarea.form-control {
     letter-spacing: 0.025em;
 }
 
+/* Quick Action Buttons */
+.quick-action-btn, .quick-action-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    font-size: 0.9rem;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 0;
+    text-align: left;
+    transition: all 0.3s ease-in-out;
+}
+
+.quick-action-btn:hover, .quick-action-link:hover {
+    color: var(--primary-hover);
+}
+
+.quick-action-btn:focus-visible, .quick-action-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color);
+    border-radius: 2px;
+}
+
 /* Buttons (Consolidated) */
 .btn {
     padding: 0.5rem 1rem;
@@ -538,6 +565,12 @@ textarea.form-control {
 }
 .shortcut-item:last-child:nth-child(odd) { grid-column: span 2; }
 
+.shortcut-item:focus-within {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color);
+    border-color: var(--primary-color);
+}
+
 .shortcut-item a {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; font-size: 0.9rem;
 }
@@ -545,27 +578,17 @@ textarea.form-control {
 .notepad-editor {
     flex-grow: 1;
     font-family: inherit;
-    background-color: #ffffff; /* Force white background */
-    color: #1e293b; /* Force dark text */
-    border: 1px solid #e2e8f0;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--input-border);
+    transition: all 0.3s ease-in-out;
 }
-.notepad-editor:focus {
-    background-color: #ffffff !important;
-    color: #1e293b !important;
+.notepad-editor:focus, .notepad-editor:focus-visible {
+    background-color: var(--input-focus-bg) !important;
+    color: var(--text-color) !important;
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
-}
-/* Ensure notepad remains light even in dark mode */
-@media (prefers-color-scheme: dark) {
-    .notepad-editor, .notepad-editor:focus {
-        background-color: #ffffff !important;
-        color: #1e293b !important;
-        border-color: #e2e8f0;
-    }
-    .notepad-editor:focus {
-        border-color: var(--primary-color);
-    }
+    box-shadow: 0 0 0 2px var(--panel-bg), 0 0 0 4px var(--primary-color);
 }
 
 /* Calculator Specifics */
@@ -1160,8 +1183,12 @@ textarea.form-control {
     align-items: center;
     padding: 0.25rem 0.5rem;
     border-radius: var(--border-radius-sm);
-    transition: all 0.2s;
+    transition: all 0.3s ease-in-out;
     text-decoration: none;
+}
+.btn-clear:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color);
 }
 .btn-clear:hover {
     background-color: var(--bg-color);
