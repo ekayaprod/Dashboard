@@ -266,7 +266,7 @@ textarea.form-control {
     cursor: not-allowed; 
 }
 .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color); }
-.btn:active { transform: scale(0.95); }
+.btn:active { transform: scale(0.95); transition: transform 0.15s ease-in-out; }
 
 .btn-primary {
     background-color: var(--primary-color); 
@@ -326,6 +326,11 @@ textarea.form-control {
 .btn-icon svg, .icon-btn svg { width: 16px; height: 16px; }
 
 .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+/* Modifier Classes for Buttons/Panels */
+.btn-compact { padding: 0.4rem 0.6rem; }
+.btn-mini { min-height: 32px; min-width: 32px; padding: 0; }
+.transparent-panel { border:none !important; box-shadow:none !important; background:transparent !important; }
 
 /* Grid Utilities */
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); }
@@ -627,6 +632,26 @@ textarea.form-control {
 .info-box {
     font-size: 0.85rem;
     color: var(--text-color);
+}
+
+.info-box-stats {
+    font-size: 0.85rem;
+    text-align: center;
+    color: var(--text-color);
+    padding: 4px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.info-box-stats-large {
+    font-size: 0.9rem;
+    text-align: center;
+    color: var(--text-color);
+    padding: 6px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* MailTo Specifics */

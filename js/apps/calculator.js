@@ -370,7 +370,7 @@ function initializePage() {
                 // Action: Add Call Time to reduce Net Work Time below XX:30.
                 const reduceNeeded = Math.ceil(minutesInHour - 29);
                 html = `
-                    <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
+                    <div class="info-box-stats">
                         <span style="color: var(--warning-text); font-weight: bold;">${COPY.BUFFER.SPIKE_TITLE}</span><br>
                         ${COPY.BUFFER.SPIKE_ACTION(reduceNeeded)}
                     </div>
@@ -387,7 +387,7 @@ function initializePage() {
                 else if (buffer <= 10) colorStyle = 'color: var(--warning-text);';
 
                 html = `
-                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 6px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
+                    <div class="info-box-stats-large">
                         <span style="${colorStyle} font-weight: bold; font-size: 1.1rem;">${buffer} min</span><br>
                         <span style="font-size: 0.75rem; opacity: 0.8;">${COPY.BUFFER.SAFE_LABEL}</span>
                     </div>
