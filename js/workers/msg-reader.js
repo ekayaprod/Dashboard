@@ -105,17 +105,14 @@ function _robustDecode(buffer) {
 function _decodeQuotedPrintable(str, charset = 'utf-8') {
     if (!str) return '';
     
-    // Basic QP decoding to bytes
     let decoded = str
         .replace(/=(\r\n|\n)/g, '') // Join soft lines
         .replace(/=([0-9A-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
     
     try {
-        // Convert the binary string to a Uint8Array
         let bytes = new Uint8Array(decoded.length);
         for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
         
-        // Decode using the specified charset
         let encoding = charset.toLowerCase();
         if (encoding === 'us-ascii') encoding = 'utf-8'; // Compatible fallback
         
@@ -658,12 +655,7 @@ class MsgReaderParser {
                  u8IsBetter = false;
             }
 
-            let useU16 = false;
-            if (type === PROP_TYPE_STRING8) {
-                useU16 = u16IsBetter && !u8IsBetter;
-            } else {
-                useU16 = u16IsBetter;
-            }
+            let useU16 = type === PROP_TYPE_STRING8 ? (u16IsBetter && !u8IsBetter) : u16IsBetter;
 
             let text = useU16 ? u16 : u8;
 
@@ -752,16 +744,15 @@ class MsgReaderParser {
         let displayToEmails = _extractAddresses(displayTo);
         let displayCcEmails = _extractAddresses(displayCc);
 
-        let toEmailCounts = {};
-        let ccEmailCounts = {};
+        let toEmailCounts = displayToEmails.reduce((acc, email) => {
+            acc[email] = (acc[email] || 0) + 1;
+            return acc;
+        }, {});
 
-        displayToEmails.forEach(email => {
-            toEmailCounts[email] = (toEmailCounts[email] || 0) + 1;
-        });
-
-        displayCcEmails.forEach(email => {
-            ccEmailCounts[email] = (ccEmailCounts[email] || 0) + 1;
-        });
+        let ccEmailCounts = displayCcEmails.reduce((acc, email) => {
+            acc[email] = (acc[email] || 0) + 1;
+            return acc;
+        }, {});
 
         recipients.forEach(recipient => {
             let emailKey = recipient.email.toLowerCase();
