@@ -548,13 +548,15 @@ textarea.form-control {
     background-color: #ffffff; /* Force white background */
     color: #1e293b; /* Force dark text */
     border: 1px solid #e2e8f0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.notepad-editor:focus {
-    background-color: #ffffff !important;
-    color: #1e293b !important;
+.notepad-editor:focus, .notepad-editor:focus-visible {
+    background-color: #ffffff;
+    color: #1e293b;
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 2px var(--panel-bg), 0 0 0 4px var(--primary-color);
+    transform: translateY(-1px);
 }
 /* Ensure notepad remains light even in dark mode */
 @media (prefers-color-scheme: dark) {
@@ -708,6 +710,11 @@ textarea.form-control {
 .body-input {
     flex-grow: 1;
     min-height: 80px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.body-input:focus, .body-input:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 0 0 2px var(--panel-bg), 0 0 0 4px var(--primary-color);
 }
 #result-link {
     box-sizing: border-box;
@@ -920,12 +927,16 @@ textarea.form-control {
 }
 
 .empty-state-text {
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.5;
+    color: var(--text-color);
 }
 
 .empty-state-text-bold {
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: -0.01em;
 }
 
 
@@ -1147,6 +1158,16 @@ textarea.form-control {
 }
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom Checkbox Polish */
+.custom-checkbox:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--panel-bg), 0 0 0 4px var(--primary-color);
+    border-radius: 2px;
+}
+.custom-checkbox:active {
+    transform: scale(0.95);
 }
 
 /* Clear Button Polish */
