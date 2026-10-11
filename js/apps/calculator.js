@@ -136,6 +136,7 @@ function initializePage() {
 
         // --- 1. CORE LOGIC: REQUIRED CALL TIME ---
         
+        // 🕯️ CHRONICLE: AST logic checks how much extra call time is required to hit target jump boundary thresholds. Added in PR #368 for dynamic buffer visibility.
         /**
          * Calculates how much additional Call Time is needed to drop the target 
          * such that the CURRENT ticket count satisfies the grade requirement.
@@ -345,6 +346,7 @@ function initializePage() {
 
         // --- 3. STATS BAR (BUFFER) ---
 
+        // 🕯️ CHRONICLE: Conditional DOM rendering determining UI strategy. Logic merged in PR #368 for tracking threshold buffers and predicting jumps.
         /**
          * Renders the buffer status bar showing how close the user is to the next target jump (XX:30).
          *
