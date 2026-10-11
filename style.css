@@ -268,6 +268,30 @@ textarea.form-control {
 .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color); }
 .btn:active { transform: scale(0.95); }
 
+.btn-elevated {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-elevated:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-elevated:active {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .btn-elevated:hover {
+        transform: translateY(-1px);
+    }
+    .btn-elevated:active {
+        transform: translateY(0) scale(0.98);
+    }
+}
+
 .btn-primary {
     background-color: var(--primary-color); 
     color: white; 
