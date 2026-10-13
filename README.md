@@ -32,6 +32,14 @@ Every day, I faced a manual nightmare of context-switching between bloated enter
 
 The system is built on a strict **Shell Architecture**, where a master `index.html` file hosts independent applications sandboxed inside `iframe` environments. It operates entirely client-side, running pure ES6+ JavaScript.
 
+### 🗺️ Structural Map
+
+* **`/js/apps/`**: The specialized micro-applications (e.g., calculator, dashboard) driving the localized workflow.
+* **`/js/core/`**: Foundational libraries for UI, data, and core application behavior.
+* **`/js/workers/`**: Dedicated Web Workers for computationally heavy asynchronous offloading.
+* **`/e2e/`**: End-to-end testing suite utilizing Playwright to validate critical operations.
+* **`/wordbanks/`**: Localized JSON datasets fueling the cryptographically secure passphrase generator.
+
 * **Bootstrapping Sequence:** The custom `js/bootstrap.js` acts as a centralized dependency loader, injecting core libraries (`js/core/app-core.js`, `js/core/app-ui.js`, `js/core/app-data.js`) synchronously before triggering a `bootstrap:ready` event, ensuring a rigid execution order.
 * **Asynchronous Offloading:** To prevent the UI thread from hanging during computationally heavy tasks, the `MailTo` application utilizes a dedicated Web Worker (`js/workers/msg-reader.js`) to parse binary `.msg` files in the background, returning clean JSON to the main thread.
 * **Decoupled State Management:** Applications like `Lookup` leverage asynchronous indexed keyword searches via `SearchHelper`, seamlessly handling custom URL templates for rapid hybrid querying against external knowledge bases.
@@ -59,9 +67,11 @@ Welcome aboard! To boot the application locally:
 1. `cp .env.example .env` (Populate optional configuration variables).
 2. Open `index.html` directly in your browser.
 
-To run the local test suite:
+To run the local test suite and linting:
 
 1. `npm ci`
-2. `npm run test`
-3. `npm run test:coverage`
-4. `npm run test:e2e`
+2. `npx --yes eslint .`
+3. `npx --yes markdownlint-cli "**/*.md" --ignore node_modules`
+4. `npm run test`
+5. `npm run test:coverage`
+6. `npm run test:e2e`
