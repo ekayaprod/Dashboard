@@ -289,7 +289,7 @@ describe('js/apps/passwords.js', () => {
 
             // Verify that the fallback mechanism handled the error and the application didn't crash
             // UIUtils.showToast should have been called with the error message
-            expect(toastSpy).toHaveBeenCalledWith('Error loading winter wordbank. Using base words only.');
+            expect(toastSpy).toHaveBeenCalledWith('Unable to load winter wordbank. Using base words only.');
 
             // Generate button should still work and produce results instead of failing open
             const btnGenerate = screen.getByRole('button', { name: /generate new passwords based on current settings/i });

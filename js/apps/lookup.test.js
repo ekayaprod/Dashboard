@@ -155,8 +155,8 @@ describe('js/apps/lookup.js - LookupHelpers', () => {
 
     it('getEmptyMessage should return "No entries" in edit mode', () => {
         document.body.innerHTML = window.LookupRenderer.getEmptyMessage('foo', true)
-        expect(screen.getByText("You haven't added any local entries yet. Click 'New Entry' to get started.")).not.toBeNull()
-        expect(screen.getByText("You haven't added any local entries yet. Click 'New Entry' to get started.").parentElement.getAttribute('aria-live')).toBe('polite')
+        expect(screen.getByText("You haven't added any local entries yet. Add a new entry to get started.")).not.toBeNull()
+        expect(screen.getByText("You haven't added any local entries yet. Add a new entry to get started.").parentElement.getAttribute('aria-live')).toBe('polite')
     })
 
     it('getEmptyMessage should return search suggestion if not edit mode and no term', () => {

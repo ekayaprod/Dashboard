@@ -601,7 +601,7 @@ function initializePage() {
                 return true;
             } catch (err) {
                 console.error("Failed to load wordbank:", err);
-                AppLifecycle.showStartupError("Wordbank Load Error", `Failed to load base wordbank: ${err.message}`);
+                AppLifecycle.showStartupError("Wordbank Load Error", `Unable to load base wordbank: ${err.message}`);
                 return false;
             }
         };
@@ -626,7 +626,7 @@ function initializePage() {
                 return seasonalBankData.wordBank;
             } catch (err) {
                 console.error(`[loadSeasonalBank] Failed to load seasonal wordbank "${seasonKey}":`, err);
-                UIUtils.showToast(`Error loading ${seasonKey} wordbank. Using base words only.`);
+                UIUtils.showToast(`Unable to load ${seasonKey} wordbank. Using base words only.`);
                 return null;
             }
         };
