@@ -113,7 +113,7 @@ const LookupRenderer = {
         if (isEditMode) {
             return `
                 <div class="empty-state-container" aria-live="polite">
-                    <div class="empty-state-text">You haven't added any local entries yet. Click 'New Entry' to get started.</div>
+                    <div class="empty-state-text">You haven't added any local entries yet. Add a new entry to get started.</div>
                 </div>
             `;
         }
