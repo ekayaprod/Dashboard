@@ -1,0 +1,25 @@
+--- CHANGELOG.md
++++ CHANGELOG.md
+@@ -6,18 +6,23 @@
+
+ ## [Unreleased]
++
+ ### Added
++
+ - Architecture roadmap and intelligence report.
+
+ ### Changed
++
+ - Refactored `msg-reader.js` logic for optimization.
+ - Updated README to reflect physical code reality and boot requirements.
+
+ ### Fixed
++
+ - Fixed Node 20 CI build issue by downgrading jsdom.
+ - Removed fossilized code and diagnostic droppings from `calculator.js`.
+ - Cleaned codebase by removing stale TODO comments for password structure selection.
+ - Enhanced Dashboard and Calculator UX patterns and stylized components with fluid UX.
+
+ ### Security
++
+ - Bumped github/codeql-action from 4.38.1 to 4.38.2.
