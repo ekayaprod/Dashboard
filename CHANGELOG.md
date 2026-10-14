@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refactored `msg-reader.js` logic for optimization.
 - Updated README to reflect physical code reality and boot requirements.
+- Consolidated CI pipelines and fortified deployment logic (PR #384).
+- Overhauled and standardized UI component aesthetics through the Palette+ initiative, introducing fluid transitions, consistent focus rings, and polished empty states.
+- Bumped development dependencies (`vitest`, `jsdom`, and `@vitest/coverage-v8`) to their latest secure versions.
 
 ### Fixed
 
@@ -25,4 +28,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Bumped github/codeql-action from 4.38.1 to 4.38.2.
+- Bumped github/codeql-action from 4.38.1 to 4.38.3.

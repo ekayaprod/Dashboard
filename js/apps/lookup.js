@@ -477,7 +477,15 @@ const RENDER_DEBOUNCE_DELAY_MS = 150;
 const SCROLL_TOP_VISIBILITY_THRESHOLD = 300;
 const ANIMATION_DELAY_INCREMENT_S = 0.05;
 const SENTINEL_ROOT_MARGIN = '200px';
+
+// 🕯️ CHRONICLE: AST reasoning explains the logic; Git history explains the business intent.
+
+/**
+ * Caps the number of validation error messages rendered in the DOM during CSV ingestion to prevent browser memory exhaustion.
+ * * Historical Intent: Extracted in PR #384 to centralize Magic Numbers and prevent UI freezes on large imports.
+ */
 const MAX_IMPORT_ERRORS_DISPLAY = 10;
+
 const MAX_ANIMATED_ITEMS = 10;
 const BATCH_SIZE = 50;
 
