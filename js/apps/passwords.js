@@ -17,7 +17,14 @@ const EMPTY_STATE_HTML = `
     Hit Generate to create passwords.
 `;
 
+// 🕯️ CHRONICLE: AST reasoning explains the logic; Git history explains the business intent.
+
+/**
+ * Defines the timeout in milliseconds for wordbank JSON fetch operations.
+ * * Historical Intent: Added via PR #384 to fortify deployment against silent network hangs.
+ */
 const FETCH_TIMEOUT_MS = 10000;
+
 /**
  * Defines the batch size for password generation.
  * Historical context: Extracted in PR #272 ('Palette+: Aesthetic & UX Enhancements') to centralize the default batch size.

@@ -127,7 +127,13 @@ function _decodeQuotedPrintable(str, charset = 'utf-8') {
 function _stripHtml(html) {
     if (!html || typeof html !== 'string') return ''; 
     
-    // Pass 1: Aggressive Regex Removal
+    // 🕯️ CHRONICLE: AST reasoning explains the logic; Git history explains the business intent.
+
+    /**
+     * Pass 1: Aggressive Regex Removal
+     * Strips structural and stylistic metadata tags (head, style, script, xml) from dirty HTML payloads before attempting DOM parsing.
+     * * Historical Intent: Consolidated into a pipeline via PR #384 to aggressively sanitize Outlook HTML payloads before DOM insertion.
+     */
     let text = html
         .replace(/<head[\s\S]*?<\/head>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
