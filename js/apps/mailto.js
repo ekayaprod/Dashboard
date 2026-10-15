@@ -453,6 +453,18 @@ async function init() {
     if (!ctx) return; 
     ({ elements: DOMElements, state, saveState } = ctx);
 
+    // Patch saveState to persist currentFolderId to state.ui
+    const originalSaveState = saveState;
+    saveState = () => {
+        if (!state.ui) state.ui = {};
+        state.ui.currentFolderId = currentFolderId;
+        originalSaveState();
+    };
+
+    if (state.ui && state.ui.currentFolderId) {
+        currentFolderId = state.ui.currentFolderId;
+    }
+
     setActiveSection(state.ui.activeSection || 'editor');
 
     const refreshSaveDropdown = () => {
