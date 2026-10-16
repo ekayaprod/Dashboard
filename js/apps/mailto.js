@@ -162,10 +162,13 @@ function clearEditorFields() {
     UIUtils.showToast("Form reset");
 }
 
+// 🕯️ CHRONICLE: AST reasoning explains the logic; Git history explains the business intent.
+
 /**
  * Parses a mailto string into its components.
  *
  * Handles URL decoding and extracting query parameters (subject, body, cc, bcc).
+ * * Historical Intent: Extracted during the mailto-app.js creation (Nov 2025) to enable modifying saved templates.
  *
  * @param {string} str - The mailto string (e.g., "mailto:a@b.com?subject=Hi").
  * @returns {{to:string, cc:string, bcc:string, subject:string, body:string}} The parsed data components.

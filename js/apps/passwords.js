@@ -181,6 +181,12 @@ const PasswordLogic = {
         if (C.minLength > C.maxLength) return "[Min length > Max length]";
         if (!C.passNumWords && !C.passNumDigits && !C.passNumSymbols) return "[No content selected]";
 
+        // 🕯️ CHRONICLE: AST reasoning explains the logic; Git history explains the business intent.
+        /**
+         * Calculates the estimated minimum length of the generated password based on the configuration.
+         * The * 4 multiplier represents the estimated average word length based on the word bank contents.
+         * * Historical Intent: Added in PR #272 ('Palette+: Aesthetic & UX Enhancements') (Feb 2026) to prevent infinite loops when min length > max length.
+         */
         let minEstimate = C.passNumDigits + C.passNumSymbols + (C.passNumWords * 4);
         if (C.passNumWords > 1) minEstimate += (C.passNumWords - 1) * C.passSeparator.length;
         if (minEstimate > C.maxLength) return "[Settings exceed Max Length]";

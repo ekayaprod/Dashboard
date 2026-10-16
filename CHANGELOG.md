@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidated CI pipelines and fortified deployment logic (PR #384).
 - Overhauled and standardized UI component aesthetics through the Palette+ initiative, introducing fluid transitions, consistent focus rings, and polished empty states.
 - Bumped development dependencies (`vitest`, `jsdom`, and `@vitest/coverage-v8`) to their latest secure versions.
+- Updated GitHub Actions versions to valid tags to fix CI pipeline.
+- Injected glassmorphism aesthetics, tactile feedback (`active:scale-98`), staggered fade-in animations to list items, and expanded touch targets for clear buttons.
 
 ### Fixed
 
