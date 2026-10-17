@@ -430,7 +430,7 @@ textarea.form-control {
     }
 }
 .accordion-header:active {
-    transform: scale(0.98);
+    transform: scale(0.99);
 }
 .accordion.expanded .accordion-header {
     border-bottom-color: rgba(226, 232, 240, 0.6);
@@ -671,13 +671,13 @@ textarea.form-control {
 .list-item {
     padding: 0.4rem; border-bottom: 1px solid var(--border-color);
     display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
-    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 .list-item:hover { background-color: var(--info-bg); }
 
 @media (prefers-reduced-motion: no-preference) {
     .list-item:active {
-        transform: scale(0.98);
+    transform: scale(0.99);
     }
 }
 
@@ -1226,13 +1226,17 @@ textarea.form-control {
     min-width: 44px;
     padding: 0.25rem 0.5rem;
     border-radius: var(--border-radius-sm);
-    transition: all 0.2s;
+    transition: all 0.3s ease-in-out;
     text-decoration: none;
 }
 .btn-clear:hover {
     background-color: var(--bg-color);
     color: var(--text-color);
     text-decoration: none;
+}
+.btn-clear:active { transform: scale(0.99); }
+@media (prefers-reduced-motion: reduce) {
+    .btn-clear:active { transform: none; }
 }
 .btn-clear svg {
     width: 14px;
