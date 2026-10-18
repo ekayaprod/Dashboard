@@ -571,11 +571,17 @@ textarea.form-control {
         transform: scale(0.95);
     }
 }
+.shortcut-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color);
+    border-radius: var(--border-radius);
+}
 .shortcut-item:last-child:nth-child(odd) { grid-column: span 2; }
 
 .shortcut-item a {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; font-size: 0.9rem;
 }
+.shortcut-item a:focus-visible { outline: none; }
 .notepad-wrapper { display: flex; flex-direction: column; flex-grow: 1; min-height: 200px; }
 .notepad-editor {
     flex-grow: 1;
@@ -674,6 +680,11 @@ textarea.form-control {
     transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 .list-item:hover { background-color: var(--info-bg); }
+.list-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--primary-color);
+    border-radius: 2px;
+}
 
 @media (prefers-reduced-motion: no-preference) {
     .list-item:active {
