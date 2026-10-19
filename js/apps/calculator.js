@@ -94,8 +94,8 @@ function initializePage() {
             STATUS: {
                 MET: 'Goal Met!',
                 MET_SUB: 'Great job!',
-                TICKETS_REMAINING: 'Total Tickets',
-                CALL_TIME: 'Total Call Time',
+                TICKETS_REMAINING: 'Tickets to Go',
+                CALL_TIME: 'Call Time',
                 OR: '— OR —',
                 NA: 'N/A',
                 OVER_SHIFT: '> Shift',
@@ -256,7 +256,7 @@ function initializePage() {
          * @param {string} data.boxClass - CSS class for color coding (e.g., 'target-good').
          */
         function updateTargetCard(card, data) {
-            const { boundary, ticketsText, callTimeDisplay, isMet, boxClass } = data;
+            const { boundary, ticketsNeeded, callTimeDisplay, isMet, boxClass } = data;
 
             const prevState = card.getAttribute('data-met');
             const newState = isMet ? 'true' : 'false';
@@ -274,7 +274,7 @@ function initializePage() {
 
             // Rebuild HTML if state structure changes or empty
             if (prevState !== newState || !card.hasChildNodes()) {
-                 card.innerHTML = buildTargetCardHTML(boundary.name, ticketsText, callTimeDisplay, isMet);
+                 card.innerHTML = buildTargetCardHTML(boundary.name, ticketsNeeded, callTimeDisplay, isMet);
                  return;
             }
 
@@ -283,8 +283,8 @@ function initializePage() {
                  const ticketEl = card.querySelector('.target-value:not(.target-alt-metric)');
                  const callTimeEl = card.querySelector('.target-alt-metric');
 
-                 if (ticketEl && ticketEl.innerText !== String(ticketsText)) {
-                     ticketEl.innerText = ticketsText;
+                 if (ticketEl && ticketEl.innerText !== String(ticketsNeeded)) {
+                     ticketEl.innerText = ticketsNeeded;
                  }
 
                  if (callTimeEl && callTimeEl.innerText !== callTimeDisplay) {
@@ -311,7 +311,7 @@ function initializePage() {
             if (ticketsNeeded <= 0) {
                 return {
                     boundary,
-                    ticketsText: "",
+                    ticketsNeeded: "",
                     callTimeDisplay: "",
                     isMet: true,
                     boxClass: 'target-good'
@@ -334,15 +334,15 @@ function initializePage() {
                 if (requiredTotalCallTime > shiftDurationMinutes) {
                     callTimeDisplay = COPY.STATUS.OVER_SHIFT;
                 } else {
-                    const hours = Math.floor(requiredTotalCallTime / 60);
-                    const minutes = requiredTotalCallTime % 60;
-                    callTimeDisplay = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    const hours = Math.floor(additionalCallTime / 60);
+                    const minutes = additionalCallTime % 60;
+                    callTimeDisplay = hours > 0 ? `${COPY.STATUS.ADD_PREFIX}${hours}h ${minutes}m` : `${COPY.STATUS.ADD_PREFIX}${minutes}m`;
                 }
             }
 
             return {
                 boundary,
-                ticketsText: `${ticketsToHitGrade}`,
+                ticketsNeeded: `${ticketsNeeded}`,
                 callTimeDisplay,
                 isMet: false,
                 boxClass: 'target-warn'
