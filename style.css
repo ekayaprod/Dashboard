@@ -625,9 +625,9 @@ textarea.form-control {
 }
 
 .target-card {
-    padding: 0.5rem; border-radius: 1rem;
+    padding: 0.75rem; border-radius: 1rem;
     text-align: center; display: flex; flex-direction: column;
-    justify-content: center; height: auto; min-height: 65px; /* Adaptive height */
+    justify-content: center; height: auto; min-height: 85px; /* Adaptive height */
     box-sizing: border-box;
     transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);

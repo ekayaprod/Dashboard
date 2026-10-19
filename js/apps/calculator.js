@@ -306,7 +306,7 @@ function initializePage() {
          * @returns {Object} Data object suitable for `updateTargetCard`.
          */
         function getTargetCardData(params) {
-            const { boundary, ticketsNeeded, totalProductiveMinutes, currentTickets, currentCallTime } = params;
+            const { boundary, ticketsNeeded, totalProductiveMinutes, currentTickets, currentCallTime, ticketsToHitGrade, shiftDurationMinutes } = params;
 
             if (ticketsNeeded <= 0) {
                 return {
@@ -329,10 +329,15 @@ function initializePage() {
             let callTimeDisplay;
             if (additionalCallTime === Infinity) {
                 callTimeDisplay = COPY.STATUS.NA;
-            } else if (additionalCallTime > 480) {
-                callTimeDisplay = COPY.STATUS.OVER_SHIFT;
             } else {
-                callTimeDisplay = `${COPY.STATUS.ADD_PREFIX}${additionalCallTime}${COPY.STATUS.MIN_SUFFIX}`;
+                const requiredTotalCallTime = currentCallTime + additionalCallTime;
+                if (requiredTotalCallTime > shiftDurationMinutes) {
+                    callTimeDisplay = COPY.STATUS.OVER_SHIFT;
+                } else {
+                    const hours = Math.floor(additionalCallTime / 60);
+                    const minutes = additionalCallTime % 60;
+                    callTimeDisplay = hours > 0 ? `${COPY.STATUS.ADD_PREFIX}${hours}h ${minutes}m` : `${COPY.STATUS.ADD_PREFIX}${minutes}m`;
+                }
             }
 
             return {
@@ -346,87 +351,72 @@ function initializePage() {
 
         // --- 3. STATS BAR (BUFFER) ---
 
-        // 🕯️ CHRONICLE: Conditional DOM rendering determining UI strategy. Logic merged in PR #368 for tracking threshold buffers and predicting jumps.
         /**
-         * Renders the buffer status bar showing how close the user is to the next target jump (XX:30).
+         * Renders the buffer status bar showing exact minutes of call time needed to drop the ticket target by 6.
          *
-         * Logic:
-         * - If minutes >= 30: Target is elevated. Shows how much call time is needed to drop back.
-         * - If minutes < 30: Target is lower. Shows how many work minutes remain until target jumps.
-         *
-         * @param {Object} data - Calculation data.
-         * @param {boolean} data.isRoundedUp - Whether the current time rounds up (>= XX:30).
-         * @param {number} data.minutesInHour - The minute component of the total work time (0-59).
+         * @param {number} minutesInHour - The minute component of the total work time (0-59).
          */
-        function renderTargetStats(data) {
-            const { isRoundedUp, minutesInHour } = data;
+        function renderTargetDrop(minutesInHour) {
+            const dropNeeded = minutesInHour >= 30 ? Math.ceil(minutesInHour - 29) : Math.ceil(minutesInHour + 31);
             
-            let html = '';
-
-            // BUFFER LOGIC:
-            // Threshold is XX:30.
+            const html = `
+                <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
+                    <span style="color: var(--text-color); font-weight: bold;">Drop goal by 6 tickets</span><br>
+                    Add <strong>${dropNeeded} min</strong> Call Time.
+                </div>
+            `;
             
-            if (isRoundedUp) {
-                // Scenario: Net Work Time is XX:30 or greater.
-                // Rounding has pushed the target UP.
-                // Action: Add Call Time to reduce Net Work Time below XX:30.
-                const reduceNeeded = Math.ceil(minutesInHour - 29);
-                html = `
-                    <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
-                        <span style="color: var(--warning-text); font-weight: bold;">${COPY.BUFFER.SPIKE_TITLE}</span><br>
-                        ${COPY.BUFFER.SPIKE_ACTION(reduceNeeded)}
-                    </div>
-                `;
-            } else {
-                // Scenario: Net Work Time is XX:00 to XX:29.
-                // Target is currently Lower.
-                // Countdown: How many minutes of WORK remaining until we hit XX:30 and target jumps?
-                const buffer = Math.floor(30 - minutesInHour);
-                
-                // Color logic: Green when plenty of time, Red when close to 0
-                let colorStyle = 'color: var(--success-text);';
-                if (buffer <= 5) colorStyle = 'color: var(--danger-color);'; 
-                else if (buffer <= 10) colorStyle = 'color: var(--warning-text);';
-
-                html = `
-                    <div style="font-size: 0.9rem; text-align: center; color: var(--text-color); padding: 6px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
-                        <span style="${colorStyle} font-weight: bold; font-size: 1.1rem;">${buffer} min</span><br>
-                        <span style="font-size: 0.75rem; opacity: 0.8;">${COPY.BUFFER.SAFE_LABEL}</span>
-                    </div>
-                `;
-            }
             if (DOMElements.targetStatsBar) DOMElements.targetStatsBar.innerHTML = html;
         }
 
-        // --- 4. STRATEGY ENGINE ---
+        // --- 4. PACING GUIDE ---
 
         /**
-         * Renders strategic advice based on the current metrics.
-         * E.g., suggests "Easy Wins" if a small amount of call time significantly reduces the target.
+         * Renders the pacing guide to show the pace needed to hit unmet targets.
          *
-         * @param {Object} scheduleData - Schedule metrics including minutesInHour and isRoundedUp.
          * @param {Date} now - Current time context.
+         * @param {number} shiftStartMinutes - Shift start time in minutes.
+         * @param {number} shiftEndMinutes - Shift end time in minutes.
+         * @param {number} currentTicketsSoFar - Current tickets completed.
+         * @param {number} targetTicketGoal - Target base tickets.
          */
-        function renderCalculationInfo(scheduleData, now) {
-            const { minutesInHour, isRoundedUp } = scheduleData;
+        function renderPacingGuide(now, shiftStartMinutes, shiftEndMinutes, currentTicketsSoFar, targetTicketGoal) {
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            let shiftMinutesRemaining = shiftEndMinutes - Math.max(shiftStartMinutes, currentMinutes);
             
-            let analysis = null;
-
-            if (isRoundedUp && (minutesInHour - 29) <= 20) {
-                 analysis = {
-                    type: 'optimization',
-                    title: COPY.STRATEGY.QUICK_FIX_TITLE,
-                    text: COPY.STRATEGY.QUICK_FIX_BODY(Math.ceil(minutesInHour - 29))
-                 };
+            if (shiftMinutesRemaining <= 0) {
+                DOMElements.calcInfoContent.innerHTML = '';
+                return;
             }
 
-            if (analysis) {
-                 const html = `
-                    <div class="strategy-card strategy-success" style="margin:0; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
-                        <div class="strategy-title">${analysis.title}</div>
-                        <div class="strategy-text">${analysis.text}</div>
-                    </div>
-                `;
+            const shiftHoursRemaining = shiftMinutesRemaining / 60;
+
+            let html = '<div class="strategy-card" style="margin:0; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);"><div class="strategy-title" style="margin-bottom: 8px;">Pacing Guide</div><div class="strategy-text" style="display: grid; gap: 8px;">';
+
+            let hasUnmet = false;
+            for (const [targetName, boundary] of Object.entries(gradeBoundaries)) {
+                const ticketsToHitGrade = targetTicketGoal + boundary.min;
+                const ticketsNeeded = ticketsToHitGrade - currentTicketsSoFar;
+
+                if (ticketsNeeded > 0) {
+                    hasUnmet = true;
+                    const pacePerHour = (ticketsNeeded / shiftHoursRemaining).toFixed(1);
+                    const minsPerTicket = (shiftMinutesRemaining / ticketsNeeded).toFixed(0);
+
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                            <span style="font-weight: 600;">${targetName}</span>
+                            <span style="font-size: 0.85rem;">
+                                ${pacePerHour} t/hr <span style="opacity: 0.5;">|</span> ${minsPerTicket} m/t
+                            </span>
+                        </div>
+                    `;
+                }
+            }
+
+            html += '</div></div>';
+
+            if (hasUnmet) {
                 DOMElements.calcInfoContent.innerHTML = html;
             } else {
                 DOMElements.calcInfoContent.innerHTML = '';
@@ -456,7 +446,8 @@ function initializePage() {
 
             return {
                 totalProductiveMinutes,
-                shiftStartMinutes: startMinutes
+                shiftStartMinutes: startMinutes,
+                shiftEndMinutes: endMinutes
             };
         }
 
@@ -472,13 +463,14 @@ function initializePage() {
          */
         function calculateDailyRatings() {
             const now = (window.APP_TIME_TRAVEL_DATE) ? new Date(window.APP_TIME_TRAVEL_DATE) : new Date();
-            const { totalProductiveMinutes, shiftStartMinutes, error } = getScheduleInfo(now);
+            const { totalProductiveMinutes, shiftStartMinutes, shiftEndMinutes, error } = getScheduleInfo(now);
 
             if (error || totalProductiveMinutes <= 0) {
                  DOMElements.targetsGrid.innerHTML = `<div class="info-box info-box-danger" style="grid-column:1/-1">${error || COPY.ERRORS.INVALID}</div>`;
                  return;
             }
 
+            const shiftDurationMinutes = shiftEndMinutes - shiftStartMinutes;
             const currentCallTimeSoFar = DateUtils.parseTimeToMinutes(DOMElements.currentCallTime.value);
             const currentTicketsSoFar = parseInt(DOMElements.currentTickets.value) || 0;
 
@@ -505,15 +497,17 @@ function initializePage() {
                     ticketsNeeded,
                     totalProductiveMinutes,
                     currentTickets: currentTicketsSoFar,
-                    currentCallTime: currentCallTimeSoFar
+                    currentCallTime: currentCallTimeSoFar,
+                    ticketsToHitGrade,
+                    shiftDurationMinutes
                 });
                 
                 const card = getOrCreateTargetCard(DOMElements.targetsGrid, targetName);
                 updateTargetCard(card, cardData);
             }
 
-            renderTargetStats({ totalWorkTimeEOD, isRoundedUp, minutesInHour });
-            renderCalculationInfo({ minutesInHour, isRoundedUp }, now);
+            renderTargetDrop(minutesInHour);
+            renderPacingGuide(now, shiftStartMinutes, shiftEndMinutes, currentTicketsSoFar, targetTicketGoal);
         }
 
         // --- EVENT LISTENERS ---
