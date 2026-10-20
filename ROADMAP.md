@@ -1,8 +1,11 @@
 # Sidebar Productivity Suite - Roadmap & Architecture Log
 
+**Current Version:** v1.2.0
+
 ## 🧭 THE CALIBRATED MAP: Explicitly linked milestone
 
 - [x] Integrate palette UX fixes (Merged: `a4ed4cd`)
+- [x] Consolidate CI Pipelines and Fortify Deployment (Merged: `df9f391`)
 
 ## Innovation Backlog
 
@@ -17,3 +20,9 @@
 - **The Problem:** The codebase uses a custom, reinvented `DataValidator` module (`js/core/app-data.js`) for tasks like schema checking and duplicate detection across application state. As the suite scales, custom validation logic becomes hard to maintain and lacks strict type safety.
 - **The Solution:** Implement `Zod` for strict, schema-based data validation and parsing.
 - **The Benefit:** `Zod` provides robust, type-safe schema enforcement, preventing corrupted JSON payloads and improving overall operational integrity.
+
+### Proposal: Adopt `DOMPurify` for XSS Mitigation
+
+- **The Problem:** The repository currently relies on a custom-built utility (`UIUtils.escapeHTML` in `js/core/app-core.js`) to mitigate Cross-Site Scripting (XSS). This is "reinventing the wheel," brittle, and prone to edge-case errors across application inputs.
+- **The Solution:** Adopt the mature, community-standard `DOMPurify` library to replace the custom HTML escaping utility.
+- **The Benefit:** Standardizing on `DOMPurify` will eliminate technical debt, ensure robust XSS mitigation handling for application input, and simplify the codebase.
