@@ -9,3 +9,4 @@
 ## End of log
 - **Removed Duplicate Pipeline:** Deleted redundant `.github/workflows/pipeline.yml` to prevent duplicated transit bloat jobs.
 - **Fortified Deploy:** Injected `needs: [test, analyze]` into the `deploy` job in `.github/workflows/main.yml` to ensure deployments only proceed after tests and security analysis pass.
+Added .editorconfig and configured .gitattributes for baseline integrity.
