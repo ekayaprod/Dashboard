@@ -602,19 +602,12 @@ const DOMHelpers = (() => {
          *   allFound: boolean
          * }} An object containing the mapped elements and a success flag.
          */
-        cacheElements: (requiredIds) => {
-            const elements = {};
-            let allFound = true;
-            for (const id of requiredIds) {
-                const el = document.getElementById(id);
-                if (!el) {
-                    console.error(`DOM element with id "${id}" not found.`);
-                    allFound = false;
-                }
-                elements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
-            }
-            return { elements, allFound };
-        },
+        cacheElements: (requiredIds) => requiredIds.reduce((acc, id) => {
+            const el = document.getElementById(id);
+            if (!el) { console.error(`DOM element with id "${id}" not found.`); acc.allFound = false; }
+            acc.elements[id.replace(/-(\w)/g, (m, g) => g.toUpperCase())] = el;
+            return acc;
+        }, { elements: {}, allFound: true }),
         /**
          * Initializes auto-resizing behavior for a textarea.
          * Attaches an input event listener and an internal `_autoResize` method.

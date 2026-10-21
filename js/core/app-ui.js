@@ -122,9 +122,7 @@ const SearchHelper = (() => {
             if (!items || !Array.isArray(items)) return;
             items.forEach(item => {
                 if (!item) return;
-                // Create a single string of all searchable values
                 const content = fields.map(f => String(item[f] || '').toLowerCase()).join(' ');
-                // Use defineProperty to make it non-enumerable (so it doesn't show up in JSON.stringify/loops)
                 Object.defineProperty(item, '_searchContent', {
                     value: content,
                     writable: true,
