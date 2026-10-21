@@ -436,21 +436,16 @@ const CsvManager = (() => {
                     try {
                         const { data, errors: parseErrors } = await DataConverter.fromCSV(file, config.headers);
 
-                        const validatedData = [];
-                        const validationErrors = [...parseErrors];
-
                         if (typeof config.onValidate !== 'function') {
                             throw new Error("Import validation is not configured.");
                         }
 
-                        data.forEach((row, index) => {
-                            const result = config.onValidate(row, index, config.stateItemsGetter ? config.stateItemsGetter() : undefined);
-                            if (result.error) {
-                                validationErrors.push(result.error);
-                            } else {
-                                validatedData.push(result.entry);
-                            }
-                        });
+                        const getItems = config.stateItemsGetter;
+                        const { validatedData, validationErrors } = data.reduce((acc, row, idx) => {
+                            const res = config.onValidate(row, idx, getItems ? getItems() : undefined);
+                            res.error ? acc.validationErrors.push(res.error) : acc.validatedData.push(res.entry);
+                            return acc;
+                        }, { validatedData: [], validationErrors: [...parseErrors] });
 
                         if (validatedData.length === 0 && validationErrors.length === 0) {
                             UIUtils.showModal("Import Failed", "<p>No valid data rows found in the CSV file.</p>", [{ label: 'OK' }]);
@@ -538,20 +533,16 @@ const TreeUtils = (() => {
          * @returns {Object[]} Array of folder objects with `level` property for indentation.
          */
         getAllFolders: (items, level = 0) => {
-            let folders = [];
-            if (level === 0) folders.push({ id: 'root', name: 'Root', level: 0 });
+            const init = level === 0 ? [{ id: 'root', name: 'Root', level: 0 }] : [];
+            if (!Array.isArray(items)) return init;
 
-            if (!Array.isArray(items)) return folders;
-
-            items.forEach(item => {
+            return items.reduce((acc, item) => {
                 if (item.type === 'folder') {
-                    folders.push({ id: item.id, name: item.name, level: level + 1 });
-                    if (item.children) {
-                        folders = folders.concat(TreeUtils.getAllFolders(item.children, level + 1));
-                    }
+                    acc.push({ id: item.id, name: item.name, level: level + 1 });
+                    if (item.children) acc.push(...TreeUtils.getAllFolders(item.children, level + 1));
                 }
-            });
-            return folders;
+                return acc;
+            }, init);
         },
 
         /**
