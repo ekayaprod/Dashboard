@@ -103,13 +103,13 @@ function initializePage() {
                 MIN_SUFFIX: 'm',
             },
             BUFFER: {
-                SPIKE_TITLE: 'Target Jump (+6)',
+                SPIKE_TITLE: `Target Jump (+${CONSTANTS.TICKETS_PER_HOUR_RATE})`,
                 SPIKE_ACTION: (mins) => `Add <strong>${mins} min</strong> to reduce target.`,
                 SAFE_LABEL: 'Safe buffer until target increase',
             },
             STRATEGY: {
                 QUICK_FIX_TITLE: '📉 Quick Fix',
-                QUICK_FIX_BODY: (mins) => `You're just <strong>${mins} min</strong> over. Add a little Call Time to drop your goal by 6.`,
+                QUICK_FIX_BODY: (mins) => `You're just <strong>${mins} min</strong> over. Add a little Call Time to drop your goal by ${CONSTANTS.TICKETS_PER_HOUR_RATE}.`,
             },
             ERRORS: {
                 CHECK_TIMES: "Check Shift Times",
@@ -153,12 +153,12 @@ function initializePage() {
          */
         function calculateAdditionalCallTimeNeeded(totalProductiveMinutes, currentTickets, offset, currentCallTime) {
             // Logic:
-            // We need: CurrentTickets >= (Round((Prod - TotalCallTime)/60) * 6) + Offset
-            // (CurrentTickets - Offset) / 6 >= Round((Prod - TotalCallTime)/60)
+            // We need: CurrentTickets >= (Round((Prod - TotalCallTime)/60) * CONSTANTS.TICKETS_PER_HOUR_RATE) + Offset
+            // (CurrentTickets - Offset) / CONSTANTS.TICKETS_PER_HOUR_RATE >= Round((Prod - TotalCallTime)/60)
             
             // Let MaxRoundedHours be the maximum rounded work hours we can afford.
-            // MaxRoundedHours = floor((CurrentTickets - Offset) / 6)
-            const maxRoundedHours = Math.floor((currentTickets - offset) / 6);
+            // MaxRoundedHours = floor((CurrentTickets - Offset) / CONSTANTS.TICKETS_PER_HOUR_RATE)
+            const maxRoundedHours = Math.floor((currentTickets - offset) / CONSTANTS.TICKETS_PER_HOUR_RATE);
 
             // If MaxRoundedHours < 0, it means even 0 work hours (Target 0) isn't enough.
             if (maxRoundedHours < 0) return Infinity;
@@ -356,13 +356,23 @@ function initializePage() {
          *
          * @param {number} minutesInHour - The minute component of the total work time (0-59).
          */
-        function renderTargetDrop(minutesInHour) {
+        function renderTargetDrop(minutesInHour, shiftMinutesRemaining) {
             const dropNeeded = minutesInHour >= 30 ? Math.ceil(minutesInHour - 29) : Math.ceil(minutesInHour + 31);
             
+            let feasibleText = '';
+            if (shiftMinutesRemaining !== undefined) {
+                if (shiftMinutesRemaining < dropNeeded) {
+                    feasibleText = `<br><span style="font-size: 0.75rem; color: var(--color-danger, #ef4444);">Not enough shift time remaining to drop goal.</span>`;
+                } else {
+                    const maxDrops = Math.floor((shiftMinutesRemaining - dropNeeded) / 60) + 1;
+                    feasibleText = `<br><span style="font-size: 0.75rem; opacity: 0.8;">Max feasible drops in remaining shift: <strong>${maxDrops}</strong> (${maxDrops * CONSTANTS.TICKETS_PER_HOUR_RATE} tickets)</span>`;
+                }
+            }
+
             const html = `
                 <div style="font-size: 0.85rem; text-align: center; color: var(--text-color); padding: 4px; background: rgba(0,0,0,0.05); border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
-                    <span style="color: var(--text-color); font-weight: bold;">Drop goal by 6 tickets</span><br>
-                    Add <strong>${dropNeeded} min</strong> Call Time.
+                    <span style="color: var(--text-color); font-weight: bold;">Drop goal by ${CONSTANTS.TICKETS_PER_HOUR_RATE} tickets</span><br>
+                    Add <strong>${dropNeeded} min</strong> Call Time.${feasibleText}
                 </div>
             `;
             
@@ -380,7 +390,7 @@ function initializePage() {
          * @param {number} currentTicketsSoFar - Current tickets completed.
          * @param {number} targetTicketGoal - Target base tickets.
          */
-        function renderPacingGuide(now, shiftStartMinutes, shiftEndMinutes, currentTicketsSoFar, targetTicketGoal) {
+        function renderPacingGuide(now, shiftStartMinutes, shiftEndMinutes, currentTicketsSoFar, targetTicketGoal, currentCallTimeSoFar, totalProductiveMinutes) {
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             let shiftMinutesRemaining = shiftEndMinutes - Math.max(shiftStartMinutes, currentMinutes);
             
@@ -407,16 +417,44 @@ function initializePage() {
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px; background: rgba(255,255,255,0.05); border-radius: 4px;">
                             <span style="font-weight: 600;">${targetName}</span>
                             <span style="font-size: 0.85rem;">
-                                ${pacePerHour} t/hr <span style="opacity: 0.5;">|</span> ${minsPerTicket} m/t
+                                ${pacePerHour} tickets/hr <span style="opacity: 0.5;">|</span> ${minsPerTicket} mins/ticket
                             </span>
                         </div>
                     `;
                 }
             }
 
+            if (currentCallTimeSoFar !== undefined && totalProductiveMinutes !== undefined) {
+                const shiftMinutesSoFar = Math.max(1, currentMinutes - shiftStartMinutes);
+                const callRate = currentCallTimeSoFar / shiftMinutesSoFar;
+                const predictedFutureCallTime = shiftMinutesRemaining * callRate;
+                const predictedTotalWorkTime = totalProductiveMinutes - (currentCallTimeSoFar + predictedFutureCallTime);
+                const predictedTargetTicketGoal = Math.round(predictedTotalWorkTime / 60) * CONSTANTS.TICKETS_PER_HOUR_RATE;
+
+                let predictionMsg = "";
+                let predictionColor = "";
+                if (predictedTargetTicketGoal < targetTicketGoal) {
+                    predictionMsg = `Trending towards lower goal (${predictedTargetTicketGoal}). Shift focus to calls if needed.`;
+                    predictionColor = "var(--color-success, #22c55e)";
+                } else if (predictedTargetTicketGoal > targetTicketGoal) {
+                    predictionMsg = `Trending towards higher goal (${predictedTargetTicketGoal}). Shift focus to tickets.`;
+                    predictionColor = "var(--color-danger, #ef4444)";
+                } else {
+                    predictionMsg = `Pacing to maintain goal (${predictedTargetTicketGoal}). Keep balanced.`;
+                    predictionColor = "var(--text-color)";
+                }
+
+                html += `
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 0.8rem; text-align: center; color: ${predictionColor};">
+                        <strong>EOD Prediction:</strong><br/>
+                        ${predictionMsg}
+                    </div>
+                `;
+            }
+
             html += '</div></div>';
 
-            if (hasUnmet) {
+            if (hasUnmet || (currentCallTimeSoFar !== undefined && totalProductiveMinutes !== undefined)) {
                 DOMElements.calcInfoContent.innerHTML = html;
             } else {
                 DOMElements.calcInfoContent.innerHTML = '';
@@ -506,8 +544,11 @@ function initializePage() {
                 updateTargetCard(card, cardData);
             }
 
-            renderTargetDrop(minutesInHour);
-            renderPacingGuide(now, shiftStartMinutes, shiftEndMinutes, currentTicketsSoFar, targetTicketGoal);
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const shiftMinutesRemaining = shiftEndMinutes - Math.max(shiftStartMinutes, currentMinutes);
+
+            renderTargetDrop(minutesInHour, shiftMinutesRemaining);
+            renderPacingGuide(now, shiftStartMinutes, shiftEndMinutes, currentTicketsSoFar, targetTicketGoal, currentCallTimeSoFar, totalProductiveMinutes);
         }
 
         // --- EVENT LISTENERS ---
