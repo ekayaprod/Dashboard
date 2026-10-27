@@ -69,9 +69,11 @@ Welcome aboard! To boot the application locally:
 
 To run the local test suite and linting:
 
-1. `npm ci`
-2. `npx --yes eslint .`
-3. `npx --yes markdownlint-cli "**/*.md" --ignore node_modules`
-4. `npm run test`
-5. `npm run test:coverage`
-6. `npm run test:e2e`
+```bash
+npm ci
+npx --yes eslint .
+npx --yes markdownlint-cli "**/*.md" --ignore node_modules
+npm run test
+npm run test:coverage
+npm run test:e2e
+```

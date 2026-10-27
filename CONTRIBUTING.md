@@ -14,9 +14,11 @@ To ensure the integrity of the tool, strict linting and tests are required.
 
 To run the full suite:
 
-1. `npm ci`
-2. `npx --yes eslint .`
-3. `npx --yes markdownlint-cli "**/*.md" --ignore node_modules`
-4. `npm run test`
-5. `npm run test:coverage`
-6. `npm run test:e2e`
+```bash
+npm ci
+npx --yes eslint .
+npx --yes markdownlint-cli "**/*.md" --ignore node_modules
+npm run test
+npm run test:coverage
+npm run test:e2e
+```
