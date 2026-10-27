@@ -10,3 +10,4 @@
 - **Removed Duplicate Pipeline:** Deleted redundant `.github/workflows/pipeline.yml` to prevent duplicated transit bloat jobs.
 - **Fortified Deploy:** Injected `needs: [test, analyze]` into the `deploy` job in `.github/workflows/main.yml` to ensure deployments only proceed after tests and security analysis pass.
 Added .editorconfig and configured .gitattributes for baseline integrity.
+- **Wired Orphaned Script:** Connected `test_style.sh` script to the CI matrix in `.github/workflows/main.yml` under the `script` type, and updated conditional Playwright steps to accommodate it.

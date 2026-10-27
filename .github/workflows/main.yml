@@ -16,6 +16,7 @@ jobs:
           - { type: unit, node: 22.x, cmd: 'npx --yes vitest run --coverage' }
           - { type: unit, node: 24.x, cmd: 'npx --yes vitest run --coverage' }
           - { type: e2e, node: 22.x, cmd: 'npm run test:e2e' }
+          - { type: script, node: 22.x, cmd: './test_style.sh' }
     steps:
       - uses: actions/checkout@v7
       - name: Node ${{ matrix.node }}
@@ -24,7 +25,7 @@ jobs:
       - name: Install Deps
         run: ${{ matrix.type == 'unit' && 'npm ci --ignore-scripts' || 'npm ci' }}
       - name: Playwright Cache
-        if: matrix.type == 'e2e'
+        if: matrix.type == 'e2e' || matrix.type == 'script'
         id: pw-cache
         uses: actions/cache@v6
         with:
@@ -32,14 +33,14 @@ jobs:
           key: "${{ runner.os }}-pw-${{ hashFiles('package-lock.json') }}"
           restore-keys: "${{ runner.os }}-pw-"
       - name: Install Playwright
-        if: matrix.type == 'e2e'
+        if: matrix.type == 'e2e' || matrix.type == 'script'
         run: |
           if [ "${{ steps.pw-cache.outputs.cache-hit }}" != 'true' ]; then npx --yes playwright install chromium; fi
           npx --yes playwright install-deps chromium
       - name: Run ${{ matrix.type }}
         run: ${{ matrix.cmd }}
       - name: Upload Report
-        if: always() && matrix.type == 'e2e'
+        if: always() && (matrix.type == 'e2e' || matrix.type == 'script')
         uses: actions/upload-artifact@v7
         with: { name: playwright-report, path: playwright-report/, retention-days: 7 }
   analyze:
