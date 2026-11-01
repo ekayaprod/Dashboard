@@ -671,7 +671,12 @@ function initializePage() {
 
             // Apply Seasonal Data if loaded successfully
             if (seasonalBank.status === 'fulfilled' && seasonalBank.value) {
-                activeWordBank = seasonalBank.value;
+                for (const category in seasonalBank.value) {
+                    if (!activeWordBank[category]) {
+                        activeWordBank[category] = [];
+                    }
+                    activeWordBank[category] = activeWordBank[category].concat(seasonalBank.value[category]);
+                }
             } else if (activeSeasonKey !== 'standard') {
                 activeSeasonKey = 'standard'; // Revert to standard if seasonal failed
             }
